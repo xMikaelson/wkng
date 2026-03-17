@@ -89,9 +89,10 @@
         :root { --nav-h: 72px; }
         body {
             padding-bottom: calc(var(--nav-h) + var(--sab));
-            margin: 0; padding-top: var(--sat);
+            margin: 0; padding-top: 0;
             background: #0f172a;
             min-height: 100vh;
+            overflow-x: hidden;
             display: flex; flex-direction: column; align-items: center;
         }
         body > * { width: 100%; max-width: 480px; }
@@ -385,24 +386,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         body.nav-mode #page-profilo,
         body.nav-mode #page-progress { padding-top: 0; }
         body.nav-mode #btn-login-trigger { display: none; }
+        body.nav-mode { overflow: hidden; }
         body.nav-mode .top-bar { display: none; }
-        body.nav-mode .container {
-            margin-top: 0;
-            padding-top: max(env(safe-area-inset-top), 44px);
-            padding-bottom: var(--nav-h);
-            height: 100svh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            box-sizing: border-box;
-            overflow: hidden;
-        }
+        body.nav-mode .container { display: none !important; }
         body.nav-mode #results { padding-top: max(env(safe-area-inset-top), 44px); }
         .user-avatar { width: 35px; height: 35px; background: var(--accent); border-radius: 50%; display: none; justify-content: center; align-items: center; cursor: pointer; font-weight: bold; border: 2px solid white; }
 
         .container { background: var(--card); padding: 1rem; border-radius: 0; width: 100%; max-width: 480px; box-shadow: none; box-sizing: border-box; margin: 0 auto; }
-        body.nav-mode .container { margin-bottom: calc(var(--nav-h) + 20px); margin-top: 0; }
-        body.nav-mode #hero-section, body.nav-mode #onboarding-wizard { display: none !important; }
+        body.nav-mode .container { display: none !important; }
+        body.nav-mode #hero-section, body.nav-mode #onboarding-wizard, body.nav-mode h1, body.nav-mode .slogan { display: none !important; }
         h1 { color: var(--primary); text-align: center; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 2px; font-size: 1.8rem; }
         .slogan { text-align: center; color: #94a3b8; margin-bottom: 10px; font-weight: bold; font-size: 0.9rem; }
 
