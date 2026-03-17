@@ -8261,6 +8261,38 @@ if ('serviceWorker' in navigator) {
             .catch(err => console.log('SW error:', err));
     });
 }
+
+// Fix safe area via JS — works even if CSS env() is not applied
+(function applySafeArea() {
+    function fix() {
+        // Read actual safe area from CSS env
+        const testEl = document.createElement('div');
+        testEl.style.cssText = 'position:fixed;top:env(safe-area-inset-top,0px);left:0;width:1px;height:1px;pointer-events:none;';
+        document.body.appendChild(testEl);
+        const sat = testEl.getBoundingClientRect().top;
+        document.body.removeChild(testEl);
+
+        const topBar = document.querySelector('.top-bar');
+        const container = document.querySelector('.container');
+
+        if (sat > 0) {
+            if (topBar) topBar.style.paddingTop = (sat + 8) + 'px';
+            if (container) container.style.paddingTop = (sat + 60) + 'px';
+            document.documentElement.style.setProperty('--sat-px', sat + 'px');
+        } else {
+            // Fallback: use window.screen height difference as proxy
+            const statusH = window.screen.height - window.screen.availHeight;
+            const h = Math.max(statusH, 44); // min 44px for notch devices
+            if (topBar) topBar.style.paddingTop = h + 'px';
+            if (container) container.style.paddingTop = (h + 60) + 'px';
+        }
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', fix);
+    } else {
+        fix();
+    }
+})();
 </script>
 </body>
 </html>
