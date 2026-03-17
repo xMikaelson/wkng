@@ -9,6 +9,32 @@
     <meta name="theme-color" content="#0f172a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style>
+        /* Safe area fix — applied before any other CSS */
+        @supports (padding-top: env(safe-area-inset-top)) {
+            .top-bar {
+                padding-top: max(env(safe-area-inset-top), 44px) !important;
+            }
+            .container, #results {
+                padding-top: calc(max(env(safe-area-inset-top), 44px) + 52px) !important;
+            }
+            .page {
+                padding-top: calc(max(env(safe-area-inset-top), 44px) + 56px) !important;
+            }
+        }
+        /* Fallback for all standalone PWA on iOS */
+        @media all and (display-mode: standalone) {
+            .top-bar {
+                padding-top: 50px !important;
+            }
+            .container, #results {
+                padding-top: 110px !important;
+            }
+            .page {
+                padding-top: 110px !important;
+            }
+        }
+    </style>
     <meta name="apple-mobile-web-app-title" content="Awakening">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="description" content="Il tuo protocollo di allenamento personalizzato con AI Coach">
