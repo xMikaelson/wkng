@@ -276,7 +276,7 @@
             width: 100%; max-width: 480px;
             margin-left: auto; margin-right: auto;
             overflow-y: auto; display: none;
-            padding-top: calc(env(safe-area-inset-top, 44px) + 56px);
+            padding-top: calc(max(env(safe-area-inset-top), 44px) + 56px);
             padding-bottom: calc(16px + var(--sab));
             background: var(--bg);
             z-index: 100;
@@ -359,13 +359,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             top: 0; left: 0; right: 0;
             width: 100%; max-width: 480px;
             margin-left: auto; margin-right: auto;
-            padding-top: env(safe-area-inset-top, 20px);
-            padding-left: 16px; padding-right: 16px; padding-bottom: 12px;
+            padding-top: max(env(safe-area-inset-top), 44px);
+            padding-left: 16px; padding-right: 16px; padding-bottom: 10px;
             display: flex; justify-content: space-between; align-items: center;
             z-index: 1000;
-            background: rgba(15, 23, 42, 0.95);
-            backdrop-filter: blur(5px);
-            border-bottom: 1px solid rgba(255,255,255,0.05);
+            background: #0f172a;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
             box-sizing: border-box;
         }
         .brand { color: #ffffff; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; font-size: 1rem; }
@@ -373,7 +372,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         body.nav-mode .btn-nav-login { display: none; }
         body.nav-mode #btn-login-trigger { display: none; }
         body.nav-mode .top-bar { display: none; }
-        body.nav-mode .container { margin-top: 0; padding-top: calc(env(safe-area-inset-top, 44px) + 64px); }
+        body.nav-mode .container { margin-top: 0; padding-top: calc(max(env(safe-area-inset-top), 44px) + 56px); }
         body.nav-mode #results { padding-top: 0; }
         .user-avatar { width: 35px; height: 35px; background: var(--accent); border-radius: 50%; display: none; justify-content: center; align-items: center; cursor: pointer; font-weight: bold; border: 2px solid white; }
 
@@ -598,7 +597,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         /* RESPONSIVE MOBILE */
         @media (max-width: 768px) {
             body { padding: 0; margin: 0; }
-            .top-bar { padding: 8px 15px !important; height: 50px !important; padding-top: 8px !important; }
+            
             .brand { font-size: 0.8rem; }
             .btn-nav-login { padding: 4px 10px; font-size: 0.6rem; }
             .user-avatar { width: 30px; height: 30px; font-size: 0.75rem; }
@@ -1584,9 +1583,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js"></script>
 </head>
 <body>
-
-<!-- iOS PWA status bar spacer -->
-<div id="ios-spacer" style="height:env(safe-area-inset-top,44px);background:#0f172a;position:fixed;top:0;left:0;right:0;z-index:1001;"></div>
 
 <div class="top-bar">
     <div class="brand">A<span style="color:var(--primary)">WAKE</span>NING</div>
@@ -8260,9 +8256,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 <script>
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js')
+        // Only register SW if served from root scope (not subdirectory)
+        const swScope = window.location.pathname.replace(/\/[^/]*$/, '/') || '/';
+        navigator.serviceWorker.register('./sw.js', { scope: swScope })
             .then(reg => console.log('SW registered:', reg.scope))
-            .catch(err => console.log('SW error:', err));
+            .catch(err => {
+                // Non-critical — app works without SW
+                console.log('SW skipped:', err.message);
+            });
     });
 }
 

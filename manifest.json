@@ -2,7 +2,7 @@
   "name": "Awakening – Fitness Coach",
   "short_name": "Awakening",
   "description": "Il tuo protocollo di allenamento personalizzato con AI Coach",
-  "start_url": "./index.html",
+  "start_url": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0f172a",
@@ -21,6 +21,11 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["fitness", "health", "sports"],
-  "lang": "it"
+  "categories": [
+    "fitness",
+    "health",
+    "sports"
+  ],
+  "lang": "it",
+  "scope": "./"
 }
