@@ -82,6 +82,7 @@
             --pr: 52,211,153; --ac: 99,102,241; --nav-h: 64px;
             --sat: env(safe-area-inset-top, 0px);
             --sab: env(safe-area-inset-bottom, 0px);
+            --topbar-h: calc(max(env(safe-area-inset-top), 44px) + 44px);
         }
         
         /* ═══ BOTTOM NAV ═══ */
@@ -276,7 +277,7 @@
             width: 100%; max-width: 480px;
             margin-left: auto; margin-right: auto;
             overflow-y: auto; display: none;
-            padding-top: calc(max(env(safe-area-inset-top), 44px) + 56px);
+            padding-top: var(--topbar-h);
             padding-bottom: calc(16px + var(--sab));
             background: var(--bg);
             z-index: 100;
@@ -289,7 +290,7 @@
         .nav-page.active { display: block; }
 
         /* Progressi page */
-        #page-progress { padding: 20px 16px; }
+        #page-progress { padding-top: var(--topbar-h); padding-left: 16px; padding-right: 16px; padding-bottom: 20px; }
         .prog-page-title { font-size:1.3rem; font-weight:900; letter-spacing:-0.02em; margin-bottom:16px; }
         .prog-page-title span { color: var(--primary); }
 
@@ -372,7 +373,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         body.nav-mode .btn-nav-login { display: none; }
         body.nav-mode #btn-login-trigger { display: none; }
         body.nav-mode .top-bar { display: none; }
-        body.nav-mode .container { margin-top: 0; padding-top: calc(max(env(safe-area-inset-top), 44px) + 56px); }
+        body.nav-mode .container { margin-top: 0; padding-top: var(--topbar-h); }
         body.nav-mode #results { padding-top: 0; }
         .user-avatar { width: 35px; height: 35px; background: var(--accent); border-radius: 50%; display: none; justify-content: center; align-items: center; cursor: pointer; font-weight: bold; border: 2px solid white; }
 
@@ -882,7 +883,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .tdee-overlay.active { display: block; }
         .tdee-header {
             display: flex; align-items: center; gap: 10px;
-            padding: 14px 16px 10px; position: sticky; top: 0;
+            padding: max(env(safe-area-inset-top), 44px) 16px 10px; position: sticky; top: 0;
             background: #0f172a; z-index: 1; border-bottom: 1px solid rgba(255,255,255,0.06);
         }
         .tdee-back-btn {
@@ -1003,7 +1004,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .ex-video-overlay.active { display: flex; }
         .ex-video-header {
             display: flex; align-items: center; gap: 10px;
-            padding: 14px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.06);
+            padding: max(env(safe-area-inset-top), 44px) 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.06);
             flex-shrink: 0;
         }
         .ex-video-back {
@@ -1047,7 +1048,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .camera-overlay.active { display: flex; }
         .camera-header {
             display: flex; align-items: center; gap: 10px;
-            padding: 14px 16px; background: rgba(0,0,0,0.8);
+            padding: max(env(safe-area-inset-top), 44px) 16px 12px;
+            background: rgba(0,0,0,0.8);
             position: absolute; top: 0; left: 0; right: 0; z-index: 1;
         }
         .camera-back {
@@ -1344,8 +1346,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .pr-val { font-size:0.72rem; font-weight:700; color:var(--primary); }
 
         /* ── Workout attivo ── */
-        #page-workout { }
-        .wo-header { padding:12px 16px 0; display:flex; align-items:center; gap:8px; position:relative; flex-shrink:0; }
+        #page-workout { padding-top: 0; }
+        .wo-header { padding: max(env(safe-area-inset-top), 44px) 16px 0; display:flex; align-items:center; gap:8px; position:relative; flex-shrink:0; }
         .wo-back { width:34px; height:34px; border-radius:10px; background:rgba(255,255,255,0.05); border:none; color:#64748b; font-size:1rem; cursor:pointer; display:flex; align-items:center; justify-content:center; }
         .wo-proto-name { font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; color:#475569; position:absolute; left:0; right:0; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; pointer-events:none; }
         .wo-stop { padding:5px 11px; border-radius:6px; border:1px solid rgba(244,63,94,0.3); background:rgba(244,63,94,0.07); color:#f43f5e; font-size:0.52rem; font-weight:700; cursor:pointer; letter-spacing:0.05em; white-space:nowrap; flex-shrink:0; width:auto; margin-left:auto; }
@@ -1407,8 +1409,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wo-ex-rkg-pr .wo-rkg-sep { color:#475569; font-weight:400; }
 
         /* ── Piani ── */
-        #page-plans { }
-        .plans-header { padding:20px 16px 10px; }
+        #page-plans { padding-top: 0; }
+        .plans-header { padding: max(env(safe-area-inset-top), 44px) 16px 10px; }
         .plan-week-block { background:var(--card); border-radius:14px; padding:14px; }
         .plan-week-title { font-size:0.62rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.15em; margin-bottom:10px; }
         .plan-legenda { display:flex; gap:10px; margin-bottom:8px; justify-content:center; }
