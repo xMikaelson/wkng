@@ -1373,14 +1373,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .pr-val { font-size:0.72rem; font-weight:700; color:var(--primary); }
 
         /* ── Workout attivo ── */
-        #page-workout {
-            padding-top: 0;
-            display: none;
-            flex-direction: column;
-        }
-        #page-workout.active {
-            display: flex !important;
-        }
+        #page-workout { padding-top: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
         .wo-header { padding: max(env(safe-area-inset-top), 44px) 16px 0; display:flex; align-items:center; gap:8px; position:relative; flex-shrink:0; }
         .wo-back { width:34px; height:34px; border-radius:10px; background:rgba(255,255,255,0.05); border:none; color:#64748b; font-size:1rem; cursor:pointer; display:flex; align-items:center; justify-content:center; }
         .wo-proto-name { font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; color:#475569; position:absolute; left:0; right:0; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; pointer-events:none; }
@@ -1569,8 +1562,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wo-start-btn:active { transform: scale(0.97); }
         .wo-start-btn .wo-start-icon { font-size:1.3rem; display:block; margin-bottom:4px; }
 
-        .wo-idle-state { display: flex; flex-direction: column; flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-        .wo-active-state { display: none; flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .wo-idle-state  { display: block; }
+        .wo-active-state { display: none; }
         #page-workout.wo-running .wo-idle-state  { display: none; }
         #page-workout.wo-running .wo-active-state { display: block; }
         /* Stat preview boxes */
@@ -2914,17 +2907,22 @@ async function onLoginSuccess(user, usernameOverride = null) {
     }
     const { data: protocols } = await sbClient.from('protocols').select('*').eq('user_id', user.id).order('created_at');
     if (!protocols || protocols.length === 0) {
-        // Nessun protocollo: resetta tutto a zero
-        APP.dayAssignments = [[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null]];
-        APP.chipStates = [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']];
-        APP.completedWeeks = [false,false,false,false];
-        APP.availableWeeks = [0];
-        APP.selectedViewWeek = 0;
-        APP.activeProtocolId = null;
-        APP.exerciseData = [];
-        APP.totalWorkouts = 0;
-        APP.startDate = null;
-        APP.motivationalQuotes = ['','','',''];
+        // Nessun protocollo su Supabase — usa localStorage se disponibile
+        const _ls = (() => { try { const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : null; } catch(e) { return null; } })();
+        if (!_ls || !_ls.savedProtocols || _ls.savedProtocols.length === 0) {
+            // Davvero nessun protocollo: resetta
+            APP.dayAssignments = [[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null]];
+            APP.chipStates = [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']];
+            APP.completedWeeks = [false,false,false,false];
+            APP.availableWeeks = [0];
+            APP.selectedViewWeek = 0;
+            APP.activeProtocolId = null;
+            APP.exerciseData = [];
+            APP.totalWorkouts = 0;
+            APP.startDate = null;
+            APP.motivationalQuotes = ['','','',''];
+        }
+        // else: stato già caricato da localStorage via stateSource sopra
     }
     if (protocols && protocols.length > 0) {
         APP.savedProtocols = protocols.map(p => ({
