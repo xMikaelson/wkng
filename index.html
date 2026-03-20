@@ -1373,7 +1373,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .pr-val { font-size:0.72rem; font-weight:700; color:var(--primary); }
 
         /* ── Workout attivo ── */
-        #page-workout { padding-top: 0; }
+        #page-workout {
+            padding-top: 0;
+            display: none;
+            flex-direction: column;
+        }
+        #page-workout.active {
+            display: flex !important;
+        }
         .wo-header { padding: max(env(safe-area-inset-top), 44px) 16px 0; display:flex; align-items:center; gap:8px; position:relative; flex-shrink:0; }
         .wo-back { width:34px; height:34px; border-radius:10px; background:rgba(255,255,255,0.05); border:none; color:#64748b; font-size:1rem; cursor:pointer; display:flex; align-items:center; justify-content:center; }
         .wo-proto-name { font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; color:#475569; position:absolute; left:0; right:0; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; pointer-events:none; }
@@ -1562,8 +1569,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wo-start-btn:active { transform: scale(0.97); }
         .wo-start-btn .wo-start-icon { font-size:1.3rem; display:block; margin-bottom:4px; }
 
-        .wo-idle-state  { display: flex; flex-direction: column; height: 100%; }
-        .wo-active-state { display: none; }
+        .wo-idle-state { display: flex; flex-direction: column; flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .wo-active-state { display: none; flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
         #page-workout.wo-running .wo-idle-state  { display: none; }
         #page-workout.wo-running .wo-active-state { display: block; }
         /* Stat preview boxes */
@@ -2400,7 +2407,8 @@ function saveState() {
             currentExerciseIndex: APP.currentExerciseIndex, goal: document.getElementById('goal').value,
             activeProtocolId: APP.activeProtocolId, dayAssignments: APP.dayAssignments,
             motivationalQuotes: APP.motivationalQuotes,
-            personalRecords: APP.personalRecords || {}
+            personalRecords: APP.personalRecords || {},
+            savedProtocols: APP.savedProtocols || []
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
         saveToSupabase(toSave);
@@ -2880,8 +2888,11 @@ async function onLoginSuccess(user, usernameOverride = null) {
     }
     const username = usernameOverride || profile?.username || user.email.split('@')[0];
     APP.userName = username;
-    if (profile?.state_json) {
-        const s = profile.state_json;
+    // Try Supabase state first, fallback to localStorage
+    const localState = (() => { try { const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : null; } catch(e) { return null; } })();
+    const stateSource = profile?.state_json || localState;
+    if (stateSource) {
+        const s = stateSource;
         APP.isUnlocked = s.isUnlocked || false;
         APP.exerciseData = s.exerciseData || [];
         APP.totalWorkouts = s.totalWorkouts || 0;
@@ -2896,6 +2907,10 @@ async function onLoginSuccess(user, usernameOverride = null) {
         APP.dayAssignments = s.dayAssignments || [[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null]];
         if (s.goal) document.getElementById('goal').value = s.goal;
         if (s.activeProtocolId) APP.activeProtocolId = s.activeProtocolId;
+        // Restore cached protocols if Supabase hasn't loaded them yet
+        if (s.savedProtocols && s.savedProtocols.length > 0 && APP.savedProtocols.length === 0) {
+            APP.savedProtocols = s.savedProtocols;
+        }
     }
     const { data: protocols } = await sbClient.from('protocols').select('*').eq('user_id', user.id).order('created_at');
     if (!protocols || protocols.length === 0) {
