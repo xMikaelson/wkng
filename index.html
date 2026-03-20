@@ -1080,6 +1080,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             flex-direction: column;
         }
         .camera-overlay.active { display: flex; }
+        @keyframes scanLine {
+            0%   { top: 4px; opacity: 0.8; }
+            50%  { top: calc(100% - 6px); opacity: 1; }
+            100% { top: 4px; opacity: 0.8; }
+        }
         .camera-header {
             display: flex; align-items: center; gap: 10px;
             padding: max(env(safe-area-inset-top), 44px) 16px 12px;
@@ -1640,7 +1645,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         }
 
     </style>
-  <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
 </head>
 <body>
 
@@ -3937,87 +3942,144 @@ let zxingRunning = false;
 
 function mealScan(meal) {
     cameraCurrentMeal = meal;
-    const overlay   = document.getElementById('camera-overlay');
-    const viewport  = document.getElementById('camera-viewport');
-    const noSupport = document.getElementById('camera-no-support');
-    const hint      = document.getElementById('camera-hint');
-
+    const overlay  = document.getElementById('camera-overlay');
+    const hint     = document.getElementById('camera-hint');
     overlay.classList.add('active');
-    noSupport.style.display = 'none';
-    viewport.style.display  = 'block';
+    if (hint) hint.textContent = 'Avvio fotocamera...';
 
-    // Create scan div
-    let scanDiv = document.getElementById('qr-scan-region');
-    if (!scanDiv) {
-        scanDiv = document.createElement('div');
-        scanDiv.id = 'qr-scan-region';
-        scanDiv.style.cssText = 'width:100%;height:100%;position:absolute;top:0;left:0;';
-        viewport.insertBefore(scanDiv, viewport.firstChild);
+    // Stop any previous scanner
+    cameraClose(true);
+
+    // Strategy 1: BarcodeDetector (native, iOS 17+ / Chrome Android)
+    if ('BarcodeDetector' in window) {
+        _scanWithBarcodeDetector(meal);
+    } else {
+        // Strategy 2: ZXing
+        _scanWithZXing(meal);
     }
-    scanDiv.innerHTML = '';
+}
 
-    if (typeof Quagga === 'undefined') {
-        if (hint) hint.textContent = 'Libreria non caricata — usa il campo sotto';
+async function _scanWithBarcodeDetector(meal) {
+    const hint = document.getElementById('camera-hint');
+    const viewport = document.getElementById('camera-viewport');
+    try {
+        const detector = new BarcodeDetector({ formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39'] });
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
+        window._scanStream = stream;
+
+        // Create video element
+        let video = document.getElementById('scan-video');
+        if (!video) {
+            video = document.createElement('video');
+            video.id = 'scan-video';
+            video.setAttribute('playsinline', '');
+            video.setAttribute('muted', '');
+            video.style.cssText = 'width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;';
+            const scanDiv = document.getElementById('qr-scan-region') || viewport;
+            scanDiv.insertBefore(video, scanDiv.firstChild);
+        }
+        video.srcObject = stream;
+        await video.play();
+        if (hint) hint.textContent = 'Inquadra il codice a barre';
+
+        let _scanning = true;
+        window._stopScan = () => { _scanning = false; };
+
+        const scan = async () => {
+            if (!_scanning || !document.getElementById('camera-overlay')?.classList.contains('active')) return;
+            try {
+                const barcodes = await detector.detect(video);
+                if (barcodes.length > 0) {
+                    const code = barcodes[0].rawValue;
+                    _scanning = false;
+                    cameraClose();
+                    cameraFetchProduct(code, meal);
+                    return;
+                }
+            } catch(e) {}
+            requestAnimationFrame(scan);
+        };
+        requestAnimationFrame(scan);
+    } catch(e) {
+        console.warn('BarcodeDetector failed:', e.message);
+        if (hint) hint.textContent = 'Uso metodo alternativo...';
+        _scanWithZXing(meal);
+    }
+}
+
+function _scanWithZXing(meal) {
+    const hint = document.getElementById('camera-hint');
+    const viewport = document.getElementById('camera-viewport');
+
+    // Check ZXing loaded
+    const ZXing = window.ZXing || window['@zxing/library'];
+    if (!ZXing) {
+        if (hint) hint.textContent = 'Scanner non disponibile — usa il campo sotto';
         return;
     }
 
-    Quagga.init({
-        inputStream: {
-            type: 'LiveStream',
-            target: scanDiv,
-            constraints: {
-                width: { min: 640 },
-                height: { min: 480 },
-                facingMode: 'environment'
-            },
-            area: { top: '20%', right: '10%', left: '10%', bottom: '20%' }
-        },
-        decoder: {
-            readers: ['ean_reader', 'ean_8_reader', 'upc_reader'],
-            debug: { drawBoundingBox: true, showPattern: true }
-        },
-        locate: true,
-        frequency: 10
-    }, (err) => {
-        if (err) {
-            console.error('Quagga init:', err);
-            if (hint) hint.textContent = 'Errore: ' + (err.message || err);
-            return;
+    try {
+        const codeReader = new ZXing.BrowserMultiFormatReader();
+        window._zxingReader = codeReader;
+
+        let scanDiv = document.getElementById('qr-scan-region');
+        if (!scanDiv) {
+            scanDiv = document.createElement('div');
+            scanDiv.id = 'qr-scan-region';
+            scanDiv.style.cssText = 'width:100%;height:100%;position:relative;';
+            viewport.insertBefore(scanDiv, viewport.firstChild);
         }
-        Quagga.start();
-        zxingRunning = true;
-        if (hint) hint.textContent = 'Inquadra il codice a barre';
-    });
 
-    let lastCode = null;
-    let confirmCount = 0;
+        let video = document.getElementById('scan-video');
+        if (!video) {
+            video = document.createElement('video');
+            video.id = 'scan-video';
+            video.setAttribute('playsinline', '');
+            video.setAttribute('muted', '');
+            video.style.cssText = 'width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;';
+            scanDiv.appendChild(video);
+        }
 
-    Quagga.onDetected((data) => {
-        const code = data.codeResult.code;
-        // Require same code detected twice to avoid false positives
-        if (code === lastCode) {
-            confirmCount++;
-            if (confirmCount >= 2) {
-                cameraClose();
-                cameraFetchProduct(code, meal);
+        codeReader.decodeFromConstraints(
+            { video: { facingMode: 'environment' } },
+            video,
+            (result, err) => {
+                if (result) {
+                    cameraClose();
+                    cameraFetchProduct(result.getText(), meal);
+                }
             }
-        } else {
-            lastCode = code;
-            confirmCount = 1;
-            if (hint) hint.textContent = '✓ Codice: ' + code + ' — attendi...';
-        }
-    });
+        );
+        if (hint) hint.textContent = 'Inquadra il codice a barre';
+    } catch(e) {
+        console.warn('ZXing failed:', e.message);
+        if (hint) hint.textContent = 'Scanner non disponibile — usa il campo sotto';
+    }
 }
 
-function cameraClose() {
-    if (zxingRunning) {
-        try { Quagga.stop(); } catch(e) {}
-        zxingRunning = false;
+function cameraClose(silent) {
+    // Stop BarcodeDetector loop
+    if (window._stopScan) { window._stopScan(); window._stopScan = null; }
+    // Stop ZXing
+    if (window._zxingReader) {
+        try { window._zxingReader.reset(); } catch(e) {}
+        window._zxingReader = null;
     }
-    zxingReader = null;
-    document.getElementById('camera-overlay').classList.remove('active');
-    const scanDiv = document.getElementById('qr-scan-region');
-    if (scanDiv) scanDiv.innerHTML = '';
+    // Stop media stream
+    if (window._scanStream) {
+        window._scanStream.getTracks().forEach(t => t.stop());
+        window._scanStream = null;
+    }
+    // Remove video element
+    const video = document.getElementById('scan-video');
+    if (video) { video.srcObject = null; video.remove(); }
+    // Hide overlay
+    if (!silent) {
+        document.getElementById('camera-overlay')?.classList.remove('active');
+    }
+    zxingRunning = false;
 }
 
 function cameraSubmitCode(meal) {
@@ -8583,7 +8645,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     <div class="camera-title">📷 Scansiona codice a barre</div>
   </div>
   <div id="camera-viewport">
-    <div class="camera-hint" id="camera-hint">Inquadra il codice a barre del prodotto</div>
+    <!-- Video stream renders here via JS -->
+    <div id="qr-scan-region" style="width:100%;height:100%;position:relative;overflow:hidden;background:#000;"></div>
+    <!-- Aiming frame overlay -->
+    <div style="position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center;">
+      <div style="width:72%;max-width:300px;height:100px;border:2px solid rgba(52,211,153,0.8);border-radius:12px;
+                  box-shadow:0 0 0 4000px rgba(0,0,0,0.45);position:relative;">
+        <div style="position:absolute;top:-1px;left:-1px;width:24px;height:24px;border-top:3px solid #34d399;border-left:3px solid #34d399;border-radius:3px 0 0 0;"></div>
+        <div style="position:absolute;top:-1px;right:-1px;width:24px;height:24px;border-top:3px solid #34d399;border-right:3px solid #34d399;border-radius:0 3px 0 0;"></div>
+        <div style="position:absolute;bottom:-1px;left:-1px;width:24px;height:24px;border-bottom:3px solid #34d399;border-left:3px solid #34d399;border-radius:0 0 0 3px;"></div>
+        <div style="position:absolute;bottom:-1px;right:-1px;width:24px;height:24px;border-bottom:3px solid #34d399;border-right:3px solid #34d399;border-radius:0 0 3px 0;"></div>
+        <!-- Scan line animation -->
+        <div style="position:absolute;top:0;left:4px;right:4px;height:2px;background:linear-gradient(90deg,transparent,#34d399,transparent);
+                    animation:scanLine 1.5s ease-in-out infinite;"></div>
+      </div>
+    </div>
+    <div class="camera-hint" id="camera-hint" style="position:absolute;top:20px;left:0;right:0;text-align:center;">Inquadra il codice a barre</div>
     <!-- Manual barcode fallback always visible -->
     <div style="position:absolute;bottom:70px;left:16px;right:16px;display:flex;gap:8px;z-index:10;">
       <input type="number" inputmode="numeric" id="barcode-field" placeholder="Oppure digita il codice..."
