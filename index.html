@@ -395,6 +395,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         body.nav-mode body.nav-mode #btn-login-trigger { display: none; }
         body.nav-mode { overflow: hidden; }
         #manual-food-overlay.active { display: flex !important; }
+        #grams-overlay.active { display: flex !important; }
         body.nav-mode .top-bar { display: none; }
         /* container stays visible — contains #results */
         
@@ -2361,6 +2362,70 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 </nav>
 
 
+<!-- ══ GRAMS SELECTOR OVERLAY ══ -->
+<div id="grams-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.92);z-index:5100;align-items:flex-end;justify-content:center;">
+  <div style="background:#1e293b;border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:480px;box-sizing:border-box;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+      <div>
+        <div style="font-size:0.55rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Prodotto trovato</div>
+        <div id="grams-food-name" style="font-size:1rem;font-weight:700;color:#e2e8f0;line-height:1.3;max-width:280px;"></div>
+      </div>
+      <button onclick="gramsClose()" style="background:none;border:none;color:#64748b;font-size:1.4rem;cursor:pointer;padding:0;flex-shrink:0;">✕</button>
+    </div>
+
+    <!-- Per 100g reference -->
+    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 14px;margin-bottom:16px;">
+      <div style="font-size:0.52rem;color:#475569;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Valori per 100g</div>
+      <div style="display:flex;gap:16px;">
+        <div style="text-align:center;flex:1;"><div id="grams-ref-kcal" style="font-size:1rem;font-weight:700;color:var(--primary);">—</div><div style="font-size:0.5rem;color:#64748b;">kcal</div></div>
+        <div style="text-align:center;flex:1;"><div id="grams-ref-p" style="font-size:1rem;font-weight:700;color:#34d399;">—</div><div style="font-size:0.5rem;color:#64748b;">prot</div></div>
+        <div style="text-align:center;flex:1;"><div id="grams-ref-c" style="font-size:1rem;font-weight:700;color:#378ADD;">—</div><div style="font-size:0.5rem;color:#64748b;">carbo</div></div>
+        <div style="text-align:center;flex:1;"><div id="grams-ref-f" style="font-size:1rem;font-weight:700;color:#BA7517;">—</div><div style="font-size:0.5rem;color:#64748b;">grassi</div></div>
+      </div>
+    </div>
+
+    <!-- Grams input -->
+    <div style="margin-bottom:16px;">
+      <div style="font-size:0.6rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">Quanti grammi consumerai?</div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button onclick="document.getElementById('grams-input').value=Math.max(5,(parseFloat(document.getElementById('grams-input').value)||100)-10);gramsUpdatePreview()"
+          style="width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#e2e8f0;font-size:1.3rem;cursor:pointer;flex-shrink:0;">−</button>
+        <div style="flex:1;position:relative;">
+          <input id="grams-input" type="number" min="1" max="2000" value="100" oninput="gramsUpdatePreview()"
+            style="width:100%;padding:12px;text-align:center;background:#0f172a;border:1px solid #334155;border-radius:10px;color:#e2e8f0;font-size:1.3rem;font-weight:700;box-sizing:border-box;font-family:inherit;-webkit-appearance:none;">
+          <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#475569;font-size:0.75rem;pointer-events:none;">g</span>
+        </div>
+        <button onclick="document.getElementById('grams-input').value=(parseFloat(document.getElementById('grams-input').value)||100)+10;gramsUpdatePreview()"
+          style="width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#e2e8f0;font-size:1.3rem;cursor:pointer;flex-shrink:0;">+</button>
+      </div>
+      <!-- Quick presets -->
+      <div style="display:flex;gap:6px;margin-top:10px;">
+        <button onclick="document.getElementById('grams-input').value=50;gramsUpdatePreview()"  style="flex:1;padding:6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:7px;color:#64748b;font-size:0.7rem;cursor:pointer;">50g</button>
+        <button onclick="document.getElementById('grams-input').value=100;gramsUpdatePreview()" style="flex:1;padding:6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:7px;color:#64748b;font-size:0.7rem;cursor:pointer;">100g</button>
+        <button onclick="document.getElementById('grams-input').value=150;gramsUpdatePreview()" style="flex:1;padding:6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:7px;color:#64748b;font-size:0.7rem;cursor:pointer;">150g</button>
+        <button onclick="document.getElementById('grams-input').value=200;gramsUpdatePreview()" style="flex:1;padding:6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:7px;color:#64748b;font-size:0.7rem;cursor:pointer;">200g</button>
+        <button onclick="document.getElementById('grams-input').value=250;gramsUpdatePreview()" style="flex:1;padding:6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:7px;color:#64748b;font-size:0.7rem;cursor:pointer;">250g</button>
+      </div>
+    </div>
+
+    <!-- Calculated preview -->
+    <div style="background:rgba(52,211,153,0.06);border:1px solid rgba(52,211,153,0.2);border-radius:12px;padding:12px 14px;margin-bottom:20px;">
+      <div style="font-size:0.52rem;color:#34d399;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">Valori calcolati</div>
+      <div style="display:flex;gap:16px;">
+        <div style="text-align:center;flex:1;"><div id="grams-prev-kcal" style="font-size:1.2rem;font-weight:800;color:var(--primary);">—</div><div style="font-size:0.5rem;color:#64748b;">kcal</div></div>
+        <div style="text-align:center;flex:1;"><div id="grams-prev-p" style="font-size:1.2rem;font-weight:800;color:#34d399;">—</div><div style="font-size:0.5rem;color:#64748b;">prot g</div></div>
+        <div style="text-align:center;flex:1;"><div id="grams-prev-c" style="font-size:1.2rem;font-weight:800;color:#378ADD;">—</div><div style="font-size:0.5rem;color:#64748b;">carbo g</div></div>
+        <div style="text-align:center;flex:1;"><div id="grams-prev-f" style="font-size:1.2rem;font-weight:800;color:#BA7517;">—</div><div style="font-size:0.5rem;color:#64748b;">grassi g</div></div>
+      </div>
+    </div>
+
+    <button onclick="gramsConfirm()"
+      style="width:100%;padding:16px;background:linear-gradient(135deg,var(--primary),var(--accent));border:none;border-radius:14px;color:#000;font-size:1rem;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0.05em;">
+      AGGIUNGI AL PASTO
+    </button>
+  </div>
+</div>
+
 <!-- ══ MANUAL FOOD OVERLAY ══ -->
 <div id="manual-food-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.92);z-index:5000;align-items:flex-end;justify-content:center;">
   <div style="background:#1e293b;border-radius:20px 20px 0 0;padding:24px 20px 40px;width:100%;max-width:480px;box-sizing:border-box;">
@@ -4142,64 +4207,117 @@ async function cameraFetchProduct(barcode, meal) {
     const btns = document.querySelectorAll('#meal-' + meal + ' .meal-add-btn');
     btns.forEach(b => b.disabled = true);
     if (anim) anim.classList.add('active');
-    if (msg)  msg.textContent = 'Ricerca in corso...';
+    if (msg)  msg.textContent = 'Ricerca prodotto...';
 
-    // Build abort controller with 12s timeout (compatible with all browsers)
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 12000);
+    const endpoints = [
+        `https://it.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name_it,product_name,nutriments`,
+    ];
 
-    try {
-        const url = `https://world.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name_it,product_name,nutriments&lc=it`;
-        const res = await fetch(url, { signal: ctrl.signal });
-        clearTimeout(timer);
+    let food = null;
 
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.json();
-
-        if (data.status !== 1 || !data.product) {
-            if (anim) anim.classList.remove('active');
-            btns.forEach(b => b.disabled = false);
-            showToast('Prodotto non trovato (codice: ' + barcode + ')', 'error');
-            setTimeout(() => mealManual(meal), 600);
-            return;
-        }
-
-        const p = data.product;
-        const n = p.nutriments || {};
-        const food = {
-            name: (p.product_name_it || p.product_name || 'Prodotto sconosciuto').slice(0, 40),
-            kcal: Math.round(n['energy-kcal_100g'] || n['energy-kcal'] || 0),
-            p:    Math.round(n.proteins_100g      || 0),
-            c:    Math.round(n.carbohydrates_100g || 0),
-            f:    Math.round(n.fat_100g           || 0),
-            id:   Date.now(),
-            note: 'per 100g'
-        };
-
-        if (anim) anim.classList.remove('active');
-        btns.forEach(b => b.disabled = false);
-        const mealData = NUT.meals;
-        mealData[meal].push(food);
-        NUT.saveMeals(mealData);
-        nutUpdateUI();
-        // Open meal accordion so user sees the added item
-        const mealEl = document.getElementById('meal-' + meal);
-        if (mealEl && !mealEl.classList.contains('open')) mealToggle(meal);
-        showToast('✓ ' + food.name + ' aggiunto!', 'success');
-
-    } catch(e) {
-        clearTimeout(timer);
-        if (anim) anim.classList.remove('active');
-        btns.forEach(b => b.disabled = false);
-        if (e.name === 'AbortError') {
-            showToast('Timeout — controlla la connessione', 'error');
-        } else {
-            console.error('cameraFetchProduct:', e.message);
-            showToast('Errore: ' + e.message + '. Inserisci manualmente.', 'error');
-            setTimeout(() => mealManual(meal), 800);
+    for (const url of endpoints) {
+        try {
+            if (msg) msg.textContent = 'Provo ' + new URL(url).hostname + '...';
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), 8000);
+            const res = await fetch(url, { signal: ctrl.signal });
+            clearTimeout(timer);
+            if (!res.ok) continue;
+            const data = await res.json();
+            if (data.status !== 1 || !data.product) continue;
+            const p = data.product;
+            const n = p.nutriments || {};
+            // Try all known field variants for kcal
+            const kcal100 = Math.round(
+                n['energy-kcal_100g'] ||
+                n['energy-kcal']      ||
+                (n['energy_100g']    ? n['energy_100g']    / 4.184 : 0) ||
+                (n['energy-kj_100g'] ? n['energy-kj_100g'] / 4.184 : 0) || 0
+            );
+            food = {
+                name:    (p.product_name_it || p.product_name || 'Prodotto').slice(0, 50),
+                kcal100: kcal100,
+                p100:    parseFloat((n.proteins_100g      || n.protein_100g      || 0).toFixed(1)),
+                c100:    parseFloat((n.carbohydrates_100g || n.carbohydrate_100g || 0).toFixed(1)),
+                f100:    parseFloat((n.fat_100g           || n.fats_100g         || 0).toFixed(1)),
+                id:      Date.now()
+            };
+            break;
+        } catch(e) {
+            console.warn('Endpoint failed:', new URL(url).hostname, e.message);
+            continue;
         }
     }
+
+    if (anim) anim.classList.remove('active');
+    btns.forEach(b => b.disabled = false);
+
+    if (food) {
+        openGramsSelector(food, meal);
+    } else {
+        showToast('Prodotto non trovato — inserisci manualmente', 'error');
+        setTimeout(() => mealManual(meal, barcode), 500);
+    }
 }
+
+function openGramsSelector(food, meal) {
+    const overlay = document.getElementById('grams-overlay');
+    if (!overlay) return;
+    overlay.dataset.meal = meal;
+    overlay.dataset.food = JSON.stringify(food);
+    document.getElementById('grams-food-name').textContent = food.name;
+    document.getElementById('grams-ref-kcal').textContent  = food.kcal100;
+    document.getElementById('grams-ref-p').textContent     = food.p100;
+    document.getElementById('grams-ref-c').textContent     = food.c100;
+    document.getElementById('grams-ref-f').textContent     = food.f100;
+    const gi = document.getElementById('grams-input');
+    gi.value = '100';
+    overlay.classList.add('active');
+    gramsUpdatePreview();
+    setTimeout(() => { gi.focus(); gi.select(); }, 150);
+}
+
+function gramsUpdatePreview() {
+    const overlay = document.getElementById('grams-overlay');
+    if (!overlay) return;
+    const food   = JSON.parse(overlay.dataset.food || '{}');
+    const g      = parseFloat(document.getElementById('grams-input').value) || 0;
+    const factor = g / 100;
+    document.getElementById('grams-prev-kcal').textContent = Math.round((food.kcal100 || 0) * factor);
+    document.getElementById('grams-prev-p').textContent    = ((food.p100 || 0) * factor).toFixed(1);
+    document.getElementById('grams-prev-c').textContent    = ((food.c100 || 0) * factor).toFixed(1);
+    document.getElementById('grams-prev-f').textContent    = ((food.f100 || 0) * factor).toFixed(1);
+}
+
+function gramsConfirm() {
+    const overlay = document.getElementById('grams-overlay');
+    const meal    = overlay?.dataset.meal;
+    const food    = JSON.parse(overlay?.dataset.food || '{}');
+    const g       = parseFloat(document.getElementById('grams-input').value) || 100;
+    if (!meal || !food.name) return;
+    const factor = g / 100;
+    const entry  = {
+        name: food.name,
+        kcal: Math.round((food.kcal100 || 0) * factor),
+        p:    parseFloat(((food.p100 || 0) * factor).toFixed(1)),
+        c:    parseFloat(((food.c100 || 0) * factor).toFixed(1)),
+        f:    parseFloat(((food.f100 || 0) * factor).toFixed(1)),
+        id:   Date.now(),
+        note: g + 'g'
+    };
+    const mealData = NUT.meals;
+    mealData[meal].push(entry);
+    NUT.saveMeals(mealData);
+    nutUpdateUI();
+    overlay.classList.remove('active');
+    if (!document.getElementById('meal-' + meal)?.classList.contains('open')) mealToggle(meal);
+    showToast('✓ ' + entry.name + ' (' + g + 'g) — ' + entry.kcal + ' kcal', 'success');
+}
+
+function gramsClose() {
+    document.getElementById('grams-overlay')?.classList.remove('active');
+}
+
 
 function mealManual(meal, prefillName) {
     const overlay = document.getElementById('manual-food-overlay');
