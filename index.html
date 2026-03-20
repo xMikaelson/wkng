@@ -141,6 +141,13 @@
             -webkit-tap-highlight-color: transparent;
         }
         .nav-center-btn:active { transform: scale(0.88); }
+        .nav-center-btn.pressing {
+            animation: btnPulse 0.4s ease-in-out infinite alternate;
+        }
+        @keyframes btnPulse {
+            from { transform: scale(1); box-shadow: 0 4px 14px rgba(var(--pr,52,211,153),0.4); }
+            to   { transform: scale(1.1); box-shadow: 0 4px 24px rgba(var(--pr,52,211,153),0.8); }
+        }
 
         /* ── AI Pill ── */
         .nav-ai-slot { flex: 0 0 52px; position: relative; display: flex; align-items: center; justify-content: center; }
@@ -1973,6 +1980,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         </div>
     </div>
 
+
+</div><!-- /dashboard-overlay -->
 
 <!-- ══════════ PAGE: WORKOUT ══════════ -->
 <div id="page-workout" class="page">
@@ -7784,18 +7793,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (aiPillState !== 'locked') { navSwitch('workout'); return; }
     aiLpActive = true;
     aiLpFired = false;
+    // Prevent text selection during long press
+    document.body.style.userSelect = 'none';
+    document.body.style.webkitUserSelect = 'none';
     const btn = document.getElementById('nav-center-btn');
     btn.classList.add('pressing');
     aiLpTimer = setTimeout(() => {
       if (!aiLpActive) return;
       aiLpFired = true;
       btn.classList.remove('pressing');
+      // Restore text selection
+      document.body.style.userSelect = '';
+      document.body.style.webkitUserSelect = '';
+      // Vibrate on Android; visual pulse on iOS (vibrate not supported)
+      if (navigator.vibrate) navigator.vibrate(40);
       aiEmerge();
     }, 1000);
   }
 
   function aiLongPressCancel() {
     if (aiLpTimer) { clearTimeout(aiLpTimer); aiLpTimer = null; }
+    // Restore text selection on cancel
+    document.body.style.userSelect = '';
+    document.body.style.webkitUserSelect = '';
     if (aiLpActive) {
       aiLpActive = false;
       document.getElementById('nav-center-btn').classList.remove('pressing');
