@@ -389,16 +389,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         body.nav-mode { overflow: hidden; }
         body.nav-mode .top-bar { display: none; }
         /* container stays visible — contains #results */
-        body.nav-mode #results { padding-top: max(env(safe-area-inset-top), 44px); }
+        
         .user-avatar { width: 35px; height: 35px; background: var(--accent); border-radius: 50%; display: none; justify-content: center; align-items: center; cursor: pointer; font-weight: bold; border: 2px solid white; }
 
         .container { background: var(--card); padding: 1rem; border-radius: 0; width: 100%; max-width: 480px; box-shadow: none; box-sizing: border-box; margin: 0 auto; }
-        body.nav-mode .container {
-            padding-top: 0;
-            height: auto;
-            overflow: visible;
-            display: block;
-        }
+        body.nav-mode .container { display: none; }
         body.nav-mode #hero-section, body.nav-mode #onboarding-wizard, body.nav-mode h1, body.nav-mode .slogan { display: none !important; }
         h1 { color: var(--primary); text-align: center; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 2px; font-size: 1.8rem; }
         .slogan { text-align: center; color: #94a3b8; margin-bottom: 10px; font-weight: bold; font-size: 0.9rem; }
@@ -426,9 +421,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             background: var(--bg);
             z-index: 100;
             box-sizing: border-box;
+            padding: max(env(safe-area-inset-top), 44px) 16px calc(var(--nav-h) + 16px);
         }
-        body.nav-mode #results { padding-bottom: calc(var(--nav-h) + 16px); }
-        body.nav-mode .results { padding-top: 60px; }
+        /* padding-bottom handled by .results */
+        body.nav-mode .results { padding: max(env(safe-area-inset-top), 44px) 16px calc(var(--nav-h) + 16px); }
         .table-container { position: relative; width: 100%; border-radius: 8px; overflow: hidden; border: 1px solid #334155; }
         table { width: 100%; border-collapse: collapse; background: #0f172a; color: white; table-layout: fixed; }
         th, td { padding: 12px 4px; text-align: center; border: 1px solid #334155; font-size: 0.8rem; }
@@ -1752,6 +1748,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         </select>
     </div>
 
+
+</div>
     <div id="results" class="results">
         <!-- BANNER CHAPTER -->
         <div class="chapter-banner" id="chapter-banner">
@@ -1974,7 +1972,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             </div>
         </div>
     </div>
-</div>
 
 
 <!-- ══════════ PAGE: WORKOUT ══════════ -->
@@ -2962,15 +2959,9 @@ async function onLoginSuccess(user, usernameOverride = null) {
     // Gestione nav: mostra se ha già protocolli
     if (shouldShowNav()) {
         showNav();
-        const resultsVisible = document.getElementById('results').style.display === 'block';
-        if (!resultsVisible) {
-            // Vai direttamente alla home con nav
-            showResultsFromHero();
-        } else {
-            navSwitch('home');
-        }
+        showResultsFromHero(); // Always go to home on login
     } else {
-        // Primo accesso senza protocolli: rimane sul wizard
+        // Primo accesso senza protocolli: mostra hero (landing)
         document.getElementById('onboarding-wizard').style.display = 'none';
         document.getElementById('hero-section').style.display = '';
         document.getElementById('results').style.display = 'none';
