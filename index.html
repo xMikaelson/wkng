@@ -2997,6 +2997,19 @@ async function onLoginSuccess(user, usernameOverride = null) {
     updateStats();
     renderProtocolList();
     updateChapterBannerSilent();
+
+    // Sync any locally-cached protocols that are missing from Supabase
+    if (APP.savedProtocols.length > 0) {
+        const supabaseIds = new Set((protocols || []).map(p => p.id));
+        const missing = APP.savedProtocols.filter(p => !supabaseIds.has(p.id));
+        if (missing.length > 0) {
+            console.log(`Uploading ${missing.length} missing protocol(s) to Supabase`);
+            missing.forEach(p => saveProtocolToSupabase(p));
+        }
+        // Always re-save state to Supabase on login to ensure it's fresh
+        saveState();
+    }
+
     showToast('Bentornato, ' + username + '!', 'success');
 }
 
@@ -6021,8 +6034,9 @@ function finishOnboarding() {
     }
 
     saveState();
-    // Salva TUTTI i protocolli su Supabase (non solo quello attivo)
-    APP.savedProtocols.forEach(p => saveProtocolToSupabase(p));
+    // Salva TUTTI i protocolli su Supabase (aspetta che siano tutti salvati)
+    Promise.all(APP.savedProtocols.map(p => saveProtocolToSupabase(p)))
+        .catch(e => console.error('Protocol batch save error:', e));
     // Vai alla homepage prima, poi avvia la sequenza
     const _results = document.getElementById('results');
     _results.style.display = 'block';
