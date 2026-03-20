@@ -1373,7 +1373,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .pr-val { font-size:0.72rem; font-weight:700; color:var(--primary); }
 
         /* ── Workout attivo ── */
-        #page-workout { padding-top: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        #page-workout { padding-top: 0 !important; overflow-y: auto; -webkit-overflow-scrolling: touch; }
         .wo-header { padding: max(env(safe-area-inset-top), 44px) 16px 0; display:flex; align-items:center; gap:8px; position:relative; flex-shrink:0; }
         .wo-back { width:34px; height:34px; border-radius:10px; background:rgba(255,255,255,0.05); border:none; color:#64748b; font-size:1rem; cursor:pointer; display:flex; align-items:center; justify-content:center; }
         .wo-proto-name { font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; color:#475569; position:absolute; left:0; right:0; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; pointer-events:none; }
@@ -3274,6 +3274,10 @@ function checkChapterCompletion(w) {
 
 
 function planSetupDrag(el, protoId, protoName) {
+    // Prevent iOS context menu / text selection on long press
+    el.addEventListener('contextmenu', e => e.preventDefault());
+    el.style.webkitUserSelect = 'none';
+    el.style.userSelect = 'none';
     // Mouse
     el.addEventListener('mousedown', e => {
         e.preventDefault();
@@ -3307,6 +3311,11 @@ function planDragBegin(protoId, protoName, x, y, el) {
     planDragState.hasMoved  = false;
     planDragState.sourceElement = el;
     el.classList.add('dragging');
+    // Prevent text selection during drag
+    document.body.style.userSelect = 'none';
+    document.body.style.webkitUserSelect = 'none';
+    // Vibrate to signal drag started
+    if (navigator.vibrate) navigator.vibrate(40);
     // Create ghost immediately so user sees it
     const ghost = document.createElement('div');
     ghost.className = 'drag-ghost';
@@ -3381,6 +3390,9 @@ function planDragEnd(x, y) {
     planDragState.protoName = '';
     planDragState.sourceElement = null;
     planDragState.hasMoved = false;
+    // Restore text selection
+    document.body.style.userSelect = '';
+    document.body.style.webkitUserSelect = '';
 }
 
 document.addEventListener('mousemove', e => planDragMove(e.clientX, e.clientY));
