@@ -3963,9 +3963,13 @@ async function _scanWithBarcodeDetector(meal) {
     const hint = document.getElementById('camera-hint');
     const viewport = document.getElementById('camera-viewport');
     try {
-        const detector = new BarcodeDetector({ formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39'] });
+        const supported = await BarcodeDetector.getSupportedFormats().catch(() => []);
+        const formats = supported.length > 0
+            ? supported.filter(f => ['ean_13','ean_8','upc_a','upc_e','code_128'].includes(f))
+            : ['ean_13','ean_8','upc_a','upc_e'];
+        const detector = new BarcodeDetector({ formats: formats.length > 0 ? formats : ['ean_13','ean_8','upc_a'] });
         const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+            video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
         });
         window._scanStream = stream;
 
@@ -4093,7 +4097,7 @@ function cameraSubmitCode(meal) {
 
 
 async function cameraFetchProduct(barcode, meal) {
-    showToast('Codice rilevato! Cerco il prodotto...', '');
+    showToast('Codice ' + barcode + ' — ricerca...', '');
     const anim = document.getElementById('meal-anim-' + meal);
     const msg  = document.getElementById('meal-msg-' + meal);
     const btns = document.querySelectorAll('#meal-' + meal + ' .meal-add-btn');
@@ -4101,23 +4105,30 @@ async function cameraFetchProduct(barcode, meal) {
     if (anim) anim.classList.add('active');
     if (msg)  msg.textContent = 'Ricerca in corso...';
 
+    // Build abort controller with 12s timeout (compatible with all browsers)
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 12000);
+
     try {
-        const res  = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name_it,product_name,nutriments&lc=it`, { signal: AbortSignal.timeout(5000) });
+        const url = `https://world.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name_it,product_name,nutriments&lc=it`;
+        const res = await fetch(url, { signal: ctrl.signal });
+        clearTimeout(timer);
+
+        if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
 
         if (data.status !== 1 || !data.product) {
             if (anim) anim.classList.remove('active');
             btns.forEach(b => b.disabled = false);
-            showToast('Prodotto non trovato — inserisci manualmente', 'error');
-            setTimeout(() => mealManual(meal), 500);
+            showToast('Prodotto non trovato (codice: ' + barcode + ')', 'error');
+            setTimeout(() => mealManual(meal), 600);
             return;
         }
 
-        const p  = data.product;
-        const n  = p.nutriments || {};
-        // Use per-100g values directly (no serving size needed)
+        const p = data.product;
+        const n = p.nutriments || {};
         const food = {
-            name: (p.product_name_it || p.product_name || 'Prodotto').slice(0, 40),
+            name: (p.product_name_it || p.product_name || 'Prodotto sconosciuto').slice(0, 40),
             kcal: Math.round(n['energy-kcal_100g'] || n['energy-kcal'] || 0),
             p:    Math.round(n.proteins_100g      || 0),
             c:    Math.round(n.carbohydrates_100g || 0),
@@ -4126,21 +4137,28 @@ async function cameraFetchProduct(barcode, meal) {
             note: 'per 100g'
         };
 
-        if (msg) msg.textContent = 'Trovato: ' + food.name;
-        setTimeout(() => {
-            if (anim) anim.classList.remove('active');
-            btns.forEach(b => b.disabled = false);
-            const mealData = NUT.meals;
-            mealData[meal].push(food);
-            NUT.saveMeals(mealData);
-            nutUpdateUI();
-            showToast(food.name + ' aggiunto!', 'success');
-        }, 600);
-
-    } catch(e) {
         if (anim) anim.classList.remove('active');
         btns.forEach(b => b.disabled = false);
-        showToast('Errore di rete. Riprova.', 'error');
+        const mealData = NUT.meals;
+        mealData[meal].push(food);
+        NUT.saveMeals(mealData);
+        nutUpdateUI();
+        // Open meal accordion so user sees the added item
+        const mealEl = document.getElementById('meal-' + meal);
+        if (mealEl && !mealEl.classList.contains('open')) mealToggle(meal);
+        showToast('✓ ' + food.name + ' aggiunto!', 'success');
+
+    } catch(e) {
+        clearTimeout(timer);
+        if (anim) anim.classList.remove('active');
+        btns.forEach(b => b.disabled = false);
+        if (e.name === 'AbortError') {
+            showToast('Timeout — controlla la connessione', 'error');
+        } else {
+            console.error('cameraFetchProduct:', e.message);
+            showToast('Errore: ' + e.message + '. Inserisci manualmente.', 'error');
+            setTimeout(() => mealManual(meal), 800);
+        }
     }
 }
 
