@@ -392,7 +392,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         body.nav-mode #page-profile,
         body.nav-mode #page-profilo,
         body.nav-mode #page-progress { padding-top: 0; }
-        body.nav-mode #btn-login-trigger { display: none; }
+        body.nav-mode body.nav-mode #btn-login-trigger { display: none; }
         body.nav-mode { overflow: hidden; }
         body.nav-mode .top-bar { display: none; }
         /* container stays visible — contains #results */
@@ -2458,6 +2458,8 @@ function saveState() {
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
         saveToSupabase(toSave);
+        // Also sync each protocol's updated state (chipStates, PRs etc.)
+        syncProtocolStates();
         updateStreakWidget();
         updateBadges();
     } catch(e) {}
@@ -2466,8 +2468,33 @@ async function saveToSupabase(stateData) {
     try {
         const { data: { user } } = await sbClient.auth.getUser();
         if (!user) return;
-        await sbClient.from('profiles').update({ state_json: stateData }).eq('id', user.id);
-    } catch(e) { console.error('saveToSupabase error:', e); }
+        // Try update first (row should exist after registration)
+        const { error: upErr } = await sbClient.from('profiles')
+            .update({ state_json: stateData }).eq('id', user.id);
+        if (upErr) {
+            console.warn('state_json update failed:', upErr.message, '— trying insert');
+            // Row might not exist (e.g. social auth without register flow)
+            await sbClient.from('profiles').insert({ id: user.id, state_json: stateData })
+                .then(({ error: insErr }) => { if (insErr) console.error('state_json insert failed:', insErr.message); });
+        }
+    } catch(e) { console.error('saveToSupabase error:', e.message); }
+}
+
+function syncProtocolStates() {
+    // Throttled to avoid too many Supabase calls (max once per 8s)
+    if (!syncProtocolStates._throttle) syncProtocolStates._throttle = 0;
+    const now = Date.now();
+    if (now - syncProtocolStates._throttle < 8000) return;
+    syncProtocolStates._throttle = now;
+    if (!APP.savedProtocols || APP.savedProtocols.length === 0) return;
+    APP.savedProtocols.forEach(p => saveProtocolToSupabase(p));
+}
+
+// Force-sync immediately, bypassing throttle
+function syncProtocolStatesNow() {
+    if (!APP.savedProtocols || APP.savedProtocols.length === 0) return;
+    APP.savedProtocols.forEach(p => saveProtocolToSupabase(p));
+    syncProtocolStates._throttle = Date.now();
 }
 async function saveProtocolToSupabase(proto) {
     try {
@@ -2948,9 +2975,13 @@ async function onLoginSuccess(user, usernameOverride = null) {
     }
     const username = usernameOverride || profile?.username || user.email.split('@')[0];
     APP.userName = username;
-    // Try Supabase state first, fallback to localStorage
+    // Merge strategy: use the state with more progress (higher totalWorkouts)
     const localState = (() => { try { const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : null; } catch(e) { return null; } })();
-    const stateSource = profile?.state_json || localState;
+    const supaState = profile?.state_json || null;
+    // Pick the most advanced state (higher totalWorkouts wins)
+    const localWo = localState?.totalWorkouts || 0;
+    const supaWo  = supaState?.totalWorkouts  || 0;
+    const stateSource = (localWo > supaWo) ? localState : (supaState || localState);
     if (stateSource) {
         const s = stateSource;
         APP.isUnlocked = s.isUnlocked || false;
@@ -3056,16 +3087,16 @@ async function onLoginSuccess(user, usernameOverride = null) {
     renderProtocolList();
     updateChapterBannerSilent();
 
-    // Sync any locally-cached protocols that are missing from Supabase
+    // On every login: push current (merged) state to Supabase to keep it fresh
+    // This ensures Supabase always has the latest state regardless of save failures
+    saveState(); // saves localStorage + triggers saveToSupabase + syncProtocolStates
     if (APP.savedProtocols.length > 0) {
         const supabaseIds = new Set((protocols || []).map(p => p.id));
         const missing = APP.savedProtocols.filter(p => !supabaseIds.has(p.id));
         if (missing.length > 0) {
-            console.log(`Uploading ${missing.length} missing protocol(s) to Supabase`);
+            console.log(`Uploading ${missing.length} missing protocol(s)`);
             missing.forEach(p => saveProtocolToSupabase(p));
         }
-        // Always re-save state to Supabase on login to ensure it's fresh
-        saveState();
     }
 
     showToast('Bentornato, ' + username + '!', 'success');
@@ -4342,15 +4373,14 @@ function _woBeginWorkout() {
 function woStop() {
     if (!confirm("Terminare l'allenamento? I progressi non completati andranno persi.")) return;
     if (woState.timer) { clearInterval(woState.timer); woState.timer = null; }
-    // Reset woState completamente
     woState.exIndex = 0; woState.setIndex = 0; woState.elapsed = 0;
     woState.restSecs = 0; woState.restRunning = false; woState.restTotal = 0;
     woState.paused = false;
-    // Reset UI rest bar
     const rw = document.getElementById('wo-rest-wrap');
     if (rw) rw.style.display = 'none';
     const page = document.getElementById('page-workout');
     page.classList.remove('wo-running');
+    saveState(); // Save any partial progress (PRs recorded during workout)
     navSwitch('home');
 }
 
@@ -5085,6 +5115,10 @@ function initDashboard() {
                 updateCurrentWeekDisplay();
                 renderDaySchedule(w);
                 saveState();
+                // Refresh profile page live if open
+                if (document.getElementById('page-profile')?.classList.contains('active')) {
+                    buildProfiloPage();
+                }
             };
             chipsContainer.appendChild(btn);
         });
@@ -6097,8 +6131,21 @@ function finishOnboarding() {
 
     saveState();
     // Salva TUTTI i protocolli su Supabase (aspetta che siano tutti salvati)
-    Promise.all(APP.savedProtocols.map(p => saveProtocolToSupabase(p)))
-        .catch(e => console.error('Protocol batch save error:', e));
+    // Sync all protocols to Supabase immediately
+    syncProtocolStatesNow();
+    saveToSupabase({
+        isUnlocked: APP.isUnlocked, exerciseData: APP.exerciseData,
+        totalWorkouts: APP.totalWorkouts,
+        startDate: APP.startDate ? APP.startDate.toISOString() : null,
+        userName: APP.userName, selectedViewWeek: APP.selectedViewWeek,
+        completedWeeks: APP.completedWeeks, availableWeeks: APP.availableWeeks,
+        chipStates: APP.chipStates, exerciseTracking: APP.exerciseTracking,
+        currentExerciseIndex: APP.currentExerciseIndex,
+        goal: document.getElementById('goal')?.value || 'forza',
+        activeProtocolId: APP.activeProtocolId, dayAssignments: APP.dayAssignments,
+        motivationalQuotes: APP.motivationalQuotes, personalRecords: APP.personalRecords || {},
+        savedProtocols: APP.savedProtocols || []
+    });
     // Vai alla homepage prima, poi avvia la sequenza
     const _results = document.getElementById('results');
     _results.style.display = 'block';
@@ -6153,19 +6200,14 @@ function finishOnboarding() {
             }, 2400);
 
         } else {
-            // Loggato: sequenza più fluida
+            // Loggato: vai direttamente alla home in nav-mode
             setTimeout(() => {
-                if (s1) s1.classList.add('done');
-            }, 1000);
-            setTimeout(() => {
-                if (s2 && !s2.classList.contains('done')) s2.classList.add('active');
-                if (btnDash) {
-                    btnDash.style.display = 'inline-flex';
-                    void btnDash.offsetWidth;
-                    btnDash.classList.add('btn-fade-in');
-                }
-                refreshNextStepPanel();
-            }, 2000);
+                nsp.style.display = 'none';
+                showResultsFromHero();
+                showNav();
+                navSwitch('home');
+                showToast('Protocollo creato! Assegnalo ai giorni in Piani.', 'success');
+            }, 800);
         }
 
     }, 50);
@@ -6504,6 +6546,24 @@ function renderExerciseChart() {
     empty.style.display = 'none';
 }
 
+
+// ── Diagnostic: call window.awakeDiag() from browser console to test Supabase ──
+window.awakeDiag = async function() {
+    console.log('=== Awakening Supabase Diagnostic ===');
+    const { data: { user }, error: authErr } = await sbClient.auth.getUser();
+    console.log('Auth user:', user?.id || 'NOT LOGGED IN', authErr?.message || '');
+    if (!user) return;
+    const { data: profile, error: profErr } = await sbClient.from('profiles').select('id, username').eq('id', user.id).single();
+    console.log('Profile row:', profile, profErr?.message || '');
+    const { data: protos, error: protErr } = await sbClient.from('protocols').select('id, name').eq('user_id', user.id);
+    console.log('Protocols:', protos?.length || 0, protos?.map(p=>p.name), protErr?.message || '');
+    // Test write
+    const { error: writeErr } = await sbClient.from('profiles').update({ state_json: { _diag_test: Date.now() } }).eq('id', user.id);
+    console.log('Write test:', writeErr ? 'FAILED: '+writeErr.message : 'OK ✅');
+    console.log('localStorage totalWorkouts:', JSON.parse(localStorage.getItem('awakening_state') || '{}').totalWorkouts);
+    console.log('APP totalWorkouts:', APP.totalWorkouts);
+    console.log('=== End Diagnostic ===');
+};
 // ============= CHART =============
 function updateChart() {
     const canvas = document.getElementById('progressionChart');
@@ -7732,6 +7792,13 @@ function applyChapterTheme(w) {
     });
 }
 
+
+function restartBannerAnimations() {
+    const prev = document.getElementById('banner-layer-prev');
+    const curr = document.getElementById('banner-layer-curr');
+    if (prev) prev.classList.remove('crossfading');
+    if (curr) curr.classList.remove('crossfading');
+}
 function updateChapterBannerSilent() {
     const names = ['ACTIVATION', 'MOMENTUM', 'THE PEAK', 'INTEGRATION'];
     const pcts  = [70, 80, 90, 60];
