@@ -394,6 +394,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         body.nav-mode #page-progress { padding-top: 0; }
         body.nav-mode body.nav-mode #btn-login-trigger { display: none; }
         body.nav-mode { overflow: hidden; }
+        #manual-food-overlay.active { display: flex !important; }
         body.nav-mode .top-bar { display: none; }
         /* container stays visible — contains #results */
         
@@ -2360,6 +2361,44 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 </nav>
 
 
+<!-- ══ MANUAL FOOD OVERLAY ══ -->
+<div id="manual-food-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.92);z-index:5000;align-items:flex-end;justify-content:center;">
+  <div style="background:#1e293b;border-radius:20px 20px 0 0;padding:24px 20px 40px;width:100%;max-width:480px;box-sizing:border-box;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div id="manual-food-title" style="font-size:1rem;font-weight:700;color:#e2e8f0;">Aggiungi alimento</div>
+      <button onclick="mealManualClose()" style="background:none;border:none;color:#64748b;font-size:1.4rem;cursor:pointer;padding:0;line-height:1;">✕</button>
+    </div>
+    <input id="manual-food-name" type="text" placeholder="Nome alimento *" autocomplete="off"
+      style="width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:10px;color:#e2e8f0;font-size:0.9rem;margin-bottom:12px;box-sizing:border-box;font-family:inherit;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
+      <div>
+        <div style="font-size:0.6rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Kcal</div>
+        <input id="manual-food-kcal" type="number" placeholder="0" min="0"
+          style="width:100%;padding:10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.9rem;box-sizing:border-box;font-family:inherit;">
+      </div>
+      <div>
+        <div style="font-size:0.6rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Proteine (g)</div>
+        <input id="manual-food-p" type="number" placeholder="0" min="0"
+          style="width:100%;padding:10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.9rem;box-sizing:border-box;font-family:inherit;">
+      </div>
+      <div>
+        <div style="font-size:0.6rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Carboidrati (g)</div>
+        <input id="manual-food-c" type="number" placeholder="0" min="0"
+          style="width:100%;padding:10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.9rem;box-sizing:border-box;font-family:inherit;">
+      </div>
+      <div>
+        <div style="font-size:0.6rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Grassi (g)</div>
+        <input id="manual-food-f" type="number" placeholder="0" min="0"
+          style="width:100%;padding:10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.9rem;box-sizing:border-box;font-family:inherit;">
+      </div>
+    </div>
+    <button onclick="mealManualSubmit()"
+      style="width:100%;padding:15px;background:linear-gradient(135deg,var(--primary),var(--accent));border:none;border-radius:12px;color:#000;font-size:0.9rem;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0.05em;">
+      AGGIUNGI
+    </button>
+  </div>
+</div>
+
 <div id="login-modal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.95); z-index:3000; justify-content:center; align-items:center;">
   <div class="modal-content" style="text-align:center; max-width:380px; width:90%;">
     <h2 style="color:var(--primary); margin-bottom:6px; letter-spacing:2px;">AWAKENING</h2>
@@ -4162,18 +4201,44 @@ async function cameraFetchProduct(barcode, meal) {
     }
 }
 
-function mealManual(meal) {
-    const name = prompt('Nome alimento:');
-    if (!name) return;
-    const kcal = parseInt(prompt('Calorie (kcal):') || '0');
-    const p    = parseInt(prompt('Proteine (g):')   || '0');
-    const c    = parseInt(prompt('Carboidrati (g):') || '0');
-    const f2   = parseInt(prompt('Grassi (g):')     || '0');
+function mealManual(meal, prefillName) {
+    const overlay = document.getElementById('manual-food-overlay');
+    const title   = document.getElementById('manual-food-title');
+    const nameEl  = document.getElementById('manual-food-name');
+    if (!overlay) return;
+    overlay.dataset.meal = meal;
+    if (title) title.textContent = 'Aggiungi a ' + ({ colazione:'Colazione', pranzo:'Pranzo', snack:'Snack', cena:'Cena' }[meal] || meal);
+    if (nameEl) nameEl.value = prefillName && prefillName.length < 14 ? '' : (prefillName || '');
+    // Clear fields
+    ['manual-food-kcal','manual-food-p','manual-food-c','manual-food-f'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    overlay.classList.add('active');
+    setTimeout(() => nameEl?.focus(), 100);
+}
+
+function mealManualSubmit() {
+    const overlay = document.getElementById('manual-food-overlay');
+    const meal    = overlay?.dataset.meal;
+    if (!meal) return;
+    const name = document.getElementById('manual-food-name')?.value.trim();
+    if (!name) { showToast('Inserisci il nome', 'error'); return; }
+    const kcal = parseInt(document.getElementById('manual-food-kcal')?.value || '0');
+    const p    = parseInt(document.getElementById('manual-food-p')?.value    || '0');
+    const c    = parseInt(document.getElementById('manual-food-c')?.value    || '0');
+    const f2   = parseInt(document.getElementById('manual-food-f')?.value    || '0');
     const data = NUT.meals;
-    data[meal].push({ name, kcal, p, c, f: f2, id: Date.now() });
+    data[meal].push({ name, kcal, p, c, f: f2, id: Date.now(), note: 'manuale' });
     NUT.saveMeals(data);
     nutUpdateUI();
-    showToast(name + ' aggiunto!', 'success');
+    if (!document.getElementById('meal-' + meal)?.classList.contains('open')) mealToggle(meal);
+    overlay.classList.remove('active');
+    showToast('✓ ' + name + ' aggiunto!', 'success');
+}
+
+function mealManualClose() {
+    document.getElementById('manual-food-overlay')?.classList.remove('active');
 }
 
 // ═══ EXERCISE VIDEO ═══
