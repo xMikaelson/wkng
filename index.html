@@ -1376,6 +1376,30 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .pr-list { padding:0 16px; }
         .pr-title { font-size:0.55rem; color:#475569; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:8px; font-weight:700; }
         .pr-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
+        /* ══ Exercise load chart ══ */
+        .prog-ex-chart-section {
+            margin: 0 16px 24px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 14px;
+            padding: 16px;
+        }
+        .prog-ex-chart-header { display:flex; align-items:center; margin-bottom:12px; }
+        .prog-ex-chart-title { font-size:0.62rem; font-weight:700; color:#e2e8f0; text-transform:uppercase; letter-spacing:0.1em; }
+        .prog-ex-selector-wrap { margin-bottom:14px; }
+        .prog-ex-select {
+            width:100%; padding:8px 12px;
+            background:#0f172a; border:1px solid #334155;
+            border-radius:8px; color:#e2e8f0;
+            font-size:0.72rem; font-family:inherit;
+            appearance:none; -webkit-appearance:none;
+            cursor:pointer;
+        }
+        .prog-ex-select:focus { outline:none; border-color:var(--primary); }
+        .prog-ex-legend { display:flex; gap:16px; justify-content:center; margin-top:10px; }
+        .prog-ex-leg-item { display:flex; align-items:center; gap:5px; font-size:0.58rem; color:#64748b; }
+        .prog-ex-leg-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+        .prog-ex-empty { text-align:center; color:#334155; font-size:0.72rem; padding:20px 0; }
         .pr-name { font-size:0.72rem; color:#94a3b8; }
         .pr-val { font-size:0.72rem; font-weight:700; color:var(--primary); }
 
@@ -2245,6 +2269,26 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div class="pr-title">🏆 Personal Records</div>
     <div id="pr-rows"></div>
   </div>
+
+  <!-- EXERCISE LOAD CHART -->
+  <div class="prog-ex-chart-section" id="prog-ex-chart-section">
+    <div class="prog-ex-chart-header">
+      <span class="prog-ex-chart-title">📈 Carico esercizio</span>
+    </div>
+    <div class="prog-ex-selector-wrap">
+      <select id="prog-ex-select" onchange="renderExerciseChart()" class="prog-ex-select">
+        <option value="">— Seleziona esercizio —</option>
+      </select>
+    </div>
+    <div id="prog-ex-chart-wrap" style="display:none;">
+      <svg id="prog-ex-svg" viewBox="0 0 320 160" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;overflow:visible;"></svg>
+      <div class="prog-ex-legend">
+        <span class="prog-ex-leg-item"><span class="prog-ex-leg-dot" style="background:#6366f1;"></span>Previsto</span>
+        <span class="prog-ex-leg-item"><span class="prog-ex-leg-dot" style="background:#34d399;"></span>PR reale</span>
+      </div>
+    </div>
+    <div id="prog-ex-empty" style="display:none;" class="prog-ex-empty">Nessun dato disponibile per questo esercizio</div>
+  </div>
 </div>
 </div>
 
@@ -2443,9 +2487,23 @@ async function saveProtocolToSupabase(proto) {
             exercises_json._splitSlot = proto._splitSlot;
         }
         const payload = { id: proto.id, user_id: user.id, name: proto.name, goal: proto.goal, exercises_json };
-        const { data, error } = await sbClient.from('protocols').upsert(payload, { onConflict: 'id' });
-        if (error) console.error('Protocol save error:', error);
-    } catch(e) { console.error('saveProtocolToSupabase exception:', e); }
+        // Try upsert first; if it fails (RLS/constraint), try insert then update
+        let { data, error } = await sbClient.from('protocols').upsert(payload, { onConflict: 'id' });
+        if (error) {
+            console.warn('Protocol upsert failed, trying insert:', error.message);
+            const ins = await sbClient.from('protocols').insert(payload);
+            if (ins.error) {
+                // Row might already exist — try update instead
+                const upd = await sbClient.from('protocols')
+                    .update({ name: proto.name, goal: proto.goal, exercises_json })
+                    .eq('id', proto.id).eq('user_id', user.id);
+                if (upd.error) console.error('Protocol save failed entirely:', upd.error.message);
+                else console.log('Protocol updated:', proto.name);
+            } else {
+                console.log('Protocol inserted:', proto.name);
+            }
+        }
+    } catch(e) { console.error('saveProtocolToSupabase exception:', e.message); }
 }
 async function deleteProtocolFromSupabase(protoId) {
     try {
@@ -3152,7 +3210,7 @@ function renderPlanPage(w) {
         APP.savedProtocols.forEach(proto => {
             const wrapper = document.createElement('div');
             const item = document.createElement('div');
-            item.className = 'plan-proto-item' + (proto.id === APP.activeProtocolId ? ' active-item' : '');
+            item.className = 'plan-proto-item' + (proto.id === APP.activeProtocolId ? ' active-item' : ''); item.title = proto.id === APP.activeProtocolId ? 'Protocollo attivo (usato in workout)' : '';
             const isExp = planExpandedProto === proto.id;
             item.style.borderRadius = isExp ? '5px 5px 0 0' : '5px';
             item.innerHTML = `<span class="plan-proto-item-name">${escapeHTML(proto.name)}</span><span class="plan-proto-drag-icon" style="transform:rotate(${isExp?'90':'0'}deg)">›</span>`;
@@ -3524,6 +3582,10 @@ function updateProgressPage() {
             prRows.innerHTML = '<div style="font-size:0.72rem;color:#334155;padding:12px 0;text-align:center;">Completa il wizard per vedere i tuoi PR.</div>';
         }
     }
+    // Exercise chart
+    populateExerciseSelector();
+    const selVal = document.getElementById('prog-ex-select')?.value;
+    if (selVal) renderExerciseChart();
 }
 
 // ════════════════════════════════════════════════
@@ -4631,7 +4693,7 @@ function buildProfiloPage() {
     const startDate = APP.startDate ? APP.startDate.toLocaleDateString('it-IT') : '—';
     // Calcola giorni con fallback: se startDate non c'è usa totalWorkouts
     const daysSinceStart = APP.startDate
-        ? Math.floor((new Date() - new Date(APP.startDate)) / (1000*60*60*24))
+        ? Math.max(1, Math.floor((new Date() - new Date(APP.startDate)) / (1000*60*60*24)) + 1)
         : 0;
     const days = daysSinceStart;
     
@@ -6307,6 +6369,141 @@ function autoSaveProtocol() {
     saveProtocolToSupabase(newProto);
 }
 
+
+// ══════════ EXERCISE LOAD CHART ══════════
+function populateExerciseSelector() {
+    const sel = document.getElementById('prog-ex-select');
+    if (!sel) return;
+    // Collect all exercises from all saved protocols (unique names)
+    const names = new Set();
+    (APP.savedProtocols || []).forEach(p => {
+        (p.exercises || []).forEach(e => { if (e.name) names.add(e.name); });
+    });
+    // Also from active exerciseData
+    (APP.exerciseData || []).forEach(e => { if (e.name) names.add(e.name); });
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">— Seleziona esercizio —</option>';
+    [...names].sort().forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = exItalian ? exItalian(name) : name;
+        sel.appendChild(opt);
+    });
+    if (prev && names.has(prev)) sel.value = prev;
+}
+
+function renderExerciseChart() {
+    const sel = document.getElementById('prog-ex-select');
+    const wrap = document.getElementById('prog-ex-chart-wrap');
+    const empty = document.getElementById('prog-ex-empty');
+    const svg = document.getElementById('prog-ex-svg');
+    if (!sel || !wrap || !svg) return;
+
+    const exName = sel.value;
+    if (!exName) { wrap.style.display = 'none'; empty.style.display = 'none'; return; }
+
+    // Find exercise data — search all protocols
+    let baseWeight = 0;
+    let sr = '3 x 10';
+    for (const p of (APP.savedProtocols || [])) {
+        const ex = (p.exercises || []).find(e => e.name === exName);
+        if (ex) { baseWeight = ex.baseWeight || 0; sr = ex.sr || sr; break; }
+    }
+    // Also check active exerciseData
+    const activeEx = (APP.exerciseData || []).find(e => e.name === exName);
+    if (activeEx && activeEx.baseWeight) baseWeight = activeEx.baseWeight;
+
+    if (baseWeight === 0) {
+        wrap.style.display = 'none';
+        empty.style.display = 'block';
+        return;
+    }
+
+    // Predicted loads: 70%, 80%, 90%, 60%
+    const pctsMult = [0.70, 0.80, 0.90, 0.60];
+    const predicted = pctsMult.map(m => parseFloat((baseWeight * m).toFixed(1)));
+    const chapterLabels = ['Ch.1\nActivation', 'Ch.2\nMomentum', 'Ch.3\nThe Peak', 'Ch.4\nIntegration'];
+    const chapterShort = ['Ch.1', 'Ch.2', 'Ch.3', 'Ch.4'];
+
+    // Actual PR — we only have the global max PR, not per-chapter
+    // Show the PR as a horizontal reference line if available
+    const prMax = (APP.personalRecords || {})[exName] || 0;
+
+    // Chart dimensions
+    const W = 320, H = 160;
+    const padL = 38, padR = 16, padT = 14, padB = 36;
+    const chartW = W - padL - padR;
+    const chartH = H - padT - padB;
+    const n = 4; // chapters
+
+    // Y scale: min=0, max = max(predicted, prMax) * 1.15
+    const allVals = [...predicted, prMax > 0 ? prMax : 0];
+    const maxVal = Math.max(...allVals) * 1.15 || 1;
+    const minVal = 0;
+    const yScale = v => padT + chartH - ((v - minVal) / (maxVal - minVal)) * chartH;
+    const xScale = i => padL + (i / (n - 1)) * chartW;
+
+    // Build SVG
+    const ns = 'http://www.w3.org/2000/svg';
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+    const mk = (tag, attrs) => {
+        const el = document.createElementNS(ns, tag);
+        Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+        return el;
+    };
+
+    // Grid lines & Y labels (4 lines)
+    const yTicks = 4;
+    for (let i = 0; i <= yTicks; i++) {
+        const val = minVal + (maxVal - minVal) * (i / yTicks);
+        const y = yScale(val);
+        svg.appendChild(mk('line', { x1: padL, y1: y, x2: W - padR, y2: y, stroke: 'rgba(255,255,255,0.05)', 'stroke-width': '1' }));
+        const txt = mk('text', { x: padL - 4, y: y + 3.5, 'text-anchor': 'end', fill: '#475569', 'font-size': '7' });
+        txt.textContent = Math.round(val) + 'kg';
+        svg.appendChild(txt);
+    }
+
+    // X labels (chapter names)
+    chapterShort.forEach((label, i) => {
+        const x = xScale(i);
+        const isDone = APP.chipStates[i] && APP.chipStates[i].some(s => s === 'done');
+        const txt = mk('text', { x, y: H - padB + 12, 'text-anchor': 'middle', fill: isDone ? '#34d399' : '#475569', 'font-size': '7', 'font-weight': isDone ? '700' : '400' });
+        txt.textContent = label;
+        svg.appendChild(txt);
+    });
+
+    // Predicted line (dashed, accent color)
+    const predPath = predicted.map((v, i) => `${i === 0 ? 'M' : 'L'}${xScale(i)},${yScale(v)}`).join(' ');
+    svg.appendChild(mk('path', { d: predPath, fill: 'none', stroke: '#6366f1', 'stroke-width': '2', 'stroke-dasharray': '4,3', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }));
+
+    // Predicted dots
+    predicted.forEach((v, i) => {
+        svg.appendChild(mk('circle', { cx: xScale(i), cy: yScale(v), r: '3.5', fill: '#6366f1' }));
+        // Value label above dot
+        const lbl = mk('text', { x: xScale(i), y: yScale(v) - 6, 'text-anchor': 'middle', fill: '#6366f1', 'font-size': '7', 'font-weight': '700' });
+        lbl.textContent = v + 'kg';
+        svg.appendChild(lbl);
+    });
+
+    // PR line (solid green) — horizontal if only one value
+    if (prMax > 0) {
+        const prY = yScale(prMax);
+        // Dashed horizontal PR reference
+        svg.appendChild(mk('line', { x1: padL, y1: prY, x2: W - padR, y2: prY, stroke: '#34d399', 'stroke-width': '1.5', 'stroke-dasharray': '6,3', opacity: '0.7' }));
+        const prLbl = mk('text', { x: W - padR, y: prY - 4, 'text-anchor': 'end', fill: '#34d399', 'font-size': '7', 'font-weight': '700' });
+        prLbl.textContent = 'PR ' + prMax + 'kg';
+        svg.appendChild(prLbl);
+
+        // Dot on the chapter where PR was achieved (use current chapter as proxy)
+        const prDotX = xScale(APP.selectedViewWeek || 0);
+        svg.appendChild(mk('circle', { cx: prDotX, cy: prY, r: '4', fill: '#34d399', stroke: '#0f172a', 'stroke-width': '1.5' }));
+    }
+
+    wrap.style.display = 'block';
+    empty.style.display = 'none';
+}
+
 // ============= CHART =============
 function updateChart() {
     const canvas = document.getElementById('progressionChart');
@@ -7537,7 +7734,7 @@ function applyChapterTheme(w) {
 
 function updateChapterBannerSilent() {
     const names = ['ACTIVATION', 'MOMENTUM', 'THE PEAK', 'INTEGRATION'];
-    const pcts  = [70, 80, 90, 100];
+    const pcts  = [70, 80, 90, 60];
     const bannerGrads = [
         'linear-gradient(135deg,#1d4ed8,#7c3aed)',
         'linear-gradient(135deg,#065f46,#b45309)',
@@ -7570,7 +7767,7 @@ function updateChapterBannerSilent() {
 
 function updateChapterBanner(animate) {
     const names = ['ACTIVATION', 'MOMENTUM', 'THE PEAK', 'INTEGRATION'];
-    const pcts  = [70, 80, 90, 100];
+    const pcts  = [70, 80, 90, 60];
     const bannerGrads = [
         'linear-gradient(135deg,#1d4ed8,#7c3aed)',
         'linear-gradient(135deg,#065f46,#b45309)',
