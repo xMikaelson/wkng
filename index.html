@@ -4059,6 +4059,46 @@ function nutGetActiveMeal() {
     return 'snack'; // 23:00–05:00
 }
 
+
+// ── Nutri-Score calculation ────────────────────────────────────
+function nutCalcScore(kcal100, p100, c100, f100) {
+    // Simplified algorithm based on per-100g values
+    // Negative points (bad): energy, sugars (approx 50% of carbs for unknown foods), saturated fat (approx 35% of fat)
+    const negPts =
+        (kcal100 > 3350 ? 10 : kcal100 > 3015 ? 9 : kcal100 > 2680 ? 8 : kcal100 > 2345 ? 7 :
+         kcal100 > 2010 ? 6 : kcal100 > 1675 ? 5 : kcal100 > 1340 ? 4 : kcal100 > 1005 ? 3 :
+         kcal100 > 670 ? 2 : kcal100 > 335 ? 1 : 0) +
+        (f100 * 0.35 > 10 ? 10 : f100 * 0.35 > 9 ? 9 : f100 * 0.35 > 8 ? 8 : f100 * 0.35 > 7 ? 7 :
+         f100 * 0.35 > 6 ? 6 : f100 * 0.35 > 5 ? 5 : f100 * 0.35 > 4 ? 4 : f100 * 0.35 > 3 ? 3 :
+         f100 * 0.35 > 2 ? 2 : f100 * 0.35 > 1 ? 1 : 0) +
+        (c100 * 0.5 > 45 ? 10 : c100 * 0.5 > 40 ? 9 : c100 * 0.5 > 36 ? 8 : c100 * 0.5 > 31 ? 7 :
+         c100 * 0.5 > 27 ? 6 : c100 * 0.5 > 22.5 ? 5 : c100 * 0.5 > 18 ? 4 : c100 * 0.5 > 13.5 ? 3 :
+         c100 * 0.5 > 9 ? 2 : c100 * 0.5 > 4.5 ? 1 : 0);
+    // Positive points (good): protein, fiber (unknown → 0)
+    const posPts =
+        (p100 > 8 ? 5 : p100 > 6.4 ? 4 : p100 > 4.8 ? 3 : p100 > 3.2 ? 2 : p100 > 1.6 ? 1 : 0);
+    const score = negPts - posPts;
+    if (score <= -1) return 'A';
+    if (score <= 2)  return 'B';
+    if (score <= 10) return 'C';
+    if (score <= 18) return 'D';
+    return 'E';
+}
+
+function nutScoreBadge(score) {
+    if (!score) return '';
+    const map = {
+        A: { bg:'rgba(27,158,62,0.18)',  border:'rgba(27,158,62,0.5)',  color:'#1b9e3e' },
+        B: { bg:'rgba(133,192,46,0.18)', border:'rgba(133,192,46,0.5)', color:'#6aaa28' },
+        C: { bg:'rgba(255,194,0,0.18)',  border:'rgba(255,194,0,0.5)',  color:'#c49400' },
+        D: { bg:'rgba(239,131,0,0.18)',  border:'rgba(239,131,0,0.5)',  color:'#c56600' },
+        E: { bg:'rgba(231,43,30,0.18)',  border:'rgba(231,43,30,0.5)',  color:'#bf2318' },
+    };
+    const s = map[score];
+    if (!s) return '';
+    return `<span style="display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:4px;background:${s.bg};border:1px solid ${s.border};font-size:9px;font-weight:900;color:${s.color};flex-shrink:0;line-height:1;">${score}</span>`;
+}
+
 function nutTimelineRender() {
     const tl = document.getElementById('nut-timeline');
     if (!tl) return;
@@ -4151,8 +4191,12 @@ function nutTimelineRender() {
                     row.style.cssText = 'display:flex;align-items:center;gap:5px;background:rgba(255,255,255,0.03);border:0.5px solid rgba(255,255,255,0.06);border-radius:8px;padding:6px 8px;';
 
                     const nameSpan = document.createElement('span');
-                    nameSpan.style.cssText = 'font-size:8.5px;font-weight:600;color:#e2e8f0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
-                    nameSpan.textContent = f.name;
+                    nameSpan.style.cssText = 'font-size:8.5px;font-weight:600;color:#e2e8f0;flex:1;overflow:hidden;display:flex;align-items:center;gap:4px;min-width:0;';
+                    const nameText = document.createElement('span');
+                    nameText.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;';
+                    nameText.textContent = f.name;
+                    nameSpan.appendChild(nameText);
+                    if (f.nutriScore) nameSpan.insertAdjacentHTML('beforeend', nutScoreBadge(f.nutriScore));
 
                     const qtySpan = document.createElement('span');
                     qtySpan.style.cssText = 'font-size:7.7px;color:#64748b;flex-shrink:0;min-width:28px;text-align:right;';
@@ -4676,9 +4720,12 @@ async function cameraFetchProduct(barcode, meal) {
                 } catch(e) { console.warn('Name search failed:', e.message); }
             }
 
+            // Nutri-Score from OFF (A/B/C/D/E)
+            const nutriScore = (p.nutrition_grades || p.nutrition_grade_fr || '').toUpperCase().trim();
             food = {
                 name:    productName,
                 kcal100, p100, c100, f100,
+                nutriScore: nutriScore || null,
                 id:      Date.now(),
                 incomplete: isIncomplete
             };
@@ -4748,6 +4795,7 @@ function gramsConfirm() {
         p:    parseFloat(((food.p100 || 0) * factor).toFixed(1)),
         c:    parseFloat(((food.c100 || 0) * factor).toFixed(1)),
         f:    parseFloat(((food.f100 || 0) * factor).toFixed(1)),
+        nutriScore: food.nutriScore || nutCalcScore(food.kcal100||0, food.p100||0, food.c100||0, food.f100||0),
         note: g + 'g'
     };
     const mealData = NUT.meals;
@@ -4811,7 +4859,8 @@ function mealManualSubmit() {
     const c    = parseInt(document.getElementById('manual-food-c')?.value    || '0');
     const f2   = parseInt(document.getElementById('manual-food-f')?.value    || '0');
     const data = NUT.meals;
-    data[meal].push({ name, kcal, p, c, f: f2, id: Date.now(), note: 'manuale' });
+    data[meal].push({ name, kcal, p, c, f: f2, id: Date.now(), note: 'manuale',
+        nutriScore: nutCalcScore(kcal, p, c, f2) });
     NUT.saveMeals(data);
     nutUpdateUI();
     nutTlUpdateUI();
