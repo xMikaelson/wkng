@@ -2336,11 +2336,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <div id="grams-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.92);z-index:5100;align-items:flex-end;justify-content:center;">
   <div style="background:#1e293b;border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:480px;box-sizing:border-box;">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
-      <div style="flex:1;min-width:0;margin-right:12px;">
+      <div>
         <div style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Prodotto trovato</div>
-        <div id="grams-food-name" style="font-size:1rem;font-weight:700;color:#e2e8f0;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+        <div id="grams-food-name" style="font-size:1rem;font-weight:700;color:#e2e8f0;line-height:1.3;max-width:260px;"></div>
       </div>
-      <button onclick="gramsClose()" style="background:none;border:none;color:#64748b;font-size:1.4rem;cursor:pointer;padding:0;flex-shrink:0;line-height:1;margin-top:2px;">✕</button>
+      <button onclick="gramsClose()" style="background:none;border:none;color:#64748b;font-size:1.4rem;cursor:pointer;padding:0;flex-shrink:0;">✕</button>
     </div>
     <!-- Nutri-Score: full width row, centered -->
     <div id="grams-nutriscore" style="display:none;position:relative;height:34px;margin-bottom:14px;"></div>
@@ -4103,7 +4103,7 @@ function nutScoreBar(active) {
         return `<div style="width:36px;height:22px;${radius}display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:rgba(255,255,255,0.35);background:${colors[l]};">${l}</div>`;
     }).join('');
 
-    const infoBtn = `<div id="ns-info-btn" onclick="nutScoreInfoToggle()" style="position:absolute;left:calc(50% + 102px);top:50%;transform:translateY(-50%);width:20px;height:20px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.05);color:#94a3b8;font-size:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-style:italic;font-family:Georgia,serif;">i</div>`;
+    const infoBtn = `<div id="ns-info-btn" onclick="nutScoreInfoToggle()" style="position:absolute;left:calc(50% + 98px);top:50%;transform:translateY(-50%);width:20px;height:20px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.05);color:#94a3b8;font-size:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-style:italic;font-family:Georgia,serif;">i</div>`;
 
     return `<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:2px;">${items}</div>${infoBtn}`;
 }
