@@ -4227,19 +4227,31 @@ async function cameraFetchProduct(barcode, meal) {
             if (data.status !== 1 || !data.product) continue;
             const p = data.product;
             const n = p.nutriments || {};
-            // Try all known field variants for kcal
+            // Log raw data for debugging
+            console.log('OFF nutriments raw:', JSON.stringify(n));
+
+            // energy-kcal_100g is the reliable kcal field
+            // energy_100g and energy are in kJ — do NOT use directly
             const kcal100 = Math.round(
-                n['energy-kcal_100g'] ||
-                n['energy-kcal']      ||
-                (n['energy_100g']    ? n['energy_100g']    / 4.184 : 0) ||
-                (n['energy-kj_100g'] ? n['energy-kj_100g'] / 4.184 : 0) || 0
+                n['energy-kcal_100g'] != null ? n['energy-kcal_100g'] :
+                n['energy-kj_100g']   != null ? n['energy-kj_100g'] / 4.184 :
+                n['energy-kj']        != null ? n['energy-kj'] / 4.184 : 0
             );
+            const p100 = parseFloat((
+                n['proteins_100g'] ?? n['protein_100g'] ?? 0
+            ).toFixed(1));
+            const c100 = parseFloat((
+                n['carbohydrates_100g'] ?? n['carbohydrate_100g'] ?? 0
+            ).toFixed(1));
+            const f100 = parseFloat((
+                n['fat_100g'] ?? n['fats_100g'] ?? 0
+            ).toFixed(1));
+
+            console.log('Parsed per 100g → kcal:', kcal100, 'p:', p100, 'c:', c100, 'f:', f100);
+
             food = {
                 name:    (p.product_name_it || p.product_name || 'Prodotto').slice(0, 50),
-                kcal100: kcal100,
-                p100:    parseFloat((n.proteins_100g      || n.protein_100g      || 0).toFixed(1)),
-                c100:    parseFloat((n.carbohydrates_100g || n.carbohydrate_100g || 0).toFixed(1)),
-                f100:    parseFloat((n.fat_100g           || n.fats_100g         || 0).toFixed(1)),
+                kcal100, p100, c100, f100,
                 id:      Date.now()
             };
             break;
