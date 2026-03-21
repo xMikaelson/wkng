@@ -1415,7 +1415,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wo-header { padding: max(env(safe-area-inset-top), 44px) 16px 0; display:flex; align-items:center; gap:8px; position:relative; flex-shrink:0; }
         .wo-back { width:34px; height:34px; border-radius:10px; background:rgba(255,255,255,0.05); border:none; color:#64748b; font-size:1rem; cursor:pointer; display:flex; align-items:center; justify-content:center; }
         .wo-proto-name { font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; color:#475569; position:absolute; left:0; right:0; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; pointer-events:none; }
-        .wo-stop { padding:5px 11px; border-radius:6px; border:1px solid rgba(244,63,94,0.3); background:rgba(244,63,94,0.07); color:#f43f5e; font-size:0.52rem; font-weight:700; cursor:pointer; letter-spacing:0.05em; white-space:nowrap; flex-shrink:0; width:auto; margin-left:auto; }
+        .wo-stop { padding:5px 11px; border-radius:6px; border:1px solid rgba(244,63,94,0.3); background:rgba(244,63,94,0.07); color:#f43f5e; font-size:0.52rem; font-weight:700; cursor:pointer; letter-spacing:0.05em; white-space:nowrap; flex-shrink:0; width:auto; margin-left:auto; display:none; }
+        #page-workout.wo-running .wo-stop { display:block; }
         .wo-prog-wrap { padding:10px 16px 0; }
         .wo-dual-bars { padding:0 16px 14px; display:flex; flex-direction:column; gap:9px; }
         .wo-bar-row { display:flex; align-items:center; gap:10px; }
@@ -3980,6 +3981,8 @@ function nutManualActive() {
 }
 
 function nutTlUpdateUI() {
+    // Also refresh home nutrition boxes
+    nutUpdateUI();
     // Update the timeline header (kcal, %, macro bars)
     const t = NUT.totals;
     const g = NUT.target;
