@@ -4233,11 +4233,7 @@ async function cameraFetchProduct(barcode, meal) {
             if (data.status !== 1 || !data.product) continue;
             const p = data.product;
             const n = p.nutriments || {};
-            // Log ALL nutriment keys for debugging
-            console.log('OFF nutriments keys:', Object.keys(n).join(', '));
-            console.log('OFF nutriments values:', JSON.stringify(n));
-
-            // Helper: get first non-null value from list of keys
+            // Helper: get first non-null numeric value from list of keys
             const firstVal = (keys) => {
                 for (const k of keys) {
                     if (n[k] != null && n[k] !== '' && !isNaN(parseFloat(n[k])))
@@ -4261,7 +4257,15 @@ async function cameraFetchProduct(barcode, meal) {
                 'fat_100g','fats_100g','fat-100g','lipids_100g'
             ]).toFixed(1));
 
-            console.log('→ Parsed: kcal100='+kcal100+' p100='+p100+' c100='+c100+' f100='+f100);
+            // DEBUG: show raw data in app if values are zero
+            if (kcal100 === 0 && p100 === 0 && c100 === 0) {
+                // Find which energy key exists
+                const energyKeys = Object.keys(n).filter(k => k.includes('energy') || k.includes('kcal') || k.includes('protein') || k.includes('carbo') || k.includes('fat'));
+                const debugMsg = energyKeys.map(k => k + '=' + n[k]).join('\n');
+                showToast('DEBUG - campi trovati:\n' + (debugMsg || 'nessuno'), 'error');
+                // Store for inspection
+                window._lastNutriments = n;
+            }
 
             food = {
                 name:    (p.product_name_it || p.product_name || 'Prodotto').slice(0, 50),
