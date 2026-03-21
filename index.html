@@ -3978,6 +3978,7 @@ function nutRestoreLogs(logs) {
 // ── Nutrition date selector ────────────────────────────────────
 const NUT_MONTHS = ['GEN','FEB','MAR','APR','MAG','GIU','LUG','AGO','SET','OTT','NOV','DIC'];
 let nutDateOffset = 0; // 0 = today, -1 = yesterday, etc.
+let nutExpandedMeal = null; // which meal is expanded
 
 function nutGetDateKey(offset) {
     const d = new Date();
@@ -4061,7 +4062,6 @@ function nutGetActiveMeal() {
 function nutTimelineRender() {
     const tl = document.getElementById('nut-timeline');
     if (!tl) return;
-    // Use selected date's meals
     let meals = {};
     if (nutDateOffset === 0) {
         meals = NUT.meals;
@@ -4073,32 +4073,41 @@ function nutTimelineRender() {
         } catch(e) { ['colazione','pranzo','snack','cena'].forEach(m => meals[m] = []); }
     }
     const activeMeal = nutDateOffset === 0 ? nutGetActiveMeal() : null;
+    const isToday = nutDateOffset === 0;
     tl.innerHTML = '';
+
     MEALS.forEach((meal, idx) => {
-        const cfg = MEAL_CONFIG[meal];
-        const foods = meals[meal] || [];
+        const cfg     = MEAL_CONFIG[meal];
+        const foods   = meals[meal] || [];
         const mealKcal = foods.reduce((s, f) => s + (f.kcal || 0), 0);
-        const isLast = idx === MEALS.length - 1;
+        const isLast   = idx === MEALS.length - 1;
         const isActive = meal === activeMeal;
+        const isExpanded = meal === nutExpandedMeal;
 
         const item = document.createElement('div');
-        item.style.cssText = 'display:flex;gap:9px;padding:4px 16px;' + (isActive ? 'background:rgba(255,255,255,0.02);' : '');
+        item.style.cssText = 'display:flex;gap:9px;padding:4px 16px;' + (isActive && !isExpanded ? 'background:rgba(255,255,255,0.02);' : '');
 
-        // Left: icon + line
+        // Left col
         const left = document.createElement('div');
         left.style.cssText = 'display:flex;flex-direction:column;align-items:center;width:22px;flex-shrink:0;';
+
         const dot = document.createElement('div');
-        dot.style.cssText = `width:22px;height:22px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12.1px;flex-shrink:0;background:${cfg.bg};${isActive ? 'box-shadow:0 0 0 2px '+cfg.color+'44;' : ''}`;
+        dot.style.cssText = `width:22px;height:22px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12.1px;flex-shrink:0;cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;background:${cfg.bg};${isExpanded ? 'box-shadow:0 0 0 2px '+cfg.color+'55;transform:scale(1.1);' : (isActive ? 'box-shadow:0 0 0 2px '+cfg.color+'44;' : '')}`;
         dot.textContent = cfg.icon;
+        dot.addEventListener('click', () => {
+            nutExpandedMeal = isExpanded ? null : meal;
+            nutTimelineRender();
+        });
         left.appendChild(dot);
+
         if (!isLast) {
             const line = document.createElement('div');
-            line.style.cssText = `width:1.5px;flex:1;min-height:8px;margin-top:2px;background:${cfg.lineColor};`;
+            line.style.cssText = `width:1.5px;flex:1;min-height:8px;margin-top:2px;background:${isExpanded ? cfg.color+'66' : cfg.lineColor};`;
             left.appendChild(line);
         }
         item.appendChild(left);
 
-        // Right: content
+        // Right col
         const right = document.createElement('div');
         right.style.cssText = 'flex:1;padding-bottom:' + (isLast ? '4px' : '6px') + ';';
 
@@ -4113,34 +4122,107 @@ function nutTimelineRender() {
         topRow.appendChild(kcalDiv);
         right.appendChild(topRow);
 
-        if (foods.length > 0) {
-            const foodList = document.createElement('div');
-            foodList.style.cssText = 'margin-top:3px;';
-            foods.forEach(f => {
-                const row = document.createElement('div');
-                row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;';
-                row.innerHTML = `<span style="font-size:7.7px;color:#94a3b8;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHTML(f.name)}${f.note ? ' <span style="color:#475569;">('+f.note+')</span>' : ''}</span><span style="font-size:7.7px;color:#64748b;flex-shrink:0;margin-left:6px;">${f.kcal} kcal</span>`;
-                // Delete on tap
-                row.addEventListener('click', () => {
-                    const data = NUT.meals;
-                    data[meal] = data[meal].filter(x => x.id !== f.id);
-                    NUT.saveMeals(data);
-                    nutUpdateUI();
-                });
-                row.title = 'Tocca per rimuovere';
-                foodList.appendChild(row);
-            });
-            right.appendChild(foodList);
+        if (!isExpanded) {
+            // Collapsed: show preview
+            if (foods.length > 0) {
+                const preview = document.createElement('div');
+                preview.style.cssText = 'font-size:7.7px;color:#94a3b8;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+                preview.textContent = foods.map(f => f.name).join(', ');
+                right.appendChild(preview);
+            } else {
+                const empty = document.createElement('div');
+                empty.style.cssText = 'font-size:7.7px;color:#334155;font-style:italic;margin-top:2px;';
+                empty.textContent = 'Nessun alimento';
+                right.appendChild(empty);
+            }
         } else {
-            const empty = document.createElement('div');
-            empty.style.cssText = 'font-size:7.7px;color:#334155;font-style:italic;margin-top:2px;';
-            empty.textContent = 'Nessun alimento';
-            right.appendChild(empty);
+            // Expanded: full list with edit/delete
+            const foodList = document.createElement('div');
+            foodList.style.cssText = 'margin-top:6px;display:flex;flex-direction:column;gap:3px;';
+
+            if (foods.length === 0) {
+                const empty = document.createElement('div');
+                empty.style.cssText = 'font-size:7.7px;color:#334155;font-style:italic;margin-top:2px;';
+                empty.textContent = 'Nessun alimento registrato';
+                foodList.appendChild(empty);
+            } else {
+                foods.forEach(f => {
+                    const row = document.createElement('div');
+                    row.style.cssText = 'display:flex;align-items:center;gap:5px;background:rgba(255,255,255,0.03);border:0.5px solid rgba(255,255,255,0.06);border-radius:8px;padding:6px 8px;';
+
+                    const nameSpan = document.createElement('span');
+                    nameSpan.style.cssText = 'font-size:8.5px;font-weight:600;color:#e2e8f0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+                    nameSpan.textContent = f.name;
+
+                    const qtySpan = document.createElement('span');
+                    qtySpan.style.cssText = 'font-size:7.7px;color:#64748b;flex-shrink:0;min-width:28px;text-align:right;';
+                    qtySpan.textContent = f.note || '';
+
+                    const kcalSpan = document.createElement('span');
+                    kcalSpan.style.cssText = 'font-size:7.7px;color:#94a3b8;flex-shrink:0;min-width:40px;text-align:right;';
+                    kcalSpan.textContent = f.kcal + ' kcal';
+
+                    row.appendChild(nameSpan);
+                    row.appendChild(qtySpan);
+                    row.appendChild(kcalSpan);
+
+                    if (isToday) {
+                        // Edit button
+                        const editBtn = document.createElement('div');
+                        editBtn.style.cssText = 'width:26px;height:26px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;';
+                        editBtn.innerHTML = "<svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 16 16' fill='none' stroke='#94a3b8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M11.5 2.5l2 2-8 8H3.5v-2l8-8z'/><path d='M10 4l2 2'/></svg>";
+                        editBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            nutEditFood(f, meal);
+                        });
+
+                        // Delete button
+                        const delBtn = document.createElement('div');
+                        delBtn.style.cssText = 'width:26px;height:26px;border-radius:6px;border:0.5px solid rgba(244,63,94,0.2);background:rgba(244,63,94,0.07);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;';
+                        delBtn.innerHTML = "<svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 16 16' fill='none' stroke='#f43f5e' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M3 4h10M6 4V3h4v1M5 4l.5 9h5l.5-9'/><path d='M7 7v4M9 7v4'/></svg>";
+                        delBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            const data = NUT.meals;
+                            data[meal] = data[meal].filter(x => x.id !== f.id);
+                            NUT.saveMeals(data);
+                            nutUpdateUI();
+                            nutTlUpdateUI();
+                        });
+
+                        row.appendChild(editBtn);
+                        row.appendChild(delBtn);
+                    }
+                    foodList.appendChild(row);
+                });
+            }
+            right.appendChild(foodList);
         }
+
         item.appendChild(right);
         tl.appendChild(item);
     });
 }
+
+function nutEditFood(food, meal) {
+    // Build a food object compatible with openGramsSelector
+    // We need kcal100, p100, c100, f100 — reconstruct from note (e.g. "150g")
+    const grams = parseFloat(food.note) || 100;
+    const factor = 100 / grams;
+    const foodForEdit = {
+        name:    food.name,
+        kcal100: Math.round((food.kcal || 0) * factor),
+        p100:    parseFloat(((food.p  || 0) * factor).toFixed(1)),
+        c100:    parseFloat(((food.c  || 0) * factor).toFixed(1)),
+        f100:    parseFloat(((food.f  || 0) * factor).toFixed(1)),
+        id:      food.id,
+        _editId: food.id,  // mark as edit, not new
+        _editMeal: meal
+    };
+    // Override gramsConfirm to update instead of push
+    window._nutEditMode = { id: food.id, meal };
+    openGramsSelector(foodForEdit, meal);
+}
+
 
 function nutScanActive() {
     cameraCurrentMeal = nutGetActiveMeal();
@@ -4297,9 +4379,10 @@ function woSwitchTab(tab) {
         nutPanel.style.height = '100%';
         tabNut?.classList.add('active');
         tabTrain?.classList.remove('active');
+        nutDateOffset = 0; // always start on today when opening tab
+        nutExpandedMeal = null;
         nutUpdateUI();
         nutTlUpdateUI();
-        nutBuildDateBar();
         tdeeInitEntryBtn();
     }
 }
@@ -4665,10 +4748,27 @@ function gramsConfirm() {
         p:    parseFloat(((food.p100 || 0) * factor).toFixed(1)),
         c:    parseFloat(((food.c100 || 0) * factor).toFixed(1)),
         f:    parseFloat(((food.f100 || 0) * factor).toFixed(1)),
-        id:   Date.now(),
         note: g + 'g'
     };
     const mealData = NUT.meals;
+    // Edit mode: update existing entry
+    if (window._nutEditMode) {
+        const { id, meal: editMeal } = window._nutEditMode;
+        window._nutEditMode = null;
+        const idx = mealData[editMeal].findIndex(x => x.id === id);
+        if (idx >= 0) {
+            entry.id = id; // keep original id
+            mealData[editMeal][idx] = entry;
+        }
+        NUT.saveMeals(mealData);
+        nutUpdateUI();
+        nutTlUpdateUI();
+        overlay.classList.remove('active');
+        showToast('✓ ' + entry.name + ' aggiornato a ' + g + 'g', 'success');
+        return;
+    }
+    // New entry
+    entry.id = Date.now();
     mealData[meal].push(entry);
     NUT.saveMeals(mealData);
     nutUpdateUI();
@@ -4678,6 +4778,7 @@ function gramsConfirm() {
 }
 
 function gramsClose() {
+    window._nutEditMode = null;
     document.getElementById('grams-overlay')?.classList.remove('active');
 }
 
