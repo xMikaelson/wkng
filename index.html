@@ -4257,20 +4257,62 @@ async function cameraFetchProduct(barcode, meal) {
                 'fat_100g','fats_100g','fat-100g','lipids_100g'
             ]).toFixed(1));
 
-            // DEBUG: show raw data in app if values are zero
+            // If macro data missing, show ALL fields in app so we can debug
             if (kcal100 === 0 && p100 === 0 && c100 === 0) {
-                // Find which energy key exists
-                const energyKeys = Object.keys(n).filter(k => k.includes('energy') || k.includes('kcal') || k.includes('protein') || k.includes('carbo') || k.includes('fat'));
-                const debugMsg = energyKeys.map(k => k + '=' + n[k]).join('\n');
-                showToast('DEBUG - campi trovati:\n' + (debugMsg || 'nessuno'), 'error');
-                // Store for inspection
-                window._lastNutriments = n;
+                const allKeys = Object.keys(n).sort();
+                const chunks = [];
+                for (let i = 0; i < allKeys.length; i += 4) {
+                    chunks.push(allKeys.slice(i, i+4).map(k => k + '=' + n[k]).join('  '));
+                }
+                alert('Nutriments di ' + (p.product_name_it||p.product_name||barcode) + ':\n\n' + chunks.join('\n'));
+            }
+
+            const productName = (p.product_name_it || p.product_name || 'Prodotto').slice(0, 50);
+            const isIncomplete = (kcal100 === 0 && p100 === 0 && c100 === 0);
+
+            // If incomplete, try searching by product name for a better match
+            if (isIncomplete && productName && productName !== 'Prodotto') {
+                try {
+                    if (msg) msg.textContent = 'Cerco dati alternativi...';
+                    const searchCtrl = new AbortController();
+                    const searchTimer = setTimeout(() => searchCtrl.abort(), 6000);
+                    const searchUrl = `https://it.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(productName)}&search_simple=1&action=process&json=1&fields=product_name,nutriments&page_size=5`;
+                    const sr = await fetch(searchUrl, { signal: searchCtrl.signal });
+                    clearTimeout(searchTimer);
+                    if (sr.ok) {
+                        const sd = await sr.json();
+                        const match = (sd.products || []).find(pr => {
+                            const sn = pr.nutriments || {};
+                            return firstVal.call({n: sn}, ['energy-kcal_100g','energy-kj_100g']) > 0;
+                        });
+                        if (match) {
+                            const sn = match.nutriments;
+                            const firstValS = (keys) => {
+                                for (const k of keys) if (sn[k] != null && !isNaN(parseFloat(sn[k]))) return parseFloat(sn[k]);
+                                return 0;
+                            };
+                            const sk = firstValS(['energy-kcal_100g','energy-kcal-100g']);
+                            const skj = firstValS(['energy-kj_100g','energy-kj-100g','energy_100g']);
+                            food = {
+                                name: productName,
+                                kcal100: Math.round(sk > 0 ? sk : skj / 4.184),
+                                p100: parseFloat(firstValS(['proteins_100g','protein_100g']).toFixed(1)),
+                                c100: parseFloat(firstValS(['carbohydrates_100g']).toFixed(1)),
+                                f100: parseFloat(firstValS(['fat_100g']).toFixed(1)),
+                                id: Date.now(),
+                                incomplete: false
+                            };
+                            break;
+                        }
+                    }
+                } catch(e) { console.warn('Name search failed:', e.message); }
             }
 
             food = {
-                name:    (p.product_name_it || p.product_name || 'Prodotto').slice(0, 50),
+                name:    productName,
                 kcal100, p100, c100, f100,
-                id:      Date.now()
+                id:      Date.now(),
+                incomplete: isIncomplete
             };
             break;
         } catch(e) {
@@ -4291,6 +4333,12 @@ async function cameraFetchProduct(barcode, meal) {
 }
 
 function openGramsSelector(food, meal) {
+    // If no macro data, open manual entry pre-filled with product name
+    if (food.incomplete) {
+        showToast('Macro non disponibili per questo prodotto — inserisci manualmente', 'error');
+        setTimeout(() => mealManual(meal, food.name), 400);
+        return;
+    }
     const overlay = document.getElementById('grams-overlay');
     if (!overlay) return;
     overlay.dataset.meal = meal;
