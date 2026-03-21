@@ -3888,10 +3888,12 @@ const MEAL_CONFIG = {
 
 function nutGetActiveMeal() {
     const h = new Date().getHours() + new Date().getMinutes() / 60;
-    if (h >= 6   && h < 10.5) return 'colazione';
-    if (h >= 10.5 && h < 15)  return 'pranzo';
+    if (h >= 5   && h < 10.5) return 'colazione';
+    if (h >= 10.5 && h < 12)  return 'snack';
+    if (h >= 12  && h < 15)   return 'pranzo';
     if (h >= 15  && h < 18)   return 'snack';
-    return 'cena';
+    if (h >= 18  && h < 23)   return 'cena';
+    return 'snack'; // 23:00–05:00
 }
 
 function nutTimelineRender() {
@@ -4462,8 +4464,8 @@ function gramsConfirm() {
     mealData[meal].push(entry);
     NUT.saveMeals(mealData);
     nutUpdateUI();
+    nutTlUpdateUI();
     overlay.classList.remove('active');
-    if (!document.getElementById('meal-' + meal)?.classList.contains('open')) mealToggle(meal);
     showToast('✓ ' + entry.name + ' (' + g + 'g) — ' + entry.kcal + ' kcal', 'success');
 }
 
@@ -4503,7 +4505,7 @@ function mealManualSubmit() {
     data[meal].push({ name, kcal, p, c, f: f2, id: Date.now(), note: 'manuale' });
     NUT.saveMeals(data);
     nutUpdateUI();
-    if (!document.getElementById('meal-' + meal)?.classList.contains('open')) mealToggle(meal);
+    nutTlUpdateUI();
     overlay.classList.remove('active');
     showToast('✓ ' + name + ' aggiunto!', 'success');
 }
@@ -4659,6 +4661,7 @@ function tdeeSave() {
     }
 
     nutUpdateUI();
+    nutTlUpdateUI();
     tdeeClose();
     showToast('TDEE salvato: ' + kcal + ' kcal/giorno', 'success');
 }
