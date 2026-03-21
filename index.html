@@ -2533,7 +2533,8 @@ function saveState() {
             activeProtocolId: APP.activeProtocolId, dayAssignments: APP.dayAssignments,
             motivationalQuotes: APP.motivationalQuotes,
             personalRecords: APP.personalRecords || {},
-            savedProtocols: APP.savedProtocols || []
+            savedProtocols: APP.savedProtocols || [],
+            nutritionLogs: nutGetAllLogs()
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
         saveToSupabase(toSave);
@@ -3081,6 +3082,8 @@ async function onLoginSuccess(user, usernameOverride = null) {
         if (s.savedProtocols && s.savedProtocols.length > 0 && APP.savedProtocols.length === 0) {
             APP.savedProtocols = s.savedProtocols;
         }
+        // Restore nutrition logs from Supabase
+        if (s.nutritionLogs) nutRestoreLogs(s.nutritionLogs);
     }
     const { data: protocols } = await sbClient.from('protocols').select('*').eq('user_id', user.id).order('created_at');
     if (!protocols || protocols.length === 0) {
@@ -3853,7 +3856,13 @@ const NUT = {
             const d = {}; MEALS.forEach(m => d[m] = []); return d;
         }
     },
-    saveMeals(data) { localStorage.setItem(this._key, JSON.stringify(data)); },
+    saveMeals(data) {
+        localStorage.setItem(this._key, JSON.stringify(data));
+        // Debounced Supabase sync (avoid too many calls)
+        if (NUT._saveTimer) clearTimeout(NUT._saveTimer);
+        NUT._saveTimer = setTimeout(() => saveState(), 2000);
+    },
+    _saveTimer: null,
     get goal() { return localStorage.getItem('nut_goal') || 'maintain'; },
     get target() {
         const saved = localStorage.getItem('nut_tdee_target');
@@ -3901,6 +3910,69 @@ const NUT = {
 };
 
 
+
+// ── Nutrition Supabase sync ─────────────────────────────────────
+function nutGetAllLogs() {
+    // Collect last 7 days only (matches date bar range)
+    nutPurgeOldLogs(); // clean up anything older first
+    const logs = {};
+    const today = new Date();
+    for (let i = 0; i <= 6; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        const key = 'nut_meals_' + d.toDateString();
+        const raw = localStorage.getItem(key);
+        if (raw) {
+            try {
+                const meals = JSON.parse(raw);
+                const hasFood = Object.values(meals).some(arr => arr && arr.length > 0);
+                if (hasFood) logs[key] = meals;
+            } catch(e) {}
+        }
+    }
+    // Also include TDEE target
+    const tdeeRaw = localStorage.getItem('nut_tdee_target');
+    if (tdeeRaw) logs['_tdee'] = JSON.parse(tdeeRaw);
+    return logs;
+}
+
+function nutPurgeOldLogs() {
+    // Remove any nut_meals_* entries older than 7 days from localStorage
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 7);
+    cutoff.setHours(0, 0, 0, 0);
+    const toDelete = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('nut_meals_')) {
+            const dateStr = key.replace('nut_meals_', '');
+            const d = new Date(dateStr);
+            if (!isNaN(d) && d < cutoff) toDelete.push(key);
+        }
+    }
+    toDelete.forEach(k => localStorage.removeItem(k));
+}
+
+function nutRestoreLogs(logs) {
+    if (!logs || typeof logs !== 'object') return;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 7);
+    cutoff.setHours(0, 0, 0, 0);
+    Object.entries(logs).forEach(([key, val]) => {
+        if (key === '_tdee') {
+            localStorage.setItem('nut_tdee_target', JSON.stringify(val));
+        } else if (key.startsWith('nut_meals_')) {
+            const dateStr = key.replace('nut_meals_', '');
+            const d = new Date(dateStr);
+            // Skip entries older than 7 days
+            if (!isNaN(d) && d < cutoff) return;
+            // Only restore if not already in localStorage
+            if (!localStorage.getItem(key)) {
+                localStorage.setItem(key, JSON.stringify(val));
+            }
+        }
+    });
+}
 
 // ── Nutrition date selector ────────────────────────────────────
 const NUT_MONTHS = ['GEN','FEB','MAR','APR','MAG','GIU','LUG','AGO','SET','OTT','NOV','DIC'];
@@ -8547,6 +8619,7 @@ function showBadgeToast(badge) {
 
 // ============= INIT ON LOAD =============
 document.addEventListener('DOMContentLoaded', async () => {
+    nutPurgeOldLogs(); // clean old nutrition logs on startup
     try {
         const { data: { session } } = await sbClient.auth.getSession();
         if (session) {
