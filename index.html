@@ -2335,10 +2335,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <!-- ══ GRAMS SELECTOR OVERLAY ══ -->
 <div id="grams-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.92);z-index:5100;align-items:flex-end;justify-content:center;">
   <div style="background:#1e293b;border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:480px;box-sizing:border-box;">
-    <div style="position:relative;margin-bottom:14px;padding-right:36px;">
-      <div style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Prodotto trovato</div>
-      <div id="grams-food-name" style="font-size:1rem;font-weight:700;color:#e2e8f0;line-height:1.3;"></div>
-      <button onclick="gramsClose()" style="position:absolute;top:0;right:0;background:none;border:none;color:#64748b;font-size:1.4rem;cursor:pointer;padding:0;line-height:1;">✕</button>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
+      <div style="flex:1;">
+        <div style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Prodotto trovato</div>
+        <div id="grams-food-name" style="font-size:1rem;font-weight:700;color:#e2e8f0;line-height:1.3;padding-right:16px;"></div>
+      </div>
+      <button onclick="gramsClose()" style="background:none;border:none;color:#64748b;font-size:1.3rem;cursor:pointer;padding:0;line-height:1;flex-shrink:0;margin-top:2px;">✕</button>
     </div>
     <!-- Nutri-Score: full width row, centered -->
     <div id="grams-nutriscore" style="display:none;position:relative;height:34px;margin-bottom:14px;"></div>
@@ -4123,7 +4125,7 @@ function nutScoreInfoToggle() {
     }).join('');
     const panel = document.createElement('div');
     panel.id = 'ns-info-panel';
-    panel.style.cssText = 'background:#0f172a;border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:14px 16px;margin-top:10px;';
+    panel.style.cssText = 'background:#0f172a;border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:14px 16px;margin-top:10px;margin-bottom:14px;';
     panel.innerHTML = '<div style="font-size:11px;font-weight:700;color:#e2e8f0;margin-bottom:6px;">Cos\u2019\u00e8 il Nutri-Score?</div>' +
         '<div style="font-size:10px;color:#94a3b8;line-height:1.6;margin-bottom:12px;">Sistema europeo che valuta la qualit\u00e0 nutrizionale su scala A\u2192E, basato su calorie, proteine, zuccheri, grassi saturi e fibre per 100g.</div>' +
         '<div style="display:flex;gap:6px;">' + gradesHTML + '</div>';
