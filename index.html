@@ -4093,23 +4093,28 @@ async function _scanWithBarcodeDetector(meal) {
         if (hint) hint.textContent = 'Inquadra il codice a barre';
 
         let _scanning = true;
-        window._stopScan = () => { _scanning = false; };
+        window._stopScan = () => { _scanning = false; clearInterval(window._scanInterval); };
 
-        const scan = async () => {
-            if (!_scanning || !document.getElementById('camera-overlay')?.classList.contains('active')) return;
+        // Use setInterval at 200ms — more reliable than rAF on iOS Safari
+        window._scanInterval = setInterval(async () => {
+            if (!_scanning || !document.getElementById('camera-overlay')?.classList.contains('active')) {
+                clearInterval(window._scanInterval);
+                return;
+            }
+            if (video.readyState < 2) return; // not ready yet
             try {
                 const barcodes = await detector.detect(video);
                 if (barcodes.length > 0) {
-                    const code = barcodes[0].rawValue;
                     _scanning = false;
-                    cameraClose();
-                    cameraFetchProduct(code, meal);
-                    return;
+                    clearInterval(window._scanInterval);
+                    const code = barcodes[0].rawValue;
+                    // Visual feedback
+                    const hint = document.getElementById('camera-hint');
+                    if (hint) hint.textContent = '✓ ' + code;
+                    setTimeout(() => { cameraClose(); cameraFetchProduct(code, meal); }, 200);
                 }
             } catch(e) {}
-            requestAnimationFrame(scan);
-        };
-        requestAnimationFrame(scan);
+        }, 150);
     } catch(e) {
         console.warn('BarcodeDetector failed:', e.message);
         if (hint) hint.textContent = 'Uso metodo alternativo...';
@@ -4169,6 +4174,7 @@ function _scanWithZXing(meal) {
 
 function cameraClose(silent) {
     // Stop BarcodeDetector loop
+    if (window._scanInterval) { clearInterval(window._scanInterval); window._scanInterval = null; }
     if (window._stopScan) { window._stopScan(); window._stopScan = null; }
     // Stop ZXing
     if (window._zxingReader) {
@@ -4210,7 +4216,7 @@ async function cameraFetchProduct(barcode, meal) {
     if (msg)  msg.textContent = 'Ricerca prodotto...';
 
     const endpoints = [
-        `https://it.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name_it,product_name,nutriments`,
+        `https://it.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name_it,product_name,nutriments,nutriments_estimated`,
     ];
 
     let food = null;
@@ -4227,27 +4233,35 @@ async function cameraFetchProduct(barcode, meal) {
             if (data.status !== 1 || !data.product) continue;
             const p = data.product;
             const n = p.nutriments || {};
-            // Log raw data for debugging
-            console.log('OFF nutriments raw:', JSON.stringify(n));
+            // Log ALL nutriment keys for debugging
+            console.log('OFF nutriments keys:', Object.keys(n).join(', '));
+            console.log('OFF nutriments values:', JSON.stringify(n));
 
-            // energy-kcal_100g is the reliable kcal field
-            // energy_100g and energy are in kJ — do NOT use directly
-            const kcal100 = Math.round(
-                n['energy-kcal_100g'] != null ? n['energy-kcal_100g'] :
-                n['energy-kj_100g']   != null ? n['energy-kj_100g'] / 4.184 :
-                n['energy-kj']        != null ? n['energy-kj'] / 4.184 : 0
-            );
-            const p100 = parseFloat((
-                n['proteins_100g'] ?? n['protein_100g'] ?? 0
-            ).toFixed(1));
-            const c100 = parseFloat((
-                n['carbohydrates_100g'] ?? n['carbohydrate_100g'] ?? 0
-            ).toFixed(1));
-            const f100 = parseFloat((
-                n['fat_100g'] ?? n['fats_100g'] ?? 0
-            ).toFixed(1));
+            // Helper: get first non-null value from list of keys
+            const firstVal = (keys) => {
+                for (const k of keys) {
+                    if (n[k] != null && n[k] !== '' && !isNaN(parseFloat(n[k])))
+                        return parseFloat(n[k]);
+                }
+                return 0;
+            };
 
-            console.log('Parsed per 100g → kcal:', kcal100, 'p:', p100, 'c:', c100, 'f:', f100);
+            // KCAL: energy-kcal_100g is kcal. energy_100g / energy-kj_100g are kJ (÷4.184)
+            const kcalRaw = firstVal(['energy-kcal_100g','energy-kcal-100g']);
+            const kjRaw   = firstVal(['energy-kj_100g','energy-kj-100g','energy_100g']);
+            const kcal100 = Math.round(kcalRaw > 0 ? kcalRaw : kjRaw / 4.184);
+
+            const p100 = parseFloat(firstVal([
+                'proteins_100g','protein_100g','proteins-100g'
+            ]).toFixed(1));
+            const c100 = parseFloat(firstVal([
+                'carbohydrates_100g','carbohydrate_100g','carbohydrates-100g'
+            ]).toFixed(1));
+            const f100 = parseFloat(firstVal([
+                'fat_100g','fats_100g','fat-100g','lipids_100g'
+            ]).toFixed(1));
+
+            console.log('→ Parsed: kcal100='+kcal100+' p100='+p100+' c100='+c100+' f100='+f100);
 
             food = {
                 name:    (p.product_name_it || p.product_name || 'Prodotto').slice(0, 50),
