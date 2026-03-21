@@ -3881,9 +3881,10 @@ const NUT = {
     },
     get totals() {
         const m = this.meals;
-        return MEALS.reduce((s, meal) =>
-            m[meal].reduce((s2, f) => ({ kcal:s2.kcal+f.kcal, p:s2.p+f.p, c:s2.c+f.c, f:s2.f+f.f }), s),
+        const raw = MEALS.reduce((s, meal) =>
+            m[meal].reduce((s2, f) => ({ kcal:s2.kcal+(f.kcal||0), p:s2.p+(f.p||0), c:s2.c+(f.c||0), f:s2.f+(f.f||0) }), s),
         {kcal:0, p:0, c:0, f:0});
+        return { kcal:Math.round(raw.kcal), p:parseFloat(raw.p.toFixed(1)), c:parseFloat(raw.c.toFixed(1)), f:parseFloat(raw.f.toFixed(1)) };
     },
     mealTotals(meal) {
         return (this.meals[meal] || []).reduce((s,f) => ({ kcal:s.kcal+f.kcal, p:s.p+f.p, c:s.c+f.c, f:s.f+f.f }), {kcal:0,p:0,c:0,f:0});
@@ -4190,9 +4191,9 @@ function nutTlUpdateUI() {
     if (pb) pb.style.width = pct(t.p, g.p) + '%';
     if (cb) cb.style.width = pct(t.c, g.c) + '%';
     if (fb) fb.style.width = pct(t.f, g.f) + '%';
-    if (pv) pv.textContent = t.p + '/' + g.p + 'g';
-    if (cv) cv.textContent = t.c + '/' + g.c + 'g';
-    if (fv) fv.textContent = t.f + '/' + g.f + 'g';
+    if (pv) pv.textContent = parseFloat(t.p).toFixed(1) + '/' + g.p + 'g';
+    if (cv) cv.textContent = parseFloat(t.c).toFixed(1) + '/' + g.c + 'g';
+    if (fv) fv.textContent = parseFloat(t.f).toFixed(1) + '/' + g.f + 'g';
 
     nutTimelineRender();
 }
@@ -4343,10 +4344,25 @@ async function _scanWithBarcodeDetector(meal) {
             ? supported.filter(f => ['ean_13','ean_8','upc_a','upc_e','code_128'].includes(f))
             : ['ean_13','ean_8','upc_a','upc_e'];
         const detector = new BarcodeDetector({ formats: formats.length > 0 ? formats : ['ean_13','ean_8','upc_a'] });
+        // Optimized constraints for barcode scanning: autofocus + high res
         const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
+            video: {
+                facingMode: 'environment',
+                width:  { ideal: 1280 },
+                height: { ideal: 720 },
+                focusMode: 'continuous',
+                advanced: [{ focusMode: 'continuous' }]
+            }
         });
         window._scanStream = stream;
+        // Try to enable torch for better scanning in low light
+        try {
+            const track = stream.getVideoTracks()[0];
+            if (track && track.getCapabilities && track.getCapabilities().torch) {
+                await track.applyConstraints({ advanced: [{ torch: true }] });
+                window._torchEnabled = true;
+            }
+        } catch(e) {}
 
         // Create video element
         let video = document.getElementById('scan-video');
@@ -4385,7 +4401,7 @@ async function _scanWithBarcodeDetector(meal) {
                     setTimeout(() => { cameraClose(); cameraFetchProduct(code, meal); }, 200);
                 }
             } catch(e) {}
-        }, 150);
+        }, 80);
     } catch(e) {
         console.warn('BarcodeDetector failed:', e.message);
         if (hint) hint.textContent = 'Uso metodo alternativo...';
@@ -4447,6 +4463,11 @@ function cameraClose(silent) {
     // Stop BarcodeDetector loop
     if (window._scanInterval) { clearInterval(window._scanInterval); window._scanInterval = null; }
     if (window._stopScan) { window._stopScan(); window._stopScan = null; }
+    // Turn off torch
+    if (window._torchEnabled && window._scanStream) {
+        try { const t = window._scanStream.getVideoTracks()[0]; if (t) t.applyConstraints({ advanced: [{ torch: false }] }); } catch(e) {}
+        window._torchEnabled = false;
+    }
     // Stop ZXing
     if (window._zxingReader) {
         try { window._zxingReader.reset(); } catch(e) {}
