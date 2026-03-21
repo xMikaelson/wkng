@@ -4216,7 +4216,7 @@ async function cameraFetchProduct(barcode, meal) {
     if (msg)  msg.textContent = 'Ricerca prodotto...';
 
     const endpoints = [
-        `https://it.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name_it,product_name,nutriments,nutriments_estimated`,
+        `https://it.openfoodfacts.org/api/v2/product/${barcode}`,
     ];
 
     let food = null;
