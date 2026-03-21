@@ -2338,7 +2338,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
       <div>
         <div style="font-size:0.55rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Prodotto trovato</div>
-        <div id="grams-food-name" style="font-size:1rem;font-weight:700;color:#e2e8f0;line-height:1.3;max-width:280px;"></div>
+        <div id="grams-food-name" style="font-size:1rem;font-weight:700;color:#e2e8f0;line-height:1.3;max-width:220px;"></div>
+        <div id="grams-nutriscore" style="display:none;position:relative;height:34px;margin-top:10px;"></div>
       </div>
       <button onclick="gramsClose()" style="background:none;border:none;color:#64748b;font-size:1.4rem;cursor:pointer;padding:0;flex-shrink:0;">✕</button>
     </div>
@@ -4085,6 +4086,53 @@ function nutCalcScore(kcal100, p100, c100, f100) {
     return 'E';
 }
 
+
+function nutScoreBar(active) {
+    // Bar width: 5 * 36px items + 4 * 2px gaps = 188px
+    // Right edge from center: 94px. i-btn gap: 8px → left: calc(50% + 102px)
+    const letters = ['A','B','C','D','E'];
+    const colors  = { A:'#1a7c3e', B:'#56a832', C:'#d4b500', D:'#e07b00', E:'#d32b1e' };
+
+    const items = letters.map(l => {
+        const isActive = l === active;
+        if (isActive) {
+            return `<div style="width:36px;height:30px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff;border:2px solid #fff;background:${colors[l]};position:relative;z-index:1;">${l}</div>`;
+        }
+        const radius = l === 'A' ? 'border-radius:5px 0 0 5px;' : l === 'E' ? 'border-radius:0 5px 5px 0;' : '';
+        return `<div style="width:36px;height:22px;${radius}display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:rgba(255,255,255,0.35);background:${colors[l]};">${l}</div>`;
+    }).join('');
+
+    const infoBtn = `<div id="ns-info-btn" onclick="nutScoreInfoToggle()" style="position:absolute;left:calc(50% + 102px);top:50%;transform:translateY(-50%);width:20px;height:20px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.05);color:#94a3b8;font-size:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-style:italic;font-family:Georgia,serif;">i</div>`;
+
+    return `<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:2px;">${items}</div>${infoBtn}`;
+}
+
+function nutScoreInfoToggle() {
+    const existing = document.getElementById('ns-info-panel');
+    if (existing) { existing.remove(); return; }
+    const grades = [
+        ['A','#1a7c3e','Ottima qualità'],
+        ['B','#56a832','Buona qualità'],
+        ['C','#d4b500','Qualità media'],
+        ['D','#e07b00','Scarsa qualità'],
+        ['E','#d32b1e','Da limitare']
+    ];
+    const gradesHTML = grades.map(function(g) {
+        return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">' +
+            '<div style="width:26px;height:26px;border-radius:6px;background:' + g[1] + ';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#fff;">' + g[0] + '</div>' +
+            '<div style="font-size:8px;color:#64748b;text-align:center;line-height:1.3;">' + g[2] + '</div></div>';
+    }).join('');
+    const panel = document.createElement('div');
+    panel.id = 'ns-info-panel';
+    panel.style.cssText = 'background:#0f172a;border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:14px 16px;margin-top:10px;';
+    panel.innerHTML = '<div style="font-size:11px;font-weight:700;color:#e2e8f0;margin-bottom:6px;">Cos\u2019\u00e8 il Nutri-Score?</div>' +
+        '<div style="font-size:10px;color:#94a3b8;line-height:1.6;margin-bottom:12px;">Sistema europeo che valuta la qualit\u00e0 nutrizionale su scala A\u2192E, basato su calorie, proteine, zuccheri, grassi saturi e fibre per 100g.</div>' +
+        '<div style="display:flex;gap:6px;">' + gradesHTML + '</div>';
+    const nsEl = document.getElementById('grams-nutriscore');
+    if (nsEl && nsEl.parentNode) nsEl.parentNode.insertBefore(panel, nsEl.nextSibling);
+}
+
+
 function nutScoreBadge(score) {
     if (!score) return '';
     const map = {
@@ -4763,6 +4811,17 @@ function openGramsSelector(food, meal) {
     document.getElementById('grams-ref-p').textContent     = food.p100;
     document.getElementById('grams-ref-c').textContent     = food.c100;
     document.getElementById('grams-ref-f').textContent     = food.f100;
+    // Nutri-Score bar
+    const nsEl = document.getElementById('grams-nutriscore');
+    if (nsEl) {
+        const score = food.nutriScore || nutCalcScore(food.kcal100||0, food.p100||0, food.c100||0, food.f100||0);
+        if (score) {
+            nsEl.style.display = 'flex';
+            nsEl.innerHTML = nutScoreBar(score);
+        } else {
+            nsEl.style.display = 'none';
+        }
+    }
     const gi = document.getElementById('grams-input');
     gi.value = '100';
     overlay.classList.add('active');
