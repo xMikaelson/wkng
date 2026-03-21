@@ -2069,9 +2069,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
     <!-- TAB: NUTRIZIONE -->
     <div id="wo-panel-nut" class="wo-tab-panel" style="display:none;">
-      <div class="nut-wo-wrap" id="nut-wo-wrap">
-        <!-- TDEE entry -->
-        <div class="tdee-entry-btn" id="tdee-entry-btn" onclick="tdeeOpen()">
+      <div class="nut-wo-wrap" id="nut-wo-wrap" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+
+        <!-- TDEE entry (invariato) -->
+        <div class="tdee-entry-btn" id="tdee-entry-btn" onclick="tdeeOpen()" style="flex-shrink:0;">
           <div class="tdee-entry-icon">⚡</div>
           <div class="tdee-entry-info">
             <div class="tdee-entry-label" id="tdee-entry-label">Calcola il tuo TDEE</div>
@@ -2079,108 +2080,54 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
           </div>
           <div class="tdee-entry-arrow">›</div>
         </div>
-        <!-- Macro summary -->
-        <div class="nut-macro-summary">
-          <div class="nut-macro-row">
-            <div class="nut-macro-labels"><span class="nut-macro-name">Proteine</span><span class="nut-macro-val" id="nut-wo-p-val">0 / 180g</span></div>
-            <div class="nut-bar-bg"><div class="nut-bar-fill" id="nut-wo-pbar" style="width:0%;background:#34d399"></div></div>
+
+        <!-- Kcal + % header -->
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;padding:10px 16px 4px;flex-shrink:0;">
+          <div>
+            <div>
+              <span id="nut-tl-kcal-cur" style="font-size:28px;font-weight:900;color:var(--primary);line-height:1;letter-spacing:-0.02em;">0</span>
+              <span style="font-size:10px;color:#64748b;margin-left:3px;">kcal</span>
+            </div>
+            <div style="font-size:7px;color:#64748b;margin-top:2px;" id="nut-tl-remaining">— rimanenti · obiettivo —</div>
           </div>
-          <div class="nut-macro-row">
-            <div class="nut-macro-labels"><span class="nut-macro-name">Carboidrati</span><span class="nut-macro-val" id="nut-wo-c-val">0 / 270g</span></div>
-            <div class="nut-bar-bg"><div class="nut-bar-fill" id="nut-wo-cbar" style="width:0%;background:#378ADD"></div></div>
-          </div>
-          <div class="nut-macro-row">
-            <div class="nut-macro-labels"><span class="nut-macro-name">Grassi</span><span class="nut-macro-val" id="nut-wo-f-val">0 / 80g</span></div>
-            <div class="nut-bar-bg"><div class="nut-bar-fill" id="nut-wo-fbar" style="width:0%;background:#BA7517"></div></div>
+          <div style="text-align:right;">
+            <div id="nut-tl-pct" style="font-size:16px;font-weight:900;color:var(--primary);line-height:1;">0%</div>
+            <div style="font-size:7px;color:#64748b;">completato</div>
           </div>
         </div>
 
-        <!-- Accordion pasti -->
-        <div class="meal-list" id="meal-list">
-          <div class="meal-item" id="meal-colazione">
-            <div class="meal-header" onclick="mealToggle('colazione')">
-              <span class="meal-icon">☀️</span>
-              <span class="meal-name">Colazione</span>
-              <span class="meal-kcal" id="meal-kcal-colazione">0 kcal</span>
-              <span class="meal-arrow">›</span>
-            </div>
-            <div class="meal-body">
-              <div class="meal-empty" id="meal-empty-colazione">Nessun alimento registrato</div>
-              <div id="meal-foods-colazione"></div>
-              <div class="meal-scan-anim" id="meal-anim-colazione">
-                <div class="meal-scan-line"></div>
-                <div class="meal-scan-msg" id="meal-msg-colazione">Ricerca in corso...</div>
-              </div>
-              <div class="meal-add-row">
-                <button class="meal-add-btn scan" onclick="mealScan('colazione')">📷 Scansiona</button>
-                <button class="meal-add-btn manual" onclick="mealManual('colazione')">+ Manuale</button>
-              </div>
-            </div>
+        <!-- Macro bars -->
+        <div style="padding:0 16px 8px;display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+          <div style="display:flex;align-items:center;gap:7px;">
+            <span style="font-size:7px;color:#94a3b8;width:50px;flex-shrink:0;">Proteine</span>
+            <div style="flex:1;height:5px;background:#334155;border-radius:99px;overflow:hidden;"><div id="nut-tl-pbar" style="height:100%;border-radius:99px;background:#34d399;width:0%;transition:width 0.6s;"></div></div>
+            <span id="nut-tl-pval" style="font-size:7px;color:#94a3b8;width:42px;text-align:right;flex-shrink:0;">0/180g</span>
           </div>
-
-          <div class="meal-item" id="meal-pranzo">
-            <div class="meal-header" onclick="mealToggle('pranzo')">
-              <span class="meal-icon">🌤</span>
-              <span class="meal-name">Pranzo</span>
-              <span class="meal-kcal" id="meal-kcal-pranzo">0 kcal</span>
-              <span class="meal-arrow">›</span>
-            </div>
-            <div class="meal-body">
-              <div class="meal-empty" id="meal-empty-pranzo">Nessun alimento registrato</div>
-              <div id="meal-foods-pranzo"></div>
-              <div class="meal-scan-anim" id="meal-anim-pranzo">
-                <div class="meal-scan-line"></div>
-                <div class="meal-scan-msg" id="meal-msg-pranzo">Ricerca in corso...</div>
-              </div>
-              <div class="meal-add-row">
-                <button class="meal-add-btn scan" onclick="mealScan('pranzo')">📷 Scansiona</button>
-                <button class="meal-add-btn manual" onclick="mealManual('pranzo')">+ Manuale</button>
-              </div>
-            </div>
+          <div style="display:flex;align-items:center;gap:7px;">
+            <span style="font-size:7px;color:#94a3b8;width:50px;flex-shrink:0;">Carboidrati</span>
+            <div style="flex:1;height:5px;background:#334155;border-radius:99px;overflow:hidden;"><div id="nut-tl-cbar" style="height:100%;border-radius:99px;background:#378ADD;width:0%;transition:width 0.6s;"></div></div>
+            <span id="nut-tl-cval" style="font-size:7px;color:#94a3b8;width:42px;text-align:right;flex-shrink:0;">0/270g</span>
           </div>
-
-          <div class="meal-item" id="meal-snack">
-            <div class="meal-header" onclick="mealToggle('snack')">
-              <span class="meal-icon">🍎</span>
-              <span class="meal-name">Snack</span>
-              <span class="meal-kcal" id="meal-kcal-snack">0 kcal</span>
-              <span class="meal-arrow">›</span>
-            </div>
-            <div class="meal-body">
-              <div class="meal-empty" id="meal-empty-snack">Nessun alimento registrato</div>
-              <div id="meal-foods-snack"></div>
-              <div class="meal-scan-anim" id="meal-anim-snack">
-                <div class="meal-scan-line"></div>
-                <div class="meal-scan-msg" id="meal-msg-snack">Ricerca in corso...</div>
-              </div>
-              <div class="meal-add-row">
-                <button class="meal-add-btn scan" onclick="mealScan('snack')">📷 Scansiona</button>
-                <button class="meal-add-btn manual" onclick="mealManual('snack')">+ Manuale</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="meal-item" id="meal-cena">
-            <div class="meal-header" onclick="mealToggle('cena')">
-              <span class="meal-icon">🌙</span>
-              <span class="meal-name">Cena</span>
-              <span class="meal-kcal" id="meal-kcal-cena">0 kcal</span>
-              <span class="meal-arrow">›</span>
-            </div>
-            <div class="meal-body">
-              <div class="meal-empty" id="meal-empty-cena">Nessun alimento registrato</div>
-              <div id="meal-foods-cena"></div>
-              <div class="meal-scan-anim" id="meal-anim-cena">
-                <div class="meal-scan-line"></div>
-                <div class="meal-scan-msg" id="meal-msg-cena">Ricerca in corso...</div>
-              </div>
-              <div class="meal-add-row">
-                <button class="meal-add-btn scan" onclick="mealScan('cena')">📷 Scansiona</button>
-                <button class="meal-add-btn manual" onclick="mealManual('cena')">+ Manuale</button>
-              </div>
-            </div>
+          <div style="display:flex;align-items:center;gap:7px;">
+            <span style="font-size:7px;color:#94a3b8;width:50px;flex-shrink:0;">Grassi</span>
+            <div style="flex:1;height:5px;background:#334155;border-radius:99px;overflow:hidden;"><div id="nut-tl-fbar" style="height:100%;border-radius:99px;background:#BA7517;width:0%;transition:width 0.6s;"></div></div>
+            <span id="nut-tl-fval" style="font-size:7px;color:#94a3b8;width:42px;text-align:right;flex-shrink:0;">0/80g</span>
           </div>
         </div>
+
+        <div style="height:0.5px;background:rgba(255,255,255,0.07);margin:0 16px 4px;flex-shrink:0;"></div>
+
+        <!-- Timeline pasti -->
+        <div id="nut-timeline" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;">
+          <!-- Rendered by nutTimelineRender() -->
+        </div>
+
+        <!-- Pulsanti fissi sopra navbar -->
+        <div style="padding:8px 16px 10px;background:rgba(15,23,42,0.97);border-top:0.5px solid rgba(255,255,255,0.07);flex-shrink:0;display:flex;gap:10px;">
+          <button onclick="nutScanActive()" style="flex:1;padding:12px 0;border-radius:12px;background:linear-gradient(135deg,var(--primary),var(--accent));border:none;color:#000;font-size:0.78rem;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0.04em;">📷 Scansiona</button>
+          <button onclick="nutManualActive()" style="flex:1;padding:12px 0;border-radius:12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#94a3b8;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;">+ Manuale</button>
+        </div>
+
       </div>
     </div>
   </div>
@@ -3930,6 +3877,138 @@ const NUT = {
     ]
 };
 
+
+// ── Nutrizione timeline ──────────────────────────────────────
+const MEAL_CONFIG = {
+    colazione: { icon:'☀️', label:'Colazione', color:'#34d399', bg:'rgba(52,211,153,0.12)', lineColor:'rgba(52,211,153,0.2)' },
+    pranzo:    { icon:'🌤', label:'Pranzo',    color:'#6366f1', bg:'rgba(99,102,241,0.12)', lineColor:'rgba(99,102,241,0.18)' },
+    snack:     { icon:'🍎', label:'Snack',     color:'#fbbf24', bg:'rgba(251,191,36,0.12)', lineColor:'rgba(251,191,36,0.15)' },
+    cena:      { icon:'🌙', label:'Cena',      color:'#94a3b8', bg:'rgba(71,85,105,0.12)', lineColor:'rgba(71,85,105,0.12)' },
+};
+
+function nutGetActiveMeal() {
+    const h = new Date().getHours() + new Date().getMinutes() / 60;
+    if (h >= 6   && h < 10.5) return 'colazione';
+    if (h >= 10.5 && h < 15)  return 'pranzo';
+    if (h >= 15  && h < 18)   return 'snack';
+    return 'cena';
+}
+
+function nutTimelineRender() {
+    const tl = document.getElementById('nut-timeline');
+    if (!tl) return;
+    const meals = NUT.meals;
+    const activeMeal = nutGetActiveMeal();
+    tl.innerHTML = '';
+    MEALS.forEach((meal, idx) => {
+        const cfg = MEAL_CONFIG[meal];
+        const foods = meals[meal] || [];
+        const mealKcal = foods.reduce((s, f) => s + (f.kcal || 0), 0);
+        const isLast = idx === MEALS.length - 1;
+        const isActive = meal === activeMeal;
+
+        const item = document.createElement('div');
+        item.style.cssText = 'display:flex;gap:9px;padding:4px 16px;' + (isActive ? 'background:rgba(255,255,255,0.02);' : '');
+
+        // Left: icon + line
+        const left = document.createElement('div');
+        left.style.cssText = 'display:flex;flex-direction:column;align-items:center;width:22px;flex-shrink:0;';
+        const dot = document.createElement('div');
+        dot.style.cssText = `width:22px;height:22px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;background:${cfg.bg};${isActive ? 'box-shadow:0 0 0 2px '+cfg.color+'44;' : ''}`;
+        dot.textContent = cfg.icon;
+        left.appendChild(dot);
+        if (!isLast) {
+            const line = document.createElement('div');
+            line.style.cssText = `width:1.5px;flex:1;min-height:8px;margin-top:2px;background:${cfg.lineColor};`;
+            left.appendChild(line);
+        }
+        item.appendChild(left);
+
+        // Right: content
+        const right = document.createElement('div');
+        right.style.cssText = 'flex:1;padding-bottom:' + (isLast ? '4px' : '6px') + ';';
+
+        const topRow = document.createElement('div');
+        topRow.style.cssText = 'display:flex;justify-content:space-between;align-items:baseline;';
+        const nameDiv = document.createElement('div');
+        nameDiv.innerHTML = `<div style="font-size:9px;font-weight:700;color:#e2e8f0;">${cfg.label}${isActive ? ' <span style="font-size:6px;color:'+cfg.color+';background:'+cfg.bg+';padding:1px 5px;border-radius:4px;margin-left:3px;">ATTIVO</span>' : ''}</div>`;
+        const kcalDiv = document.createElement('div');
+        kcalDiv.style.cssText = `font-size:9px;font-weight:700;color:${mealKcal > 0 ? cfg.color : '#334155'};`;
+        kcalDiv.textContent = mealKcal > 0 ? mealKcal + ' kcal' : '—';
+        topRow.appendChild(nameDiv);
+        topRow.appendChild(kcalDiv);
+        right.appendChild(topRow);
+
+        if (foods.length > 0) {
+            const foodList = document.createElement('div');
+            foodList.style.cssText = 'margin-top:3px;';
+            foods.forEach(f => {
+                const row = document.createElement('div');
+                row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;';
+                row.innerHTML = `<span style="font-size:7px;color:#94a3b8;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHTML(f.name)}${f.note ? ' <span style="color:#475569;">('+f.note+')</span>' : ''}</span><span style="font-size:7px;color:#64748b;flex-shrink:0;margin-left:6px;">${f.kcal} kcal</span>`;
+                // Delete on tap
+                row.addEventListener('click', () => {
+                    const data = NUT.meals;
+                    data[meal] = data[meal].filter(x => x.id !== f.id);
+                    NUT.saveMeals(data);
+                    nutUpdateUI();
+                });
+                row.title = 'Tocca per rimuovere';
+                foodList.appendChild(row);
+            });
+            right.appendChild(foodList);
+        } else {
+            const empty = document.createElement('div');
+            empty.style.cssText = 'font-size:7px;color:#334155;font-style:italic;margin-top:2px;';
+            empty.textContent = 'Nessun alimento';
+            right.appendChild(empty);
+        }
+        item.appendChild(right);
+        tl.appendChild(item);
+    });
+}
+
+function nutScanActive() {
+    cameraCurrentMeal = nutGetActiveMeal();
+    mealScan(cameraCurrentMeal);
+}
+
+function nutManualActive() {
+    mealManual(nutGetActiveMeal());
+}
+
+function nutTlUpdateUI() {
+    // Update the timeline header (kcal, %, macro bars)
+    const t = NUT.totals;
+    const g = NUT.target;
+    const pct = (v, mx) => Math.min(Math.round(v / mx * 100), 100);
+
+    const kcalEl = document.getElementById('nut-tl-kcal-cur');
+    const remEl  = document.getElementById('nut-tl-remaining');
+    const pctEl  = document.getElementById('nut-tl-pct');
+    if (kcalEl) kcalEl.textContent = t.kcal;
+    if (remEl) {
+        const rem = g.kcal - t.kcal;
+        remEl.textContent = (rem > 0 ? rem + ' rimanenti' : '✓ obiettivo raggiunto') + ' · obiettivo ' + g.kcal;
+    }
+    if (pctEl) pctEl.textContent = pct(t.kcal, g.kcal) + '%';
+
+    const pb = document.getElementById('nut-tl-pbar');
+    const cb = document.getElementById('nut-tl-cbar');
+    const fb = document.getElementById('nut-tl-fbar');
+    const pv = document.getElementById('nut-tl-pval');
+    const cv = document.getElementById('nut-tl-cval');
+    const fv = document.getElementById('nut-tl-fval');
+    if (pb) pb.style.width = pct(t.p, g.p) + '%';
+    if (cb) cb.style.width = pct(t.c, g.c) + '%';
+    if (fb) fb.style.width = pct(t.f, g.f) + '%';
+    if (pv) pv.textContent = t.p + '/' + g.p + 'g';
+    if (cv) cv.textContent = t.c + '/' + g.c + 'g';
+    if (fv) fv.textContent = t.f + '/' + g.f + 'g';
+
+    nutTimelineRender();
+}
+
 function nutUpdateUI() {
     const t = NUT.totals;
     const g = NUT.target;
@@ -4024,10 +4103,13 @@ function woSwitchTab(tab) {
         tabNut?.classList.remove('active');
     } else {
         if (trainPanel) trainPanel.style.display = 'none';
-        if (nutPanel)   nutPanel.style.display   = 'block';
+        if (nutPanel)   nutPanel.style.display   = 'flex';
+        nutPanel.style.flexDirection = 'column';
+        nutPanel.style.height = '100%';
         tabNut?.classList.add('active');
         tabTrain?.classList.remove('active');
         nutUpdateUI();
+        nutTlUpdateUI();
         tdeeInitEntryBtn();
     }
 }
@@ -6676,6 +6758,8 @@ function generate(isRestore = false) {
     if (!APP.isUnlocked) positionAwakeButton();
     updateStreakWidget();
     updateBadges();
+    // Update timeline if visible
+    nutTlUpdateUI();
     if (!isRestore) {
         // Auto-save as protocol if generated from homepage
         autoSaveProtocol();
