@@ -4234,21 +4234,11 @@ async function cameraFetchProduct(barcode, meal) {
             const data = await res.json();
             if (data.status !== 1 || !data.product) continue;
             const p = data.product;
-            // nutriments can be at product level OR nested
-            const n = p.nutriments || p.nutriment || {};
-            // Also check if maybe the response wraps it differently
-            const nKeys = Object.keys(n);
-            // If we only see fat subtypes, the main fields might be at root level
-            const hasMain = nKeys.some(k => k.includes('energy-kcal') || k.includes('proteins_100'));
-            const nFinal = hasMain ? n : (p.nutriments_estimated || p.nutriment_levels || n);
-            // Helper: get first non-null numeric value from list of keys
+            const n = p.nutriments || {};
             const firstVal = (keys) => {
-                // Try nFinal first, then n as fallback
-                for (const src of [nFinal, n]) {
-                    for (const k of keys) {
-                        if (src[k] != null && src[k] !== '' && !isNaN(parseFloat(src[k])))
-                            return parseFloat(src[k]);
-                    }
+                for (const k of keys) {
+                    if (n[k] != null && n[k] !== '' && !isNaN(parseFloat(n[k])))
+                        return parseFloat(n[k]);
                 }
                 return 0;
             };
@@ -4268,22 +4258,7 @@ async function cameraFetchProduct(barcode, meal) {
                 'fat_100g','fats_100g','fat-100g','lipids_100g'
             ]).toFixed(1));
 
-            // If macro data missing, show debug info
-            if (kcal100 === 0 && p100 === 0 && c100 === 0) {
-                const allKeys = Object.keys(nFinal).sort();
-                const macroKeys = allKeys.filter(k =>
-                    k.includes('energy') || k.includes('kcal') ||
-                    k.includes('protein') || k.includes('carbo') || k.includes('fat_100')
-                );
-                const otherCount = allKeys.length - macroKeys.length;
-                alert(
-                    'Prodotto: ' + (p.product_name_it||p.product_name||barcode) +
-                    '\n\nCampi macro trovati:\n' +
-                    (macroKeys.length ? macroKeys.map(k => k+'='+nFinal[k]).join('\n') : '(nessuno)') +
-                    '\n\nAltri campi: ' + otherCount +
-                    '\n\nURL usato: ' + url
-                );
-            }
+
 
             const productName = (p.product_name_it || p.product_name || 'Prodotto').slice(0, 50);
             const isIncomplete = (kcal100 === 0 && p100 === 0 && c100 === 0);
