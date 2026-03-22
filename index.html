@@ -4159,19 +4159,26 @@ async function awOfferSave(food) {
 async function awSaveProduct(food, userId) {
     try {
         console.log('awSaveProduct: inserting', food.barcode, 'user:', userId);
+        // salt100 = sale g/100g (valore diretto da etichetta o sodio*2.5)
+        // sodium100 = sodio g/100g (colonna legacy Supabase — la popoliamo con il sale
+        //             per retrocompatibilità, dato che la colonna si chiama sodium100
+        //             ma il valore atteso dall'algoritmo è il sale)
+        const salt100val = food.salt100 != null
+            ? food.salt100
+            : (food.sodium100 != null ? food.sodium100 * 2.5 : 0);
         const payload = {
-            barcode:     food.barcode,
-            name:        food.name,
-            kcal100:     food.kcal100    || 0,
-            p100:        food.p100       || 0,
-            c100:        food.c100       || 0,
-            f100:        food.f100       || 0,
-            sugars100:   food.sugars100  || 0,
-            saturated100:      food.saturated100     || 0,
-            fiber100:    food.fiber100   || 0,
-            sodium100:   food.sodium100  || 0,
-            nutri_score: food.nutriScore || null,
-            added_by:    userId
+            barcode:      food.barcode,
+            name:         food.name,
+            kcal100:      food.kcal100      || 0,
+            p100:         food.p100         || 0,
+            c100:         food.c100         || 0,
+            f100:         food.f100         || 0,
+            sugars100:    food.sugars100     || 0,
+            saturated100: food.saturated100  || 0,
+            fiber100:     food.fiber100      || 0,
+            sodium100:    salt100val,         // colonna Supabase — contiene sale g/100g
+            nutri_score:  food.nutriScore    || null,
+            added_by:     userId
         };
         console.log('Payload:', JSON.stringify(payload));
         const { data, error } = await sbClient.from('aw_products').insert(payload).select();
@@ -4992,7 +4999,8 @@ async function cameraFetchProduct(barcode, meal) {
         const { data: awProd, error: awErr } = await sbClient
             .from('aw_products').select('*').eq('barcode', barcode).single();
         if (!awErr && awProd) {
-            const awSalt = (awProd.sodium100||0) * 0.0025;
+            // sodium100 in Supabase ora contiene sale g/100g (non sodio mg)
+            const awSalt = awProd.sodium100 || 0;
             const awCat  = nutDetectCategory(awProd.f100||0, awProd.p100||0, awProd.fiber100||0, awProd.sugars100||0, awProd.kcal100||0, []);
             const ns = awProd.nutri_score || nutCalcScoreFull(
                 awProd.kcal100||0, awProd.p100||0,
