@@ -2347,14 +2347,52 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <!-- Nutri-Score: full width row, centered -->
     <div id="grams-nutriscore" style="display:none;position:relative;height:34px;margin-bottom:14px;"></div>
 
-    <!-- Per 100g reference -->
+    <!-- Per 100g reference — modificabile -->
     <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 14px;margin-bottom:16px;">
-      <div style="font-size:0.52rem;color:#475569;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Valori per 100g</div>
-      <div style="display:flex;gap:16px;">
-        <div style="text-align:center;flex:1;"><div id="grams-ref-kcal" style="font-size:1rem;font-weight:700;color:var(--primary);">—</div><div style="font-size:0.5rem;color:#64748b;">kcal</div></div>
-        <div style="text-align:center;flex:1;"><div id="grams-ref-p" style="font-size:1rem;font-weight:700;color:#34d399;">—</div><div style="font-size:0.5rem;color:#64748b;">prot</div></div>
-        <div style="text-align:center;flex:1;"><div id="grams-ref-c" style="font-size:1rem;font-weight:700;color:#378ADD;">—</div><div style="font-size:0.5rem;color:#64748b;">carbo</div></div>
-        <div style="text-align:center;flex:1;"><div id="grams-ref-f" style="font-size:1rem;font-weight:700;color:#BA7517;">—</div><div style="font-size:0.5rem;color:#64748b;">grassi</div></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div style="font-size:0.52rem;color:#475569;text-transform:uppercase;letter-spacing:0.1em;">Valori per 100g</div>
+        <div style="font-size:0.48rem;color:#475569;font-style:italic;">modificabili — aggiorna il Nutri-Score</div>
+      </div>
+      <!-- Riga 1: macros principali -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px;">
+        <div style="text-align:center;">
+          <input id="grams-ref-kcal" type="number" min="0" inputmode="decimal" oninput="gramsRefUpdate()" style="color:var(--primary);width:100%;padding:5px 7px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;">
+          <div style="font-size:0.47rem;color:#64748b;margin-top:2px;">kcal</div>
+        </div>
+        <div style="text-align:center;">
+          <input id="grams-ref-p" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#34d399;width:100%;padding:5px 7px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;">
+          <div style="font-size:0.47rem;color:#64748b;margin-top:2px;">prot g</div>
+        </div>
+        <div style="text-align:center;">
+          <input id="grams-ref-c" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#378ADD;width:100%;padding:5px 7px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;">
+          <div style="font-size:0.47rem;color:#64748b;margin-top:2px;">carbo g</div>
+        </div>
+        <div style="text-align:center;">
+          <input id="grams-ref-f" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#BA7517;width:100%;padding:5px 7px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;">
+          <div style="font-size:0.47rem;color:#64748b;margin-top:2px;">grassi g</div>
+        </div>
+      </div>
+      <!-- Riga 2: parametri Nutri-Score -->
+      <div style="border-top:1px solid rgba(255,255,255,0.05);padding-top:8px;">
+        <div style="font-size:0.46rem;color:#475569;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Parametri Nutri-Score</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+          <div style="text-align:center;">
+            <input id="grams-ref-sugars" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#e2e8f0;width:100%;padding:5px 7px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;">
+            <div style="font-size:0.43rem;color:#64748b;margin-top:2px;">zuccheri g</div>
+          </div>
+          <div style="text-align:center;">
+            <input id="grams-ref-sat" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#e2e8f0;width:100%;padding:5px 7px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;">
+            <div style="font-size:0.43rem;color:#64748b;margin-top:2px;">saturi g</div>
+          </div>
+          <div style="text-align:center;">
+            <input id="grams-ref-fiber" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#e2e8f0;width:100%;padding:5px 7px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;">
+            <div style="font-size:0.43rem;color:#64748b;margin-top:2px;">fibre g</div>
+          </div>
+          <div style="text-align:center;">
+            <input id="grams-ref-salt" type="number" min="0" step="0.001" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#e2e8f0;width:100%;padding:5px 7px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;">
+            <div style="font-size:0.43rem;color:#64748b;margin-top:2px;">sale g</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -5149,21 +5187,17 @@ function openGramsSelector(food, meal) {
     overlay.dataset.meal = meal;
     overlay.dataset.food = JSON.stringify(food);
     document.getElementById('grams-food-name').textContent = food.name;
-    document.getElementById('grams-ref-kcal').textContent  = food.kcal100;
-    document.getElementById('grams-ref-p').textContent     = food.p100;
-    document.getElementById('grams-ref-c').textContent     = food.c100;
-    document.getElementById('grams-ref-f').textContent     = food.f100;
-    // Nutri-Score bar
-    const nsEl = document.getElementById('grams-nutriscore');
-    if (nsEl) {
-        const score = food.nutriScore || nutCalcScoreFull(food.kcal100||0, food.p100||0, (food.c100||0)*0.5, (food.f100||0)*0.35, 0, 0, food.f100||0, 0, food.offCategory||'generic');
-        if (score) {
-            nsEl.style.display = 'flex';
-            nsEl.innerHTML = nutScoreBar(score);
-        } else {
-            nsEl.style.display = 'none';
-        }
-    }
+    // Popola input modificabili per 100g
+    document.getElementById('grams-ref-kcal').value  = food.kcal100  || 0;
+    document.getElementById('grams-ref-p').value     = food.p100     || 0;
+    document.getElementById('grams-ref-c').value     = food.c100     || 0;
+    document.getElementById('grams-ref-f').value     = food.f100     || 0;
+    document.getElementById('grams-ref-sugars').value = food.sugars100    != null ? food.sugars100    : '';
+    document.getElementById('grams-ref-sat').value    = food.saturated100 != null ? food.saturated100 : '';
+    document.getElementById('grams-ref-fiber').value  = food.fiber100     != null ? food.fiber100     : '';
+    document.getElementById('grams-ref-salt').value   = food.salt100      != null ? food.salt100      : '';
+    // Nutri-Score bar — calcolato con i dati completi
+    gramsRefUpdate();
     const gi = document.getElementById('grams-input');
     gi.value = '100';
     overlay.classList.add('active');
@@ -5171,16 +5205,44 @@ function openGramsSelector(food, meal) {
     setTimeout(() => { gi.focus(); gi.select(); }, 150);
 }
 
-function gramsUpdatePreview() {
+function gramsGetRef() {
+    // Legge i valori correnti dagli input modificabili
+    return {
+        kcal100:      parseFloat(document.getElementById('grams-ref-kcal').value)   || 0,
+        p100:         parseFloat(document.getElementById('grams-ref-p').value)       || 0,
+        c100:         parseFloat(document.getElementById('grams-ref-c').value)       || 0,
+        f100:         parseFloat(document.getElementById('grams-ref-f').value)       || 0,
+        sugars100:    parseFloat(document.getElementById('grams-ref-sugars').value)  || 0,
+        saturated100: parseFloat(document.getElementById('grams-ref-sat').value)     || 0,
+        fiber100:     parseFloat(document.getElementById('grams-ref-fiber').value)   || 0,
+        salt100:      parseFloat(document.getElementById('grams-ref-salt').value)    || 0,
+    };
+}
+
+function gramsRefUpdate() {
+    // Ricalcola Nutri-Score quando l'utente modifica un valore per 100g
+    const ref = gramsGetRef();
     const overlay = document.getElementById('grams-overlay');
     if (!overlay) return;
-    const food   = JSON.parse(overlay.dataset.food || '{}');
-    const g      = parseFloat(document.getElementById('grams-input').value) || 0;
+    const food = JSON.parse(overlay.dataset.food || '{}');
+    const cat  = food.offCategory || nutDetectCategory(ref.f100, ref.p100, ref.fiber100, ref.sugars100, ref.kcal100, []);
+    const score = nutCalcScoreFull(ref.kcal100, ref.p100, ref.sugars100, ref.saturated100, ref.fiber100, ref.salt100, ref.f100, 0, cat);
+    const nsEl = document.getElementById('grams-nutriscore');
+    if (nsEl) {
+        if (score) { nsEl.style.display = 'flex'; nsEl.innerHTML = nutScoreBar(score); }
+        else nsEl.style.display = 'none';
+    }
+    gramsUpdatePreview();
+}
+
+function gramsUpdatePreview() {
+    const ref = gramsGetRef();
+    const g   = parseFloat(document.getElementById('grams-input').value) || 0;
     const factor = g / 100;
-    document.getElementById('grams-prev-kcal').textContent = Math.round((food.kcal100 || 0) * factor);
-    document.getElementById('grams-prev-p').textContent    = ((food.p100 || 0) * factor).toFixed(1);
-    document.getElementById('grams-prev-c').textContent    = ((food.c100 || 0) * factor).toFixed(1);
-    document.getElementById('grams-prev-f').textContent    = ((food.f100 || 0) * factor).toFixed(1);
+    document.getElementById('grams-prev-kcal').textContent = Math.round(ref.kcal100 * factor);
+    document.getElementById('grams-prev-p').textContent    = (ref.p100   * factor).toFixed(1);
+    document.getElementById('grams-prev-c').textContent    = (ref.c100   * factor).toFixed(1);
+    document.getElementById('grams-prev-f').textContent    = (ref.f100   * factor).toFixed(1);
 }
 
 function gramsConfirm() {
@@ -5190,26 +5252,21 @@ function gramsConfirm() {
     const g       = parseFloat(document.getElementById('grams-input').value) || 100;
     if (!meal || !food.name) return;
     const factor = g / 100;
-    // Nutri-Score: usa quello già calcolato, oppure ricalcola con tutti i dati disponibili
-    const ns = food.nutriScore || nutCalcScoreFull(
-        food.kcal100||0, food.p100||0,
-        food.sugars100 != null ? food.sugars100 : (food.c100||0)*0.5,
-        food.saturated100 != null ? food.saturated100 : (food.f100||0)*0.35,
-        food.fiber100||0, food.salt100||0,
-        food.f100||0, 0,
-        food.offCategory || nutDetectCategory(food.f100||0, food.p100||0, food.fiber100||0, food.sugars100||(food.c100||0)*0.5, food.kcal100||0, [])
-    );
+    // Usa i valori correnti dagli input (potrebbero essere stati modificati dall'utente)
+    const ref = gramsGetRef();
+    const cat = food.offCategory || nutDetectCategory(ref.f100, ref.p100, ref.fiber100, ref.sugars100, ref.kcal100, []);
+    const ns  = nutCalcScoreFull(ref.kcal100, ref.p100, ref.sugars100, ref.saturated100, ref.fiber100, ref.salt100, ref.f100, 0, cat);
     const entry  = {
         name: food.name,
-        kcal: Math.round((food.kcal100 || 0) * factor),
-        p:    parseFloat(((food.p100 || 0) * factor).toFixed(1)),
-        c:    parseFloat(((food.c100 || 0) * factor).toFixed(1)),
-        f:    parseFloat(((food.f100 || 0) * factor).toFixed(1)),
-        // Preserva i campi per 100g e i dettagli per edit futuri
-        kcal100: food.kcal100||0, p100: food.p100||0, c100: food.c100||0, f100: food.f100||0,
-        sugars100: food.sugars100||0, saturated100: food.saturated100||0,
-        fiber100: food.fiber100||0, salt100: food.salt100||0,
-        offCategory: food.offCategory||null,
+        kcal: Math.round(ref.kcal100 * factor),
+        p:    parseFloat((ref.p100   * factor).toFixed(1)),
+        c:    parseFloat((ref.c100   * factor).toFixed(1)),
+        f:    parseFloat((ref.f100   * factor).toFixed(1)),
+        // Preserva i campi per 100g aggiornati (l'utente potrebbe averli corretti)
+        kcal100: ref.kcal100, p100: ref.p100, c100: ref.c100, f100: ref.f100,
+        sugars100: ref.sugars100, saturated100: ref.saturated100,
+        fiber100: ref.fiber100, salt100: ref.salt100,
+        offCategory: cat,
         nutriScore: ns,
         note: g + 'g'
     };
