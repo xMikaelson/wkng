@@ -4855,30 +4855,41 @@ async function _scanWithBarcodeDetector(meal) {
     try {
         const supported = await BarcodeDetector.getSupportedFormats().catch(() => []);
         const formats = supported.length > 0
-            ? supported.filter(f => ['ean_13','ean_8','upc_a','upc_e','code_128'].includes(f))
-            : ['ean_13','ean_8','upc_a','upc_e'];
+            ? supported.filter(f => ['ean_13','ean_8','upc_a','upc_e','code_128','code_39'].includes(f))
+            : ['ean_13','ean_8','upc_a','upc_e','code_128'];
         const detector = new BarcodeDetector({ formats: formats.length > 0 ? formats : ['ean_13','ean_8','upc_a'] });
-        // Optimized constraints for barcode scanning: autofocus + high res
+
+        // Alta risoluzione per codici piccoli
         const stream = await navigator.mediaDevices.getUserMedia({
             video: {
                 facingMode: 'environment',
-                width:  { ideal: 1280 },
-                height: { ideal: 720 },
-                focusMode: 'continuous',
+                width:  { ideal: 3840, min: 1280 },
+                height: { ideal: 2160, min: 720 },
                 advanced: [{ focusMode: 'continuous' }]
             }
         });
         window._scanStream = stream;
-        // Try to enable torch for better scanning in low light
+
+        const track = stream.getVideoTracks()[0];
+        const caps   = track.getCapabilities ? track.getCapabilities() : {};
+
+        // Torch
         try {
-            const track = stream.getVideoTracks()[0];
-            if (track && track.getCapabilities && track.getCapabilities().torch) {
+            if (caps.torch) {
                 await track.applyConstraints({ advanced: [{ torch: true }] });
                 window._torchEnabled = true;
             }
         } catch(e) {}
 
-        // Create video element
+        // Zoom x2 se supportato — aiuta molto su codici piccoli
+        try {
+            if (caps.zoom && caps.zoom.max >= 2) {
+                const zoomVal = Math.min(2, caps.zoom.max);
+                await track.applyConstraints({ advanced: [{ zoom: zoomVal }] });
+            }
+        } catch(e) {}
+
+        // Video element
         let video = document.getElementById('scan-video');
         if (!video) {
             video = document.createElement('video');
@@ -4893,29 +4904,68 @@ async function _scanWithBarcodeDetector(meal) {
         await video.play();
         if (hint) hint.textContent = 'Inquadra il codice a barre';
 
+        // Canvas nascosto per preprocessing — aumenta contrasto per codici piccoli
+        let offCanvas = document.getElementById('scan-offcanvas');
+        if (!offCanvas) {
+            offCanvas = document.createElement('canvas');
+            offCanvas.id = 'scan-offcanvas';
+            offCanvas.style.display = 'none';
+            document.body.appendChild(offCanvas);
+        }
+        const offCtx = offCanvas.getContext('2d');
+
         let _scanning = true;
+        let _attempts = 0;
         window._stopScan = () => { _scanning = false; clearInterval(window._scanInterval); };
 
-        // Use setInterval at 200ms — more reliable than rAF on iOS Safari
         window._scanInterval = setInterval(async () => {
             if (!_scanning || !document.getElementById('camera-overlay')?.classList.contains('active')) {
                 clearInterval(window._scanInterval);
                 return;
             }
-            if (video.readyState < 2) return; // not ready yet
+            if (video.readyState < 2) return;
+            _attempts++;
+
+            // Prova 1: detect diretto sul video (più veloce)
             try {
                 const barcodes = await detector.detect(video);
                 if (barcodes.length > 0) {
                     _scanning = false;
                     clearInterval(window._scanInterval);
                     const code = barcodes[0].rawValue;
-                    // Visual feedback
-                    const hint = document.getElementById('camera-hint');
                     if (hint) hint.textContent = '✓ ' + code;
                     setTimeout(() => { cameraClose(); cameraFetchProduct(code, meal); }, 200);
+                    return;
                 }
             } catch(e) {}
-        }, 80);
+
+            // Prova 2 ogni 3 tentativi: preprocessing con aumento contrasto
+            if (_attempts % 3 === 0) {
+                try {
+                    const vw = video.videoWidth  || 640;
+                    const vh = video.videoHeight || 480;
+                    offCanvas.width  = vw;
+                    offCanvas.height = vh;
+                    // Ritaglio zona centrale (il codice è tipicamente al centro)
+                    offCtx.filter = 'contrast(1.8) brightness(1.1)';
+                    offCtx.drawImage(video, 0, 0, vw, vh);
+                    offCtx.filter = 'none';
+                    const barcodes2 = await detector.detect(offCanvas);
+                    if (barcodes2.length > 0) {
+                        _scanning = false;
+                        clearInterval(window._scanInterval);
+                        const code = barcodes2[0].rawValue;
+                        if (hint) hint.textContent = '✓ ' + code;
+                        setTimeout(() => { cameraClose(); cameraFetchProduct(code, meal); }, 200);
+                    }
+                } catch(e) {}
+            }
+
+            // Suggerimento dopo 3 secondi senza risultati
+            if (_attempts === 20 && hint) hint.textContent = 'Avvicina e tieni fermo il prodotto...';
+            if (_attempts === 50 && hint) hint.textContent = 'Codice difficile — prova migliore illuminazione';
+        }, 150);
+
     } catch(e) {
         console.warn('BarcodeDetector failed:', e.message);
         if (hint) hint.textContent = 'Uso metodo alternativo...';
@@ -4957,7 +5007,12 @@ function _scanWithZXing(meal) {
         }
 
         codeReader.decodeFromConstraints(
-            { video: { facingMode: 'environment' } },
+            { video: {
+                facingMode: 'environment',
+                width:  { ideal: 1920, min: 1280 },
+                height: { ideal: 1080, min: 720 },
+                advanced: [{ focusMode: 'continuous' }]
+            } },
             video,
             (result, err) => {
                 if (result) {
@@ -4992,6 +5047,9 @@ function cameraClose(silent) {
         window._scanStream.getTracks().forEach(t => t.stop());
         window._scanStream = null;
     }
+    // Remove preprocessing canvas
+    const oc = document.getElementById('scan-offcanvas');
+    if (oc) oc.remove();
     // Remove video element
     const video = document.getElementById('scan-video');
     if (video) { video.srcObject = null; video.remove(); }
