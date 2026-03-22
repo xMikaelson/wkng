@@ -2335,11 +2335,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <!-- ══ GRAMS SELECTOR OVERLAY ══ -->
 <div id="grams-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.92);z-index:5100;align-items:flex-end;justify-content:center;">
   <div style="background:#1e293b;border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:480px;box-sizing:border-box;position:relative;">
-    <!-- X button: absolute top-right corner of panel -->
-    <button onclick="gramsClose()" style="position:absolute;top:16px;right:16px;background:none;border:none;color:#94a3b8;font-size:1.2rem;cursor:pointer;padding:0;line-height:1;z-index:1;">✕</button>
-    <div style="margin-bottom:14px;padding-right:32px;">
-      <div style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Prodotto trovato</div>
-      <div id="grams-food-name" style="font-size:1.1rem;font-weight:700;color:#e2e8f0;line-height:1.3;"></div>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;width:100%;margin-bottom:14px;">
+      <div>
+        <div style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Prodotto trovato</div>
+        <div id="grams-food-name" style="font-size:1.1rem;font-weight:700;color:#e2e8f0;line-height:1.3;max-width:280px;"></div>
+      </div>
+      <button onclick="gramsClose()" style="background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:0;line-height:1;margin-left:12px;flex-shrink:0;">✕</button>
     </div>
     <!-- Nutri-Score: full width row, centered -->
     <div id="grams-nutriscore" style="display:none;position:relative;height:34px;margin-bottom:14px;"></div>
@@ -4683,9 +4684,9 @@ async function cameraFetchProduct(barcode, meal) {
     if (msg)  msg.textContent = 'Ricerca prodotto...';
 
     const endpoints = [
-        `https://it.openfoodfacts.org/api/v2/product/${barcode}`,
         `https://it.openfoodfacts.org/api/v0/product/${barcode}.json`,
         `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`,
+        `https://it.openfoodfacts.org/api/v2/product/${barcode}`,
     ];
 
     let food = null;
