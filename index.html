@@ -4069,23 +4069,76 @@ function nutGetActiveMeal() {
 
 
 // ── Nutri-Score calculation ────────────────────────────────────
+
+// ── Awakening Community DB ────────────────────────────────────
+async function awOfferSave(food) {
+    // Ask user if they want to contribute this product
+    const { data: { user } } = await sbClient.auth.getUser();
+    if (!user) return; // must be logged in
+
+    // Check if already exists
+    const { data: existing } = await sbClient
+        .from('aw_products').select('barcode').eq('barcode', food.barcode).single();
+    if (existing) return; // already in DB
+
+    // Show toast with contribute button
+    const toastEl = document.createElement('div');
+    toastEl.style.cssText = 'position:fixed;bottom:calc(var(--nav-h,70px) + 16px);left:50%;transform:translateX(-50%);background:#1e293b;border:1px solid rgba(52,211,153,0.3);border-radius:12px;padding:12px 16px;z-index:9999;display:flex;align-items:center;gap:12px;max-width:320px;box-shadow:0 4px 20px rgba(0,0,0,0.4);';
+    toastEl.innerHTML =
+        '<div style="font-size:0.75rem;color:#94a3b8;flex:1;line-height:1.4;">Contribuisci <strong style="color:#e2e8f0;">' + food.name + '</strong> al database Awakening?</div>' +
+        '<button id="aw-yes-btn" style="padding:6px 12px;background:var(--primary);border:none;border-radius:8px;color:#000;font-size:0.7rem;font-weight:800;cursor:pointer;font-family:inherit;flex-shrink:0;">Sì</button>' +
+        '<button id="aw-no-btn" style="padding:6px 8px;background:none;border:none;color:#64748b;font-size:0.7rem;cursor:pointer;font-family:inherit;flex-shrink:0;">No</button>';
+    document.body.appendChild(toastEl);
+
+    const cleanup = () => { if (toastEl.parentNode) toastEl.remove(); };
+    document.getElementById('aw-yes-btn').addEventListener('click', () => {
+        awSaveProduct(food, user.id);
+        cleanup();
+    });
+    document.getElementById('aw-no-btn').addEventListener('click', cleanup);
+    setTimeout(cleanup, 8000);
+}
+
+async function awSaveProduct(food, userId) {
+    try {
+        const { error } = await sbClient.from('aw_products').insert({
+            barcode:    food.barcode,
+            name:       food.name,
+            kcal100:    food.kcal100 || 0,
+            p100:       food.p100    || 0,
+            c100:       food.c100    || 0,
+            f100:       food.f100    || 0,
+            sugars100:  food.sugars100  || 0,
+            sat100:     food.sat100     || 0,
+            fiber100:   food.fiber100   || 0,
+            sodium100:  food.sodium100  || 0,
+            nutri_score: food.nutriScore || null,
+            added_by:   userId
+        });
+        if (!error) showToast('Grazie! Prodotto aggiunto al database Awakening', 'success');
+        else console.warn('aw_products insert error:', error.message);
+    } catch(e) { console.warn('awSaveProduct error:', e.message); }
+}
+
 function nutCalcScore(kcal100, p100, c100, f100) {
-    // Simplified algorithm based on per-100g values
-    // Negative points (bad): energy, sugars (approx 50% of carbs for unknown foods), saturated fat (approx 35% of fat)
-    const negPts =
-        (kcal100 > 3350 ? 10 : kcal100 > 3015 ? 9 : kcal100 > 2680 ? 8 : kcal100 > 2345 ? 7 :
-         kcal100 > 2010 ? 6 : kcal100 > 1675 ? 5 : kcal100 > 1340 ? 4 : kcal100 > 1005 ? 3 :
-         kcal100 > 670 ? 2 : kcal100 > 335 ? 1 : 0) +
-        (f100 * 0.35 > 10 ? 10 : f100 * 0.35 > 9 ? 9 : f100 * 0.35 > 8 ? 8 : f100 * 0.35 > 7 ? 7 :
-         f100 * 0.35 > 6 ? 6 : f100 * 0.35 > 5 ? 5 : f100 * 0.35 > 4 ? 4 : f100 * 0.35 > 3 ? 3 :
-         f100 * 0.35 > 2 ? 2 : f100 * 0.35 > 1 ? 1 : 0) +
-        (c100 * 0.5 > 45 ? 10 : c100 * 0.5 > 40 ? 9 : c100 * 0.5 > 36 ? 8 : c100 * 0.5 > 31 ? 7 :
-         c100 * 0.5 > 27 ? 6 : c100 * 0.5 > 22.5 ? 5 : c100 * 0.5 > 18 ? 4 : c100 * 0.5 > 13.5 ? 3 :
-         c100 * 0.5 > 9 ? 2 : c100 * 0.5 > 4.5 ? 1 : 0);
-    // Positive points (good): protein, fiber (unknown → 0)
-    const posPts =
-        (p100 > 8 ? 5 : p100 > 6.4 ? 4 : p100 > 4.8 ? 3 : p100 > 3.2 ? 2 : p100 > 1.6 ? 1 : 0);
-    const score = negPts - posPts;
+    // Simplified (when only basic macros available)
+    const sugars = c100 * 0.5;
+    const sat    = f100 * 0.35;
+    return nutCalcScoreFull(kcal100, p100, sugars, sat, 0, 0);
+}
+
+function nutCalcScoreFull(kcal100, p100, sugars100, sat100, fiber100, sodium100) {
+    // Full Nutri-Score algorithm (Santé Publique France)
+    const kj = kcal100 * 4.184;
+    const neg =
+        (kj > 3350?10:kj>3015?9:kj>2680?8:kj>2345?7:kj>2010?6:kj>1675?5:kj>1340?4:kj>1005?3:kj>670?2:kj>335?1:0) +
+        (sugars100>45?10:sugars100>40?9:sugars100>36?8:sugars100>31?7:sugars100>27?6:sugars100>22.5?5:sugars100>18?4:sugars100>13.5?3:sugars100>9?2:sugars100>4.5?1:0) +
+        (sat100>10?10:sat100>9?9:sat100>8?8:sat100>7?7:sat100>6?6:sat100>5?5:sat100>4?4:sat100>3?3:sat100>2?2:sat100>1?1:0) +
+        (sodium100>900?10:sodium100>810?9:sodium100>720?8:sodium100>630?7:sodium100>540?6:sodium100>450?5:sodium100>360?4:sodium100>270?3:sodium100>180?2:sodium100>90?1:0);
+    const pos =
+        (fiber100>4.7?5:fiber100>3.7?4:fiber100>2.8?3:fiber100>1.9?2:fiber100>0.9?1:0) +
+        (p100>8?5:p100>6.4?4:p100>4.8?3:p100>3.2?2:p100>1.6?1:0);
+    const score = neg >= 11 ? neg - pos : neg - pos;
     if (score <= -1) return 'A';
     if (score <= 2)  return 'B';
     if (score <= 10) return 'C';
@@ -4689,13 +4742,37 @@ async function cameraFetchProduct(barcode, meal) {
     if (anim) anim.classList.add('active');
     if (msg)  msg.textContent = 'Ricerca prodotto...';
 
+    let food = null;
+
+    // ── Step 1: Search Awakening community database first ──
+    try {
+        const { data: awProd, error: awErr } = await sbClient
+            .from('aw_products').select('*').eq('barcode', barcode).single();
+        if (!awErr && awProd) {
+            const ns = awProd.nutri_score || nutCalcScoreFull(
+                awProd.kcal100||0, awProd.p100||0,
+                awProd.sugars100||0, awProd.sat100||0,
+                awProd.fiber100||0, awProd.sodium100||0
+            );
+            food = {
+                name: awProd.name, barcode,
+                kcal100: awProd.kcal100||0, p100: awProd.p100||0,
+                c100: awProd.c100||0,        f100: awProd.f100||0,
+                sugars100: awProd.sugars100||0, sat100: awProd.sat100||0,
+                fiber100: awProd.fiber100||0,   sodium100: awProd.sodium100||0,
+                nutriScore: ns, fromAwDB: true, id: Date.now(), incomplete: false
+            };
+            console.log('Found in Awakening DB:', food.name);
+        }
+    } catch(e) { console.warn('aw_products lookup error:', e.message); }
+
+    // ── Step 2: If not found, try Open Food Facts ──
+    if (!food) {
     const endpoints = [
         `https://it.openfoodfacts.org/api/v0/product/${barcode}.json`,
         `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`,
         `https://it.openfoodfacts.org/api/v2/product/${barcode}`,
     ];
-
-    let food = null;
 
     for (const url of endpoints) {
         try {
@@ -4722,15 +4799,13 @@ async function cameraFetchProduct(barcode, meal) {
             const kjRaw   = firstVal(['energy-kj_100g','energy-kj-100g','energy_100g']);
             const kcal100 = Math.round(kcalRaw > 0 ? kcalRaw : kjRaw / 4.184);
 
-            const p100 = parseFloat(firstVal([
-                'proteins_100g','protein_100g','proteins-100g'
-            ]).toFixed(1));
-            const c100 = parseFloat(firstVal([
-                'carbohydrates_100g','carbohydrate_100g','carbohydrates-100g'
-            ]).toFixed(1));
-            const f100 = parseFloat(firstVal([
-                'fat_100g','fats_100g','fat-100g','lipids_100g'
-            ]).toFixed(1));
+            const p100       = parseFloat(firstVal(['proteins_100g','protein_100g','proteins-100g']).toFixed(1));
+            const c100       = parseFloat(firstVal(['carbohydrates_100g','carbohydrate_100g','carbohydrates-100g']).toFixed(1));
+            const f100       = parseFloat(firstVal(['fat_100g','fats_100g','fat-100g','lipids_100g']).toFixed(1));
+            const sugars100  = parseFloat(firstVal(['sugars_100g','sugar_100g','sugars-100g']).toFixed(1));
+            const sat100     = parseFloat(firstVal(['saturated-fat_100g','saturated_fat_100g','saturated-fat-100g']).toFixed(1));
+            const fiber100   = parseFloat(firstVal(['fiber_100g','fibers_100g','fibre_100g','fiber-100g']).toFixed(1));
+            const sodium100  = parseFloat(firstVal(['sodium_100g','sodium-100g']).toFixed(1));
 
 
 
@@ -4778,10 +4853,12 @@ async function cameraFetchProduct(barcode, meal) {
             // Nutri-Score from OFF (A/B/C/D/E)
             const nutriScore = (p.nutrition_grades || p.nutrition_grade_fr || '').toUpperCase().trim();
             food = {
-                name:    productName,
+                name: productName,
                 kcal100, p100, c100, f100,
-                nutriScore: nutriScore || null,
-                id:      Date.now(),
+                sugars100, sat100, fiber100, sodium100,
+                nutriScore: nutriScore || nutCalcScoreFull(kcal100, p100, sugars100, sat100, fiber100, sodium100) || null,
+                barcode,
+                id: Date.now(),
                 incomplete: isIncomplete
             };
             break;
@@ -4793,6 +4870,8 @@ async function cameraFetchProduct(barcode, meal) {
 
     if (anim) anim.classList.remove('active');
     btns.forEach(b => b.disabled = false);
+
+    } // end if(!food) OFF block
 
     if (food) {
         openGramsSelector(food, meal);
@@ -4889,6 +4968,10 @@ function gramsConfirm() {
     nutTlUpdateUI();
     overlay.classList.remove('active');
     showToast('✓ ' + entry.name + ' (' + g + 'g) — ' + entry.kcal + ' kcal', 'success');
+    // Offer to save to Awakening community DB if product has barcode and not already there
+    if (food.barcode && !food.fromAwDB && !food.incomplete) {
+        awOfferSave(food);
+    }
 }
 
 function gramsClose() {
