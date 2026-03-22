@@ -4110,7 +4110,7 @@ async function awSaveProduct(food, userId) {
             c100:        food.c100       || 0,
             f100:        food.f100       || 0,
             sugars100:   food.sugars100  || 0,
-            sat100:      food.sat100     || 0,
+            saturated100:      food.saturated100     || 0,
             fiber100:    food.fiber100   || 0,
             sodium100:   food.sodium100  || 0,
             nutri_score: food.nutriScore || null,
@@ -4138,13 +4138,13 @@ function nutCalcScore(kcal100, p100, c100, f100) {
     return nutCalcScoreFull(kcal100, p100, sugars, sat, 0, 0);
 }
 
-function nutCalcScoreFull(kcal100, p100, sugars100, sat100, fiber100, sodium100) {
+function nutCalcScoreFull(kcal100, p100, sugars100, saturated100, fiber100, sodium100) {
     // Full Nutri-Score algorithm (Santé Publique France)
     const kj = kcal100 * 4.184;
     const neg =
         (kj > 3350?10:kj>3015?9:kj>2680?8:kj>2345?7:kj>2010?6:kj>1675?5:kj>1340?4:kj>1005?3:kj>670?2:kj>335?1:0) +
         (sugars100>45?10:sugars100>40?9:sugars100>36?8:sugars100>31?7:sugars100>27?6:sugars100>22.5?5:sugars100>18?4:sugars100>13.5?3:sugars100>9?2:sugars100>4.5?1:0) +
-        (sat100>10?10:sat100>9?9:sat100>8?8:sat100>7?7:sat100>6?6:sat100>5?5:sat100>4?4:sat100>3?3:sat100>2?2:sat100>1?1:0) +
+        (saturated100>10?10:saturated100>9?9:saturated100>8?8:saturated100>7?7:saturated100>6?6:saturated100>5?5:saturated100>4?4:saturated100>3?3:saturated100>2?2:saturated100>1?1:0) +
         (sodium100>900?10:sodium100>810?9:sodium100>720?8:sodium100>630?7:sodium100>540?6:sodium100>450?5:sodium100>360?4:sodium100>270?3:sodium100>180?2:sodium100>90?1:0);
     const pos =
         (fiber100>4.7?5:fiber100>3.7?4:fiber100>2.8?3:fiber100>1.9?2:fiber100>0.9?1:0) +
@@ -4762,14 +4762,14 @@ async function cameraFetchProduct(barcode, meal) {
         if (!awErr && awProd) {
             const ns = awProd.nutri_score || nutCalcScoreFull(
                 awProd.kcal100||0, awProd.p100||0,
-                awProd.sugars100||0, awProd.sat100||0,
+                awProd.sugars100||0, awProd.saturated100||0,
                 awProd.fiber100||0, awProd.sodium100||0
             );
             food = {
                 name: awProd.name, barcode,
                 kcal100: awProd.kcal100||0, p100: awProd.p100||0,
                 c100: awProd.c100||0,        f100: awProd.f100||0,
-                sugars100: awProd.sugars100||0, sat100: awProd.sat100||0,
+                sugars100: awProd.sugars100||0, saturated100: awProd.saturated100||0,
                 fiber100: awProd.fiber100||0,   sodium100: awProd.sodium100||0,
                 nutriScore: ns, fromAwDB: true, id: Date.now(), incomplete: false
             };
@@ -4814,7 +4814,7 @@ async function cameraFetchProduct(barcode, meal) {
             const c100       = parseFloat(firstVal(['carbohydrates_100g','carbohydrate_100g','carbohydrates-100g']).toFixed(1));
             const f100       = parseFloat(firstVal(['fat_100g','fats_100g','fat-100g','lipids_100g']).toFixed(1));
             const sugars100  = parseFloat(firstVal(['sugars_100g','sugar_100g','sugars-100g']).toFixed(1));
-            const sat100     = parseFloat(firstVal(['saturated-fat_100g','saturated_fat_100g','saturated-fat-100g']).toFixed(1));
+            const saturated100     = parseFloat(firstVal(['saturated-fat_100g','saturated_fat_100g','saturated-fat-100g']).toFixed(1));
             const fiber100   = parseFloat(firstVal(['fiber_100g','fibers_100g','fibre_100g','fiber-100g']).toFixed(1));
             const sodium100  = parseFloat(firstVal(['sodium_100g','sodium-100g']).toFixed(1));
 
@@ -4866,8 +4866,8 @@ async function cameraFetchProduct(barcode, meal) {
             food = {
                 name: productName,
                 kcal100, p100, c100, f100,
-                sugars100, sat100, fiber100, sodium100,
-                nutriScore: nutriScore || nutCalcScoreFull(kcal100, p100, sugars100, sat100, fiber100, sodium100) || null,
+                sugars100, saturated100, fiber100, sodium100,
+                nutriScore: nutriScore || nutCalcScoreFull(kcal100, p100, sugars100, saturated100, fiber100, sodium100) || null,
                 barcode,
                 id: Date.now(),
                 incomplete: isIncomplete
