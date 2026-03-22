@@ -4588,21 +4588,32 @@ function nutTimelineRender() {
 }
 
 function nutEditFood(food, meal) {
-    // Build a food object compatible with openGramsSelector
-    // We need kcal100, p100, c100, f100 — reconstruct from note (e.g. "150g")
+    // Ricostruisce l'oggetto per 100g da note (es. "150g")
     const grams = parseFloat(food.note) || 100;
     const factor = 100 / grams;
+
+    // Se il food ha già i campi 100g salvati (inserimento manuale o barcode recente) li usa
+    // direttamente, altrimenti li ricostruisce dai valori scalati
+    const kcal100 = food.kcal100 != null ? food.kcal100 : Math.round((food.kcal || 0) * factor);
+    const p100    = food.p100    != null ? food.p100    : parseFloat(((food.p || 0) * factor).toFixed(1));
+    const c100    = food.c100    != null ? food.c100    : parseFloat(((food.c || 0) * factor).toFixed(1));
+    const f100    = food.f100    != null ? food.f100    : parseFloat(((food.f || 0) * factor).toFixed(1));
+
     const foodForEdit = {
-        name:    food.name,
-        kcal100: Math.round((food.kcal || 0) * factor),
-        p100:    parseFloat(((food.p  || 0) * factor).toFixed(1)),
-        c100:    parseFloat(((food.c  || 0) * factor).toFixed(1)),
-        f100:    parseFloat(((food.f  || 0) * factor).toFixed(1)),
-        id:      food.id,
-        _editId: food.id,  // mark as edit, not new
-        _editMeal: meal
+        name:         food.name,
+        kcal100, p100, c100, f100,
+        // Campi dettagliati — preservati se esistono, altrimenti stimati
+        sugars100:    food.sugars100    != null ? food.sugars100    : parseFloat(((food.sugars    || 0) * factor).toFixed(1)),
+        saturated100: food.saturated100 != null ? food.saturated100 : parseFloat(((food.saturated || 0) * factor).toFixed(1)),
+        fiber100:     food.fiber100     != null ? food.fiber100     : parseFloat(((food.fiber     || 0) * factor).toFixed(1)),
+        salt100:      food.salt100      != null ? food.salt100      : parseFloat(((food.salt      || 0) * factor).toFixed(2)),
+        offCategory:  food.offCategory  || null,
+        // Nutri-Score già calcolato: passalo direttamente così grams-overlay lo mostra senza ricalcolo
+        nutriScore:   food.nutriScore   || null,
+        id:           food.id,
+        _editId:      food.id,
+        _editMeal:    meal
     };
-    // Override gramsConfirm to update instead of push
     window._nutEditMode = { id: food.id, meal };
     openGramsSelector(foodForEdit, meal);
 }
@@ -5178,13 +5189,27 @@ function gramsConfirm() {
     const g       = parseFloat(document.getElementById('grams-input').value) || 100;
     if (!meal || !food.name) return;
     const factor = g / 100;
+    // Nutri-Score: usa quello già calcolato, oppure ricalcola con tutti i dati disponibili
+    const ns = food.nutriScore || nutCalcScoreFull(
+        food.kcal100||0, food.p100||0,
+        food.sugars100 != null ? food.sugars100 : (food.c100||0)*0.5,
+        food.saturated100 != null ? food.saturated100 : (food.f100||0)*0.35,
+        food.fiber100||0, food.salt100||0,
+        food.f100||0, 0,
+        food.offCategory || nutDetectCategory(food.f100||0, food.p100||0, food.fiber100||0, food.sugars100||(food.c100||0)*0.5, food.kcal100||0, [])
+    );
     const entry  = {
         name: food.name,
         kcal: Math.round((food.kcal100 || 0) * factor),
         p:    parseFloat(((food.p100 || 0) * factor).toFixed(1)),
         c:    parseFloat(((food.c100 || 0) * factor).toFixed(1)),
         f:    parseFloat(((food.f100 || 0) * factor).toFixed(1)),
-        nutriScore: food.nutriScore || nutCalcScoreFull(food.kcal100||0, food.p100||0, (food.c100||0)*0.5, (food.f100||0)*0.35, 0, 0, food.f100||0, 0, food.offCategory||'generic'),
+        // Preserva i campi per 100g e i dettagli per edit futuri
+        kcal100: food.kcal100||0, p100: food.p100||0, c100: food.c100||0, f100: food.f100||0,
+        sugars100: food.sugars100||0, saturated100: food.saturated100||0,
+        fiber100: food.fiber100||0, salt100: food.salt100||0,
+        offCategory: food.offCategory||null,
+        nutriScore: ns,
         note: g + 'g'
     };
     const mealData = NUT.meals;
