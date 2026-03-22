@@ -4159,13 +4159,6 @@ async function awOfferSave(food) {
 async function awSaveProduct(food, userId) {
     try {
         console.log('awSaveProduct: inserting', food.barcode, 'user:', userId);
-        // salt100 = sale g/100g (valore diretto da etichetta o sodio*2.5)
-        // sodium100 = sodio g/100g (colonna legacy Supabase — la popoliamo con il sale
-        //             per retrocompatibilità, dato che la colonna si chiama sodium100
-        //             ma il valore atteso dall'algoritmo è il sale)
-        const salt100val = food.salt100 != null
-            ? food.salt100
-            : (food.sodium100 != null ? food.sodium100 * 2.5 : 0);
         const payload = {
             barcode:      food.barcode,
             name:         food.name,
@@ -4176,7 +4169,7 @@ async function awSaveProduct(food, userId) {
             sugars100:    food.sugars100     || 0,
             saturated100: food.saturated100  || 0,
             fiber100:     food.fiber100      || 0,
-            sodium100:    salt100val,         // colonna Supabase — contiene sale g/100g
+            salt100:      food.salt100       || 0,
             nutri_score:  food.nutriScore    || null,
             added_by:     userId
         };
@@ -4999,8 +4992,7 @@ async function cameraFetchProduct(barcode, meal) {
         const { data: awProd, error: awErr } = await sbClient
             .from('aw_products').select('*').eq('barcode', barcode).single();
         if (!awErr && awProd) {
-            // sodium100 in Supabase ora contiene sale g/100g (non sodio mg)
-            const awSalt = awProd.sodium100 || 0;
+            const awSalt = awProd.salt100 || 0;
             const awCat  = nutDetectCategory(awProd.f100||0, awProd.p100||0, awProd.fiber100||0, awProd.sugars100||0, awProd.kcal100||0, []);
             const ns = awProd.nutri_score || nutCalcScoreFull(
                 awProd.kcal100||0, awProd.p100||0,
@@ -5012,7 +5004,7 @@ async function cameraFetchProduct(barcode, meal) {
                 kcal100: awProd.kcal100||0, p100: awProd.p100||0,
                 c100: awProd.c100||0,        f100: awProd.f100||0,
                 sugars100: awProd.sugars100||0, saturated100: awProd.saturated100||0,
-                fiber100: awProd.fiber100||0,   sodium100: awProd.sodium100||0,
+                fiber100: awProd.fiber100||0,   salt100: awProd.salt100||0,
                 nutriScore: ns, fromAwDB: true, id: Date.now(), incomplete: false
             };
             console.log('Found in Awakening DB:', food.name);
@@ -5058,8 +5050,9 @@ async function cameraFetchProduct(barcode, meal) {
             const sugars100  = parseFloat(firstVal(['sugars_100g','sugar_100g','sugars-100g']).toFixed(1));
             const saturated100     = parseFloat(firstVal(['saturated-fat_100g','saturated_fat_100g','saturated-fat-100g']).toFixed(1));
             const fiber100   = parseFloat(firstVal(['fiber_100g','fibers_100g','fibre_100g','fiber-100g']).toFixed(1));
-            const sodium100  = parseFloat(firstVal(['sodium_100g','sodium-100g']).toFixed(1));
+            const sodium100  = parseFloat(firstVal(['sodium_100g','sodium-100g']).toFixed(3));
             // Sale: legge salt_100g direttamente se disponibile (più preciso di sodium*2.5)
+            // Niente arrotondamento qui — il sale può essere molto piccolo (es. 0.04g)
             const salt100_raw = firstVal(['salt_100g','salt-100g']);
 
 
@@ -5111,13 +5104,13 @@ async function cameraFetchProduct(barcode, meal) {
             // Nutri-Score from OFF (A/B/C/D/E)
             const nutriScore = (p.nutrition_grades || p.nutrition_grade_fr || '').toUpperCase().trim();
             // Sale: preferisce valore diretto dall'etichetta, fallback: sodium*2.5
-            const salt100 = salt100_raw > 0 ? salt100_raw : parseFloat((sodium100 * 2.5).toFixed(2));
+            const salt100 = salt100_raw > 0 ? parseFloat(salt100_raw.toFixed(3)) : parseFloat((sodium100 * 2.5).toFixed(3));
             const fvl100  = parseFloat(firstVal(['fruits-vegetables-nuts_100g','fruits-vegetables-legumes-estimate-from-ingredients_100g']).toFixed(1));
             food = {
                 name: productName,
                 kcal100, p100, c100, f100,
                 sugars100, saturated100, fiber100,
-                sodium100, salt100, fvl100,  // salt100 già in g/100g
+                sodium100, salt100, fvl100,
                 offCategory,
                 nutriScore: nutriScore || nutCalcScoreFull(kcal100, p100, sugars100, saturated100, fiber100, salt100, f100, fvl100, offCategory) || null,
                 barcode,
