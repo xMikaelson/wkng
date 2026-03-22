@@ -2431,6 +2431,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       </div>
     </div>
 
+    <!-- Checkbox contributo — visibile solo se valori modificati -->
+    <label id="grams-contribute-row" style="display:none;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(52,211,153,0.05);border:1px solid rgba(52,211,153,0.15);border-radius:10px;cursor:pointer;margin-bottom:12px;">
+      <input type="checkbox" id="grams-contribute" style="margin-top:2px;accent-color:#34d399;width:16px;height:16px;flex-shrink:0;">
+      <span style="font-size:0.65rem;color:#94a3b8;line-height:1.5;">Vuoi contribuire a migliorare il database Awakening? Il prodotto verrà condiviso con la community in modo anonimo.</span>
+    </label>
     <button onclick="gramsConfirm()"
       style="width:100%;padding:16px;background:linear-gradient(135deg,var(--primary),var(--accent));border:none;border-radius:14px;color:#000;font-size:1rem;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0.05em;">
       AGGIUNGI AL PASTO
@@ -2456,7 +2461,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <!-- Barcode + Nome + Marchio -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
       <div style="grid-column:1/3;">
-        <div style="font-size:0.55rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Codice a barre (opzionale)</div>
+        <div style="font-size:0.55rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Codice a barre *</div>
         <input id="manual-food-barcode" type="text" inputmode="numeric" placeholder="Es. 8001120664877" autocomplete="off" style="width:100%;padding:8px 10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.82rem;box-sizing:border-box;font-family:inherit;">
       </div>
       <div style="grid-column:1/3;">
@@ -5071,13 +5076,12 @@ function cameraSubmitCode(meal) {
 
 
 async function cameraFetchProduct(barcode, meal) {
-    showToast('Codice ' + barcode + ' — ricerca...', '');
     const anim = document.getElementById('meal-anim-' + meal);
     const msg  = document.getElementById('meal-msg-' + meal);
     const btns = document.querySelectorAll('#meal-' + meal + ' .meal-add-btn');
     btns.forEach(b => b.disabled = true);
     if (anim) anim.classList.add('active');
-    if (msg)  msg.textContent = 'Ricerca prodotto...';
+    if (msg)  msg.textContent = '';
 
     let food = null;
 
@@ -5254,6 +5258,11 @@ function openGramsSelector(food, meal) {
     document.getElementById('grams-ref-salt').value   = food.salt100      != null ? food.salt100      : '';
     // Nutri-Score bar — calcolato con i dati completi
     gramsRefUpdate();
+    // Reset checkbox contributo
+    const gcb = document.getElementById('grams-contribute');
+    const gcr = document.getElementById('grams-contribute-row');
+    if (gcb) gcb.checked = false;
+    if (gcr) gcr.style.display = 'none';
     // Reset stato modifica: disabilita tutti gli input
     const editBtn = document.getElementById('grams-edit-btn');
     if (editBtn) { editBtn.innerHTML = '✏️ Modifica'; editBtn.dataset.editing = '0'; editBtn.style.color = '#94a3b8'; editBtn.style.borderColor = 'rgba(255,255,255,0.12)'; }
@@ -5288,6 +5297,9 @@ function gramsToggleEdit() {
         btn.style.color = '#94a3b8';
         btn.style.borderColor = 'rgba(255,255,255,0.12)';
         gramsRefUpdate();
+        // Mostra checkbox contributo quando i valori vengono modificati
+        const contRow = document.getElementById('grams-contribute-row');
+        if (contRow) contRow.style.display = 'flex';
     } else {
         // Attiva modifica
         ids.forEach(id => {
@@ -5395,9 +5407,9 @@ function gramsConfirm() {
     nutTlUpdateUI();
     overlay.classList.remove('active');
     showToast('✓ ' + entry.name + ' (' + g + 'g) — ' + entry.kcal + ' kcal', 'success');
-    // Offer to save to Awakening community DB — usa entry con i valori corretti (modificati)
-    if (food.barcode && !food.fromAwDB && !food.incomplete) {
-        // Merge: barcode e fromAwDB da food, valori *100 aggiornati da entry
+    // Contributo DB Awakening — solo se checkbox spuntata e parametri modificati
+    const gramsContribute = document.getElementById('grams-contribute')?.checked;
+    if (gramsContribute && food.barcode && !food.incomplete) {
         const foodToSave = Object.assign({}, food, {
             kcal100:      entry.kcal100,
             p100:         entry.p100,
@@ -5409,7 +5421,9 @@ function gramsConfirm() {
             salt100:      entry.salt100,
             nutriScore:   entry.nutriScore,
         });
-        awOfferSave(foodToSave);
+        sbClient.auth.getUser().then(({ data: { user } }) => {
+            if (user) awSaveProduct(foodToSave, user.id);
+        });
     }
 }
 
@@ -5485,9 +5499,10 @@ function mealManualSubmit() {
     const overlay = document.getElementById('manual-food-overlay');
     const meal    = overlay?.dataset.meal;
     if (!meal) return;
+    const barcode = document.getElementById('manual-food-barcode')?.value.trim() || null;
+    if (!barcode) { showToast('Inserisci il codice a barre', 'error'); return; }
     const name = document.getElementById('manual-food-name')?.value.trim();
     if (!name) { showToast('Inserisci il nome', 'error'); return; }
-    const barcode = document.getElementById('manual-food-barcode')?.value.trim() || null;
     const brand   = document.getElementById('manual-food-brand')?.value.trim() || '';
     const kcal   = parseFloat(document.getElementById('manual-food-kcal')?.value  || '0') || 0;
     const p      = parseFloat(document.getElementById('manual-food-p')?.value     || '0') || 0;
