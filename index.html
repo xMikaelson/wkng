@@ -2349,53 +2349,52 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
     <!-- Per 100g reference — visualizzazione / modifica -->
     <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 14px;margin-bottom:16px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <div style="font-size:0.52rem;color:#475569;text-transform:uppercase;letter-spacing:0.1em;">Valori per 100g</div>
-        <button id="grams-edit-btn" onclick="gramsToggleEdit()"
-          style="padding:3px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#94a3b8;font-size:0.6rem;cursor:pointer;font-family:inherit;letter-spacing:0.05em;">
-          ✏️ Modifica
-        </button>
+      <div style="text-align:center;margin-bottom:9px;">
+        <span style="font-size:0.52rem;color:#475569;text-transform:uppercase;letter-spacing:0.1em;">Valori per 100g</span>
       </div>
-      <!-- Riga 1: macros principali -->
       <div id="grams-ref-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px;">
         <div style="text-align:center;">
-          <input id="grams-ref-kcal" type="number" min="0" inputmode="decimal" oninput="gramsRefUpdate()" style="color:var(--primary);width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
+          <input id="grams-ref-kcal" type="number" min="0" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#EF9F27;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
           <div style="font-size:0.47rem;color:#64748b;margin-top:2px;">kcal</div>
         </div>
         <div style="text-align:center;">
-          <input id="grams-ref-p" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#34d399;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
+          <input id="grams-ref-p" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#5DCAA5;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
           <div style="font-size:0.47rem;color:#64748b;margin-top:2px;">prot g</div>
         </div>
         <div style="text-align:center;">
-          <input id="grams-ref-c" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#378ADD;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
+          <input id="grams-ref-c" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#85B7EB;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
           <div style="font-size:0.47rem;color:#64748b;margin-top:2px;">carbo g</div>
         </div>
         <div style="text-align:center;">
-          <input id="grams-ref-f" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#BA7517;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
+          <input id="grams-ref-f" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#EF9F27;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
           <div style="font-size:0.47rem;color:#64748b;margin-top:2px;">grassi g</div>
         </div>
       </div>
-      <!-- Riga 2: parametri Nutri-Score -->
       <div id="grams-ref-ns-row" style="border-top:1px solid rgba(255,255,255,0.05);padding-top:8px;">
-        <div style="font-size:0.46rem;color:#475569;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Parametri Nutri-Score</div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
           <div style="text-align:center;">
-            <input id="grams-ref-sugars" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#e2e8f0;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
+            <input id="grams-ref-sugars" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#EF9F27;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
             <div style="font-size:0.43rem;color:#64748b;margin-top:2px;">zuccheri g</div>
           </div>
           <div style="text-align:center;">
-            <input id="grams-ref-sat" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#e2e8f0;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
+            <input id="grams-ref-sat" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#F09595;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
             <div style="font-size:0.43rem;color:#64748b;margin-top:2px;">saturi g</div>
           </div>
           <div style="text-align:center;">
-            <input id="grams-ref-fiber" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#e2e8f0;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
+            <input id="grams-ref-fiber" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#5DCAA5;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
             <div style="font-size:0.43rem;color:#64748b;margin-top:2px;">fibre g</div>
           </div>
           <div style="text-align:center;">
-            <input id="grams-ref-salt" type="number" min="0" step="0.001" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#e2e8f0;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
+            <input id="grams-ref-salt" type="number" min="0" step="0.001" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#85B7EB;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
             <div style="font-size:0.43rem;color:#64748b;margin-top:2px;">sale g</div>
           </div>
         </div>
+      </div>
+      <div style="text-align:center;margin-top:10px;">
+        <button id="grams-edit-btn" onclick="gramsToggleEdit()"
+          style="padding:4px 18px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:7px;color:#94a3b8;font-size:0.6rem;cursor:pointer;font-family:inherit;letter-spacing:0.05em;">
+          ✏️ Modifica
+        </button>
       </div>
     </div>
 
