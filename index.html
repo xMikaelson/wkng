@@ -2352,7 +2352,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <div style="text-align:center;margin-bottom:9px;">
         <span style="font-size:0.52rem;color:#475569;text-transform:uppercase;letter-spacing:0.1em;">Valori per 100g</span>
       </div>
-      <div id="grams-ref-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px;">
+      <div id="grams-ref-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:6px;">
         <div style="text-align:center;">
           <input id="grams-ref-kcal" type="number" min="0" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#EF9F27;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
           <div style="font-size:0.47rem;color:#64748b;margin-top:2px;">kcal</div>
@@ -2370,24 +2370,22 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
           <div style="font-size:0.47rem;color:#64748b;margin-top:2px;">grassi g</div>
         </div>
       </div>
-      <div id="grams-ref-ns-row" style="border-top:1px solid rgba(255,255,255,0.05);padding-top:8px;">
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
-          <div style="text-align:center;">
-            <input id="grams-ref-sugars" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#EF9F27;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
-            <div style="font-size:0.43rem;color:#64748b;margin-top:2px;">zuccheri g</div>
-          </div>
-          <div style="text-align:center;">
-            <input id="grams-ref-sat" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#F09595;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
-            <div style="font-size:0.43rem;color:#64748b;margin-top:2px;">saturi g</div>
-          </div>
-          <div style="text-align:center;">
-            <input id="grams-ref-fiber" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#5DCAA5;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
-            <div style="font-size:0.43rem;color:#64748b;margin-top:2px;">fibre g</div>
-          </div>
-          <div style="text-align:center;">
-            <input id="grams-ref-salt" type="number" min="0" step="0.001" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#85B7EB;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
-            <div style="font-size:0.43rem;color:#64748b;margin-top:2px;">sale g</div>
-          </div>
+      <div id="grams-ref-ns-row" style="border-top:1px solid rgba(255,255,255,0.05);padding-top:6px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+        <div style="text-align:center;">
+          <input id="grams-ref-salt" type="number" min="0" step="0.001" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#94a3b8;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
+          <div style="font-size:0.43rem;color:#64748b;margin-top:2px;">sale g</div>
+        </div>
+        <div style="text-align:center;">
+          <input id="grams-ref-fiber" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#5DCAA5;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
+          <div style="font-size:0.43rem;color:#64748b;margin-top:2px;">fibre g</div>
+        </div>
+        <div style="text-align:center;">
+          <input id="grams-ref-sugars" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#85B7EB;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
+          <div style="font-size:0.43rem;color:#64748b;margin-top:2px;">zuccheri g</div>
+        </div>
+        <div style="text-align:center;">
+          <input id="grams-ref-sat" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#F09595;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
+          <div style="font-size:0.43rem;color:#64748b;margin-top:2px;">saturi g</div>
         </div>
       </div>
       <div style="text-align:center;margin-top:10px;">
@@ -2455,85 +2453,91 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-
-      <!-- Nome -->
+    <!-- Nome + Marchio -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
       <div style="grid-column:1/3;">
         <div style="font-size:0.55rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Nome alimento *</div>
-        <input id="manual-food-name" type="text" placeholder="Es. Yogurt greco, Pasta, Pollo..." autocomplete="off"
-          style="width:100%;padding:8px 10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.82rem;box-sizing:border-box;font-family:inherit;">
+        <input id="manual-food-name" type="text" placeholder="Es. Yogurt greco, Pasta, Pollo..." autocomplete="off" style="width:100%;padding:8px 10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.82rem;box-sizing:border-box;font-family:inherit;">
       </div>
-
-      <!-- Marchio -->
       <div style="grid-column:1/3;">
         <div style="font-size:0.55rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Marchio (opzionale)</div>
-        <input id="manual-food-brand" type="text" placeholder="Es. Barilla, Muller, Galbani..."
-          style="width:100%;padding:8px 10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.82rem;box-sizing:border-box;font-family:inherit;">
+        <input id="manual-food-brand" type="text" placeholder="Es. Barilla, Muller, Galbani..." style="width:100%;padding:8px 10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.82rem;box-sizing:border-box;font-family:inherit;">
       </div>
+    </div>
 
-      <!-- Tip per 100g -->
-      <div style="grid-column:1/3;display:flex;align-items:center;gap:8px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.22);border-radius:8px;padding:8px 10px;">
-        <span style="font-size:0.85rem;flex-shrink:0;">ℹ️</span>
-        <span style="font-size:0.6rem;color:#94a3b8;line-height:1.4;">Inserisci i valori dalla tabella nutrizionale <strong style="color:#e2e8f0;">per 100g</strong> di prodotto.</span>
+    <!-- Tip + griglia valori — stesso stile di grams-overlay -->
+    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 14px;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:9px;">
+        <span style="font-size:0.82rem;flex-shrink:0;">ℹ️</span>
+        <span style="font-size:0.58rem;color:#94a3b8;line-height:1.4;">Inserisci i valori dalla tabella nutrizionale <strong style="color:#e2e8f0;">per 100g</strong> di prodotto.</span>
       </div>
+      <!-- Riga 1: kcal | prot | carbo | grassi -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:6px;">
+        <div style="text-align:center;">
+          <input id="manual-food-kcal" type="number" placeholder="0" min="0" inputmode="decimal" style="color:#EF9F27;width:100%;padding:6px 8px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.88rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
+          <div style="font-size:0.47rem;color:#64748b;margin-top:2px;">kcal</div>
+        </div>
+        <div style="text-align:center;">
+          <input id="manual-food-p" type="number" placeholder="0" min="0" step="0.1" inputmode="decimal" style="color:#5DCAA5;width:100%;padding:6px 8px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.88rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
+          <div style="font-size:0.47rem;color:#64748b;margin-top:2px;">prot g</div>
+        </div>
+        <div style="text-align:center;">
+          <input id="manual-food-c" type="number" placeholder="0" min="0" step="0.1" inputmode="decimal" style="color:#85B7EB;width:100%;padding:6px 8px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.88rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
+          <div style="font-size:0.47rem;color:#64748b;margin-top:2px;">carbo g</div>
+        </div>
+        <div style="text-align:center;">
+          <input id="manual-food-f" type="number" placeholder="0" min="0" step="0.1" inputmode="decimal" style="color:#EF9F27;width:100%;padding:6px 8px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.88rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
+          <div style="font-size:0.47rem;color:#64748b;margin-top:2px;">grassi g</div>
+        </div>
+      </div>
+      <!-- Riga 2: sale | fibre (sotto prot) | zuccheri (sotto carbo) | saturi (sotto grassi) -->
+      <div style="border-top:1px solid rgba(255,255,255,0.05);padding-top:6px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+        <div style="text-align:center;">
+          <input id="manual-food-salt" type="number" placeholder="0" min="0" step="0.001" inputmode="decimal" style="color:#94a3b8;width:100%;padding:6px 8px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.88rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
+          <div style="font-size:0.43rem;color:#64748b;margin-top:2px;">sale g</div>
+        </div>
+        <div style="text-align:center;">
+          <input id="manual-food-fiber" type="number" placeholder="0" min="0" step="0.1" inputmode="decimal" style="color:#5DCAA5;width:100%;padding:6px 8px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.88rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
+          <div style="font-size:0.43rem;color:#64748b;margin-top:2px;">fibre g</div>
+        </div>
+        <div style="text-align:center;">
+          <input id="manual-food-sugars" type="number" placeholder="0" min="0" step="0.1" inputmode="decimal" style="color:#85B7EB;width:100%;padding:6px 8px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.88rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
+          <div style="font-size:0.43rem;color:#64748b;margin-top:2px;">zuccheri g</div>
+        </div>
+        <div style="text-align:center;">
+          <input id="manual-food-sat" type="number" placeholder="0" min="0" step="0.1" inputmode="decimal" style="color:#F09595;width:100%;padding:6px 8px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.88rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
+          <div style="font-size:0.43rem;color:#64748b;margin-top:2px;">saturi g</div>
+        </div>
+      </div>
+      <!-- Tasto attiva inserimento -->
+      <div style="text-align:center;margin-top:10px;">
+        <button id="manual-edit-btn" onclick="manualToggleEdit()"
+          style="padding:4px 18px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:7px;color:#94a3b8;font-size:0.6rem;cursor:pointer;font-family:inherit;letter-spacing:0.05em;">
+          ✏️ Inserisci valori
+        </button>
+      </div>
+    </div>
 
-      <!-- Kcal -->
-      <div>
-        <div style="font-size:0.55rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Kcal</div>
-        <input id="manual-food-kcal" type="number" placeholder="0" min="0" inputmode="decimal" style="width:100%;padding:8px 10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.82rem;box-sizing:border-box;font-family:inherit;">
-      </div>
-      <!-- Proteine -->
-      <div>
-        <div style="font-size:0.55rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Proteine (g)</div>
-        <input id="manual-food-p" type="number" placeholder="0" min="0" inputmode="decimal" style="width:100%;padding:8px 10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.82rem;box-sizing:border-box;font-family:inherit;">
-      </div>
-      <!-- Carboidrati -->
-      <div>
-        <div style="font-size:0.55rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Carboidrati (g)</div>
-        <input id="manual-food-c" type="number" placeholder="0" min="0" inputmode="decimal" style="width:100%;padding:8px 10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.82rem;box-sizing:border-box;font-family:inherit;">
-      </div>
-      <!-- Zuccheri -->
-      <div>
-        <div style="font-size:0.55rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">di cui Zuccheri (g)</div>
-        <input id="manual-food-sugars" type="number" placeholder="0" min="0" inputmode="decimal" style="width:100%;padding:8px 10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.82rem;box-sizing:border-box;font-family:inherit;">
-      </div>
-      <!-- Grassi -->
-      <div>
-        <div style="font-size:0.55rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Grassi (g)</div>
-        <input id="manual-food-f" type="number" placeholder="0" min="0" inputmode="decimal" style="width:100%;padding:8px 10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.82rem;box-sizing:border-box;font-family:inherit;">
-      </div>
-      <!-- Saturi -->
-      <div>
-        <div style="font-size:0.55rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">di cui Saturi (g)</div>
-        <input id="manual-food-sat" type="number" placeholder="0" min="0" inputmode="decimal" style="width:100%;padding:8px 10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.82rem;box-sizing:border-box;font-family:inherit;">
-      </div>
-      <!-- Fibre -->
-      <div>
-        <div style="font-size:0.55rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Fibre (g)</div>
-        <input id="manual-food-fiber" type="number" placeholder="0" min="0" inputmode="decimal" style="width:100%;padding:8px 10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.82rem;box-sizing:border-box;font-family:inherit;">
-      </div>
-      <!-- Sale -->
-      <div>
-        <div style="font-size:0.55rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Sale (g)</div>
-        <input id="manual-food-salt" type="number" placeholder="0" min="0" step="0.1" inputmode="decimal" style="width:100%;padding:8px 10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.82rem;box-sizing:border-box;font-family:inherit;">
-      </div>
+    <!-- Categoria -->
+    <div style="margin-bottom:12px;">
+      <div style="font-size:0.55rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Categoria prodotto</div>
+      <select id="manual-food-cat" style="width:100%;padding:8px 10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.82rem;box-sizing:border-box;font-family:inherit;-webkit-appearance:none;">
+        <option value="auto">🔍 Rilevamento automatico</option>
+        <option value="generic">🥗 Alimento generico</option>
+        <option value="beverage">🥤 Bevanda</option>
+        <option value="fat">🥜 Grassi / Oli / Noci / Semi</option>
+        <option value="cheese">🧀 Formaggio</option>
+        <option value="red_meat">🥩 Carne rossa / Salume</option>
+      </select>
+    </div>
 
-      <!-- Categoria -->
-      <div style="grid-column:1/3;">
-        <div style="font-size:0.55rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Categoria prodotto</div>
-        <select id="manual-food-cat" style="width:100%;padding:8px 10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.82rem;box-sizing:border-box;font-family:inherit;-webkit-appearance:none;">
-          <option value="auto">🔍 Rilevamento automatico</option>
-          <option value="generic">🥗 Alimento generico</option>
-          <option value="beverage">🥤 Bevanda</option>
-          <option value="fat">🥜 Grassi / Oli / Noci / Semi</option>
-          <option value="cheese">🧀 Formaggio</option>
-          <option value="red_meat">🥩 Carne rossa / Salume</option>
-        </select>
-      </div>
+    <!-- PUNTO 3: Checkbox contribuisci al DB Awakening -->
+    <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(52,211,153,0.05);border:1px solid rgba(52,211,153,0.15);border-radius:10px;cursor:pointer;margin-bottom:14px;">
+      <input type="checkbox" id="manual-contribute" style="margin-top:2px;accent-color:#34d399;width:16px;height:16px;flex-shrink:0;">
+      <span style="font-size:0.65rem;color:#94a3b8;line-height:1.5;">Vuoi contribuire a migliorare il database Awakening? Il prodotto verrà condiviso con la community in modo anonimo.</span>
+    </label>
 
-    </div><!-- /grid -->
-
-    <button onclick="mealManualSubmit()" style="width:100%;margin-top:14px;padding:14px;background:linear-gradient(135deg,var(--primary),var(--accent));border:none;border-radius:12px;color:#000;font-size:0.9rem;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0.05em;">
+    <button onclick="mealManualSubmit()" style="width:100%;padding:14px;background:linear-gradient(135deg,var(--primary),var(--accent));border:none;border-radius:12px;color:#000;font-size:0.9rem;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0.05em;">
       AGGIUNGI
     </button>
   </div>
@@ -5365,6 +5369,39 @@ function gramsClose() {
 }
 
 
+function manualToggleEdit() {
+    const ids = ['manual-food-kcal','manual-food-p','manual-food-c','manual-food-f','manual-food-salt','manual-food-fiber','manual-food-sugars','manual-food-sat'];
+    const btn = document.getElementById('manual-edit-btn');
+    const isEditing = btn?.dataset.editing === '1';
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (isEditing) {
+            el.style.background    = 'transparent';
+            el.style.border        = '1px solid transparent';
+            el.style.pointerEvents = 'none';
+        } else {
+            el.style.background    = '#0f172a';
+            el.style.border        = '1px solid #334155';
+            el.style.pointerEvents = 'auto';
+        }
+    });
+    if (btn) {
+        if (isEditing) {
+            btn.innerHTML = '✏️ Inserisci valori';
+            btn.dataset.editing = '0';
+            btn.style.color = '#94a3b8';
+            btn.style.borderColor = 'rgba(255,255,255,0.12)';
+        } else {
+            btn.innerHTML = '✓ Conferma';
+            btn.dataset.editing = '1';
+            btn.style.color = '#34d399';
+            btn.style.borderColor = 'rgba(52,211,153,0.4)';
+            setTimeout(() => document.getElementById('manual-food-kcal')?.focus(), 50);
+        }
+    }
+}
+
 function mealManual(meal, prefillName) {
     const overlay = document.getElementById('manual-food-overlay');
     const title   = document.getElementById('manual-food-title');
@@ -5380,6 +5417,16 @@ function mealManual(meal, prefillName) {
     });
     const catEl = document.getElementById('manual-food-cat');
     if (catEl) catEl.value = 'auto';
+    // Reset checkbox contributo
+    const cbEl = document.getElementById('manual-contribute');
+    if (cbEl) cbEl.checked = false;
+    // Reset stato edit griglia
+    const editBtn = document.getElementById('manual-edit-btn');
+    if (editBtn) { editBtn.innerHTML = '✏️ Inserisci valori'; editBtn.dataset.editing = '0'; editBtn.style.color = '#94a3b8'; editBtn.style.borderColor = 'rgba(255,255,255,0.12)'; }
+    ['manual-food-kcal','manual-food-p','manual-food-c','manual-food-f','manual-food-salt','manual-food-fiber','manual-food-sugars','manual-food-sat'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.style.background = 'transparent'; el.style.border = '1px solid transparent'; el.style.pointerEvents = 'none'; }
+    });
     overlay.classList.add('active');
     setTimeout(() => nameEl?.focus(), 100);
 }
@@ -5418,7 +5465,21 @@ function mealManualSubmit() {
     nutUpdateUI();
     nutTlUpdateUI();
     overlay.classList.remove('active');
-    showToast('✓ ' + displayName + ' aggiunto!', 'success');
+    showToast('\u2713 ' + displayName + ' aggiunto!', 'success');
+    // Contributo al DB Awakening se checkbox spuntata
+    const contribute = document.getElementById('manual-contribute')?.checked;
+    if (contribute) {
+        const foodForDB = {
+            name: displayName,
+            barcode: null,
+            kcal100: kcal, p100: p, c100: c, f100: f2,
+            sugars100: sugars, saturated100: sat, fiber100: fiber, salt100: salt,
+            nutriScore: ns, offCategory: resolvedCat
+        };
+        sbClient.auth.getUser().then(({ data: { user } }) => {
+            if (user) awSaveProduct(foodForDB, user.id);
+        });
+    }
 }
 
 function mealManualClose() {
