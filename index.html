@@ -4101,23 +4101,34 @@ async function awOfferSave(food) {
 
 async function awSaveProduct(food, userId) {
     try {
-        const { error } = await sbClient.from('aw_products').insert({
-            barcode:    food.barcode,
-            name:       food.name,
-            kcal100:    food.kcal100 || 0,
-            p100:       food.p100    || 0,
-            c100:       food.c100    || 0,
-            f100:       food.f100    || 0,
-            sugars100:  food.sugars100  || 0,
-            sat100:     food.sat100     || 0,
-            fiber100:   food.fiber100   || 0,
-            sodium100:  food.sodium100  || 0,
+        console.log('awSaveProduct: inserting', food.barcode, 'user:', userId);
+        const payload = {
+            barcode:     food.barcode,
+            name:        food.name,
+            kcal100:     food.kcal100    || 0,
+            p100:        food.p100       || 0,
+            c100:        food.c100       || 0,
+            f100:        food.f100       || 0,
+            sugars100:   food.sugars100  || 0,
+            sat100:      food.sat100     || 0,
+            fiber100:    food.fiber100   || 0,
+            sodium100:   food.sodium100  || 0,
             nutri_score: food.nutriScore || null,
-            added_by:   userId
-        });
-        if (!error) showToast('Grazie! Prodotto aggiunto al database Awakening', 'success');
-        else console.warn('aw_products insert error:', error.message);
-    } catch(e) { console.warn('awSaveProduct error:', e.message); }
+            added_by:    userId
+        };
+        console.log('Payload:', JSON.stringify(payload));
+        const { data, error } = await sbClient.from('aw_products').insert(payload).select();
+        if (error) {
+            console.error('aw_products insert error:', error.message, error.code, error.details, error.hint);
+            showToast('Errore salvataggio: ' + error.message, 'error');
+        } else {
+            console.log('aw_products insert OK:', data);
+            showToast('Grazie! Prodotto aggiunto al database Awakening', 'success');
+        }
+    } catch(e) {
+        console.error('awSaveProduct exception:', e.message);
+        showToast('Errore: ' + e.message, 'error');
+    }
 }
 
 function nutCalcScore(kcal100, p100, c100, f100) {
