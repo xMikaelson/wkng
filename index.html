@@ -2347,49 +2347,52 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <!-- Nutri-Score: full width row, centered -->
     <div id="grams-nutriscore" style="display:none;position:relative;height:34px;margin-bottom:14px;"></div>
 
-    <!-- Per 100g reference — modificabile -->
+    <!-- Per 100g reference — visualizzazione / modifica -->
     <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 14px;margin-bottom:16px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
         <div style="font-size:0.52rem;color:#475569;text-transform:uppercase;letter-spacing:0.1em;">Valori per 100g</div>
-        <div style="font-size:0.48rem;color:#475569;font-style:italic;">modificabili — aggiorna il Nutri-Score</div>
+        <button id="grams-edit-btn" onclick="gramsToggleEdit()"
+          style="padding:3px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#94a3b8;font-size:0.6rem;cursor:pointer;font-family:inherit;letter-spacing:0.05em;">
+          ✏️ Modifica
+        </button>
       </div>
       <!-- Riga 1: macros principali -->
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px;">
+      <div id="grams-ref-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px;">
         <div style="text-align:center;">
-          <input id="grams-ref-kcal" type="number" min="0" inputmode="decimal" oninput="gramsRefUpdate()" style="color:var(--primary);width:100%;padding:5px 7px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;">
+          <input id="grams-ref-kcal" type="number" min="0" inputmode="decimal" oninput="gramsRefUpdate()" style="color:var(--primary);width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
           <div style="font-size:0.47rem;color:#64748b;margin-top:2px;">kcal</div>
         </div>
         <div style="text-align:center;">
-          <input id="grams-ref-p" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#34d399;width:100%;padding:5px 7px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;">
+          <input id="grams-ref-p" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#34d399;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
           <div style="font-size:0.47rem;color:#64748b;margin-top:2px;">prot g</div>
         </div>
         <div style="text-align:center;">
-          <input id="grams-ref-c" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#378ADD;width:100%;padding:5px 7px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;">
+          <input id="grams-ref-c" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#378ADD;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
           <div style="font-size:0.47rem;color:#64748b;margin-top:2px;">carbo g</div>
         </div>
         <div style="text-align:center;">
-          <input id="grams-ref-f" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#BA7517;width:100%;padding:5px 7px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;">
+          <input id="grams-ref-f" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#BA7517;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
           <div style="font-size:0.47rem;color:#64748b;margin-top:2px;">grassi g</div>
         </div>
       </div>
       <!-- Riga 2: parametri Nutri-Score -->
-      <div style="border-top:1px solid rgba(255,255,255,0.05);padding-top:8px;">
+      <div id="grams-ref-ns-row" style="border-top:1px solid rgba(255,255,255,0.05);padding-top:8px;">
         <div style="font-size:0.46rem;color:#475569;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Parametri Nutri-Score</div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
           <div style="text-align:center;">
-            <input id="grams-ref-sugars" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#e2e8f0;width:100%;padding:5px 7px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;">
+            <input id="grams-ref-sugars" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#e2e8f0;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
             <div style="font-size:0.43rem;color:#64748b;margin-top:2px;">zuccheri g</div>
           </div>
           <div style="text-align:center;">
-            <input id="grams-ref-sat" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#e2e8f0;width:100%;padding:5px 7px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;">
+            <input id="grams-ref-sat" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#e2e8f0;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
             <div style="font-size:0.43rem;color:#64748b;margin-top:2px;">saturi g</div>
           </div>
           <div style="text-align:center;">
-            <input id="grams-ref-fiber" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#e2e8f0;width:100%;padding:5px 7px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;">
+            <input id="grams-ref-fiber" type="number" min="0" step="0.1" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#e2e8f0;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
             <div style="font-size:0.43rem;color:#64748b;margin-top:2px;">fibre g</div>
           </div>
           <div style="text-align:center;">
-            <input id="grams-ref-salt" type="number" min="0" step="0.001" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#e2e8f0;width:100%;padding:5px 7px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;">
+            <input id="grams-ref-salt" type="number" min="0" step="0.001" inputmode="decimal" oninput="gramsRefUpdate()" style="color:#e2e8f0;width:100%;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;box-sizing:border-box;font-family:inherit;text-align:center;-webkit-appearance:none;pointer-events:none;">
             <div style="font-size:0.43rem;color:#64748b;margin-top:2px;">sale g</div>
           </div>
         </div>
@@ -5198,11 +5201,55 @@ function openGramsSelector(food, meal) {
     document.getElementById('grams-ref-salt').value   = food.salt100      != null ? food.salt100      : '';
     // Nutri-Score bar — calcolato con i dati completi
     gramsRefUpdate();
+    // Reset stato modifica: disabilita tutti gli input
+    const editBtn = document.getElementById('grams-edit-btn');
+    if (editBtn) { editBtn.innerHTML = '✏️ Modifica'; editBtn.dataset.editing = '0'; editBtn.style.color = '#94a3b8'; editBtn.style.borderColor = 'rgba(255,255,255,0.12)'; }
+    ['grams-ref-kcal','grams-ref-p','grams-ref-c','grams-ref-f',
+     'grams-ref-sugars','grams-ref-sat','grams-ref-fiber','grams-ref-salt'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.style.background = 'transparent'; el.style.border = '1px solid transparent'; el.style.pointerEvents = 'none'; }
+    });
     const gi = document.getElementById('grams-input');
     gi.value = '100';
     overlay.classList.add('active');
     gramsUpdatePreview();
     setTimeout(() => { gi.focus(); gi.select(); }, 150);
+}
+
+function gramsToggleEdit() {
+    const ids = ['grams-ref-kcal','grams-ref-p','grams-ref-c','grams-ref-f',
+                 'grams-ref-sugars','grams-ref-sat','grams-ref-fiber','grams-ref-salt'];
+    const btn  = document.getElementById('grams-edit-btn');
+    const isEditing = btn.dataset.editing === '1';
+
+    if (isEditing) {
+        // Conferma modifiche → disabilita e ricalcola
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            el.style.background    = 'transparent';
+            el.style.border        = '1px solid transparent';
+            el.style.pointerEvents = 'none';
+        });
+        btn.innerHTML  = '✏️ Modifica';
+        btn.dataset.editing = '0';
+        btn.style.color = '#94a3b8';
+        btn.style.borderColor = 'rgba(255,255,255,0.12)';
+        gramsRefUpdate();
+    } else {
+        // Attiva modifica
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            el.style.background    = '#0f172a';
+            el.style.border        = '1px solid #334155';
+            el.style.pointerEvents = 'auto';
+        });
+        btn.innerHTML  = '✓ Conferma';
+        btn.dataset.editing = '1';
+        btn.style.color = '#34d399';
+        btn.style.borderColor = 'rgba(52,211,153,0.4)';
+        // Focus sul primo campo
+        setTimeout(() => document.getElementById('grams-ref-kcal').focus(), 50);
+    }
 }
 
 function gramsGetRef() {
@@ -5295,9 +5342,21 @@ function gramsConfirm() {
     nutTlUpdateUI();
     overlay.classList.remove('active');
     showToast('✓ ' + entry.name + ' (' + g + 'g) — ' + entry.kcal + ' kcal', 'success');
-    // Offer to save to Awakening community DB if product has barcode and not already there
+    // Offer to save to Awakening community DB — usa entry con i valori corretti (modificati)
     if (food.barcode && !food.fromAwDB && !food.incomplete) {
-        awOfferSave(food);
+        // Merge: barcode e fromAwDB da food, valori *100 aggiornati da entry
+        const foodToSave = Object.assign({}, food, {
+            kcal100:      entry.kcal100,
+            p100:         entry.p100,
+            c100:         entry.c100,
+            f100:         entry.f100,
+            sugars100:    entry.sugars100,
+            saturated100: entry.saturated100,
+            fiber100:     entry.fiber100,
+            salt100:      entry.salt100,
+            nutriScore:   entry.nutriScore,
+        });
+        awOfferSave(foodToSave);
     }
 }
 
