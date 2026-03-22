@@ -2453,8 +2453,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       </div>
     </div>
 
-    <!-- Nome + Marchio -->
+    <!-- Barcode + Nome + Marchio -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+      <div style="grid-column:1/3;">
+        <div style="font-size:0.55rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Codice a barre (opzionale)</div>
+        <input id="manual-food-barcode" type="text" inputmode="numeric" placeholder="Es. 8001120664877" autocomplete="off" style="width:100%;padding:8px 10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.82rem;box-sizing:border-box;font-family:inherit;">
+      </div>
       <div style="grid-column:1/3;">
         <div style="font-size:0.55rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Nome alimento *</div>
         <input id="manual-food-name" type="text" placeholder="Es. Yogurt greco, Pasta, Pollo..." autocomplete="off" style="width:100%;padding:8px 10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.82rem;box-sizing:border-box;font-family:inherit;">
@@ -2518,18 +2522,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       </div>
     </div>
 
-    <!-- Categoria -->
-    <div style="margin-bottom:12px;">
-      <div style="font-size:0.55rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Categoria prodotto</div>
-      <select id="manual-food-cat" style="width:100%;padding:8px 10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.82rem;box-sizing:border-box;font-family:inherit;-webkit-appearance:none;">
-        <option value="auto">🔍 Rilevamento automatico</option>
-        <option value="generic">🥗 Alimento generico</option>
-        <option value="beverage">🥤 Bevanda</option>
-        <option value="fat">🥜 Grassi / Oli / Noci / Semi</option>
-        <option value="cheese">🧀 Formaggio</option>
-        <option value="red_meat">🥩 Carne rossa / Salume</option>
-      </select>
-    </div>
 
     <!-- PUNTO 3: Checkbox contribuisci al DB Awakening -->
     <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(52,211,153,0.05);border:1px solid rgba(52,211,153,0.15);border-radius:10px;cursor:pointer;margin-bottom:14px;">
@@ -5415,8 +5407,8 @@ function mealManual(meal, prefillName) {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
-    const catEl = document.getElementById('manual-food-cat');
-    if (catEl) catEl.value = 'auto';
+    const barcodeEl = document.getElementById('manual-food-barcode');
+    if (barcodeEl) barcodeEl.value = '';
     // Reset checkbox contributo
     const cbEl = document.getElementById('manual-contribute');
     if (cbEl) cbEl.checked = false;
@@ -5437,7 +5429,8 @@ function mealManualSubmit() {
     if (!meal) return;
     const name = document.getElementById('manual-food-name')?.value.trim();
     if (!name) { showToast('Inserisci il nome', 'error'); return; }
-    const brand  = document.getElementById('manual-food-brand')?.value.trim() || '';
+    const barcode = document.getElementById('manual-food-barcode')?.value.trim() || null;
+    const brand   = document.getElementById('manual-food-brand')?.value.trim() || '';
     const kcal   = parseFloat(document.getElementById('manual-food-kcal')?.value  || '0') || 0;
     const p      = parseFloat(document.getElementById('manual-food-p')?.value     || '0') || 0;
     const c      = parseFloat(document.getElementById('manual-food-c')?.value     || '0') || 0;
@@ -5446,8 +5439,8 @@ function mealManualSubmit() {
     const sat    = parseFloat(document.getElementById('manual-food-sat')?.value   || '0') || 0;
     const fiber  = parseFloat(document.getElementById('manual-food-fiber')?.value || '0') || 0;
     const salt   = parseFloat(document.getElementById('manual-food-salt')?.value  || '0') || 0;
-    const catSel = document.getElementById('manual-food-cat')?.value || 'auto';
-    const resolvedCat = catSel === 'auto' ? nutDetectCategory(f2, p, fiber, sugars, kcal, []) : catSel;
+    // Categoria: rilevamento automatico sempre
+    const resolvedCat = nutDetectCategory(f2, p, fiber, sugars, kcal, []);
     const displayName = brand ? name + ' (' + brand + ')' : name;
     const data = NUT.meals;
     const ns = nutCalcScoreFull(kcal, p, sugars, sat, fiber, salt, f2, 0, resolvedCat);
@@ -5471,7 +5464,7 @@ function mealManualSubmit() {
     if (contribute) {
         const foodForDB = {
             name: displayName,
-            barcode: null,
+            barcode: barcode,
             kcal100: kcal, p100: p, c100: c, f100: f2,
             sugars100: sugars, saturated100: sat, fiber100: fiber, salt100: salt,
             nutriScore: ns, offCategory: resolvedCat
