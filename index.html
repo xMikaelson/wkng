@@ -2404,10 +2404,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <div id="manual-food-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.92);z-index:5000;align-items:flex-end;justify-content:center;">
   <div style="background:#1e293b;border-radius:20px 20px 0 0;padding:18px 16px 32px;width:100%;max-width:480px;box-sizing:border-box;max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch;">
 
-    <!-- Header -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-      <div id="manual-food-title" style="font-size:0.95rem;font-weight:700;color:#e2e8f0;">Aggiungi alimento</div>
-      <button onclick="mealManualClose()" style="background:none;border:none;color:#94a3b8;font-size:1.2rem;cursor:pointer;padding:0;line-height:1;">✕</button>
+    <!-- Header — stessa struttura del grams-overlay -->
+    <div style="display:table;width:100%;margin-bottom:14px;">
+      <div style="display:table-cell;vertical-align:top;">
+        <div style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Inserimento manuale</div>
+        <div id="manual-food-title" style="font-size:1.1rem;font-weight:700;color:#e2e8f0;line-height:1.3;">Aggiungi alimento</div>
+      </div>
+      <div style="display:table-cell;vertical-align:top;width:30px;text-align:right;">
+        <button onclick="mealManualClose()" style="background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:0;line-height:1.4;">✕</button>
+      </div>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
@@ -5250,18 +5255,23 @@ function mealManualSubmit() {
     const c      = parseFloat(document.getElementById('manual-food-c')?.value     || '0') || 0;
     const sugars = parseFloat(document.getElementById('manual-food-sugars')?.value|| '0') || 0;
     const f2     = parseFloat(document.getElementById('manual-food-f')?.value     || '0') || 0;
-    const catSel = document.getElementById('manual-food-cat')?.value || 'auto';
-    const resolvedCat = catSel === 'auto' ? nutDetectCategory(f2, p, fiber, sugars, kcal, []) : catSel;
     const sat    = parseFloat(document.getElementById('manual-food-sat')?.value   || '0') || 0;
     const fiber  = parseFloat(document.getElementById('manual-food-fiber')?.value || '0') || 0;
     const salt   = parseFloat(document.getElementById('manual-food-salt')?.value  || '0') || 0;
+    const catSel = document.getElementById('manual-food-cat')?.value || 'auto';
+    const resolvedCat = catSel === 'auto' ? nutDetectCategory(f2, p, fiber, sugars, kcal, []) : catSel;
     const displayName = brand ? name + ' (' + brand + ')' : name;
     const data = NUT.meals;
+    const ns = nutCalcScoreFull(kcal, p, sugars, sat, fiber, salt, f2, 0, resolvedCat);
     data[meal].push({
         name: displayName, kcal, p, c, f: f2,
         sugars, saturated: sat, fiber, salt,
+        // Campi per 100g usati da grams-overlay (il manuale inserisce già valori per 100g)
+        kcal100: kcal, p100: p, c100: c, f100: f2,
+        sugars100: sugars, saturated100: sat, fiber100: fiber, salt100: salt,
+        offCategory: resolvedCat,
         id: Date.now(), note: 'manuale',
-        nutriScore: nutCalcScoreFull(kcal, p, sugars, sat, fiber, salt, f2, 0, resolvedCat)
+        nutriScore: ns
     });
     NUT.saveMeals(data);
     nutUpdateUI();
