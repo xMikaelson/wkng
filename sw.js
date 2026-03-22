@@ -1,4 +1,4 @@
-const CACHE_NAME = 'awakening-v70';
+const CACHE_NAME = 'awakening-v71';
 
 // Files to cache for offline use
 const STATIC_ASSETS = [

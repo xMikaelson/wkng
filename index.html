@@ -2422,10 +2422,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <input id="manual-food-brand" type="text" placeholder="Es. Barilla, Muller, Galbani..."
           style="width:100%;padding:10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.9rem;box-sizing:border-box;font-family:inherit;">
       </div>
-      <div style="grid-column:1/3;display:flex;align-items:center;gap:8px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.22);border-radius:8px;padding:9px 12px;">
-        <span style="font-size:0.9rem;flex-shrink:0;">ℹ️</span>
-        <span style="font-size:0.62rem;color:#94a3b8;line-height:1.4;">Inserisci i valori indicati nella tabella nutrizionale <strong style="color:#e2e8f0;">per 100g</strong> di prodotto.</span>
-      </div>
       <div>
         <div style="font-size:0.6rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Kcal</div>
         <input id="manual-food-kcal" type="number" placeholder="0" min="0"
@@ -4164,29 +4160,57 @@ async function awSaveProduct(food, userId) {
 }
 
 function nutCalcScore(kcal100, p100, c100, f100) {
-    // Simplified fallback — stima zuccheri e saturi quando non disponibili
+    // Fallback quando mancano dati dettagliati
     const sugars = c100 * 0.5;
     const sat    = f100 * 0.35;
-    return nutCalcScoreFull(kcal100, p100, sugars, sat, 0, 0);
+    return nutCalcScoreFull(kcal100, p100, sugars, sat, 0, 0, f100, 0);
 }
 
-function nutCalcScoreFull(kcal100, p100, sugars100, saturated100, fiber100, salt_g100) {
-    // Nutri-Score 2023 — algoritmo alimenti solidi (Santé Publique France / JRC 2022)
-    // salt_g100 = grammi di sale per 100g. Se hai sodio_mg: usa sodio_mg * 0.0025
-    const kj = kcal100 * 4.184;
-    // Punti negativi (N)
-    const nEn   = kj>3350?10:kj>3015?9:kj>2680?8:kj>2345?7:kj>2010?6:kj>1675?5:kj>1340?4:kj>1005?3:kj>670?2:kj>335?1:0;
-    const nSu   = sugars100>45?10:sugars100>40?9:sugars100>36?8:sugars100>31?7:sugars100>27?6:sugars100>22.5?5:sugars100>18?4:sugars100>13.5?3:sugars100>9?2:sugars100>4.5?1:0;
-    const nSat  = saturated100>10?10:saturated100>9?9:saturated100>8?8:saturated100>7?7:saturated100>6?6:saturated100>5?5:saturated100>4?4:saturated100>3?3:saturated100>2?2:saturated100>1?1:0;
-    const nSalt = salt_g100>2.25?10:salt_g100>2.025?9:salt_g100>1.8?8:salt_g100>1.575?7:salt_g100>1.35?6:salt_g100>1.125?5:salt_g100>0.9?4:salt_g100>0.675?3:salt_g100>0.45?2:salt_g100>0.225?1:0;
+function nutCalcScoreFull(kcal100, p100, sugars100, saturated100, fiber100, salt_g100, fat100, fvl100) {
+    // ── Nutri-Score 2023 — Santé Publique France / JRC Technical Report 2022 ──
+    // salt_g100 = sale g/100g  (se hai sodio_mg converte: * 0.0025)
+    // fat100    = grassi totali g/100g (per rilevare categoria oli/noci/semi)
+    // fvl100    = % frutta+verdure+legumi (0-100), default 0
+    const kj    = kcal100 * 4.184;
+    const f100_ = fat100 || 0;
+    const satRatio  = f100_ > 0 ? (saturated100 / f100_) * 100 : 0; // % saturi su totale grassi
+    const kcalSat   = saturated100 * 9; // kcal provenienti da grassi saturi
+
+    // Categoria "grassi/oli/semi/noci": grassi ≥60g OPPURE euristica burri-noci/semi
+    const isFatCat = f100_ >= 60 || (f100_ >= 30 && p100 >= 5 && fiber100 >= 3 && f100_ > sugars100 * 2);
+
+    // ── Punti negativi (N) ───────────────────────────────────────────────────
+    let nEn, nSu, nSat, nSalt;
+    if (isFatCat) {
+        // Energia da saturi in kcal (soglie ogni 30 kcal, max 10pt a >300)
+        nEn  = kcalSat>300?10:kcalSat>270?9:kcalSat>240?8:kcalSat>210?7:kcalSat>180?6:kcalSat>150?5:kcalSat>120?4:kcalSat>90?3:kcalSat>60?2:kcalSat>30?1:0;
+        // Zuccheri — soglia inferiore a 3.4g per 1pt (prodotti quasi-zero zuccheri)
+        nSu  = sugars100>45?15:sugars100>40?13:sugars100>36?11:sugars100>31?9:sugars100>27?7:sugars100>22.5?5:sugars100>18?4:sugars100>13.5?3:sugars100>9?2:sugars100>3.4?1:0;
+        // Rapporto saturi/grassi % (soglie ogni 10%, max 10pt a >90%)
+        nSat = satRatio>90?10:satRatio>80?9:satRatio>70?8:satRatio>60?7:satRatio>50?6:satRatio>40?5:satRatio>30?4:satRatio>20?3:satRatio>15?2:satRatio>10?1:0;
+        // Sale (g/100g) — stesso per tutte le categorie
+        nSalt= salt_g100>2.25?10:salt_g100>2.025?9:salt_g100>1.8?8:salt_g100>1.575?7:salt_g100>1.35?6:salt_g100>1.125?5:salt_g100>0.9?4:salt_g100>0.675?3:salt_g100>0.45?2:salt_g100>0.225?1:0;
+    } else {
+        // Alimenti solidi generici
+        nEn  = kj>3350?10:kj>3015?9:kj>2680?8:kj>2345?7:kj>2010?6:kj>1675?5:kj>1340?4:kj>1005?3:kj>670?2:kj>335?1:0;
+        nSu  = sugars100>45?10:sugars100>40?9:sugars100>36?8:sugars100>31?7:sugars100>27?6:sugars100>22.5?5:sugars100>18?4:sugars100>13.5?3:sugars100>9?2:sugars100>4.5?1:0;
+        nSat = saturated100>10?10:saturated100>9?9:saturated100>8?8:saturated100>7?7:saturated100>6?6:saturated100>5?5:saturated100>4?4:saturated100>3?3:saturated100>2?2:saturated100>1?1:0;
+        nSalt= salt_g100>2.25?10:salt_g100>2.025?9:salt_g100>1.8?8:salt_g100>1.575?7:salt_g100>1.35?6:salt_g100>1.125?5:salt_g100>0.9?4:salt_g100>0.675?3:salt_g100>0.45?2:salt_g100>0.225?1:0;
+    }
     const N = nEn + nSu + nSat + nSalt;
-    // Punti positivi (P)
-    const pFi = fiber100>4.7?5:fiber100>3.7?4:fiber100>2.8?3:fiber100>1.9?2:fiber100>0.9?1:0;
-    const pPr = p100>8?5:p100>6.4?4:p100>4.8?3:p100>3.2?2:p100>1.6?1:0;
-    const P = pFi + pPr;
-    // Punteggio finale — Nutri-Score 2023: proteine sempre sottratte (rimossa eccezione N>=11)
+
+    // ── Punti positivi (P) ───────────────────────────────────────────────────
+    const fvl  = Math.min(fvl100 || 0, 100);
+    const pFvl = fvl>80?5:fvl>60?4:fvl>40?3:fvl>20?2:fvl>0?1:0;
+    // Fibre: soglia 7g per 5pt (categoria grassi max a 4pt ≤7g; soglie generali invariate)
+    const pFi  = fiber100>7?5:fiber100>4.7?4:fiber100>3.7?3:fiber100>2.8?2:fiber100>1.9?1:0;
+    // Proteine: scala 0-7pt (max 7pt a >8g)
+    const pPr  = p100>8?7:p100>6.4?6:p100>4.8?5:p100>3.2?4:p100>1.6?3:p100>0.8?2:p100>0?1:0;
+    const P = pFvl + pFi + pPr;
+
+    // Punteggio finale — 2023: proteine sempre sottratte (rimossa eccezione N≥11)
     const score = N - P;
-    if (score <= -1) return 'A';
+    if (score <= -6) return 'A';
     if (score <= 2)  return 'B';
     if (score <= 10) return 'C';
     if (score <= 18) return 'D';
@@ -4799,7 +4823,8 @@ async function cameraFetchProduct(barcode, meal) {
             const ns = awProd.nutri_score || nutCalcScoreFull(
                 awProd.kcal100||0, awProd.p100||0,
                 awProd.sugars100||0, awProd.saturated100||0,
-                awProd.fiber100||0, (awProd.sodium100||0)*0.0025
+                awProd.fiber100||0, (awProd.sodium100||0)*0.0025,
+                awProd.f100||0, 0
             );
             food = {
                 name: awProd.name, barcode,
@@ -4903,7 +4928,7 @@ async function cameraFetchProduct(barcode, meal) {
                 name: productName,
                 kcal100, p100, c100, f100,
                 sugars100, saturated100, fiber100, sodium100,
-                nutriScore: nutriScore || nutCalcScoreFull(kcal100, p100, sugars100, saturated100, fiber100, sodium100*0.0025) || null,
+                nutriScore: nutriScore || nutCalcScoreFull(kcal100, p100, sugars100, saturated100, fiber100, sodium100*0.0025, f100, 0) || null,
                 barcode,
                 id: Date.now(),
                 incomplete: isIncomplete
@@ -4947,7 +4972,7 @@ function openGramsSelector(food, meal) {
     // Nutri-Score bar
     const nsEl = document.getElementById('grams-nutriscore');
     if (nsEl) {
-        const score = food.nutriScore || nutCalcScore(food.kcal100||0, food.p100||0, food.c100||0, food.f100||0);
+        const score = food.nutriScore || nutCalcScoreFull(food.kcal100||0, food.p100||0, food.c100*0.5||0, (food.f100||0)*0.35, 0, 0, food.f100||0, 0);
         if (score) {
             nsEl.style.display = 'flex';
             nsEl.innerHTML = nutScoreBar(score);
@@ -4987,7 +5012,7 @@ function gramsConfirm() {
         p:    parseFloat(((food.p100 || 0) * factor).toFixed(1)),
         c:    parseFloat(((food.c100 || 0) * factor).toFixed(1)),
         f:    parseFloat(((food.f100 || 0) * factor).toFixed(1)),
-        nutriScore: food.nutriScore || nutCalcScore(food.kcal100||0, food.p100||0, food.c100||0, food.f100||0),
+        nutriScore: food.nutriScore || nutCalcScoreFull(food.kcal100||0, food.p100||0, food.c100*0.5||0, (food.f100||0)*0.35, 0, 0, food.f100||0, 0),
         note: g + 'g'
     };
     const mealData = NUT.meals;
@@ -5036,7 +5061,7 @@ function mealManual(meal, prefillName) {
     if (title) title.textContent = 'Aggiungi a ' + ({ colazione:'Colazione', pranzo:'Pranzo', snack:'Snack', cena:'Cena' }[meal] || meal);
     if (nameEl) nameEl.value = prefillName && prefillName.length < 14 ? '' : (prefillName || '');
     // Clear fields
-    ['manual-food-brand','manual-food-kcal','manual-food-p','manual-food-c','manual-food-sugars','manual-food-f','manual-food-sat','manual-food-fiber','manual-food-salt'].forEach(id => {
+    ['manual-food-brand','manual-food-kcal','manual-food-p','manual-food-c','manual-food-sugars','manual-food-f','manual-food-sat','manual-food-fiber','manual-food-sodium'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
@@ -5058,14 +5083,14 @@ function mealManualSubmit() {
     const f2     = parseFloat(document.getElementById('manual-food-f')?.value     || '0') || 0;
     const sat    = parseFloat(document.getElementById('manual-food-sat')?.value   || '0') || 0;
     const fiber  = parseFloat(document.getElementById('manual-food-fiber')?.value || '0') || 0;
-    const salt   = parseFloat(document.getElementById('manual-food-salt')?.value  || '0') || 0;
+    const salt   = parseFloat(document.getElementById('manual-food-salt')?.value   || '0') || 0;
     const displayName = brand ? name + ' (' + brand + ')' : name;
     const data = NUT.meals;
     data[meal].push({
         name: displayName, kcal, p, c, f: f2,
         sugars, saturated: sat, fiber, salt,
         id: Date.now(), note: 'manuale',
-        nutriScore: nutCalcScoreFull(kcal, p, sugars, sat, fiber, salt)
+        nutriScore: nutCalcScoreFull(kcal, p, sugars, sat, fiber, salt, f2, 0)
     });
     NUT.saveMeals(data);
     nutUpdateUI();
