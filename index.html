@@ -2402,7 +2402,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 <!-- ══ MANUAL FOOD OVERLAY ══ -->
 <div id="manual-food-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.92);z-index:5000;align-items:flex-end;justify-content:center;">
-  <div style="background:#1e293b;border-radius:20px 20px 0 0;padding:24px 20px 40px;width:100%;max-width:480px;box-sizing:border-box;">
+  <div style="background:#1e293b;border-radius:20px 20px 0 0;padding:24px 20px 40px;width:100%;max-width:480px;box-sizing:border-box;max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch;">
     <div style="display:table;width:100%;margin-bottom:20px;">
       <div style="display:table-cell;vertical-align:top;">
         <div id="manual-food-title" style="font-size:1rem;font-weight:700;color:#e2e8f0;line-height:1.4;">Aggiungi alimento</div>
@@ -2411,9 +2411,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <button onclick="mealManualClose()" style="background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:0;line-height:1.4;">✕</button>
       </div>
     </div>
-    <input id="manual-food-name" type="text" placeholder="Nome alimento *" autocomplete="off"
-      style="width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:10px;color:#e2e8f0;font-size:0.9rem;margin-bottom:12px;box-sizing:border-box;font-family:inherit;">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+      <div style="grid-column:1/3;">
+        <div style="font-size:0.6rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Nome alimento *</div>
+        <input id="manual-food-name" type="text" placeholder="Es. Yogurt greco, Pasta, Pollo..." autocomplete="off"
+          style="width:100%;padding:10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.9rem;box-sizing:border-box;font-family:inherit;">
+      </div>
+      <div style="grid-column:1/3;">
+        <div style="font-size:0.6rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Marchio (opzionale)</div>
+        <input id="manual-food-brand" type="text" placeholder="Es. Barilla, Muller, Galbani..."
+          style="width:100%;padding:10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.9rem;box-sizing:border-box;font-family:inherit;">
+      </div>
       <div>
         <div style="font-size:0.6rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Kcal</div>
         <input id="manual-food-kcal" type="number" placeholder="0" min="0"
@@ -2430,8 +2438,28 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
           style="width:100%;padding:10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.9rem;box-sizing:border-box;font-family:inherit;">
       </div>
       <div>
+        <div style="font-size:0.6rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">di cui Zuccheri (g)</div>
+        <input id="manual-food-sugars" type="number" placeholder="0" min="0"
+          style="width:100%;padding:10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.9rem;box-sizing:border-box;font-family:inherit;">
+      </div>
+      <div>
         <div style="font-size:0.6rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Grassi (g)</div>
         <input id="manual-food-f" type="number" placeholder="0" min="0"
+          style="width:100%;padding:10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.9rem;box-sizing:border-box;font-family:inherit;">
+      </div>
+      <div>
+        <div style="font-size:0.6rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">di cui Saturi (g)</div>
+        <input id="manual-food-sat" type="number" placeholder="0" min="0"
+          style="width:100%;padding:10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.9rem;box-sizing:border-box;font-family:inherit;">
+      </div>
+      <div>
+        <div style="font-size:0.6rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Fibre (g)</div>
+        <input id="manual-food-fiber" type="number" placeholder="0" min="0"
+          style="width:100%;padding:10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.9rem;box-sizing:border-box;font-family:inherit;">
+      </div>
+      <div>
+        <div style="font-size:0.6rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Sodio (mg)</div>
+        <input id="manual-food-sodium" type="number" placeholder="0" min="0"
           style="width:100%;padding:10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.9rem;box-sizing:border-box;font-family:inherit;">
       </div>
     </div>
@@ -5000,7 +5028,7 @@ function mealManual(meal, prefillName) {
     if (title) title.textContent = 'Aggiungi a ' + ({ colazione:'Colazione', pranzo:'Pranzo', snack:'Snack', cena:'Cena' }[meal] || meal);
     if (nameEl) nameEl.value = prefillName && prefillName.length < 14 ? '' : (prefillName || '');
     // Clear fields
-    ['manual-food-kcal','manual-food-p','manual-food-c','manual-food-f'].forEach(id => {
+    ['manual-food-brand','manual-food-kcal','manual-food-p','manual-food-c','manual-food-sugars','manual-food-f','manual-food-sat','manual-food-fiber','manual-food-sodium'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
@@ -5014,18 +5042,28 @@ function mealManualSubmit() {
     if (!meal) return;
     const name = document.getElementById('manual-food-name')?.value.trim();
     if (!name) { showToast('Inserisci il nome', 'error'); return; }
-    const kcal = parseInt(document.getElementById('manual-food-kcal')?.value || '0');
-    const p    = parseInt(document.getElementById('manual-food-p')?.value    || '0');
-    const c    = parseInt(document.getElementById('manual-food-c')?.value    || '0');
-    const f2   = parseInt(document.getElementById('manual-food-f')?.value    || '0');
+    const brand  = document.getElementById('manual-food-brand')?.value.trim() || '';
+    const kcal   = parseFloat(document.getElementById('manual-food-kcal')?.value  || '0') || 0;
+    const p      = parseFloat(document.getElementById('manual-food-p')?.value     || '0') || 0;
+    const c      = parseFloat(document.getElementById('manual-food-c')?.value     || '0') || 0;
+    const sugars = parseFloat(document.getElementById('manual-food-sugars')?.value|| '0') || 0;
+    const f2     = parseFloat(document.getElementById('manual-food-f')?.value     || '0') || 0;
+    const sat    = parseFloat(document.getElementById('manual-food-sat')?.value   || '0') || 0;
+    const fiber  = parseFloat(document.getElementById('manual-food-fiber')?.value || '0') || 0;
+    const sodium = parseFloat(document.getElementById('manual-food-sodium')?.value|| '0') || 0;
+    const displayName = brand ? name + ' (' + brand + ')' : name;
     const data = NUT.meals;
-    data[meal].push({ name, kcal, p, c, f: f2, id: Date.now(), note: 'manuale',
-        nutriScore: nutCalcScore(kcal, p, c, f2) });
+    data[meal].push({
+        name: displayName, kcal, p, c, f: f2,
+        sugars, saturated: sat, fiber, sodium,
+        id: Date.now(), note: 'manuale',
+        nutriScore: nutCalcScoreFull(kcal, p, sugars, sat, fiber, sodium)
+    });
     NUT.saveMeals(data);
     nutUpdateUI();
     nutTlUpdateUI();
     overlay.classList.remove('active');
-    showToast('✓ ' + name + ' aggiunto!', 'success');
+    showToast('✓ ' + displayName + ' aggiunto!', 'success');
 }
 
 function mealManualClose() {
