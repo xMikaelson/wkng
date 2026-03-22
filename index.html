@@ -2403,9 +2403,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <!-- ══ MANUAL FOOD OVERLAY ══ -->
 <div id="manual-food-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.92);z-index:5000;align-items:flex-end;justify-content:center;">
   <div style="background:#1e293b;border-radius:20px 20px 0 0;padding:24px 20px 40px;width:100%;max-width:480px;box-sizing:border-box;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-      <div id="manual-food-title" style="font-size:1rem;font-weight:700;color:#e2e8f0;">Aggiungi alimento</div>
-      <button onclick="mealManualClose()" style="background:none;border:none;color:#64748b;font-size:1.4rem;cursor:pointer;padding:0;line-height:1;">✕</button>
+    <div style="display:table;width:100%;margin-bottom:20px;">
+      <div style="display:table-cell;vertical-align:top;">
+        <div id="manual-food-title" style="font-size:1rem;font-weight:700;color:#e2e8f0;line-height:1.4;">Aggiungi alimento</div>
+      </div>
+      <div style="display:table-cell;vertical-align:top;width:30px;text-align:right;">
+        <button onclick="mealManualClose()" style="background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:0;line-height:1.4;">✕</button>
+      </div>
     </div>
     <input id="manual-food-name" type="text" placeholder="Nome alimento *" autocomplete="off"
       style="width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:10px;color:#e2e8f0;font-size:0.9rem;margin-bottom:12px;box-sizing:border-box;font-family:inherit;">
