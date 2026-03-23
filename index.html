@@ -2140,6 +2140,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
         <div style="height:0.5px;background:rgba(255,255,255,0.07);margin:0 16px 4px;flex-shrink:0;"></div>
 
+        <!-- Timeline pasti -->
+        <div id="nut-timeline" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;">
+          <!-- Rendered by nutTimelineRender() -->
+        </div>
+
+
         <!-- Water Tracker -->
         <div style="padding:8px 16px 6px;flex-shrink:0;">
           <div style="display:flex;gap:14px;align-items:center;background:rgba(55,138,221,0.06);border:0.5px solid rgba(55,138,221,0.18);border-radius:12px;padding:10px 12px;">
@@ -2156,22 +2162,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
                 <span style="font-size:9.9px;font-weight:700;color:#e2e8f0;">Idratazione</span>
                 <span id="water-label" style="font-size:8.5px;color:#378ADD;font-weight:700;">0 / 8 bicchieri</span>
               </div>
-              <div style="font-size:7.7px;color:#64748b;margin-bottom:7px;" id="water-ml">0 ml · obiettivo 2000 ml</div>
+              <div style="font-size:7.7px;color:#64748b;margin-bottom:7px;" id="water-ml">0 ml · obiettivo 1600 ml</div>
               <div style="display:flex;gap:5px;">
                 <button onclick="waterRemove()" style="padding:4px 10px;background:rgba(55,138,221,0.1);border:0.5px solid rgba(55,138,221,0.25);border-radius:7px;color:#85B7EB;font-size:9px;cursor:pointer;font-family:inherit;">− Rimuovi</button>
-                <button onclick="waterAdd()" style="flex:1;padding:4px 8px;background:#378ADD;border:none;border-radius:7px;color:#fff;font-size:9px;font-weight:700;cursor:pointer;font-family:inherit;">+ Bicchiere (250ml)</button>
+                <button onclick="waterAdd()" style="flex:1;padding:4px 8px;background:#378ADD;border:none;border-radius:7px;color:#fff;font-size:9px;font-weight:700;cursor:pointer;font-family:inherit;">+ Bicchiere (200ml)</button>
               </div>
             </div>
           </div>
         </div>
-
-        <div style="height:0.5px;background:rgba(255,255,255,0.07);margin:0 16px 4px;flex-shrink:0;"></div>
-
-        <!-- Timeline pasti -->
-        <div id="nut-timeline" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;">
-          <!-- Rendered by nutTimelineRender() -->
-        </div>
-
         <!-- Pulsanti fissi sopra navbar -->
         <div id="nut-action-bar" style="padding:8px 16px 10px;background:rgba(15,23,42,0.97);border-top:0.5px solid rgba(255,255,255,0.07);flex-shrink:0;display:flex;gap:10px;">
           <button id="nut-btn-scan" onclick="nutScanActive()" style="flex:1;padding:12px 0;border-radius:12px;background:linear-gradient(135deg,var(--primary),var(--accent));border:none;color:#000;font-size:0.858rem;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0.04em;transition:opacity 0.2s;">📷 Scansiona</button>
@@ -4513,7 +4511,7 @@ function nutScoreBadge(score) {
 // ── Water Tracker ─────────────────────────────────────────────────────────
 const WATER_KEY = 'aw_water_'; // + dateKey
 const WATER_GOAL = 8;          // bicchieri
-const WATER_ML   = 250;        // ml per bicchiere
+const WATER_ML   = 200;        // ml per bicchiere (bicchiere standard ~200ml)
 
 function waterGetKey() {
     const d = new Date();
@@ -4553,7 +4551,7 @@ function waterUpdateUI(glasses) {
     const ml = glasses * WATER_ML;
     const mlGoal = WATER_GOAL * WATER_ML;
     const remaining = mlGoal - ml;
-    mlEl.textContent = ml + ' ml · ' + (remaining > 0 ? remaining + ' ml mancanti' : '✓ obiettivo raggiunto!');
+    mlEl.textContent = ml + ' ml · ' + (remaining > 0 ? remaining + ' ml mancanti' : '\u2713 obiettivo raggiunto!');
     mlEl.style.color = isComplete ? '#5DCAA5' : '#64748b';
 }
 
