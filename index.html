@@ -1955,6 +1955,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             <div class="badges-section-title">🏆 Achievements</div>
             <div class="badges-grid-home" id="badges-grid"></div>
         </div>
+        <!-- PR nella homepage -->
+        <div id="home-pr-section" style="display:none;padding:0 16px 16px;">
+            <div class="badges-section-title" style="margin-bottom:8px;">⚡ Personal Records</div>
+            <div id="home-pr-rows"></div>
+        </div>
         <div id="main-table" style="display:none;">
             <table><tbody id="plan-body"></tbody></table>
         </div>
@@ -2293,10 +2298,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <div class="prog-bars-wrap" id="prog-bars" style="flex:1;display:flex;align-items:flex-end;gap:6px;position:relative;"></div>
       </div>
     </div>
-  </div>
-  <div class="pr-list" id="pr-list">
-    <div class="pr-title">🏆 Personal Records</div>
-    <div id="pr-rows"></div>
   </div>
 
 
@@ -3243,6 +3244,7 @@ async function performPasswordReset() {
     el.style.borderColor = 'var(--primary)'; el.style.background = 'rgba(0,255,136,0.08)';
 }
 async function onLoginSuccess(user, usernameOverride = null) {
+    _suppressNotifications = true; // sopprime badge toast e overlay settimana durante login
     const { data: profile, error: profErr } = await sbClient.from('profiles').select('*').eq('id', user.id).single();
     if (profErr && !usernameOverride) {
         // Profilo non trovato — account probabilmente cancellato
@@ -3381,6 +3383,8 @@ async function onLoginSuccess(user, usernameOverride = null) {
 
     // Aggiorna UI nutrizione dopo il caricamento dei dati
     setTimeout(() => { nutUpdateUI(); nutTlUpdateUI(); }, 50);
+    // Riabilita notifiche dopo il login
+    setTimeout(() => { _suppressNotifications = false; }, 500);
 
     showToast('Bentornato, ' + username + '!', 'success');
 }
@@ -3884,18 +3888,20 @@ function updateProgressPage() {
     }
 
     // PR rows
+    // Renderizza PR sia nella home che nella pagina progressi
+    const prHtml = prs.length > 0
+        ? prs.map((p,i) => `<div class="pr-row" style="${i===prs.length-1?'border:none':''}">`
+            + `<span class="pr-name">${escapeHTML(p.name)}</span>`
+            + `<span class="pr-val">${p.kg.toFixed(1)} kg</span></div>`).join('')
+        : '';
     const prRows = document.getElementById('pr-rows');
-    if (prRows) {
-        if (prs.length > 0) {
-            prRows.innerHTML = prs.map((p,i) =>
-                `<div class="pr-row" style="${i===prs.length-1?'border:none':''}">
-                    <span class="pr-name">${escapeHTML(p.name)}</span>
-                    <span class="pr-val">${p.kg.toFixed(1)} kg</span>
-                </div>`
-            ).join('');
-        } else {
-            prRows.innerHTML = '<div style="font-size:0.72rem;color:#334155;padding:12px 0;text-align:center;">Completa il wizard per vedere i tuoi PR.</div>';
-        }
+    if (prRows) prRows.innerHTML = prHtml || '<div style="font-size:0.72rem;color:#334155;padding:12px 0;text-align:center;">Completa il wizard per vedere i tuoi PR.</div>';
+    // Home PR section
+    const homePrSection = document.getElementById('home-pr-section');
+    const homePrRows    = document.getElementById('home-pr-rows');
+    if (homePrSection) {
+        homePrSection.style.display = prs.length > 0 ? 'block' : 'none';
+        if (homePrRows) homePrRows.innerHTML = prHtml;
     }
     // Exercise chart
     populateExerciseSelector();
@@ -4317,6 +4323,10 @@ async function awSaveProduct(food, userId) {
             showToast('Errore salvataggio: ' + error.message, 'error');
         } else {
             console.log('aw_products insert OK:', data);
+            // Incrementa contatore contributi per achievement
+            const prev = parseInt(localStorage.getItem('aw_contributions')||'0');
+            localStorage.setItem('aw_contributions', prev + 1);
+            updateBadges();
             showToast('Grazie! Prodotto aggiunto al database Awakening', 'success');
         }
     } catch(e) {
@@ -9350,6 +9360,7 @@ document.addEventListener('click', (e) => {
 });
 
 function showWeekComplete(w) {
+    if (_suppressNotifications) return;
     const names  = ['ACTIVATION','MOMENTUM','THE PEAK','INTEGRATION'];
     const emojis = ['🔥','💪','⚡','👑'];
     const msgs   = [
@@ -9524,6 +9535,7 @@ async function performFullReset() {
 }
 
 // ============= STREAK & BADGES =============
+let _suppressNotifications = false; // true durante il login, impedisce notifiche retroattive
 const BADGES_CONFIG = [
     { id: 'first_workout',  icon: '🚀', name: 'Primo Passo',   desc: 'Primo allenamento completato',   check: () => APP.totalWorkouts >= 1 },
     { id: 'on_fire',        icon: '🔥', name: 'On Fire',        desc: '7 giorni consecutivi',            check: () => computeStreak() >= 7 },
@@ -9531,6 +9543,14 @@ const BADGES_CONFIG = [
     { id: 'chapter2',       icon: '⚡', name: 'Chapter II',     desc: 'Completa la settimana 1',         check: () => APP.completedWeeks[0] === true },
     { id: 'one_month',      icon: '🏅', name: 'Un Mese',        desc: "30 giorni dall'inizio",          check: () => APP.startDate && ((new Date() - new Date(APP.startDate)) / 86400000) >= 30 },
     { id: 'awaken',         icon: '👑', name: 'Awaken',         desc: 'Completa il programma 28gg',      check: () => APP.completedWeeks.every(Boolean) },
+    // Peso corporeo
+    { id: 'weight_first',   icon: '⚖️',  name: 'Prima Pesata',   desc: 'Registra il primo peso',           check: () => { try { return JSON.parse(localStorage.getItem('aw_weight_log')||'[]').length >= 1; } catch(e) { return false; } } },
+    { id: 'weight_1kg',     icon: '📉',  name: 'Primo kg',       desc: 'Perdi 1 kg dal primo peso',        check: () => { try { const l=JSON.parse(localStorage.getItem('aw_weight_log')||'[]'); return l.length>=2 && l[0].kg-l[l.length-1].kg>=1; } catch(e) { return false; } } },
+    { id: 'weight_5kg',     icon: '🏆',  name: '5 kg persi',     desc: 'Perdi 5 kg dal primo peso',        check: () => { try { const l=JSON.parse(localStorage.getItem('aw_weight_log')||'[]'); return l.length>=2 && l[0].kg-l[l.length-1].kg>=5; } catch(e) { return false; } } },
+    { id: 'weight_goal',    icon: '🎯',  name: 'Obiettivo!',     desc: 'Raggiungi il peso obiettivo',      check: () => { try { const goal=parseFloat(localStorage.getItem('aw_weight_goal')); const l=JSON.parse(localStorage.getItem('aw_weight_log')||'[]'); if(!l.length||isNaN(goal)) return false; const cur=l[l.length-1].kg; return goal<l[0].kg ? cur<=goal : cur>=goal; } catch(e) { return false; } } },
+    // Helper — contributo al database Awakening
+    { id: 'helper_first',   icon: '🤝',  name: 'Helper',         desc: 'Aggiungi il primo alimento al DB', check: () => (parseInt(localStorage.getItem('aw_contributions')||'0'))>=1 },
+    { id: 'helper_10',      icon: '🌟',  name: 'Super Helper',   desc: '10 alimenti aggiunti al DB',       check: () => (parseInt(localStorage.getItem('aw_contributions')||'0'))>=10 },
 ];
 
 function computeStreak() {
@@ -9800,6 +9820,7 @@ function updateBadges() {
 }
 
 function showBadgeToast(badge) {
+    if (_suppressNotifications) return;
     const toast = document.createElement('div');
     toast.style.cssText = `position:fixed; bottom:80px; left:0; right:0; margin-left:auto; margin-right:auto;
         background:var(--card); border:1px solid var(--primary); border-radius:12px;
