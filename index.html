@@ -3244,7 +3244,6 @@ async function performPasswordReset() {
     el.style.borderColor = 'var(--primary)'; el.style.background = 'rgba(0,255,136,0.08)';
 }
 async function onLoginSuccess(user, usernameOverride = null) {
-    _suppressNotifications = true; // sopprime badge toast e overlay settimana durante login
     const { data: profile, error: profErr } = await sbClient.from('profiles').select('*').eq('id', user.id).single();
     if (profErr && !usernameOverride) {
         // Profilo non trovato — account probabilmente cancellato
@@ -3362,6 +3361,8 @@ async function onLoginSuccess(user, usernameOverride = null) {
         if (hint) hint.style.display = 'none';
     }
 
+    // Snapshot badge prima del refresh — evita notifiche retroattive
+    _loginBadgeSnapshot = JSON.parse(localStorage.getItem('awakening_badges') || '[]');
     applyChapterTheme(APP.selectedViewWeek || 0);
     initDashboard();
     restoreChipStates();
@@ -3383,10 +3384,10 @@ async function onLoginSuccess(user, usernameOverride = null) {
 
     // Aggiorna UI nutrizione dopo il caricamento dei dati
     setTimeout(() => { nutUpdateUI(); nutTlUpdateUI(); }, 50);
-    // Riabilita notifiche dopo il login
-    setTimeout(() => { _suppressNotifications = false; }, 500);
 
     showToast('Bentornato, ' + username + '!', 'success');
+    // Azzera snapshot dopo 1s — da qui le notifiche sono di nuovo live
+    setTimeout(() => { _loginBadgeSnapshot = null; }, 1000);
 }
 
 
@@ -9361,7 +9362,8 @@ document.addEventListener('click', (e) => {
 });
 
 function showWeekComplete(w) {
-    if (_suppressNotifications) return;
+    // Non mostrare overlay se siamo ancora nella fase di caricamento login
+    if (_loginBadgeSnapshot !== null) return;
     const names  = ['ACTIVATION','MOMENTUM','THE PEAK','INTEGRATION'];
     const emojis = ['🔥','💪','⚡','👑'];
     const msgs   = [
@@ -9536,7 +9538,8 @@ async function performFullReset() {
 }
 
 // ============= STREAK & BADGES =============
-let _suppressNotifications = false; // true durante il login, impedisce notifiche retroattive
+// Badge già presenti al login — usati per non rimostrare notifiche retroattive
+let _loginBadgeSnapshot = null;
 const BADGES_CONFIG = [
     { id: 'first_workout',  icon: '🚀', name: 'Primo Passo',   desc: 'Primo allenamento completato',   check: () => APP.totalWorkouts >= 1 },
     { id: 'on_fire',        icon: '🔥', name: 'On Fire',        desc: '7 giorni consecutivi',            check: () => computeStreak() >= 7 },
@@ -9858,7 +9861,8 @@ function badgesToggleAll(btn) {
 }
 
 function showBadgeToast(badge) {
-    if (_suppressNotifications) return;
+    // Non mostrare notifica se il badge era già sbloccato al momento del login
+    if (_loginBadgeSnapshot !== null && _loginBadgeSnapshot.includes(badge.id)) return;
     const toast = document.createElement('div');
     toast.style.cssText = `position:fixed; bottom:80px; left:0; right:0; margin-left:auto; margin-right:auto;
         background:var(--card); border:1px solid var(--primary); border-radius:12px;
