@@ -2299,60 +2299,64 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div id="pr-rows"></div>
   </div>
 
-  <!-- EXERCISE LOAD CHART -->
-  <div class="prog-ex-chart-section" id="prog-ex-chart-section">
-    <div class="prog-ex-chart-header">
-      <span class="prog-ex-chart-title">📈 Carico esercizio</span>
-    </div>
-    <div class="prog-ex-selector-wrap">
-      <select id="prog-ex-select" onchange="renderExerciseChart()" class="prog-ex-select">
-        <option value="">— Seleziona esercizio —</option>
-      </select>
-    </div>
-    <div id="prog-ex-chart-wrap" style="display:none;">
-      <svg id="prog-ex-svg" viewBox="0 0 320 160" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;overflow:visible;"></svg>
-      <div class="prog-ex-legend">
-        <span class="prog-ex-leg-item"><span class="prog-ex-leg-dot" style="background:#6366f1;"></span>Previsto</span>
-        <span class="prog-ex-leg-item"><span class="prog-ex-leg-dot" style="background:#34d399;"></span>PR reale</span>
-      </div>
-    </div>
-    <div id="prog-ex-empty" style="display:none;" class="prog-ex-empty">Nessun dato disponibile per questo esercizio</div>
-  </div>
 
   <!-- WEIGHT TRACKER -->
   <div class="weight-section">
     <div class="prog-ex-chart-header">
       <span class="prog-ex-chart-title">⚖️ Peso corporeo</span>
     </div>
-    <!-- Input -->
-    <div class="weight-input-row">
-      <input id="weight-input" type="number" class="weight-input" placeholder="es. 78.5" step="0.1" min="20" max="300" inputmode="decimal">
-      <button class="weight-save-btn" onclick="weightSave()">Salva</button>
+
+    <!-- Attuale / Progresso / Obiettivo -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+      <!-- Attuale -->
+      <div class="weight-stat-card" style="text-align:center;">
+        <div style="font-size:0.5rem;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px;">Attuale</div>
+        <div class="weight-stat-val" id="weight-current" style="color:#e2e8f0;">—</div>
+        <div style="font-size:0.55rem;color:#64748b;margin-top:2px;" id="weight-current-date">—</div>
+      </div>
+      <!-- Freccia + % -->
+      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0;">
+        <div style="width:44px;height:2px;background:#334155;border-radius:99px;position:relative;">
+          <div id="weight-progress-bar" style="position:absolute;left:0;top:0;height:100%;width:0%;background:#6366f1;border-radius:99px;transition:width 0.6s;"></div>
+          <div id="weight-progress-dot" style="position:absolute;right:-4px;top:-4px;width:8px;height:8px;border-radius:50%;background:#6366f1;transition:right 0.6s;"></div>
+        </div>
+        <div id="weight-pct" style="font-size:0.6rem;color:#6366f1;font-weight:700;">0%</div>
+      </div>
+      <!-- Obiettivo -->
+      <div class="weight-stat-card" style="text-align:center;">
+        <div style="font-size:0.5rem;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px;">Obiettivo</div>
+        <div class="weight-stat-val" id="weight-goal-val" style="color:#34d399;">—</div>
+        <div style="font-size:0.55rem;color:#64748b;margin-top:2px;" id="weight-goal-sub">non impostato</div>
+      </div>
     </div>
-    <!-- Stat cards -->
-    <div style="display:flex;gap:8px;margin-bottom:14px;">
-      <div class="weight-stat-card">
-        <div class="weight-stat-val" id="weight-current" style="color:#6366f1;">—</div>
-        <div class="weight-stat-lbl">Attuale</div>
-        <div class="weight-stat-sub" id="weight-current-date" style="color:#64748b;">—</div>
+
+    <!-- Barra progresso ampia -->
+    <div id="weight-progress-wrap" style="display:none;margin-bottom:6px;">
+      <div style="background:#0f172a;border-radius:99px;height:8px;overflow:hidden;">
+        <div id="weight-progress-bar2" style="height:100%;background:linear-gradient(90deg,#6366f1,#34d399);border-radius:99px;width:0%;transition:width 0.6s;"></div>
       </div>
-      <div class="weight-stat-card">
-        <div class="weight-stat-val" id="weight-delta" style="color:#94a3b8;">—</div>
-        <div class="weight-stat-lbl">Ultimo mese</div>
-        <div class="weight-stat-sub" id="weight-delta-sub" style="color:#64748b;">vs 30gg fa</div>
-      </div>
-      <div class="weight-stat-card">
-        <div class="weight-stat-val" id="weight-start" style="color:#94a3b8;">—</div>
-        <div class="weight-stat-lbl">Inizio</div>
-        <div class="weight-stat-sub" id="weight-start-date" style="color:#64748b;">—</div>
-      </div>
+      <div id="weight-eta" style="font-size:0.6rem;color:#64748b;text-align:center;margin-top:5px;"></div>
     </div>
+
     <!-- Grafico -->
-    <div id="weight-chart-wrap" style="display:none;">
+    <div id="weight-chart-wrap" style="display:none;margin-bottom:12px;">
       <canvas id="weight-chart" style="width:100%;max-height:150px;"></canvas>
-      <div id="weight-chart-empty" style="display:none;text-align:center;color:#334155;font-size:0.72rem;padding:20px 0;">Registra almeno 2 pesate per vedere il grafico</div>
     </div>
-    <div id="weight-empty-msg" style="text-align:center;color:#334155;font-size:0.72rem;padding:12px 0;">Registra la prima pesata per iniziare il tracking</div>
+
+    <!-- Input peso + obiettivo -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+      <div>
+        <div style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Peso oggi (kg)</div>
+        <input id="weight-input" type="number" class="weight-input" placeholder="es. 78.5" step="0.1" min="20" max="300" inputmode="decimal">
+      </div>
+      <div>
+        <div style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Obiettivo (kg)</div>
+        <input id="weight-goal-input" type="number" class="weight-input" placeholder="es. 75.0" step="0.1" min="20" max="300" inputmode="decimal">
+      </div>
+    </div>
+    <button class="weight-save-btn" onclick="weightSave()" style="width:100%;">Salva</button>
+
+    <div id="weight-empty-msg" style="text-align:center;color:#334155;font-size:0.72rem;padding:10px 0 4px;">Registra la prima pesata per iniziare il tracking</div>
   </div>
 
 </div>
@@ -8017,162 +8021,202 @@ function autoSaveProtocol() {
 
 // ══════════ WEIGHT TRACKER ══════════
 const WEIGHT_STORAGE_KEY = 'aw_weight_log';
+const WEIGHT_GOAL_KEY    = 'aw_weight_goal';
 let weightChart = null;
 
-function weightGetLog() {
-    try { return JSON.parse(localStorage.getItem(WEIGHT_STORAGE_KEY) || '[]'); } catch(e) { return []; }
-}
+function weightGetLog()  { try { return JSON.parse(localStorage.getItem(WEIGHT_STORAGE_KEY) || '[]'); } catch(e) { return []; } }
+function weightSaveLog(l){ localStorage.setItem(WEIGHT_STORAGE_KEY, JSON.stringify(l)); }
+function weightGetGoal() { const g = parseFloat(localStorage.getItem(WEIGHT_GOAL_KEY)); return isNaN(g) ? null : g; }
+function weightSaveGoal(g){ localStorage.setItem(WEIGHT_GOAL_KEY, g); }
 
-function weightSaveLog(log) {
-    localStorage.setItem(WEIGHT_STORAGE_KEY, JSON.stringify(log));
-}
+function weightFormatDate(s)     { const [,m,d] = s.split('-'); return d+'/'+m; }
+function weightFormatDateFull(s) { const [y,m,d] = s.split('-'); return d+'/'+m+'/'+y.slice(2); }
 
 function weightSave() {
-    const input = document.getElementById('weight-input');
-    const val = parseFloat(input.value);
+    const inp  = document.getElementById('weight-input');
+    const gInp = document.getElementById('weight-goal-input');
+    const val  = parseFloat(inp.value);
     if (!val || val < 20 || val > 300) { showToast('Inserisci un peso valido (20–300 kg)', 'error'); return; }
-    const log = weightGetLog();
+
+    // Salva obiettivo se compilato
+    const goalVal = parseFloat(gInp.value);
+    if (!isNaN(goalVal) && goalVal >= 20 && goalVal <= 300) {
+        weightSaveGoal(goalVal);
+        gInp.value = '';
+    }
+
+    const log   = weightGetLog();
     const today = new Date().toISOString().split('T')[0];
-    // Sostituisce la registrazione di oggi se già esiste
-    const idx = log.findIndex(e => e.date === today);
+    const idx   = log.findIndex(e => e.date === today);
     if (idx >= 0) log[idx].kg = val;
     else log.push({ date: today, kg: val });
     log.sort((a, b) => a.date.localeCompare(b.date));
     weightSaveLog(log);
-    input.value = '';
+    inp.value = '';
     weightUpdateUI();
-    showToast('✓ Peso registrato: ' + val + ' kg', 'success');
-}
-
-function weightFormatDate(dateStr) {
-    const [y, m, d] = dateStr.split('-');
-    return d + '/' + m;
-}
-
-function weightFormatDateFull(dateStr) {
-    const [y, m, d] = dateStr.split('-');
-    return d + '/' + m + '/' + y.slice(2);
+    showToast('Peso registrato: ' + val + ' kg', 'success');
 }
 
 function weightUpdateUI() {
-    const log = weightGetLog();
+    const log      = weightGetLog();
+    const goal     = weightGetGoal();
     const curEl    = document.getElementById('weight-current');
     const curDate  = document.getElementById('weight-current-date');
-    const deltaEl  = document.getElementById('weight-delta');
-    const deltaSub = document.getElementById('weight-delta-sub');
-    const startEl  = document.getElementById('weight-start');
-    const startDate= document.getElementById('weight-start-date');
-    const emptyMsg = document.getElementById('weight-empty-msg');
+    const goalVal  = document.getElementById('weight-goal-val');
+    const goalSub  = document.getElementById('weight-goal-sub');
+    const pctEl    = document.getElementById('weight-pct');
+    const bar1     = document.getElementById('weight-progress-bar');
+    const dot1     = document.getElementById('weight-progress-dot');
+    const barWrap  = document.getElementById('weight-progress-wrap');
+    const bar2     = document.getElementById('weight-progress-bar2');
+    const etaEl    = document.getElementById('weight-eta');
     const chartWrap= document.getElementById('weight-chart-wrap');
+    const emptyMsg = document.getElementById('weight-empty-msg');
     if (!curEl) return;
 
+    // Obiettivo
+    if (goal !== null) {
+        if (goalVal) goalVal.textContent = goal + ' kg';
+        if (goalSub) goalSub.textContent = 'obiettivo';
+        // Pre-compila il campo se vuoto
+        const gi = document.getElementById('weight-goal-input');
+        if (gi && !gi.value) gi.placeholder = goal + ' (attuale)';
+    } else {
+        if (goalVal) goalVal.textContent = '—';
+        if (goalSub) goalSub.textContent = 'non impostato';
+    }
+
     if (log.length === 0) {
-        [curEl, deltaEl, startEl].forEach(el => { if(el) el.textContent = '—'; });
+        if (curEl) curEl.textContent = '—';
+        if (curDate) curDate.textContent = '—';
+        if (pctEl) pctEl.textContent = '0%';
         if (emptyMsg) emptyMsg.style.display = 'block';
         if (chartWrap) chartWrap.style.display = 'none';
+        if (barWrap) barWrap.style.display = 'none';
         return;
     }
-
     if (emptyMsg) emptyMsg.style.display = 'none';
 
-    // Attuale — ultima registrazione
-    const last = log[log.length - 1];
-    curEl.textContent = last.kg + ' kg';
+    const last  = log[log.length - 1];
+    const first = log[0];
+
+    // Attuale
+    if (curEl) curEl.textContent = last.kg + ' kg';
     if (curDate) curDate.textContent = weightFormatDateFull(last.date);
 
-    // Inizio — prima registrazione
-    const first = log[0];
-    if (startEl) startEl.textContent = first.kg + ' kg';
-    if (startDate) startDate.textContent = weightFormatDateFull(first.date);
+    // Progresso verso obiettivo
+    if (goal !== null && first.kg !== goal) {
+        const totalDelta  = Math.abs(first.kg - goal);
+        const doneDelta   = Math.abs(first.kg - last.kg);
+        // Progresso: quanto ci siamo avvicinati all'obiettivo
+        const rawPct = Math.max(0, Math.min(doneDelta / totalDelta * 100, 100));
+        // Se ci siamo allontanati dall'obiettivo, 0%
+        const goingRight = (goal < first.kg) ? last.kg <= first.kg : last.kg >= first.kg;
+        const pct = goingRight ? rawPct : 0;
+        const pctRound = Math.round(pct);
 
-    // Delta ultimo mese
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const thirtyKey = thirtyDaysAgo.toISOString().split('T')[0];
-    const monthAgoEntry = [...log].reverse().find(e => e.date <= thirtyKey);
-    if (monthAgoEntry && deltaEl) {
-        const diff = parseFloat((last.kg - monthAgoEntry.kg).toFixed(1));
-        const sign = diff > 0 ? '+' : '';
-        deltaEl.textContent = sign + diff + ' kg';
-        deltaEl.style.color = diff < 0 ? '#34d399' : diff > 0 ? '#f87171' : '#94a3b8';
-        if (deltaSub) deltaSub.textContent = 'dal ' + weightFormatDateFull(monthAgoEntry.date);
-    } else if (log.length >= 2 && deltaEl) {
-        // Fallback: confronta prima e ultima
-        const diff = parseFloat((last.kg - first.kg).toFixed(1));
-        const sign = diff > 0 ? '+' : '';
-        deltaEl.textContent = sign + diff + ' kg';
-        deltaEl.style.color = diff < 0 ? '#34d399' : diff > 0 ? '#f87171' : '#94a3b8';
-        if (deltaSub) deltaSub.textContent = "dall'inizio";
+        if (pctEl) { pctEl.textContent = pctRound + '%'; pctEl.style.color = pct >= 100 ? '#34d399' : '#6366f1'; }
+        if (bar1)  { bar1.style.width = pct + '%'; bar1.style.background = pct >= 100 ? '#34d399' : '#6366f1'; }
+        if (dot1)  { dot1.style.right = (-(4)) + 'px'; dot1.style.background = pct >= 100 ? '#34d399' : '#6366f1'; }
+        if (bar2)  bar2.style.width = pct + '%';
+        if (barWrap) barWrap.style.display = 'block';
+
+        // Stima settimane: media kg/settimana sulle ultime registrazioni
+        if (log.length >= 2 && etaEl) {
+            const weekMs = 7 * 24 * 3600 * 1000;
+            const ms = new Date(last.date) - new Date(first.date);
+            const weeks = ms / weekMs;
+            const kgPerWeek = weeks > 0 ? doneDelta / weeks : 0;
+            const remaining = Math.abs(last.kg - goal);
+            if (pct >= 100) {
+                etaEl.textContent = '✓ Obiettivo raggiunto!';
+                etaEl.style.color = '#34d399';
+            } else if (kgPerWeek > 0.05) {
+                const weeksLeft = Math.ceil(remaining / kgPerWeek);
+                etaEl.textContent = 'Ancora ' + remaining.toFixed(1) + ' kg · ~' + weeksLeft + ' settimane al ritmo attuale';
+                etaEl.style.color = '#64748b';
+            } else {
+                etaEl.textContent = 'Ancora ' + remaining.toFixed(1) + " kg all'obiettivo";
+                etaEl.style.color = '#64748b';
+            }
+        }
     } else {
-        if (deltaEl) deltaEl.textContent = '—';
+        if (barWrap) barWrap.style.display = 'none';
+        if (pctEl) pctEl.textContent = goal !== null ? '0%' : '—';
     }
 
-    // Grafico
+    // Grafico (da 2 pesate in su)
     if (log.length >= 2) {
         if (chartWrap) chartWrap.style.display = 'block';
-        weightRenderChart(log);
+        weightRenderChart(log, goal);
     } else {
         if (chartWrap) chartWrap.style.display = 'none';
     }
 }
 
-function weightRenderChart(log) {
+function weightRenderChart(log, goal) {
     const canvas = document.getElementById('weight-chart');
     if (!canvas) return;
     const labels = log.map(e => weightFormatDate(e.date));
     const data   = log.map(e => e.kg);
-    const minVal = Math.min(...data) - 1;
-    const maxVal = Math.max(...data) + 1;
+    const allVals = goal !== null ? [...data, goal] : data;
+    const minVal  = Math.min(...allVals) - 1;
+    const maxVal  = Math.max(...allVals) + 1;
 
     if (weightChart) { weightChart.destroy(); weightChart = null; }
 
-    const ctx = canvas.getContext('2d');
+    const ctx  = canvas.getContext('2d');
     const grad = ctx.createLinearGradient(0, 0, 0, 140);
     grad.addColorStop(0, 'rgba(99,102,241,0.25)');
     grad.addColorStop(1, 'rgba(99,102,241,0)');
 
+    const datasets = [{
+        label: 'Peso',
+        data,
+        borderColor: '#6366f1',
+        backgroundColor: grad,
+        borderWidth: 2,
+        pointBackgroundColor: '#6366f1',
+        pointRadius: data.length > 20 ? 2 : 4,
+        pointHoverRadius: 6,
+        tension: 0.4,
+        fill: true
+    }];
+
+    // Linea obiettivo tratteggiata
+    if (goal !== null) {
+        datasets.push({
+            label: 'Obiettivo',
+            data: Array(labels.length).fill(goal),
+            borderColor: 'rgba(52,211,153,0.45)',
+            borderDash: [5, 5],
+            borderWidth: 1.5,
+            pointRadius: 0,
+            tension: 0,
+            fill: false
+        });
+    }
+
     weightChart = new Chart(ctx, {
         type: 'line',
-        data: {
-            labels,
-            datasets: [{
-                data,
-                borderColor: '#6366f1',
-                backgroundColor: grad,
-                borderWidth: 2,
-                pointBackgroundColor: '#6366f1',
-                pointRadius: data.length > 20 ? 2 : 4,
-                pointHoverRadius: 6,
-                tension: 0.4,
-                fill: true
-            }]
-        },
+        data: { labels, datasets },
         options: {
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
-                legend: { display: false },
+                legend: { display: goal !== null, labels: { color: '#64748b', font: { size: 9 }, boxWidth: 10, padding: 10 } },
                 tooltip: {
                     backgroundColor: '#1e293b',
                     borderColor: 'rgba(255,255,255,0.1)',
                     borderWidth: 1,
                     titleColor: '#94a3b8',
                     bodyColor: '#e2e8f0',
-                    callbacks: { label: ctx => ctx.parsed.y + ' kg' }
+                    callbacks: { label: c => c.parsed.y + ' kg' }
                 }
             },
             scales: {
-                x: {
-                    grid: { color: 'rgba(255,255,255,0.05)' },
-                    ticks: { color: '#475569', font: { size: 9 },
-                        maxTicksLimit: 7, maxRotation: 0 }
-                },
-                y: {
-                    grid: { color: 'rgba(255,255,255,0.05)' },
-                    ticks: { color: '#475569', font: { size: 9 },
-                        callback: v => v + ' kg' },
-                    min: minVal, max: maxVal
-                }
+                x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#475569', font: { size: 9 }, maxTicksLimit: 7, maxRotation: 0 } },
+                y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#475569', font: { size: 9 }, callback: v => v + ' kg' }, min: minVal, max: maxVal }
             }
         }
     });
