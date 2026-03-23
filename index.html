@@ -2741,6 +2741,7 @@ function saveState() {
         syncProtocolStates();
         updateStreakWidget();
         updateBadges();
+        syncExtraToSupabase();
     } catch(e) {}
 }
 async function saveToSupabase(stateData) {
@@ -2748,15 +2749,43 @@ async function saveToSupabase(stateData) {
         const { data: { user } } = await sbClient.auth.getUser();
         if (!user) return;
         // Try update first (row should exist after registration)
+        const extraCols = {
+            weight_log:    JSON.parse(localStorage.getItem('aw_weight_log')    || '[]'),
+            weight_goal:   parseFloat(localStorage.getItem('aw_weight_goal'))  || null,
+            badges_json:   JSON.parse(localStorage.getItem('awakening_badges') || '[]'),
+            streak_record: parseInt(localStorage.getItem('awakening_streak_record') || '0') || 0,
+            contributions: parseInt(localStorage.getItem('aw_contributions')   || '0') || 0
+        };
         const { error: upErr } = await sbClient.from('profiles')
-            .update({ state_json: stateData }).eq('id', user.id);
+            .update({ state_json: stateData, ...extraCols }).eq('id', user.id);
         if (upErr) {
             console.warn('state_json update failed:', upErr.message, '— trying insert');
-            // Row might not exist (e.g. social auth without register flow)
-            await sbClient.from('profiles').insert({ id: user.id, state_json: stateData })
+            await sbClient.from('profiles').insert({ id: user.id, state_json: stateData, ...extraCols })
                 .then(({ error: insErr }) => { if (insErr) console.error('state_json insert failed:', insErr.message); });
         }
     } catch(e) { console.error('saveToSupabase error:', e.message); }
+}
+
+async function syncExtraToSupabase() {
+    // Throttle: max 1 sync ogni 5 secondi per evitare troppe chiamate
+    const now = Date.now();
+    if (syncExtraToSupabase._last && now - syncExtraToSupabase._last < 5000) {
+        clearTimeout(syncExtraToSupabase._t);
+        syncExtraToSupabase._t = setTimeout(syncExtraToSupabase, 5000);
+        return;
+    }
+    syncExtraToSupabase._last = now;
+    try {
+        const { data: { user } } = await sbClient.auth.getUser();
+        if (!user) return;
+        await sbClient.from('profiles').update({
+            weight_log:    JSON.parse(localStorage.getItem('aw_weight_log')    || '[]'),
+            weight_goal:   parseFloat(localStorage.getItem('aw_weight_goal'))  || null,
+            badges_json:   JSON.parse(localStorage.getItem('awakening_badges') || '[]'),
+            streak_record: parseInt(localStorage.getItem('awakening_streak_record') || '0') || 0,
+            contributions: parseInt(localStorage.getItem('aw_contributions')   || '0') || 0
+        }).eq('id', user.id);
+    } catch(e) { console.warn('syncExtraToSupabase error:', e.message); }
 }
 
 function syncProtocolStates() {
@@ -3254,6 +3283,35 @@ async function onLoginSuccess(user, usernameOverride = null) {
     }
     const username = usernameOverride || profile?.username || user.email.split('@')[0];
     APP.userName = username;
+
+    // Ripristina i dati extra da Supabase in localStorage (win: Supabase se più recente)
+    if (profile) {
+        // Weight log: unisci Supabase + localStorage, priorità alla versione più lunga
+        const sbWeightLog  = profile.weight_log  || [];
+        const lsWeightLog  = JSON.parse(localStorage.getItem('aw_weight_log') || '[]');
+        const mergedWeight = sbWeightLog.length >= lsWeightLog.length ? sbWeightLog : lsWeightLog;
+        localStorage.setItem('aw_weight_log', JSON.stringify(mergedWeight));
+
+        // Weight goal: Supabase vince se presente
+        if (profile.weight_goal != null)
+            localStorage.setItem('aw_weight_goal', profile.weight_goal);
+
+        // Badges: unione dei due set (non si perdono badge su nessun device)
+        const sbBadges = profile.badges_json || [];
+        const lsBadges = JSON.parse(localStorage.getItem('awakening_badges') || '[]');
+        const mergedBadges = [...new Set([...sbBadges, ...lsBadges])];
+        localStorage.setItem('awakening_badges', JSON.stringify(mergedBadges));
+
+        // Streak record: prende il massimo tra i due
+        const sbStreak = profile.streak_record || 0;
+        const lsStreak = parseInt(localStorage.getItem('awakening_streak_record') || '0');
+        localStorage.setItem('awakening_streak_record', Math.max(sbStreak, lsStreak));
+
+        // Contributi: prende il massimo
+        const sbContrib = profile.contributions || 0;
+        const lsContrib = parseInt(localStorage.getItem('aw_contributions') || '0');
+        localStorage.setItem('aw_contributions', Math.max(sbContrib, lsContrib));
+    }
     // Merge strategy: use the state with more progress (higher totalWorkouts)
     const localState = (() => { try { const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : null; } catch(e) { return null; } })();
     const supaState = profile?.state_json || null;
@@ -4341,6 +4399,7 @@ async function awSaveProduct(food, userId) {
             const prev = parseInt(localStorage.getItem('aw_contributions')||'0');
             localStorage.setItem('aw_contributions', prev + 1);
             updateBadges();
+            syncExtraToSupabase();
             showToast('Grazie! Prodotto aggiunto al database Awakening', 'success');
         }
     } catch(e) {
@@ -8079,6 +8138,8 @@ function weightSave() {
     inp.value = '';
     weightUpdateUI();
     updateBadges();
+    // Sincronizza peso su Supabase
+    syncExtraToSupabase();
     showToast('Peso registrato: ' + val + ' kg', 'success');
 }
 
@@ -9834,6 +9895,7 @@ function updateBadges() {
     if (newlyUnlocked.length > 0) {
         localStorage.setItem('awakening_badges', JSON.stringify(unlocked));
         newlyUnlocked.forEach(b => showBadgeToast(b));
+        syncExtraToSupabase();
     }
 
     // ── PUNTO 2: mostra solo 6 badge, resto con "Mostra tutto" ────────────
