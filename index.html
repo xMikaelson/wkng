@@ -1424,6 +1424,33 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .prog-ex-leg-item { display:flex; align-items:center; gap:5px; font-size:0.58rem; color:#64748b; }
         .prog-ex-leg-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
         .prog-ex-empty { text-align:center; color:#334155; font-size:0.72rem; padding:20px 0; }
+        .weight-section {
+            margin: 0 16px 24px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 14px;
+            padding: 16px;
+        }
+        .weight-stat-card {
+            flex:1; background:rgba(255,255,255,0.04); border-radius:10px;
+            padding:10px 8px; text-align:center;
+        }
+        .weight-stat-val { font-size:1.25rem; font-weight:900; line-height:1; }
+        .weight-stat-lbl { font-size:0.5rem; color:#64748b; text-transform:uppercase; letter-spacing:0.08em; margin-top:3px; }
+        .weight-stat-sub { font-size:0.58rem; margin-top:2px; font-weight:700; }
+        .weight-input-row { display:flex; gap:8px; margin-bottom:14px; }
+        .weight-input {
+            flex:1; padding:9px 12px; background:#0f172a; border:1px solid #334155;
+            border-radius:9px; color:#e2e8f0; font-size:0.9rem; font-family:inherit;
+            -webkit-appearance:none;
+        }
+        .weight-input:focus { outline:none; border-color:var(--primary); }
+        .weight-save-btn {
+            padding:9px 18px; background:linear-gradient(135deg,var(--primary),var(--accent));
+            border:none; border-radius:9px; color:#000; font-size:0.72rem;
+            font-weight:800; cursor:pointer; font-family:inherit; white-space:nowrap;
+        }
+
         .pr-name { font-size:0.72rem; color:#94a3b8; }
         .pr-val { font-size:0.72rem; font-weight:700; color:var(--primary); }
 
@@ -2291,6 +2318,43 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     </div>
     <div id="prog-ex-empty" style="display:none;" class="prog-ex-empty">Nessun dato disponibile per questo esercizio</div>
   </div>
+
+  <!-- WEIGHT TRACKER -->
+  <div class="weight-section">
+    <div class="prog-ex-chart-header">
+      <span class="prog-ex-chart-title">⚖️ Peso corporeo</span>
+    </div>
+    <!-- Input -->
+    <div class="weight-input-row">
+      <input id="weight-input" type="number" class="weight-input" placeholder="es. 78.5" step="0.1" min="20" max="300" inputmode="decimal">
+      <button class="weight-save-btn" onclick="weightSave()">Salva</button>
+    </div>
+    <!-- Stat cards -->
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <div class="weight-stat-card">
+        <div class="weight-stat-val" id="weight-current" style="color:#6366f1;">—</div>
+        <div class="weight-stat-lbl">Attuale</div>
+        <div class="weight-stat-sub" id="weight-current-date" style="color:#64748b;">—</div>
+      </div>
+      <div class="weight-stat-card">
+        <div class="weight-stat-val" id="weight-delta" style="color:#94a3b8;">—</div>
+        <div class="weight-stat-lbl">Ultimo mese</div>
+        <div class="weight-stat-sub" id="weight-delta-sub" style="color:#64748b;">vs 30gg fa</div>
+      </div>
+      <div class="weight-stat-card">
+        <div class="weight-stat-val" id="weight-start" style="color:#94a3b8;">—</div>
+        <div class="weight-stat-lbl">Inizio</div>
+        <div class="weight-stat-sub" id="weight-start-date" style="color:#64748b;">—</div>
+      </div>
+    </div>
+    <!-- Grafico -->
+    <div id="weight-chart-wrap" style="display:none;">
+      <canvas id="weight-chart" style="width:100%;max-height:150px;"></canvas>
+      <div id="weight-chart-empty" style="display:none;text-align:center;color:#334155;font-size:0.72rem;padding:20px 0;">Registra almeno 2 pesate per vedere il grafico</div>
+    </div>
+    <div id="weight-empty-msg" style="text-align:center;color:#334155;font-size:0.72rem;padding:12px 0;">Registra la prima pesata per iniziare il tracking</div>
+  </div>
+
 </div>
 </div>
 
@@ -3740,6 +3804,7 @@ document.addEventListener('touchend', e => {
 // PROGRESSI — updateProgressPage
 // ════════════════════════════════════════════════
 function updateProgressPage() {
+    weightUpdateUI();
     const exData = APP.exerciseData || [];
     // Volume = per ogni chapter: (sessioni_completate) × sum_esercizi(sets × reps × kg_chapter)
     let totalVol = 0;
@@ -6223,6 +6288,7 @@ function navSwitch(tab) {
             }, 600);
         }
     } else if (tab === 'progressi') {
+        weightUpdateUI();
         const progPage = document.getElementById('page-progress');
         if (progPage) { progPage.classList.add('active'); updateProgressPage(); }
     } else if (tab === 'piani') {
@@ -7949,6 +8015,169 @@ function autoSaveProtocol() {
     saveProtocolToSupabase(newProto);
 }
 
+
+// ══════════ WEIGHT TRACKER ══════════
+const WEIGHT_STORAGE_KEY = 'aw_weight_log';
+let weightChart = null;
+
+function weightGetLog() {
+    try { return JSON.parse(localStorage.getItem(WEIGHT_STORAGE_KEY) || '[]'); } catch(e) { return []; }
+}
+
+function weightSaveLog(log) {
+    localStorage.setItem(WEIGHT_STORAGE_KEY, JSON.stringify(log));
+}
+
+function weightSave() {
+    const input = document.getElementById('weight-input');
+    const val = parseFloat(input.value);
+    if (!val || val < 20 || val > 300) { showToast('Inserisci un peso valido (20–300 kg)', 'error'); return; }
+    const log = weightGetLog();
+    const today = new Date().toISOString().split('T')[0];
+    // Sostituisce la registrazione di oggi se già esiste
+    const idx = log.findIndex(e => e.date === today);
+    if (idx >= 0) log[idx].kg = val;
+    else log.push({ date: today, kg: val });
+    log.sort((a, b) => a.date.localeCompare(b.date));
+    weightSaveLog(log);
+    input.value = '';
+    weightUpdateUI();
+    showToast('✓ Peso registrato: ' + val + ' kg', 'success');
+}
+
+function weightFormatDate(dateStr) {
+    const [y, m, d] = dateStr.split('-');
+    return d + '/' + m;
+}
+
+function weightFormatDateFull(dateStr) {
+    const [y, m, d] = dateStr.split('-');
+    return d + '/' + m + '/' + y.slice(2);
+}
+
+function weightUpdateUI() {
+    const log = weightGetLog();
+    const curEl    = document.getElementById('weight-current');
+    const curDate  = document.getElementById('weight-current-date');
+    const deltaEl  = document.getElementById('weight-delta');
+    const deltaSub = document.getElementById('weight-delta-sub');
+    const startEl  = document.getElementById('weight-start');
+    const startDate= document.getElementById('weight-start-date');
+    const emptyMsg = document.getElementById('weight-empty-msg');
+    const chartWrap= document.getElementById('weight-chart-wrap');
+    if (!curEl) return;
+
+    if (log.length === 0) {
+        [curEl, deltaEl, startEl].forEach(el => { if(el) el.textContent = '—'; });
+        if (emptyMsg) emptyMsg.style.display = 'block';
+        if (chartWrap) chartWrap.style.display = 'none';
+        return;
+    }
+
+    if (emptyMsg) emptyMsg.style.display = 'none';
+
+    // Attuale — ultima registrazione
+    const last = log[log.length - 1];
+    curEl.textContent = last.kg + ' kg';
+    if (curDate) curDate.textContent = weightFormatDateFull(last.date);
+
+    // Inizio — prima registrazione
+    const first = log[0];
+    if (startEl) startEl.textContent = first.kg + ' kg';
+    if (startDate) startDate.textContent = weightFormatDateFull(first.date);
+
+    // Delta ultimo mese
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const thirtyKey = thirtyDaysAgo.toISOString().split('T')[0];
+    const monthAgoEntry = [...log].reverse().find(e => e.date <= thirtyKey);
+    if (monthAgoEntry && deltaEl) {
+        const diff = parseFloat((last.kg - monthAgoEntry.kg).toFixed(1));
+        const sign = diff > 0 ? '+' : '';
+        deltaEl.textContent = sign + diff + ' kg';
+        deltaEl.style.color = diff < 0 ? '#34d399' : diff > 0 ? '#f87171' : '#94a3b8';
+        if (deltaSub) deltaSub.textContent = 'dal ' + weightFormatDateFull(monthAgoEntry.date);
+    } else if (log.length >= 2 && deltaEl) {
+        // Fallback: confronta prima e ultima
+        const diff = parseFloat((last.kg - first.kg).toFixed(1));
+        const sign = diff > 0 ? '+' : '';
+        deltaEl.textContent = sign + diff + ' kg';
+        deltaEl.style.color = diff < 0 ? '#34d399' : diff > 0 ? '#f87171' : '#94a3b8';
+        if (deltaSub) deltaSub.textContent = 'dall'inizio';
+    } else {
+        if (deltaEl) deltaEl.textContent = '—';
+    }
+
+    // Grafico
+    if (log.length >= 2) {
+        if (chartWrap) chartWrap.style.display = 'block';
+        weightRenderChart(log);
+    } else {
+        if (chartWrap) chartWrap.style.display = 'none';
+    }
+}
+
+function weightRenderChart(log) {
+    const canvas = document.getElementById('weight-chart');
+    if (!canvas) return;
+    const labels = log.map(e => weightFormatDate(e.date));
+    const data   = log.map(e => e.kg);
+    const minVal = Math.min(...data) - 1;
+    const maxVal = Math.max(...data) + 1;
+
+    if (weightChart) { weightChart.destroy(); weightChart = null; }
+
+    const ctx = canvas.getContext('2d');
+    const grad = ctx.createLinearGradient(0, 0, 0, 140);
+    grad.addColorStop(0, 'rgba(99,102,241,0.25)');
+    grad.addColorStop(1, 'rgba(99,102,241,0)');
+
+    weightChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                data,
+                borderColor: '#6366f1',
+                backgroundColor: grad,
+                borderWidth: 2,
+                pointBackgroundColor: '#6366f1',
+                pointRadius: data.length > 20 ? 2 : 4,
+                pointHoverRadius: 6,
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1e293b',
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    borderWidth: 1,
+                    titleColor: '#94a3b8',
+                    bodyColor: '#e2e8f0',
+                    callbacks: { label: ctx => ctx.parsed.y + ' kg' }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { color: '#475569', font: { size: 9 },
+                        maxTicksLimit: 7, maxRotation: 0 }
+                },
+                y: {
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { color: '#475569', font: { size: 9 },
+                        callback: v => v + ' kg' },
+                    min: minVal, max: maxVal
+                }
+            }
+        }
+    });
+}
 
 // ══════════ EXERCISE LOAD CHART ══════════
 function populateExerciseSelector() {
