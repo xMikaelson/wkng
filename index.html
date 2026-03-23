@@ -2140,6 +2140,33 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
         <div style="height:0.5px;background:rgba(255,255,255,0.07);margin:0 16px 4px;flex-shrink:0;"></div>
 
+        <!-- Water Tracker -->
+        <div style="padding:8px 16px 6px;flex-shrink:0;">
+          <div style="display:flex;gap:14px;align-items:center;background:rgba(55,138,221,0.06);border:0.5px solid rgba(55,138,221,0.18);border-radius:12px;padding:10px 12px;">
+            <!-- Bottiglia -->
+            <div id="water-bottle-wrap" style="position:relative;width:36px;height:70px;flex-shrink:0;cursor:pointer;" onclick="waterAdd()">
+              <div style="position:absolute;top:4px;left:50%;transform:translateX(-50%);width:14px;height:7px;border:1.5px solid #378ADD;border-bottom:none;border-radius:3px 3px 0 0;background:#1e293b;"></div>
+              <div style="position:absolute;top:11px;left:0;right:0;bottom:0;border:1.5px solid #378ADD;border-radius:3px 3px 7px 7px;overflow:hidden;background:rgba(55,138,221,0.07);">
+                <div id="water-fill" style="position:absolute;bottom:0;left:0;right:0;height:0%;background:rgba(55,138,221,0.5);transition:height 0.5s ease;border-radius:0 0 5px 5px;"></div>
+              </div>
+            </div>
+            <!-- Info -->
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;">
+                <span style="font-size:9.9px;font-weight:700;color:#e2e8f0;">Idratazione</span>
+                <span id="water-label" style="font-size:8.5px;color:#378ADD;font-weight:700;">0 / 8 bicchieri</span>
+              </div>
+              <div style="font-size:7.7px;color:#64748b;margin-bottom:7px;" id="water-ml">0 ml · obiettivo 2000 ml</div>
+              <div style="display:flex;gap:5px;">
+                <button onclick="waterRemove()" style="padding:4px 10px;background:rgba(55,138,221,0.1);border:0.5px solid rgba(55,138,221,0.25);border-radius:7px;color:#85B7EB;font-size:9px;cursor:pointer;font-family:inherit;">− Rimuovi</button>
+                <button onclick="waterAdd()" style="flex:1;padding:4px 8px;background:#378ADD;border:none;border-radius:7px;color:#fff;font-size:9px;font-weight:700;cursor:pointer;font-family:inherit;">+ Bicchiere (250ml)</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="height:0.5px;background:rgba(255,255,255,0.07);margin:0 16px 4px;flex-shrink:0;"></div>
+
         <!-- Timeline pasti -->
         <div id="nut-timeline" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;">
           <!-- Rendered by nutTimelineRender() -->
@@ -4483,6 +4510,56 @@ function nutScoreBadge(score) {
     return `<span style="display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:4px;background:${s.bg};border:1px solid ${s.border};font-size:9px;font-weight:900;color:${s.color};flex-shrink:0;line-height:1;">${score}</span>`;
 }
 
+// ── Water Tracker ─────────────────────────────────────────────────────────
+const WATER_KEY = 'aw_water_'; // + dateKey
+const WATER_GOAL = 8;          // bicchieri
+const WATER_ML   = 250;        // ml per bicchiere
+
+function waterGetKey() {
+    const d = new Date();
+    return WATER_KEY + d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function waterGet() {
+    return parseInt(localStorage.getItem(waterGetKey()) || '0', 10);
+}
+
+function waterSet(n) {
+    const val = Math.max(0, Math.min(n, 20));
+    localStorage.setItem(waterGetKey(), val);
+    waterUpdateUI(val);
+}
+
+function waterAdd()    { waterSet(waterGet() + 1); }
+function waterRemove() { waterSet(waterGet() - 1); }
+
+function waterUpdateUI(glasses) {
+    if (glasses === undefined) glasses = waterGet();
+    const fill  = document.getElementById('water-fill');
+    const label = document.getElementById('water-label');
+    const mlEl  = document.getElementById('water-ml');
+    if (!fill || !label || !mlEl) return;
+
+    const pct = Math.min(glasses / WATER_GOAL * 100, 100);
+    fill.style.height = pct + '%';
+
+    // Colore bottiglia: blu → teal al completamento
+    const isComplete = glasses >= WATER_GOAL;
+    fill.style.background = isComplete ? 'rgba(93,202,165,0.55)' : 'rgba(55,138,221,0.5)';
+
+    label.textContent = glasses + ' / ' + WATER_GOAL + ' bicchieri';
+    label.style.color = isComplete ? '#5DCAA5' : '#378ADD';
+
+    const ml = glasses * WATER_ML;
+    const mlGoal = WATER_GOAL * WATER_ML;
+    const remaining = mlGoal - ml;
+    mlEl.textContent = ml + ' ml · ' + (remaining > 0 ? remaining + ' ml mancanti' : '✓ obiettivo raggiunto!');
+    mlEl.style.color = isComplete ? '#5DCAA5' : '#64748b';
+}
+
+// Chiama waterUpdateUI al caricamento e quando si cambia giorno
+document.addEventListener('DOMContentLoaded', () => waterUpdateUI());
+
 function nutTimelineRender() {
     const tl = document.getElementById('nut-timeline');
     if (!tl) return;
@@ -4717,6 +4794,7 @@ function nutTlUpdateUI() {
     if (fv) fv.textContent = parseFloat(t.f).toFixed(1) + '/' + g.f + 'g';
 
     nutTimelineRender();
+    waterUpdateUI();
 }
 
 function nutUpdateUI() {
