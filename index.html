@@ -8064,6 +8064,7 @@ function weightSave() {
     weightSaveLog(log);
     inp.value = '';
     weightUpdateUI();
+    updateBadges();
     showToast('Peso registrato: ' + val + ' kg', 'success');
 }
 
@@ -9784,17 +9785,33 @@ function updateBadges() {
     const section = document.getElementById('badges-section');
     const grid = document.getElementById('badges-grid');
     if (!section || !grid) return;
-    if (APP.exerciseData.length === 0) { section.classList.remove('visible'); return; }
+
+    // Badge peso e helper sono sempre verificabili, indipendentemente dall'exerciseData
+    const alwaysIds = ['weight_first','weight_1kg','weight_5kg','weight_goal','helper_first','helper_10'];
+    const hasWorkout = APP.exerciseData.length > 0;
+    if (!hasWorkout) {
+        // Controlla solo badge peso/helper anche senza protocollo
+        const unlocked = JSON.parse(localStorage.getItem('awakening_badges') || '[]');
+        const newlyUnlocked = [];
+        BADGES_CONFIG.filter(b => alwaysIds.includes(b.id)).forEach(b => {
+            if (b.check() && !unlocked.includes(b.id)) {
+                unlocked.push(b.id); newlyUnlocked.push(b);
+            }
+        });
+        if (newlyUnlocked.length > 0) {
+            localStorage.setItem('awakening_badges', JSON.stringify(unlocked));
+            newlyUnlocked.forEach(b => showBadgeToast(b));
+        }
+        return;
+    }
     section.classList.add('visible');
 
     const unlocked = JSON.parse(localStorage.getItem('awakening_badges') || '[]');
     const newlyUnlocked = [];
 
     BADGES_CONFIG.forEach(b => {
-        const isUnlocked = b.check();
-        if (isUnlocked && !unlocked.includes(b.id)) {
-            unlocked.push(b.id);
-            newlyUnlocked.push(b);
+        if (b.check() && !unlocked.includes(b.id)) {
+            unlocked.push(b.id); newlyUnlocked.push(b);
         }
     });
 
@@ -9803,20 +9820,41 @@ function updateBadges() {
         newlyUnlocked.forEach(b => showBadgeToast(b));
     }
 
+    // ── PUNTO 2: mostra solo 6 badge, resto con "Mostra tutto" ────────────
+    const VISIBLE_DEFAULT = 6;
+    let showAll = grid.dataset.showAll === '1';
     grid.innerHTML = '';
-    BADGES_CONFIG.forEach(b => {
+    const toShow = showAll ? BADGES_CONFIG : BADGES_CONFIG.slice(0, VISIBLE_DEFAULT);
+    toShow.forEach(b => {
         const isUnlocked = unlocked.includes(b.id);
         const isNew = newlyUnlocked.find(x => x.id === b.id);
         const card = document.createElement('div');
         card.className = 'badge-home-card' + (isUnlocked ? ' unlocked' : ' locked') + (isNew ? ' newly-unlocked' : '');
         card.innerHTML = `
-            ${isUnlocked ? '<div class="badge-home-check">✓</div>' : ''}
+            ${isUnlocked ? '<div class="badge-home-check">\u2713</div>' : ''}
             <span class="badge-home-icon">${b.icon}</span>
             <div class="badge-home-name">${b.name}</div>
             <div class="badge-home-desc">${b.desc}</div>
         `;
         grid.appendChild(card);
     });
+
+    // Bottone mostra tutto / mostra meno
+    const remaining = BADGES_CONFIG.length - VISIBLE_DEFAULT;
+    if (remaining > 0) {
+        const btn = document.createElement('div');
+        btn.style.cssText = 'grid-column:1/-1;text-align:center;padding:4px 0 2px;';
+        btn.innerHTML = `<button onclick="badgesToggleAll(this)" style="background:none;border:none;color:#475569;font-size:0.6rem;cursor:pointer;font-family:inherit;padding:4px 12px;border-radius:6px;">`
+            + (showAll ? '\u2191 Mostra meno' : `+ ${remaining} altri achievements`) + `</button>`;
+        grid.appendChild(btn);
+    }
+}
+
+function badgesToggleAll(btn) {
+    const grid = document.getElementById('badges-grid');
+    if (!grid) return;
+    grid.dataset.showAll = grid.dataset.showAll === '1' ? '0' : '1';
+    updateBadges();
 }
 
 function showBadgeToast(badge) {
