@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'index.html'
-      - 'sw.js'
 
 permissions:
   contents: read
