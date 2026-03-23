@@ -2356,7 +2356,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
 
 </div>
-</div>
 
 <!-- ══════════ PAGE: PROFILO ══════════ -->
 <div id="page-profile" class="page">
@@ -8103,7 +8102,7 @@ function weightUpdateUI() {
         const sign = diff > 0 ? '+' : '';
         deltaEl.textContent = sign + diff + ' kg';
         deltaEl.style.color = diff < 0 ? '#34d399' : diff > 0 ? '#f87171' : '#94a3b8';
-        if (deltaSub) deltaSub.textContent = 'dall'inizio';
+        if (deltaSub) deltaSub.textContent = "dall'inizio";
     } else {
         if (deltaEl) deltaEl.textContent = '—';
     }
