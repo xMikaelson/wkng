@@ -2339,6 +2339,35 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <div id="weight-eta" style="font-size:0.6rem;color:#64748b;text-align:center;margin-top:5px;"></div>
     </div>
 
+    <!-- BMI -->
+    <div id="weight-bmi-wrap" style="display:none;background:rgba(255,255,255,0.03);border:0.5px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 14px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
+        <div>
+          <span style="font-size:0.5rem;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">BMI · </span>
+          <span id="bmi-value" style="font-size:1.1rem;font-weight:900;color:#e2e8f0;">—</span>
+        </div>
+        <span id="bmi-category" style="font-size:0.72rem;font-weight:700;">—</span>
+      </div>
+      <!-- Barra segmentata -->
+      <div style="position:relative;margin-bottom:6px;">
+        <div style="display:flex;height:7px;border-radius:4px;overflow:hidden;gap:1px;">
+          <div style="flex:2;background:#378ADD;border-radius:3px 0 0 3px;"></div>
+          <div style="flex:3;background:#34d399;"></div>
+          <div style="flex:2;background:#EF9F27;"></div>
+          <div style="flex:2;background:#F09595;"></div>
+          <div style="flex:1;background:#E24B4A;border-radius:0 3px 3px 0;"></div>
+        </div>
+        <div id="bmi-indicator" style="position:absolute;top:-3px;left:0;width:2px;height:13px;background:#e2e8f0;border-radius:1px;transition:left 0.5s;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;">
+        <span style="font-size:0.43rem;color:#64748b;text-align:center;">Sotto<br>&lt;18.5</span>
+        <span style="font-size:0.43rem;color:#34d399;text-align:center;font-weight:700;">Normo<br>18.5–25</span>
+        <span style="font-size:0.43rem;color:#64748b;text-align:center;">Sovrap.<br>25–30</span>
+        <span style="font-size:0.43rem;color:#64748b;text-align:center;">Obeso<br>30–35</span>
+        <span style="font-size:0.43rem;color:#64748b;text-align:center;">Ob.II<br>&gt;35</span>
+      </div>
+    </div>
+
     <!-- Grafico -->
     <div id="weight-chart-wrap" style="display:none;margin-bottom:12px;">
       <canvas id="weight-chart" style="width:100%;max-height:150px;"></canvas>
@@ -2377,6 +2406,20 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
   <div class="settings-list">
     <div class="settings-group-title" style="margin-bottom:8px">Impostazioni</div>
+    <!-- Altezza per BMI -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:0.5px solid rgba(255,255,255,0.06);margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="settings-row-icon">📏</span>
+        <span class="settings-row-label">Altezza</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <input id="profile-height-input" type="number" min="100" max="250" step="1" inputmode="numeric"
+          placeholder="cm"
+          style="width:64px;padding:6px 8px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.82rem;text-align:center;font-family:inherit;-webkit-appearance:none;">
+        <span style="font-size:0.72rem;color:#64748b;">cm</span>
+        <button onclick="profileHeightSave()" style="padding:6px 10px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);border-radius:8px;color:#a5b4fc;font-size:0.7rem;cursor:pointer;font-family:inherit;">Salva</button>
+      </div>
+    </div>
     <div class="settings-row" onclick="closeSettingsAndNewProtocol()">
       <div class="settings-row-left"><span class="settings-row-icon">✨</span><span class="settings-row-label">Nuovo Protocollo</span></div>
       <span class="settings-row-arrow">›</span>
@@ -2754,7 +2797,8 @@ async function saveToSupabase(stateData) {
             weight_goal:   parseFloat(localStorage.getItem('aw_weight_goal'))  || null,
             badges_json:   JSON.parse(localStorage.getItem('awakening_badges') || '[]'),
             streak_record: parseInt(localStorage.getItem('awakening_streak_record') || '0') || 0,
-            contributions: parseInt(localStorage.getItem('aw_contributions')   || '0') || 0
+            contributions: parseInt(localStorage.getItem('aw_contributions')   || '0') || 0,
+            height_cm:     parseInt(localStorage.getItem('aw_height_cm'))      || null
         };
         const { error: upErr } = await sbClient.from('profiles')
             .update({ state_json: stateData, ...extraCols }).eq('id', user.id);
@@ -2783,7 +2827,8 @@ async function syncExtraToSupabase() {
             weight_goal:   parseFloat(localStorage.getItem('aw_weight_goal'))  || null,
             badges_json:   JSON.parse(localStorage.getItem('awakening_badges') || '[]'),
             streak_record: parseInt(localStorage.getItem('awakening_streak_record') || '0') || 0,
-            contributions: parseInt(localStorage.getItem('aw_contributions')   || '0') || 0
+            contributions: parseInt(localStorage.getItem('aw_contributions')   || '0') || 0,
+            height_cm:     parseInt(localStorage.getItem('aw_height_cm'))      || null
         }).eq('id', user.id);
     } catch(e) { console.warn('syncExtraToSupabase error:', e.message); }
 }
@@ -3311,6 +3356,11 @@ async function onLoginSuccess(user, usernameOverride = null) {
         const sbContrib = profile.contributions || 0;
         const lsContrib = parseInt(localStorage.getItem('aw_contributions') || '0');
         localStorage.setItem('aw_contributions', Math.max(sbContrib, lsContrib));
+
+        // Altezza: Supabase vince se presente
+        if (profile.height_cm) {
+            localStorage.setItem('aw_height_cm', profile.height_cm);
+        }
     }
     // Merge strategy: use the state with more progress (higher totalWorkouts)
     const localState = (() => { try { const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : null; } catch(e) { return null; } })();
@@ -6375,12 +6425,14 @@ function navSwitch(tab) {
         }
     } else if (tab === 'progressi') {
         weightUpdateUI();
+        profileHeightInit();
         const progPage = document.getElementById('page-progress');
         if (progPage) { progPage.classList.add('active'); updateProgressPage(); }
     } else if (tab === 'piani') {
         const plPage = document.getElementById('page-plans');
         if (plPage) { plPage.classList.add('active'); renderPlanPage(APP.selectedViewWeek || 0); }
     } else if (tab === 'profilo') {
+        profileHeightInit();
         buildProfiloPage();
         const profPage = document.getElementById('page-profile');
         if (profPage) profPage.classList.add('active');
@@ -8103,6 +8155,72 @@ function autoSaveProtocol() {
 
 
 // ══════════ WEIGHT TRACKER ══════════
+const HEIGHT_KEY = 'aw_height_cm';
+
+function profileHeightSave() {
+    const inp = document.getElementById('profile-height-input');
+    const h = parseInt(inp.value);
+    if (!h || h < 100 || h > 250) { showToast('Inserisci un valore tra 100 e 250 cm', 'error'); return; }
+    localStorage.setItem(HEIGHT_KEY, h);
+    inp.value = h;
+    syncExtraToSupabase();
+    weightUpdateUI();
+    showToast('Altezza salvata: ' + h + ' cm', 'success');
+}
+
+function bmiCalc(kg, heightCm) {
+    if (!kg || !heightCm) return null;
+    const h = heightCm / 100;
+    return parseFloat((kg / (h * h)).toFixed(1));
+}
+
+function bmiCategory(bmi) {
+    if (bmi < 18.5) return { label: 'Sottopeso',   color: '#378ADD' };
+    if (bmi < 25)   return { label: 'Normopeso',   color: '#34d399' };
+    if (bmi < 30)   return { label: 'Sovrappeso',  color: '#EF9F27' };
+    if (bmi < 35)   return { label: 'Obesità I',   color: '#F09595' };
+                    return { label: 'Obesità II',  color: '#E24B4A' };
+}
+
+function bmiIndicatorLeft(bmi) {
+    // Mappa BMI 10-40 su 0-100%
+    // Segmenti: <18.5 (flex2), 18.5-25 (flex3), 25-30 (flex2), 30-35 (flex2), >35 (flex1) = 10 parti
+    // Soglie in % della barra: 20%, 50%, 70%, 90%, 100%
+    if (bmi <= 10)  return '0%';
+    if (bmi >= 40)  return '99%';
+    let pct;
+    if (bmi < 18.5) pct = (bmi - 10) / (18.5 - 10) * 20;
+    else if (bmi < 25)  pct = 20 + (bmi - 18.5) / (25 - 18.5) * 30;
+    else if (bmi < 30)  pct = 50 + (bmi - 25)   / (30 - 25)   * 20;
+    else if (bmi < 35)  pct = 70 + (bmi - 30)   / (35 - 30)   * 20;
+    else                pct = 90 + (bmi - 35)   / (40 - 35)   * 10;
+    return Math.min(Math.max(pct, 0), 98).toFixed(1) + '%';
+}
+
+function weightUpdateBMI(kg) {
+    const heightCm = parseInt(localStorage.getItem(HEIGHT_KEY));
+    const wrap  = document.getElementById('weight-bmi-wrap');
+    const valEl = document.getElementById('bmi-value');
+    const catEl = document.getElementById('bmi-category');
+    const indEl = document.getElementById('bmi-indicator');
+    if (!wrap) return;
+    if (!heightCm || !kg) { wrap.style.display = 'none'; return; }
+    const bmi = bmiCalc(kg, heightCm);
+    if (!bmi) { wrap.style.display = 'none'; return; }
+    const cat = bmiCategory(bmi);
+    wrap.style.display = 'block';
+    valEl.textContent = bmi;
+    catEl.textContent = cat.label;
+    catEl.style.color = cat.color;
+    indEl.style.left  = bmiIndicatorLeft(bmi);
+}
+
+function profileHeightInit() {
+    const h = localStorage.getItem(HEIGHT_KEY);
+    const inp = document.getElementById('profile-height-input');
+    if (h && inp) inp.value = h;
+}
+
 const WEIGHT_STORAGE_KEY = 'aw_weight_log';
 const WEIGHT_GOAL_KEY    = 'aw_weight_goal';
 let weightChart = null;
@@ -8179,6 +8297,7 @@ function weightUpdateUI() {
         if (emptyMsg) emptyMsg.style.display = 'block';
         if (chartWrap) chartWrap.style.display = 'none';
         if (barWrap) barWrap.style.display = 'none';
+        weightUpdateBMI(null);
         return;
     }
     if (emptyMsg) emptyMsg.style.display = 'none';
@@ -8189,6 +8308,7 @@ function weightUpdateUI() {
     // Attuale
     if (curEl) curEl.textContent = last.kg + ' kg';
     if (curDate) curDate.textContent = weightFormatDateFull(last.date);
+    weightUpdateBMI(last.kg);
 
     // Progresso verso obiettivo
     if (goal !== null && first.kg !== goal) {
