@@ -156,12 +156,12 @@ function handleFile(e, name, btnId, sizeId) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
-    files[name] = ev.target.result;
+    files[name] = { buffer: ev.target.result, size: file.size };
     document.getElementById(btnId).classList.add("loaded");
     document.getElementById(sizeId).textContent = "✅ " + (file.size / 1024).toFixed(0) + "KB";
     updateDeployBtn();
   };
-  reader.readAsText(file);
+  reader.readAsArrayBuffer(file);
 }
 
 function updateDeployBtn() {
@@ -195,8 +195,15 @@ async function getFileSha(filename, token) {
   return null;
 }
 
-async function pushFile(filename, content, sha, token, commitMsg) {
-  const b64 = btoa(unescape(encodeURIComponent(content)));
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+async function pushFile(filename, fileData, sha, token, commitMsg) {
+  const b64 = arrayBufferToBase64(fileData.buffer);
   const body = { message: commitMsg, content: b64, branch: BRANCH };
   if (sha) body.sha = sha;
   const r = await fetch(`https://api.github.com/repos/${REPO}/contents/${filename}`, {
@@ -209,6 +216,30 @@ async function pushFile(filename, content, sha, token, commitMsg) {
     body: JSON.stringify(body)
   });
   if (!r.ok) { const e = await r.json(); throw new Error(`${filename}: ${e.message}`); }
+}
+
+async function deployFile(filename, fileData, token, commitMsg) {
+  log("🔍 Recupero SHA " + filename + "...");
+  const shaRes = await fetch(
+    "https://api.github.com/repos/" + REPO + "/contents/" + filename + "?ref=" + BRANCH + "&t=" + Date.now(),
+    { cache: "no-store", headers: { Authorization: "token " + token, Accept: "application/vnd.github+json" } }
+  );
+  const sha = shaRes.ok ? (await shaRes.json()).sha : null;
+  log("📤 Upload " + filename + "...", "#facc15");
+  await pushFile(filename, fileData, sha, token, commitMsg);
+  log("✅ " + filename + " aggiornato", "#00ff88");
+}
+
+function resetFiles() {
+  files["index.html"] = null;
+  files["sw.js"] = null;
+  document.getElementById("btn-index").classList.remove("loaded");
+  document.getElementById("size-index").textContent = "Scegli file →";
+  document.getElementById("input-index").value = "";
+  document.getElementById("btn-sw").classList.remove("loaded");
+  document.getElementById("size-sw").textContent = "Scegli file →";
+  document.getElementById("input-sw").value = "";
+  updateDeployBtn();
 }
 
 async function deploy() {
@@ -230,23 +261,23 @@ async function deploy() {
   btn.disabled = true;
   btn.textContent = "⏳ Deploying...";
   document.getElementById("open-link").style.display = "none";
+  document.getElementById("log").innerHTML = "";
+  document.getElementById("log").classList.remove("visible");
 
   try {
-    for (const [filename, content] of toUpload) {
-      log(`🔍 Recupero SHA ${filename}...`);
-      const sha = await getFileSha(filename, token);
-      log(`📤 Upload ${filename}...`, "#facc15");
-      await pushFile(filename, content, sha, token, commitMsg);
-      log(`✅ ${filename} aggiornato`, "#00ff88");
+    for (const [filename, fileData] of toUpload) {
+      await deployFile(filename, fileData, token, commitMsg);
     }
     log("🚀 Deploy completato! GitHub Actions sta pubblicando...", "#00ff88");
     btn.classList.add("done");
     btn.textContent = "✅ DEPLOYATO!";
     btn.disabled = false;
     document.getElementById("open-link").style.display = "block";
+    resetFiles();
   } catch (err) {
     log("❌ Errore: " + err.message, "#f87171");
     btn.disabled = false;
+    btn.classList.remove("done");
     btn.textContent = "🚀 Riprova";
   }
 }
