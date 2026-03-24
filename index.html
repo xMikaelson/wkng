@@ -2599,7 +2599,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <!-- Barcode + Nome + Marchio -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
       <div style="grid-column:1/3;">
-        <div style="font-size:0.55rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Codice a barre *</div>
+        <div style="font-size:0.55rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Codice a barre</div>
         <input id="manual-food-barcode" type="text" inputmode="numeric" placeholder="Es. 8001120664877" autocomplete="off" style="width:100%;padding:8px 10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.82rem;box-sizing:border-box;font-family:inherit;">
       </div>
       <div style="grid-column:1/3;">
@@ -4745,7 +4745,9 @@ function waterUpdateUI(glasses) {
     fill.style.height = pct + '%';
 
     // Colore bottiglia: blu → teal al completamento
+    const wasComplete = parseInt(localStorage.getItem(waterGetKey())||'0') >= WATER_GOAL;
     const isComplete = glasses >= WATER_GOAL;
+    if (isComplete && !wasComplete) updateBadges(); // controlla achievement Hydrated
     fill.style.background = isComplete ? 'rgba(93,202,165,0.55)' : 'rgba(55,138,221,0.5)';
 
     label.textContent = glasses + ' / ' + WATER_GOAL + ' bicchieri';
@@ -5782,9 +5784,11 @@ function mealManualSubmit() {
     const meal    = overlay?.dataset.meal;
     if (!meal) return;
     const barcode = document.getElementById('manual-food-barcode')?.value.trim() || null;
-    if (!barcode) { showToast('Inserisci il codice a barre', 'error'); return; }
     const name = document.getElementById('manual-food-name')?.value.trim();
     if (!name) { showToast('Inserisci il nome', 'error'); return; }
+    // Barcode obbligatorio solo se si vuole contribuire al DB
+    const contribute = document.getElementById('manual-contribute')?.checked;
+    if (contribute && !barcode) { showToast('Inserisci il codice a barre per contribuire al DB', 'error'); return; }
     const brand   = document.getElementById('manual-food-brand')?.value.trim() || '';
     const kcal   = parseFloat(document.getElementById('manual-food-kcal')?.value  || '0') || 0;
     const p      = parseFloat(document.getElementById('manual-food-p')?.value     || '0') || 0;
@@ -5815,7 +5819,6 @@ function mealManualSubmit() {
     overlay.classList.remove('active');
     showToast('\u2713 ' + displayName + ' aggiunto!', 'success');
     // Contributo al DB Awakening se checkbox spuntata
-    const contribute = document.getElementById('manual-contribute')?.checked;
     if (contribute) {
         const foodForDB = {
             name: displayName,
@@ -9800,6 +9803,14 @@ const BADGES_CONFIG = [
     // Helper — contributo al database Awakening
     { id: 'helper_first',   icon: '🤝',  name: 'Helper',         desc: 'Aggiungi il primo alimento al DB', check: () => (parseInt(localStorage.getItem('aw_contributions')||'0'))>=1 },
     { id: 'helper_10',      icon: '🌟',  name: 'Super Helper',   desc: '10 alimenti aggiunti al DB',       check: () => (parseInt(localStorage.getItem('aw_contributions')||'0'))>=10 },
+    // Idratazione
+    { id: 'hydrated',       icon: '💧',  name: 'Hydrated',       desc: 'Raggiungi 8 bicchieri in un giorno', check: () => {
+        try {
+            const d = new Date();
+            const key = 'aw_water_' + d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+            return parseInt(localStorage.getItem(key)||'0') >= 8;
+        } catch(e) { return false; }
+    }},
 ];
 
 function computeStreak() {
