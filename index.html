@@ -2307,32 +2307,55 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <span class="prog-ex-chart-title">⚖️ Peso corporeo</span>
     </div>
 
-    <!-- Attuale / Progresso / Obiettivo -->
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-      <!-- Attuale -->
-      <div class="weight-stat-card" style="text-align:center;">
-        <div style="font-size:0.5rem;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px;">Attuale</div>
-        <div class="weight-stat-val" id="weight-current" style="color:#e2e8f0;">—</div>
-        <div style="font-size:0.55rem;color:#64748b;margin-top:2px;" id="weight-current-date">—</div>
-      </div>
-      <!-- Freccia + % -->
-      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0;">
-        <div style="width:44px;height:2px;background:#334155;border-radius:99px;position:relative;">
-          <div id="weight-progress-bar" style="position:absolute;left:0;top:0;height:100%;width:0%;background:#6366f1;border-radius:99px;transition:width 0.6s;"></div>
-          <div id="weight-progress-dot" style="position:absolute;right:-4px;top:-4px;width:8px;height:8px;border-radius:50%;background:#6366f1;transition:right 0.6s;"></div>
+    <!-- Stat card + form integrati, poi separatore, poi barra progresso -->
+    <div style="margin-bottom:10px;">
+      <!-- Riga superiore: Attuale | freccia+% | Obiettivo -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <!-- Attuale -->
+        <div class="weight-stat-card" style="text-align:center;">
+          <div style="font-size:0.5rem;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px;">Attuale</div>
+          <div class="weight-stat-val" id="weight-current" style="color:#e2e8f0;">—</div>
+          <div style="font-size:0.55rem;color:#64748b;margin-top:2px;" id="weight-current-date">—</div>
         </div>
-        <div id="weight-pct" style="font-size:0.6rem;color:#6366f1;font-weight:700;">0%</div>
+        <!-- Freccia + % -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0;">
+          <div style="width:44px;height:2px;background:#334155;border-radius:99px;position:relative;">
+            <div id="weight-progress-bar" style="position:absolute;left:0;top:0;height:100%;width:0%;background:#6366f1;border-radius:99px;transition:width 0.6s;"></div>
+            <div id="weight-progress-dot" style="position:absolute;right:-4px;top:-4px;width:8px;height:8px;border-radius:50%;background:#6366f1;transition:right 0.6s;"></div>
+          </div>
+          <div id="weight-pct" style="font-size:0.6rem;color:#6366f1;font-weight:700;">0%</div>
+        </div>
+        <!-- Obiettivo -->
+        <div class="weight-stat-card" style="text-align:center;">
+          <div style="font-size:0.5rem;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px;">Obiettivo</div>
+          <div class="weight-stat-val" id="weight-goal-val" style="color:#34d399;">—</div>
+          <div style="font-size:0.55rem;color:#64748b;margin-top:2px;" id="weight-goal-sub">non impostato</div>
+        </div>
       </div>
-      <!-- Obiettivo -->
-      <div class="weight-stat-card" style="text-align:center;">
-        <div style="font-size:0.5rem;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px;">Obiettivo</div>
-        <div class="weight-stat-val" id="weight-goal-val" style="color:#34d399;">—</div>
-        <div style="font-size:0.55rem;color:#64748b;margin-top:2px;" id="weight-goal-sub">non impostato</div>
+
+      <!-- Form / Modifica — nella stessa area delle stat card -->
+      <div id="weight-edit-wrap">
+        <div id="weight-form" style="display:block;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+            <div>
+              <div style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Peso oggi (kg)</div>
+              <input id="weight-input" type="number" class="weight-input" placeholder="es. 78.5" step="0.1" min="20" max="300" inputmode="decimal">
+            </div>
+            <div>
+              <div style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Obiettivo (kg)</div>
+              <input id="weight-goal-input" type="number" class="weight-input" placeholder="es. 75.0" step="0.1" min="20" max="300" inputmode="decimal">
+            </div>
+          </div>
+          <button class="weight-save-btn" onclick="weightSave()" style="width:100%;">Salva</button>
+        </div>
+        <div id="weight-modify-btn-wrap" style="display:none;text-align:center;">
+          <button onclick="weightToggleEdit()" style="padding:5px 18px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.12);border-radius:7px;color:#475569;font-size:0.62rem;cursor:pointer;font-family:inherit;">✏️ modifica</button>
+        </div>
       </div>
     </div>
 
     <!-- Separatore -->
-    <div style="height:0.5px;background:rgba(255,255,255,0.07);margin:10px 0;"></div>
+    <div style="height:0.5px;background:rgba(255,255,255,0.07);margin-bottom:10px;"></div>
 
     <!-- Barra progresso ampia -->
     <div id="weight-progress-wrap" style="display:none;margin-bottom:6px;">
@@ -2340,26 +2363,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <div id="weight-progress-bar2" style="height:100%;background:linear-gradient(90deg,#6366f1,#34d399);border-radius:99px;width:0%;transition:width 0.6s;"></div>
       </div>
       <div id="weight-eta" style="font-size:0.6rem;color:#64748b;text-align:center;margin-top:5px;"></div>
-    </div>
-
-    <!-- Form peso + obiettivo — subito sotto le stat card -->
-    <div id="weight-edit-wrap" style="margin-bottom:0;">
-      <div id="weight-form" style="display:block;">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-          <div>
-            <div style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Peso oggi (kg)</div>
-            <input id="weight-input" type="number" class="weight-input" placeholder="es. 78.5" step="0.1" min="20" max="300" inputmode="decimal">
-          </div>
-          <div>
-            <div style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Obiettivo (kg)</div>
-            <input id="weight-goal-input" type="number" class="weight-input" placeholder="es. 75.0" step="0.1" min="20" max="300" inputmode="decimal">
-          </div>
-        </div>
-        <button class="weight-save-btn" onclick="weightSave()" style="width:100%;">Salva</button>
-      </div>
-      <div id="weight-modify-btn-wrap" style="display:none;text-align:center;">
-        <button onclick="weightToggleEdit()" style="padding:5px 18px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.12);border-radius:7px;color:#475569;font-size:0.62rem;cursor:pointer;font-family:inherit;">✏️ modifica</button>
-      </div>
     </div>
 
     <!-- BMI -->
