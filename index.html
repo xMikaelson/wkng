@@ -2341,12 +2341,24 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
     <!-- BMI -->
     <div id="weight-bmi-wrap" style="display:none;background:rgba(255,255,255,0.03);border:0.5px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 14px;margin-bottom:10px;">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
-        <div>
+      <!-- Header: BMI + categoria + tasto modifica -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div style="display:flex;align-items:baseline;gap:4px;">
           <span style="font-size:0.5rem;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">BMI · </span>
           <span id="bmi-value" style="font-size:1.1rem;font-weight:900;color:#e2e8f0;">—</span>
         </div>
-        <span id="bmi-category" style="font-size:0.72rem;font-weight:700;">—</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span id="bmi-category" style="font-size:0.72rem;font-weight:700;">—</span>
+          <button id="bmi-edit-btn" onclick="bmiToggleEdit()" style="padding:2px 8px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.12);border-radius:5px;color:#475569;font-size:0.55rem;cursor:pointer;font-family:inherit;">✏️ modifica</button>
+        </div>
+      </div>
+      <!-- Form altezza inline (nascosto di default) -->
+      <div id="bmi-edit-row" style="display:none;align-items:center;gap:8px;margin-bottom:10px;padding:8px 10px;background:rgba(99,102,241,0.07);border:0.5px solid rgba(99,102,241,0.2);border-radius:8px;">
+        <span style="font-size:0.6rem;color:#94a3b8;white-space:nowrap;">Altezza:</span>
+        <input id="bmi-height-input" type="number" min="100" max="250" step="1" inputmode="numeric" placeholder="es. 175"
+          style="flex:1;padding:5px 8px;background:#0f172a;border:1px solid #334155;border-radius:7px;color:#e2e8f0;font-size:0.82rem;text-align:center;font-family:inherit;-webkit-appearance:none;">
+        <span style="font-size:0.6rem;color:#64748b;">cm</span>
+        <button onclick="bmiHeightSave()" style="padding:5px 10px;background:#6366f1;border:none;border-radius:7px;color:#fff;font-size:0.65rem;font-weight:700;cursor:pointer;font-family:inherit;">Salva</button>
       </div>
       <!-- Barra segmentata -->
       <div style="position:relative;margin-bottom:6px;">
@@ -2406,20 +2418,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
   <div class="settings-list">
     <div class="settings-group-title" style="margin-bottom:8px">Impostazioni</div>
-    <!-- Altezza per BMI -->
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:0.5px solid rgba(255,255,255,0.06);margin-bottom:8px;">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <span class="settings-row-icon">📏</span>
-        <span class="settings-row-label">Altezza</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;">
-        <input id="profile-height-input" type="number" min="100" max="250" step="1" inputmode="numeric"
-          placeholder="cm"
-          style="width:64px;padding:6px 8px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.82rem;text-align:center;font-family:inherit;-webkit-appearance:none;">
-        <span style="font-size:0.72rem;color:#64748b;">cm</span>
-        <button onclick="profileHeightSave()" style="padding:6px 10px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);border-radius:8px;color:#a5b4fc;font-size:0.7rem;cursor:pointer;font-family:inherit;">Salva</button>
-      </div>
-    </div>
     <div class="settings-row" onclick="closeSettingsAndNewProtocol()">
       <div class="settings-row-left"><span class="settings-row-icon">✨</span><span class="settings-row-label">Nuovo Protocollo</span></div>
       <span class="settings-row-arrow">›</span>
@@ -8157,16 +8155,37 @@ function autoSaveProtocol() {
 // ══════════ WEIGHT TRACKER ══════════
 const HEIGHT_KEY = 'aw_height_cm';
 
-function profileHeightSave() {
-    const inp = document.getElementById('profile-height-input');
+function bmiToggleEdit() {
+    const row = document.getElementById('bmi-edit-row');
+    const btn = document.getElementById('bmi-edit-btn');
+    if (!row) return;
+    const isOpen = row.style.display === 'flex';
+    row.style.display = isOpen ? 'none' : 'flex';
+    btn.textContent = isOpen ? '\u270f\ufe0f modifica' : '✕ chiudi';
+    if (!isOpen) {
+        // Pre-compila con il valore salvato
+        const h = localStorage.getItem(HEIGHT_KEY);
+        const inp = document.getElementById('bmi-height-input');
+        if (h && inp) inp.value = h;
+        setTimeout(() => document.getElementById('bmi-height-input')?.focus(), 50);
+    }
+}
+
+function bmiHeightSave() {
+    const inp = document.getElementById('bmi-height-input');
     const h = parseInt(inp.value);
     if (!h || h < 100 || h > 250) { showToast('Inserisci un valore tra 100 e 250 cm', 'error'); return; }
     localStorage.setItem(HEIGHT_KEY, h);
-    inp.value = h;
+    // Chiudi il form
+    const row = document.getElementById('bmi-edit-row');
+    const btn = document.getElementById('bmi-edit-btn');
+    if (row) row.style.display = 'none';
+    if (btn) btn.textContent = '\u270f\ufe0f modifica';
     syncExtraToSupabase();
     weightUpdateUI();
     showToast('Altezza salvata: ' + h + ' cm', 'success');
 }
+
 
 function bmiCalc(kg, heightCm) {
     if (!kg || !heightCm) return null;
@@ -8204,7 +8223,15 @@ function weightUpdateBMI(kg) {
     const catEl = document.getElementById('bmi-category');
     const indEl = document.getElementById('bmi-indicator');
     if (!wrap) return;
-    if (!heightCm || !kg) { wrap.style.display = 'none'; return; }
+    if (!kg) { wrap.style.display = 'none'; return; }
+    // Mostra sempre il box (anche senza altezza, per far vedere il tasto modifica)
+    wrap.style.display = 'block';
+    if (!heightCm) {
+        if (valEl) valEl.textContent = '—';
+        if (catEl) { catEl.textContent = 'Imposta altezza'; catEl.style.color = '#475569'; }
+        if (indEl) indEl.style.left = '-10px';
+        return;
+    }
     const bmi = bmiCalc(kg, heightCm);
     if (!bmi) { wrap.style.display = 'none'; return; }
     const cat = bmiCategory(bmi);
@@ -8216,8 +8243,9 @@ function weightUpdateBMI(kg) {
 }
 
 function profileHeightInit() {
+    // Precompila l'input BMI se c'è un valore salvato
     const h = localStorage.getItem(HEIGHT_KEY);
-    const inp = document.getElementById('profile-height-input');
+    const inp = document.getElementById('bmi-height-input');
     if (h && inp) inp.value = h;
 }
 
