@@ -9693,18 +9693,28 @@ async function performFullReset() {
     APP.activeProtocolId = null;
     APP.workoutSeconds = 0;
 
-    // Cancella streak e badges da localStorage
+    // Cancella tutti i dati da localStorage
     localStorage.removeItem('awakening_streak_record');
     localStorage.removeItem('awakening_badges');
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem('aw_weight_log');
+    localStorage.removeItem('aw_weight_goal');
+    localStorage.removeItem('aw_contributions');
+    // Nota: aw_height_cm NON viene resettato — è un dato fisso dell'utente
 
-    // Cancella protocolli da Supabase
+    // Cancella protocolli da Supabase e azzera colonne extra
     if (APP.userName) {
         const { data: { session } } = await sbClient.auth.getSession();
         if (session) {
             await sbClient.from('protocols').delete().eq('user_id', session.user.id);
-            // Reset state_json nel profilo
-            await sbClient.from('profiles').update({ state_json: null }).eq('id', session.user.id);
+            await sbClient.from('profiles').update({
+                state_json:    null,
+                weight_log:    [],
+                weight_goal:   null,
+                badges_json:   [],
+                streak_record: 0,
+                contributions: 0
+            }).eq('id', session.user.id);
         }
     }
     APP.savedProtocols = [];
@@ -9755,6 +9765,7 @@ async function performFullReset() {
     // 5. Aggiorna widget
     updateStreakWidget();
     updateBadges();
+    weightUpdateUI();
     initDashboard();
     updateStats();
     renderProtocolList();
