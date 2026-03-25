@@ -2486,12 +2486,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <div id="grams-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.92);z-index:5100;align-items:flex-end;justify-content:center;flex-direction:column;">
   <div style="background:#1e293b;border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:480px;box-sizing:border-box;position:relative;">
     <!-- HEADER: X assoluta nel pannello, nome centrato, modifica nome centrato -->
-    <button onclick="gramsClose()" style="position:absolute;top:18px;right:18px;background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:0;line-height:1;z-index:2;">✕</button>
-    <div style="margin-bottom:14px;padding-right:0;">
-      <div style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">Prodotto trovato</div>
+    <!-- HEADER row: label sx, X dx -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;">Prodotto trovato</div>
+      <button onclick="gramsClose()" style="background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:0;line-height:1;">✕</button>
+    </div>
+    <div style="margin-bottom:14px;">
       <!-- Stato normale: nome + link modifica -->
       <div id="grams-name-view">
-        <div id="grams-food-name" style="font-size:1.1rem;font-weight:700;color:#e2e8f0;line-height:1.4;text-align:center;margin-bottom:8px;padding-right:24px;"></div>
+        <div id="grams-food-name" style="font-size:1.1rem;font-weight:700;color:#e2e8f0;line-height:1.4;text-align:center;margin-bottom:8px;"></div>
         <div style="text-align:center;">
           <button id="grams-name-edit-btn" onclick="gramsToggleNameEdit()"
             style="background:none;border:none;cursor:pointer;color:#64748b;font-size:0.7rem;padding:0;text-decoration:underline;text-underline-offset:3px;letter-spacing:0.04em;">Modifica nome</button>
