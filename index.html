@@ -2485,25 +2485,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <!-- ══ GRAMS SELECTOR OVERLAY ══ -->
 <div id="grams-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.92);z-index:5100;align-items:flex-end;justify-content:center;flex-direction:column;">
   <div style="background:#1e293b;border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:480px;box-sizing:border-box;position:relative;">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:14px;">
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Prodotto trovato</div>
-        <!-- Modalità visualizzazione: nome + matita -->
-        <div id="grams-name-view" style="display:block;">
-          <span id="grams-food-name" style="font-size:1.1rem;font-weight:700;color:#e2e8f0;line-height:1.3;overflow-wrap:break-word;"></span>
-          <button id="grams-name-edit-btn" onclick="gramsToggleNameEdit()"
-            title="Modifica nome"
-            style="background:none;border:none;color:#64748b;font-size:0.95rem;cursor:pointer;padding:0 0 0 6px;line-height:1;vertical-align:middle;">✏️</button>
-        </div>
-        <!-- Modalità modifica: input + bottone conferma -->
-        <div id="grams-name-edit-row" style="display:none;align-items:center;gap:6px;">
-          <input id="grams-food-name-input" type="text" autocomplete="off"
-            style="flex:1;font-size:1.0rem;font-weight:700;color:#e2e8f0;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:5px 9px;font-family:inherit;min-width:0;box-sizing:border-box;">
-          <button onclick="gramsToggleNameEdit()"
-            style="background:#1e3a2f;border:1px solid rgba(52,211,153,0.4);color:#34d399;border-radius:8px;padding:5px 10px;font-size:0.82rem;cursor:pointer;white-space:nowrap;flex-shrink:0;">✓ OK</button>
-        </div>
+    <div style="position:relative;margin-bottom:14px;padding-right:28px;">
+      <div style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Prodotto trovato</div>
+      <!-- Modalità visualizzazione: nome + matita inline -->
+      <div id="grams-name-view">
+        <span id="grams-food-name" style="font-size:1.1rem;font-weight:700;color:#e2e8f0;line-height:1.4;"></span><button id="grams-name-edit-btn" onclick="gramsToggleNameEdit()" title="Modifica nome" style="background:none;border:none;color:#64748b;font-size:0.9rem;cursor:pointer;padding:0 0 2px 5px;vertical-align:middle;">✏️</button>
       </div>
-      <button onclick="gramsClose()" style="background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:0;line-height:1.4;flex-shrink:0;">✕</button>
+      <!-- Modalità modifica: input + bottone conferma -->
+      <div id="grams-name-edit-row" style="display:none;align-items:center;gap:6px;">
+        <input id="grams-food-name-input" type="text" autocomplete="off"
+          style="flex:1;font-size:1.0rem;font-weight:700;color:#e2e8f0;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:5px 9px;font-family:inherit;width:100%;box-sizing:border-box;">
+        <button onclick="gramsToggleNameEdit()"
+          style="background:#1e3a2f;border:1px solid rgba(52,211,153,0.4);color:#34d399;border-radius:8px;padding:5px 10px;font-size:0.82rem;cursor:pointer;white-space:nowrap;flex-shrink:0;">✓ OK</button>
+      </div>
+      <!-- X chiudi in alto a destra -->
+      <button onclick="gramsClose()" style="position:absolute;top:0;right:0;background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:0;line-height:1;">✕</button>
     </div>
     <!-- Nutri-Score: full width row, centered -->
     <div id="grams-nutriscore" style="display:none;position:relative;height:34px;margin-bottom:14px;"></div>
