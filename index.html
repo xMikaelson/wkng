@@ -2489,7 +2489,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <!-- HEADER -->
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
       <div style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;white-space:nowrap;">Prodotto trovato</div>
-      <button onclick="gramsClose()" style="background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:0;line-height:1;margin-left:12px;flex-shrink:0;">✕</button>
+      <button onclick="gramsClose()" style="background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:0;line-height:1;flex-shrink:0;">✕</button>
     </div>
     <!-- NOME + MODIFICA -->
     <div style="margin-bottom:14px;">
@@ -2500,11 +2500,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             style="background:none;border:none;cursor:pointer;color:#64748b;font-size:0.7rem;padding:0;text-decoration:underline;text-underline-offset:3px;letter-spacing:0.04em;">Modifica nome</button>
         </div>
       </div>
-      <div id="grams-name-edit-row" style="display:none;flex-direction:row;align-items:center;gap:8px;">
+      <div id="grams-name-edit-row" style="display:none;gap:8px;">
         <input id="grams-food-name-input" type="text" autocomplete="off"
-          style="flex:1;min-width:0;font-size:0.95rem;font-weight:700;color:#e2e8f0;background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px 12px;font-family:inherit;box-sizing:border-box;">
+          style="display:block;width:100%;font-size:1.0rem;font-weight:700;color:#e2e8f0;background:#0f172a;border:1px solid #334155;border-radius:10px;padding:11px 12px;font-family:inherit;box-sizing:border-box;margin-bottom:8px;">
         <button onclick="gramsToggleNameEdit()"
-          style="flex-shrink:0;background:#1e3a2f;border:1px solid rgba(52,211,153,0.4);color:#34d399;border-radius:10px;padding:10px 14px;font-size:0.95rem;font-weight:600;cursor:pointer;white-space:nowrap;">✓ OK</button>
+          style="display:block;width:100%;background:#1e3a2f;border:1px solid rgba(52,211,153,0.4);color:#34d399;border-radius:10px;padding:11px;font-size:1.0rem;font-weight:600;cursor:pointer;box-sizing:border-box;">✓ OK</button>
       </div>
     </div>
     <!-- Nutri-Score: full width row, centered -->
@@ -5702,7 +5702,7 @@ function gramsToggleNameEdit() {
     } else {
         nameInput.value = nameLabel.textContent.trim();
         nameView.style.display = 'none';
-        nameEditRow.style.display = 'flex';
+        nameEditRow.style.display = 'block';
         setTimeout(() => { nameInput.focus(); nameInput.select(); }, 50);
     }
 }
@@ -5755,7 +5755,7 @@ function gramsConfirm() {
     // Se il nome era in modifica, prendi il valore dall'input
     const nameEditRow = document.getElementById('grams-name-edit-row');
     const nameInput = document.getElementById('grams-food-name-input');
-    if (nameEditRow && nameEditRow.style.display !== 'none' && nameInput && nameInput.value.trim()) {
+    if (nameEditRow && nameEditRow.style.display === 'block' && nameInput && nameInput.value.trim()) {
         food.name = nameInput.value.trim();
     }
     if (!meal || !food.name) return;
