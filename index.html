@@ -2488,7 +2488,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div style="display:table;width:100%;margin-bottom:14px;">
       <div style="display:table-cell;vertical-align:top;">
         <div style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;white-space:nowrap;">Prodotto trovato</div>
-        <div id="grams-food-name" style="font-size:1.1rem;font-weight:700;color:#e2e8f0;line-height:1.3;"></div>
+        <div style="display:flex;align-items:center;gap:7px;">
+          <div id="grams-food-name" style="font-size:1.1rem;font-weight:700;color:#e2e8f0;line-height:1.3;"></div>
+          <input id="grams-food-name-input" type="text" autocomplete="off"
+            style="display:none;font-size:1.0rem;font-weight:700;color:#e2e8f0;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:4px 8px;flex:1;font-family:inherit;min-width:0;">
+          <button id="grams-name-edit-btn" onclick="gramsToggleNameEdit()"
+            title="Modifica nome"
+            style="background:none;border:none;color:#475569;font-size:0.85rem;cursor:pointer;padding:2px 4px;line-height:1;flex-shrink:0;transition:color 0.15s;">✏️</button>
+        </div>
       </div>
       <div style="display:table-cell;vertical-align:top;width:30px;text-align:right;">
         <button onclick="gramsClose()" style="background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:0;line-height:1.4;">✕</button>
@@ -4437,8 +4444,7 @@ async function awOfferSave(food) {
 
 async function awSaveProduct(food, userId) {
     try {
-        console.log('awSaveProduct: inserting', food.barcode, 'user:', userId);
-        const payload = {
+        const newPayload = {
             barcode:      food.barcode,
             name:         food.name,
             kcal100:      food.kcal100      || 0,
@@ -4452,19 +4458,65 @@ async function awSaveProduct(food, userId) {
             nutri_score:  food.nutriScore    || null,
             added_by:     userId
         };
-        console.log('Payload:', JSON.stringify(payload));
-        const { data, error } = await sbClient.from('aw_products').insert(payload).select();
-        if (error) {
-            console.error('aw_products insert error:', error.message, error.code, error.details, error.hint);
-            showToast('Errore salvataggio: ' + error.message, 'error');
+
+        // ── Controlla se il prodotto esiste già per barcode ──────────────
+        const { data: existing, error: fetchErr } = await sbClient
+            .from('aw_products')
+            .select('*')
+            .eq('barcode', food.barcode)
+            .maybeSingle();
+
+        if (fetchErr) {
+            console.error('awSaveProduct fetch error:', fetchErr.message);
+        }
+
+        if (existing) {
+            // Prodotto già presente → calcola solo i campi cambiati
+            const numFields = ['kcal100','p100','c100','f100','sugars100','saturated100','fiber100','salt100'];
+            const diff = {};
+            numFields.forEach(k => {
+                const newVal = newPayload[k];
+                const oldVal = existing[k];
+                if (Math.abs((newVal || 0) - (oldVal || 0)) > 0.01) diff[k] = newVal;
+            });
+            if (newPayload.name && newPayload.name !== existing.name) diff.name = newPayload.name;
+            if (newPayload.nutri_score && newPayload.nutri_score !== existing.nutri_score) diff.nutri_score = newPayload.nutri_score;
+
+            if (Object.keys(diff).length === 0) {
+                showToast('Prodotto già presente nel database Awakening', 'success');
+                return;
+            }
+
+            // Aggiorna solo i campi differenti
+            const { error: updateErr } = await sbClient
+                .from('aw_products')
+                .update(diff)
+                .eq('barcode', food.barcode);
+
+            if (updateErr) {
+                console.error('aw_products update error:', updateErr.message);
+                showToast('Errore aggiornamento: ' + updateErr.message, 'error');
+            } else {
+                showToast('✓ Dati aggiornati nel database Awakening', 'success');
+            }
         } else {
-            console.log('aw_products insert OK:', data);
-            // Incrementa contatore contributi per achievement
-            const prev = parseInt(localStorage.getItem('aw_contributions')||'0');
-            localStorage.setItem('aw_contributions', prev + 1);
-            updateBadges();
-            syncExtraToSupabase();
-            showToast('Grazie! Prodotto aggiunto al database Awakening', 'success');
+            // Prodotto nuovo → insert
+            const { data, error: insertErr } = await sbClient
+                .from('aw_products')
+                .insert(newPayload)
+                .select();
+
+            if (insertErr) {
+                console.error('aw_products insert error:', insertErr.message, insertErr.code);
+                showToast('Errore salvataggio: ' + insertErr.message, 'error');
+            } else {
+                console.log('aw_products insert OK:', data);
+                const prev = parseInt(localStorage.getItem('aw_contributions')||'0');
+                localStorage.setItem('aw_contributions', prev + 1);
+                updateBadges();
+                syncExtraToSupabase();
+                showToast('Grazie! Prodotto aggiunto al database Awakening', 'success');
+            }
         }
     } catch(e) {
         console.error('awSaveProduct exception:', e.message);
@@ -5544,6 +5596,13 @@ function openGramsSelector(food, meal) {
     overlay.dataset.meal = meal;
     overlay.dataset.food = JSON.stringify(food);
     document.getElementById('grams-food-name').textContent = food.name;
+    // Reset nome: mostra label, nascondi input
+    const nameInput = document.getElementById('grams-food-name-input');
+    const nameLabel = document.getElementById('grams-food-name');
+    const nameEditBtn = document.getElementById('grams-name-edit-btn');
+    if (nameInput) { nameInput.value = food.name; nameInput.style.display = 'none'; }
+    if (nameLabel) nameLabel.style.display = '';
+    if (nameEditBtn) { nameEditBtn.textContent = '✏️'; nameEditBtn.title = 'Modifica nome'; }
     // Popola input modificabili per 100g
     document.getElementById('grams-ref-kcal').value  = food.kcal100  || 0;
     document.getElementById('grams-ref-p').value     = food.p100     || 0;
@@ -5614,6 +5673,42 @@ function gramsToggleEdit() {
     }
 }
 
+function gramsToggleNameEdit() {
+    const nameLabel  = document.getElementById('grams-food-name');
+    const nameInput  = document.getElementById('grams-food-name-input');
+    const editBtn    = document.getElementById('grams-name-edit-btn');
+    if (!nameLabel || !nameInput) return;
+    const isEditing  = nameInput.style.display !== 'none';
+    if (isEditing) {
+        // Conferma: aggiorna label e dataset food
+        const newName = nameInput.value.trim();
+        if (newName) {
+            nameLabel.textContent = newName;
+            // Aggiorna il dataset per gramsConfirm
+            const overlay = document.getElementById('grams-overlay');
+            if (overlay && overlay.dataset.food) {
+                try {
+                    const f = JSON.parse(overlay.dataset.food);
+                    f.name = newName;
+                    overlay.dataset.food = JSON.stringify(f);
+                } catch(e) {}
+            }
+        }
+        nameInput.style.display = 'none';
+        nameLabel.style.display = '';
+        editBtn.textContent = '✏️';
+        editBtn.title = 'Modifica nome';
+    } else {
+        // Attiva modifica nome
+        nameInput.value = nameLabel.textContent;
+        nameLabel.style.display = 'none';
+        nameInput.style.display = '';
+        editBtn.textContent = '✓';
+        editBtn.title = 'Conferma nome';
+        setTimeout(() => { nameInput.focus(); nameInput.select(); }, 50);
+    }
+}
+
 function gramsGetRef() {
     // Legge i valori correnti dagli input modificabili
     return {
@@ -5659,6 +5754,11 @@ function gramsConfirm() {
     const meal    = overlay?.dataset.meal;
     const food    = JSON.parse(overlay?.dataset.food || '{}');
     const g       = parseFloat(document.getElementById('grams-input').value) || 100;
+    // Se il nome era in modifica, prendi il valore dall'input
+    const nameInput = document.getElementById('grams-food-name-input');
+    if (nameInput && nameInput.style.display !== 'none' && nameInput.value.trim()) {
+        food.name = nameInput.value.trim();
+    }
     if (!meal || !food.name) return;
     const factor = g / 100;
     // Usa i valori correnti dagli input (potrebbero essere stati modificati dall'utente)
