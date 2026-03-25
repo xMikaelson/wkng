@@ -2488,12 +2488,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:14px;">
       <div style="flex:1;min-width:0;">
         <div style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Prodotto trovato</div>
-        <!-- Modalità visualizzazione: nome + matita sulla stessa riga -->
-        <div id="grams-name-view" style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap;">
-          <span id="grams-food-name" style="font-size:1.1rem;font-weight:700;color:#e2e8f0;line-height:1.3;word-break:break-word;flex:1;min-width:0;"></span>
+        <!-- Modalità visualizzazione: nome + matita -->
+        <div id="grams-name-view" style="display:block;">
+          <span id="grams-food-name" style="font-size:1.1rem;font-weight:700;color:#e2e8f0;line-height:1.3;overflow-wrap:break-word;"></span>
           <button id="grams-name-edit-btn" onclick="gramsToggleNameEdit()"
             title="Modifica nome"
-            style="background:none;border:none;color:#64748b;font-size:1rem;cursor:pointer;padding:2px;line-height:1;flex-shrink:0;">✏️</button>
+            style="background:none;border:none;color:#64748b;font-size:0.95rem;cursor:pointer;padding:0 0 0 6px;line-height:1;vertical-align:middle;">✏️</button>
         </div>
         <!-- Modalità modifica: input + bottone conferma -->
         <div id="grams-name-edit-row" style="display:none;align-items:center;gap:6px;">
@@ -5606,7 +5606,7 @@ function openGramsSelector(food, meal) {
     const nameEditRow = document.getElementById('grams-name-edit-row');
     if (nameLabel)   nameLabel.textContent = food.name;
     if (nameInput)   nameInput.value = food.name;
-    if (nameView)    nameView.style.display = 'flex';
+    if (nameView)    nameView.style.display = 'block';
     if (nameEditRow) nameEditRow.style.display = 'none';
     // Popola input modificabili per 100g
     document.getElementById('grams-ref-kcal').value  = food.kcal100  || 0;
@@ -5697,7 +5697,7 @@ function gramsToggleNameEdit() {
             }
         }
         nameEditRow.style.display = 'none';
-        nameView.style.display = 'flex';
+        nameView.style.display = 'block';
     } else {
         // Attiva modifica
         nameInput.value = nameLabel.textContent;
