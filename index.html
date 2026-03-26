@@ -2485,11 +2485,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <!-- ══ GRAMS SELECTOR OVERLAY ══ -->
 <div id="grams-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.92);z-index:5100;align-items:flex-end;justify-content:center;flex-direction:column;">
   <div style="background:#1e293b;border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:480px;box-sizing:border-box;position:relative;">
-    <!-- HEADER: X assoluta nel pannello, nome centrato, modifica nome centrato -->
-    <!-- X: posizionata in assoluto nell'angolo in alto a destra del pannello -->
-    <button onclick="gramsClose()" style="position:absolute;top:20px;right:20px;background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:0;line-height:1;z-index:10;">✕</button>
+    <!-- X nell'angolo in alto a destra — fuori dal padding con margini negativi -->
+    <button onclick="gramsClose()" style="position:absolute;top:0;right:0;margin-top:16px;margin-right:16px;background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:6px;line-height:1;z-index:10;">✕</button>
     <!-- HEADER -->
-    <div style="margin-bottom:10px;padding-right:28px;">
+    <div style="margin-bottom:10px;padding-right:36px;">
       <div style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;white-space:nowrap;">Prodotto trovato</div>
     </div>
     <!-- NOME + MODIFICA -->
@@ -5744,11 +5743,14 @@ function gramsConfirm() {
     const meal    = overlay?.dataset.meal;
     const food    = JSON.parse(overlay?.dataset.food || '{}');
     const g       = parseFloat(document.getElementById('grams-input').value) || 100;
-    // Se il nome era in modifica, prendi il valore dall'input
+    // Nome: priorità → input aperto → label DOM → dataset
     const nameEditRow = document.getElementById('grams-name-edit-row');
-    const nameInput = document.getElementById('grams-food-name-input');
-    if (nameEditRow && nameEditRow.style.display === 'block' && nameInput && nameInput.value.trim()) {
-        food.name = nameInput.value.trim();
+    const nameInput   = document.getElementById('grams-food-name-input');
+    const nameLabel   = document.getElementById('grams-food-name');
+    if (nameEditRow && nameEditRow.style.display !== 'none' && nameInput && nameInput.value.trim()) {
+        food.name = nameInput.value.trim(); // utente non ha ancora premuto OK
+    } else if (nameLabel && nameLabel.textContent.trim()) {
+        food.name = nameLabel.textContent.trim(); // nome già confermato nel DOM
     }
     if (!meal || !food.name) return;
     const factor = g / 100;
