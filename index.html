@@ -2486,10 +2486,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <div id="grams-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.92);z-index:5100;align-items:flex-end;justify-content:center;flex-direction:column;">
   <div style="background:#1e293b;border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:480px;box-sizing:border-box;position:relative;">
     <!-- HEADER: X assoluta nel pannello, nome centrato, modifica nome centrato -->
+    <!-- X: posizionata in assoluto nell'angolo in alto a destra del pannello -->
+    <button onclick="gramsClose()" style="position:absolute;top:20px;right:20px;background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:0;line-height:1;z-index:10;">✕</button>
     <!-- HEADER -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+    <div style="margin-bottom:10px;padding-right:28px;">
       <div style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;white-space:nowrap;">Prodotto trovato</div>
-      <button onclick="gramsClose()" style="background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:0;line-height:1;flex-shrink:0;">✕</button>
     </div>
     <!-- NOME + MODIFICA -->
     <div style="margin-bottom:14px;">
@@ -4451,7 +4452,7 @@ async function awOfferSave(food) {
 async function awSaveProduct(food, userId) {
     try {
         const newPayload = {
-            barcode:      food.barcode,
+            barcode:      food.barcode || null,
             name:         food.name,
             kcal100:      food.kcal100      || 0,
             p100:         food.p100         || 0,
@@ -4465,25 +4466,24 @@ async function awSaveProduct(food, userId) {
             added_by:     userId
         };
 
-        // ── Controlla se il prodotto esiste già per barcode ──────────────
-        const { data: existing, error: fetchErr } = await sbClient
-            .from('aw_products')
-            .select('*')
-            .eq('barcode', food.barcode)
-            .maybeSingle();
-
-        if (fetchErr) {
-            console.error('awSaveProduct fetch error:', fetchErr.message);
+        // ── Cerca duplicato: per barcode se disponibile, altrimenti per nome ──
+        let existing = null;
+        let fetchErr = null;
+        if (food.barcode) {
+            const res = await sbClient.from('aw_products').select('*').eq('barcode', food.barcode).maybeSingle();
+            existing = res.data; fetchErr = res.error;
+        } else {
+            const res = await sbClient.from('aw_products').select('*').ilike('name', food.name.trim()).maybeSingle();
+            existing = res.data; fetchErr = res.error;
         }
+        if (fetchErr) console.error('awSaveProduct fetch error:', fetchErr.message);
 
         if (existing) {
-            // Prodotto già presente → calcola solo i campi cambiati
+            // Prodotto già presente → aggiorna solo i campi cambiati
             const numFields = ['kcal100','p100','c100','f100','sugars100','saturated100','fiber100','salt100'];
             const diff = {};
             numFields.forEach(k => {
-                const newVal = newPayload[k];
-                const oldVal = existing[k];
-                if (Math.abs((newVal || 0) - (oldVal || 0)) > 0.01) diff[k] = newVal;
+                if (Math.abs((newPayload[k] || 0) - (existing[k] || 0)) > 0.01) diff[k] = newPayload[k];
             });
             if (newPayload.name && newPayload.name !== existing.name) diff.name = newPayload.name;
             if (newPayload.nutri_score && newPayload.nutri_score !== existing.nutri_score) diff.nutri_score = newPayload.nutri_score;
@@ -4492,31 +4492,20 @@ async function awSaveProduct(food, userId) {
                 showToast('Prodotto già presente nel database Awakening', 'success');
                 return;
             }
-
-            // Aggiorna solo i campi differenti
-            const { error: updateErr } = await sbClient
-                .from('aw_products')
-                .update(diff)
-                .eq('barcode', food.barcode);
-
+            const filterKey = food.barcode ? 'barcode' : 'id';
+            const filterVal = food.barcode ? food.barcode : existing.id;
+            const { error: updateErr } = await sbClient.from('aw_products').update(diff).eq(filterKey, filterVal);
             if (updateErr) {
-                console.error('aw_products update error:', updateErr.message);
                 showToast('Errore aggiornamento: ' + updateErr.message, 'error');
             } else {
                 showToast('✓ Dati aggiornati nel database Awakening', 'success');
             }
         } else {
             // Prodotto nuovo → insert
-            const { data, error: insertErr } = await sbClient
-                .from('aw_products')
-                .insert(newPayload)
-                .select();
-
+            const { data, error: insertErr } = await sbClient.from('aw_products').insert(newPayload).select();
             if (insertErr) {
-                console.error('aw_products insert error:', insertErr.message, insertErr.code);
                 showToast('Errore salvataggio: ' + insertErr.message, 'error');
             } else {
-                console.log('aw_products insert OK:', data);
                 const prev = parseInt(localStorage.getItem('aw_contributions')||'0');
                 localStorage.setItem('aw_contributions', prev + 1);
                 updateBadges();
@@ -5699,6 +5688,9 @@ function gramsToggleNameEdit() {
         }
         nameEditRow.style.display = 'none';
         nameView.style.display = 'block';
+        // Mostra checkbox contributo quando il nome viene modificato
+        const contRow = document.getElementById('grams-contribute-row');
+        if (contRow) contRow.style.display = 'flex';
     } else {
         nameInput.value = nameLabel.textContent.trim();
         nameView.style.display = 'none';
@@ -5803,10 +5795,11 @@ function gramsConfirm() {
     nutTlUpdateUI();
     overlay.classList.remove('active');
     showToast('✓ ' + entry.name + ' (' + g + 'g) — ' + entry.kcal + ' kcal', 'success');
-    // Contributo DB Awakening — solo se checkbox spuntata e parametri modificati
+    // Contributo DB Awakening — se checkbox spuntata (nome e/o valori modificati)
     const gramsContribute = document.getElementById('grams-contribute')?.checked;
-    if (gramsContribute && food.barcode && !food.incomplete) {
+    if (gramsContribute && !food.incomplete) {
         const foodToSave = Object.assign({}, food, {
+            name:         entry.name,
             kcal100:      entry.kcal100,
             p100:         entry.p100,
             c100:         entry.c100,
