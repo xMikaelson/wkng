@@ -2486,9 +2486,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <div id="grams-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.92);z-index:5100;align-items:flex-end;justify-content:center;flex-direction:column;">
   <div style="background:#1e293b;border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:480px;box-sizing:border-box;position:relative;">
     <!-- HEADER -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;margin-right:-20px;padding-right:16px;">
       <span style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;white-space:nowrap;">Prodotto trovato</span>
-      <button onclick="gramsClose()" style="background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:0;line-height:1;flex-shrink:0;margin-right:-4px;">✕</button>
+      <button onclick="gramsClose()" style="background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:0;line-height:1;flex-shrink:0;">✕</button>
     </div>
     <!-- NOME + MATITA INLINE -->
     <div style="margin-bottom:14px;">
@@ -4443,7 +4443,6 @@ async function awOfferSave(food) {
 
 async function awSaveProduct(food, userId) {
     try {
-        // Se non c'è barcode e la colonna è NOT NULL, non possiamo inserire — solo aggiornare se trovato per nome
         const newPayload = {
             name:         food.name,
             kcal100:      food.kcal100      || 0,
@@ -4459,7 +4458,7 @@ async function awSaveProduct(food, userId) {
         };
         if (food.barcode) newPayload.barcode = food.barcode;
 
-        // Cerca per barcode prima, poi per nome originale pre-modifica, poi per nome attuale
+        // Cerca per barcode, poi per nome originale pre-modifica, poi per nome attuale
         let existing = null;
         if (food.barcode) {
             const res = await sbClient.from('aw_products').select('*').eq('barcode', food.barcode).maybeSingle();
@@ -4467,12 +4466,16 @@ async function awSaveProduct(food, userId) {
         }
         if (!existing) {
             const searchName = (food._searchByName || food.name).trim();
-            const res = await sbClient.from('aw_products').select('*').ilike('name', searchName).maybeSingle();
-            if (!res.error) existing = res.data;
+            // prova prima match esatto, poi case-insensitive
+            let res = await sbClient.from('aw_products').select('*').eq('name', searchName).maybeSingle();
+            if (!res.error && res.data) { existing = res.data; }
+            else {
+                res = await sbClient.from('aw_products').select('*').ilike('name', searchName).maybeSingle();
+                if (!res.error) existing = res.data;
+            }
         }
 
         if (existing) {
-            // Calcola diff
             const numFields = ['kcal100','p100','c100','f100','sugars100','saturated100','fiber100','salt100'];
             const diff = {};
             numFields.forEach(k => {
@@ -4486,7 +4489,7 @@ async function awSaveProduct(food, userId) {
                 showToast('Nessuna modifica da aggiornare', 'success');
                 return;
             }
-            // Usa barcode come filtro se disponibile, altrimenti name
+            // Filtra per barcode se disponibile, altrimenti per nome esistente
             const filterKey = existing.barcode ? 'barcode' : 'name';
             const filterVal = existing.barcode ? existing.barcode : existing.name;
             const { error: updateErr } = await sbClient.from('aw_products').update(diff).eq(filterKey, filterVal);
@@ -4498,7 +4501,7 @@ async function awSaveProduct(food, userId) {
         } else {
             // Non trovato → insert solo se abbiamo barcode (colonna NOT NULL)
             if (!food.barcode) {
-                showToast('Prodotto senza barcode: impossibile aggiungere al DB', 'error');
+                showToast('Prodotto non trovato nel DB (cerca: "' + (food._searchByName || food.name) + '")', 'error');
                 return;
             }
             const { error: insertErr } = await sbClient.from('aw_products').insert(newPayload);
@@ -5740,15 +5743,18 @@ function gramsConfirm() {
     const meal    = overlay?.dataset.meal;
     const food    = JSON.parse(overlay?.dataset.food || '{}');
     const g       = parseFloat(document.getElementById('grams-input').value) || 100;
-    // Nome: priorità → input aperto → label DOM → dataset
+    // Nome: legge dallo span#grams-food-name (non dal div padre che contiene anche la matita)
     const nameEditRow = document.getElementById('grams-name-edit-row');
     const nameInput   = document.getElementById('grams-food-name-input');
-    const nameLabel   = document.getElementById('grams-food-name');
+    const nameSpan    = document.getElementById('grams-food-name');
+    // Salva il nome originale per la ricerca nel DB
+    const originalName = food.name;
     if (nameEditRow && nameEditRow.style.display !== 'none' && nameInput && nameInput.value.trim()) {
-        food.name = nameInput.value.trim(); // utente non ha ancora premuto OK
-    } else if (nameLabel && nameLabel.textContent.trim()) {
-        food.name = nameLabel.textContent.trim(); // nome già confermato nel DOM
+        food.name = nameInput.value.trim();
+    } else if (nameSpan && nameSpan.textContent.trim()) {
+        food.name = nameSpan.textContent.trim();
     }
+    food._searchByName = originalName; // usato da awSaveProduct per trovare il record anche se il nome è cambiato
     if (!meal || !food.name) return;
     const factor = g / 100;
     // Usa i valori correnti dagli input (potrebbero essere stati modificati dall'utente)
@@ -5786,14 +5792,15 @@ function gramsConfirm() {
         showToast('✓ ' + entry.name + ' aggiornato a ' + g + 'g', 'success');
         // Edit mode: aggiorna DB automaticamente (per barcode o per nome originale)
         if (!food.incomplete) {
+            const originalNameForSearch = originalName || food.name;
             const foodToSave = Object.assign({}, food, {
-                name: entry.name, barcode: food.barcode || null,
+                name: entry.name,
+                barcode: food.barcode || null,
+                _searchByName: originalNameForSearch,
                 kcal100: entry.kcal100, p100: entry.p100, c100: entry.c100, f100: entry.f100,
                 sugars100: entry.sugars100, saturated100: entry.saturated100,
                 fiber100: entry.fiber100, salt100: entry.salt100, nutriScore: entry.nutriScore,
             });
-            // Se non c'è barcode, usa il nome originale (pre-modifica) per trovare il record
-            if (!foodToSave.barcode) foodToSave._searchByName = food.name;
             sbClient.auth.getUser().then(({ data: { user } }) => {
                 if (user) awSaveProduct(foodToSave, user.id);
             });
