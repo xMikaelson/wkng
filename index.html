@@ -2485,20 +2485,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <!-- ══ GRAMS SELECTOR OVERLAY ══ -->
 <div id="grams-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.92);z-index:5100;align-items:flex-end;justify-content:center;flex-direction:column;">
   <div style="background:#1e293b;border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:480px;box-sizing:border-box;position:relative;">
-    <!-- X nell'angolo in alto a destra — fuori dal padding con margini negativi -->
-    <button onclick="gramsClose()" style="position:absolute;top:0;right:0;margin-top:16px;margin-right:16px;background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:6px;line-height:1;z-index:10;">✕</button>
+    <!-- X nell'angolo in alto a destra del pannello -->
+    <button onclick="gramsClose()" style="position:absolute;top:18px;right:18px;background:none;border:none;color:#94a3b8;font-size:1.2rem;cursor:pointer;padding:4px;line-height:1;z-index:10;">✕</button>
     <!-- HEADER -->
-    <div style="margin-bottom:10px;padding-right:36px;">
+    <div style="margin-bottom:10px;padding-right:32px;">
       <div style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;white-space:nowrap;">Prodotto trovato</div>
     </div>
-    <!-- NOME + MATITA -->
+    <!-- NOME + MATITA INLINE -->
     <div style="margin-bottom:14px;">
-      <div id="grams-name-view">
-        <div style="position:relative;padding-right:22px;">
-          <div id="grams-food-name" style="font-size:1.1rem;font-weight:700;color:#e2e8f0;line-height:1.4;text-align:center;"></div>
-          <button id="grams-name-edit-btn" onclick="gramsToggleNameEdit()"
-            style="position:absolute;top:0;right:0;background:none;border:none;cursor:pointer;padding:0;font-size:0.85rem;line-height:1;color:#64748b;">✏️</button>
-        </div>
+      <div id="grams-name-view" style="text-align:center;margin-bottom:4px;">
+        <span id="grams-food-name" style="font-size:1.1rem;font-weight:700;color:#e2e8f0;line-height:1.4;"></span><button id="grams-name-edit-btn" onclick="gramsToggleNameEdit()" style="background:none;border:none;cursor:pointer;padding:0 0 2px 4px;font-size:0.8rem;line-height:1;color:#64748b;vertical-align:middle;display:inline;">✏️</button>
       </div>
       <div id="grams-name-edit-row" style="display:none;gap:8px;margin-top:6px;">
         <input id="grams-food-name-input" type="text" autocomplete="off"
@@ -4450,6 +4446,7 @@ async function awOfferSave(food) {
 
 async function awSaveProduct(food, userId) {
     try {
+        console.log('[awSaveProduct] called', { barcode: food.barcode, name: food.name, userId });
         const newPayload = {
             barcode:      food.barcode || null,
             name:         food.name,
@@ -4465,20 +4462,22 @@ async function awSaveProduct(food, userId) {
             added_by:     userId
         };
 
-        // ── Cerca duplicato: per barcode se disponibile, altrimenti per nome ──
+        // Cerca duplicato per barcode (se disponibile) o per nome esatto
         let existing = null;
-        let fetchErr = null;
         if (food.barcode) {
             const res = await sbClient.from('aw_products').select('*').eq('barcode', food.barcode).maybeSingle();
-            existing = res.data; fetchErr = res.error;
+            if (res.error) console.warn('[awSaveProduct] fetch by barcode error:', res.error.message);
+            existing = res.data;
+            console.log('[awSaveProduct] lookup by barcode:', existing ? 'FOUND id=' + existing.id : 'NOT FOUND');
         } else {
             const res = await sbClient.from('aw_products').select('*').ilike('name', food.name.trim()).maybeSingle();
-            existing = res.data; fetchErr = res.error;
+            if (res.error) console.warn('[awSaveProduct] fetch by name error:', res.error.message);
+            existing = res.data;
+            console.log('[awSaveProduct] lookup by name:', existing ? 'FOUND id=' + existing.id : 'NOT FOUND');
         }
-        if (fetchErr) console.error('awSaveProduct fetch error:', fetchErr.message);
 
         if (existing) {
-            // Prodotto già presente → aggiorna solo i campi cambiati
+            // Calcola diff — numerico + nome + nutri_score
             const numFields = ['kcal100','p100','c100','f100','sugars100','saturated100','fiber100','salt100'];
             const diff = {};
             numFields.forEach(k => {
@@ -4487,24 +4486,31 @@ async function awSaveProduct(food, userId) {
             if (newPayload.name && newPayload.name !== existing.name) diff.name = newPayload.name;
             if (newPayload.nutri_score && newPayload.nutri_score !== existing.nutri_score) diff.nutri_score = newPayload.nutri_score;
 
+            console.log('[awSaveProduct] diff:', diff);
+
             if (Object.keys(diff).length === 0) {
-                showToast('Prodotto già presente nel database Awakening', 'success');
+                showToast('Nessuna modifica da aggiornare nel database', 'success');
                 return;
             }
+
             const filterKey = food.barcode ? 'barcode' : 'id';
             const filterVal = food.barcode ? food.barcode : existing.id;
+            console.log('[awSaveProduct] updating', filterKey, '=', filterVal, 'diff:', diff);
             const { error: updateErr } = await sbClient.from('aw_products').update(diff).eq(filterKey, filterVal);
             if (updateErr) {
+                console.error('[awSaveProduct] update error:', updateErr.message);
                 showToast('Errore aggiornamento: ' + updateErr.message, 'error');
             } else {
-                showToast('✓ Dati aggiornati nel database Awakening', 'success');
+                showToast('✓ Database Awakening aggiornato', 'success');
             }
         } else {
-            // Prodotto nuovo → insert
+            console.log('[awSaveProduct] inserting new product');
             const { data, error: insertErr } = await sbClient.from('aw_products').insert(newPayload).select();
             if (insertErr) {
+                console.error('[awSaveProduct] insert error:', insertErr.message);
                 showToast('Errore salvataggio: ' + insertErr.message, 'error');
             } else {
+                console.log('[awSaveProduct] insert OK:', data);
                 const prev = parseInt(localStorage.getItem('aw_contributions')||'0');
                 localStorage.setItem('aw_contributions', prev + 1);
                 updateBadges();
@@ -4513,7 +4519,7 @@ async function awSaveProduct(food, userId) {
             }
         }
     } catch(e) {
-        console.error('awSaveProduct exception:', e.message);
+        console.error('[awSaveProduct] exception:', e.message);
         showToast('Errore: ' + e.message, 'error');
     }
 }
@@ -5597,8 +5603,7 @@ function openGramsSelector(food, meal) {
     if (nameLabel)   { nameLabel.textContent = food.name; }
     if (nameInput)   nameInput.value = food.name;
     if (nameView)    nameView.style.display = 'block';
-    if (nameEditRow) nameEditRow.style.display = 'none';
-    // Popola input modificabili per 100g
+    if (nameEditRow) nameEditRow.style.display = 'none';    // Popola input modificabili per 100g
     document.getElementById('grams-ref-kcal').value  = food.kcal100  || 0;
     document.getElementById('grams-ref-p').value     = food.p100     || 0;
     document.getElementById('grams-ref-c').value     = food.c100     || 0;
