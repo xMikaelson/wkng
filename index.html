@@ -2485,16 +2485,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <!-- ══ GRAMS SELECTOR OVERLAY ══ -->
 <div id="grams-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.92);z-index:5100;align-items:flex-end;justify-content:center;flex-direction:column;">
   <div style="background:#1e293b;border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:480px;box-sizing:border-box;position:relative;">
-    <!-- HEADER: label + X sulla stessa riga, X compensata dal padding -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;margin-left:-20px;margin-right:-20px;padding:0 12px 0 20px;">
+    <!-- HEADER BAR full-width, X all'estrema destra -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:-24px -20px 12px -20px;padding:16px 16px 12px 20px;border-bottom:1px solid rgba(255,255,255,0.05);">
       <span style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;white-space:nowrap;">Prodotto trovato</span>
-      <button onclick="gramsClose()" style="background:none;border:none;color:#94a3b8;font-size:1.2rem;cursor:pointer;padding:4px 8px;line-height:1;flex-shrink:0;">✕</button>
+      <button onclick="gramsClose()" style="background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:0;line-height:1;flex-shrink:0;">✕</button>
     </div>
-    <!-- NOME + MATITA: centrato, matita sulla stessa riga dell'ultima parola -->
+    <!-- NOME + MATITA INLINE -->
     <div style="margin-bottom:14px;">
-      <div id="grams-name-view" style="text-align:center;margin-bottom:2px;">
-        <span style="font-size:1.1rem;font-weight:700;color:#e2e8f0;line-height:1.5;display:inline;"><span id="grams-food-name" style="display:inline;"></span><button id="grams-name-edit-btn" onclick="gramsToggleNameEdit()" style="display:inline;background:none;border:none;cursor:pointer;padding:0 0 1px 5px;font-size:0.8rem;line-height:1;color:#64748b;vertical-align:middle;">✏️</button></span>
-      </div>
+      <div id="grams-name-view" style="text-align:center;margin-bottom:2px;font-size:1.1rem;font-weight:700;color:#e2e8f0;line-height:1.5;"><span id="grams-food-name" style="display:inline;"></span><button id="grams-name-edit-btn" onclick="gramsToggleNameEdit()" style="display:inline;background:none;border:none;cursor:pointer;padding:0 0 1px 5px;font-size:0.8rem;line-height:1;color:#64748b;vertical-align:middle;">✏️</button></div>
       <div id="grams-name-edit-row" style="display:none;gap:8px;margin-top:8px;">
         <input id="grams-food-name-input" type="text" autocomplete="off"
           style="display:block;width:100%;font-size:1.0rem;font-weight:700;color:#e2e8f0;background:#0f172a;border:1px solid #334155;border-radius:10px;padding:11px 12px;font-family:inherit;box-sizing:border-box;margin-bottom:8px;">
@@ -5783,6 +5781,7 @@ function gramsConfirm() {
         overlay.classList.remove('active');
         showToast('✓ ' + entry.name + ' aggiornato a ' + g + 'g', 'success');
         // Edit mode: aggiorna DB automaticamente se il prodotto ha barcode
+        showToast('Edit mode — barcode: ' + (food.barcode || 'MANCANTE'), 'success');
         if (food.barcode && !food.incomplete) {
             const foodToSave = Object.assign({}, food, {
                 name: entry.name, barcode: food.barcode,
@@ -5806,6 +5805,7 @@ function gramsConfirm() {
     showToast('✓ ' + entry.name + ' (' + g + 'g) — ' + entry.kcal + ' kcal', 'success');
     // Contributo DB Awakening — nuovi alimenti
     const gramsContribute = document.getElementById('grams-contribute')?.checked;
+    showToast('Nuovo scan — checkbox: ' + (gramsContribute ? 'ON' : 'OFF') + ' barcode: ' + (food.barcode||'MANCANTE'), 'success');
     if (gramsContribute && !food.incomplete) {
         const foodToSave = Object.assign({}, food, {
             name: entry.name, barcode: food.barcode || null,
