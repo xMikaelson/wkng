@@ -4489,14 +4489,21 @@ async function awSaveProduct(food, userId) {
                 showToast('Nessuna modifica da aggiornare', 'success');
                 return;
             }
-            // Filtra per barcode se disponibile, altrimenti per nome esistente
+            // Usa sempre barcode come filtro se disponibile — più affidabile
             const filterKey = existing.barcode ? 'barcode' : 'name';
             const filterVal = existing.barcode ? existing.barcode : existing.name;
-            const { error: updateErr } = await sbClient.from('aw_products').update(diff).eq(filterKey, filterVal);
+            showToast('Aggiorno ' + filterKey + '=' + filterVal + ' diff=' + JSON.stringify(diff), 'success');
+            const { data: updatedRows, error: updateErr } = await sbClient
+                .from('aw_products')
+                .update(diff)
+                .eq(filterKey, filterVal)
+                .select();
             if (updateErr) {
                 showToast('Errore aggiornamento DB: ' + updateErr.message, 'error');
+            } else if (!updatedRows || updatedRows.length === 0) {
+                showToast('RLS blocca update: nessuna riga modificata (policy Supabase)', 'error');
             } else {
-                showToast('✓ Database Awakening aggiornato', 'success');
+                showToast('✓ Database Awakening aggiornato (' + updatedRows.length + ' riga)', 'success');
             }
         } else {
             // Non trovato → insert solo se abbiamo barcode (colonna NOT NULL)
