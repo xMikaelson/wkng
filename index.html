@@ -4486,10 +4486,8 @@ async function awSaveProduct(food, userId) {
             if (food.barcode && !existing.barcode) diff.barcode = food.barcode;
 
             if (Object.keys(diff).length === 0) {
-                showToast('Nessuna modifica da aggiornare', 'success');
-                return;
+                return; // nessuna modifica, silenzioso
             }
-            // Usa barcode come filtro se disponibile — più affidabile
             const filterKey = existing.barcode ? 'barcode' : 'name';
             const filterVal = existing.barcode ? existing.barcode : existing.name;
             const { data: updatedRows, error: updateErr } = await sbClient
@@ -4498,12 +4496,9 @@ async function awSaveProduct(food, userId) {
                 .eq(filterKey, filterVal)
                 .select();
             if (updateErr) {
-                showToast('Errore aggiornamento DB: ' + updateErr.message, 'error');
-            } else if (!updatedRows || updatedRows.length === 0) {
-                showToast('Nessuna riga aggiornata (controlla policy Supabase)', 'error');
-            } else {
-                showToast('✓ Database Awakening aggiornato', 'success');
+                console.warn('DB update error:', updateErr.message);
             }
+            // silenzioso in caso di successo
         } else {
             // Non trovato → insert solo se abbiamo barcode (colonna NOT NULL)
             if (!food.barcode) {
@@ -5657,9 +5652,9 @@ function gramsToggleEdit() {
         btn.style.color = '#94a3b8';
         btn.style.borderColor = 'rgba(255,255,255,0.12)';
         gramsRefUpdate();
-        // Mostra checkbox contributo quando i valori vengono modificati
+        // Mostra checkbox contributo solo se NON siamo in edit mode (timeline)
         const contRow = document.getElementById('grams-contribute-row');
-        if (contRow) contRow.style.display = 'flex';
+        if (contRow && !window._nutEditMode) contRow.style.display = 'flex';
     } else {
         // Attiva modifica
         ids.forEach(id => {
@@ -5696,9 +5691,9 @@ function gramsToggleNameEdit() {
         }
         nameEditRow.style.display = 'none';
         nameView.style.display = 'block';
-        // Mostra checkbox contributo quando il nome viene modificato
+        // Mostra checkbox contributo solo se NON siamo in edit mode (timeline)
         const contRow = document.getElementById('grams-contribute-row');
-        if (contRow) contRow.style.display = 'flex';
+        if (contRow && !window._nutEditMode) contRow.style.display = 'flex';
     } else {
         nameInput.value = nameLabel.textContent.trim();
         nameView.style.display = 'none';
