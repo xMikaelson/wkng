@@ -2491,16 +2491,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div style="margin-bottom:10px;padding-right:36px;">
       <div style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;white-space:nowrap;">Prodotto trovato</div>
     </div>
-    <!-- NOME + MODIFICA -->
+    <!-- NOME + MATITA -->
     <div style="margin-bottom:14px;">
       <div id="grams-name-view">
-        <div id="grams-food-name" style="font-size:1.1rem;font-weight:700;color:#e2e8f0;line-height:1.4;text-align:center;margin-bottom:8px;"></div>
-        <div style="text-align:center;">
+        <div style="position:relative;padding-right:22px;">
+          <div id="grams-food-name" style="font-size:1.1rem;font-weight:700;color:#e2e8f0;line-height:1.4;text-align:center;"></div>
           <button id="grams-name-edit-btn" onclick="gramsToggleNameEdit()"
-            style="background:none;border:none;cursor:pointer;color:#64748b;font-size:0.7rem;padding:0;text-decoration:underline;text-underline-offset:3px;letter-spacing:0.04em;">Modifica nome</button>
+            style="position:absolute;top:0;right:0;background:none;border:none;cursor:pointer;padding:0;font-size:0.85rem;line-height:1;color:#64748b;">✏️</button>
         </div>
       </div>
-      <div id="grams-name-edit-row" style="display:none;gap:8px;">
+      <div id="grams-name-edit-row" style="display:none;gap:8px;margin-top:6px;">
         <input id="grams-food-name-input" type="text" autocomplete="off"
           style="display:block;width:100%;font-size:1.0rem;font-weight:700;color:#e2e8f0;background:#0f172a;border:1px solid #334155;border-radius:10px;padding:11px 12px;font-family:inherit;box-sizing:border-box;margin-bottom:8px;">
         <button onclick="gramsToggleNameEdit()"
@@ -2594,10 +2594,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       </div>
     </div>
 
-    <!-- Checkbox contributo — visibile solo se valori modificati -->
-    <label id="grams-contribute-row" style="display:none;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(52,211,153,0.05);border:1px solid rgba(52,211,153,0.15);border-radius:10px;cursor:pointer;margin-bottom:12px;">
+    <!-- Checkbox contributo — sempre visibile -->
+    <label id="grams-contribute-row" style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(52,211,153,0.05);border:1px solid rgba(52,211,153,0.15);border-radius:10px;cursor:pointer;margin-bottom:12px;">
       <input type="checkbox" id="grams-contribute" style="margin-top:2px;accent-color:#34d399;width:16px;height:16px;flex-shrink:0;">
-      <span style="font-size:0.65rem;color:#94a3b8;line-height:1.5;">Vuoi contribuire a migliorare il database Awakening? Il prodotto verrà condiviso con la community in modo anonimo.</span>
+      <span style="font-size:0.65rem;color:#94a3b8;line-height:1.5;">Contribuisci al database Awakening: condividi nome e valori nutrizionali con la community in modo anonimo.</span>
     </label>
     <button onclick="gramsConfirm()"
       style="width:100%;padding:16px;background:linear-gradient(135deg,var(--primary),var(--accent));border:none;border-radius:14px;color:#000;font-size:1rem;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0.05em;">
@@ -5609,11 +5609,9 @@ function openGramsSelector(food, meal) {
     document.getElementById('grams-ref-salt').value   = food.salt100      != null ? food.salt100      : '';
     // Nutri-Score bar — calcolato con i dati completi
     gramsRefUpdate();
-    // Reset checkbox contributo
+    // Reset checkbox contributo — deseleziona, rimane visibile
     const gcb = document.getElementById('grams-contribute');
-    const gcr = document.getElementById('grams-contribute-row');
     if (gcb) gcb.checked = false;
-    if (gcr) gcr.style.display = 'none';
     // Reset stato modifica: disabilita tutti gli input
     const editBtn = document.getElementById('grams-edit-btn');
     if (editBtn) { editBtn.innerHTML = '✏️ Modifica'; editBtn.dataset.editing = '0'; editBtn.style.color = '#94a3b8'; editBtn.style.borderColor = 'rgba(255,255,255,0.12)'; }
