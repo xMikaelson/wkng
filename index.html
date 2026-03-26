@@ -2486,16 +2486,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <div id="grams-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.92);z-index:5100;align-items:flex-end;justify-content:center;flex-direction:column;">
   <div style="background:#1e293b;border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:480px;box-sizing:border-box;position:relative;">
     <!-- HEADER: label + X sulla stessa riga flex -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;margin-right:-8px;">
       <span style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;white-space:nowrap;">Prodotto trovato</span>
-      <button onclick="gramsClose()" style="background:none;border:none;color:#94a3b8;font-size:1.2rem;cursor:pointer;padding:4px;line-height:1;margin-left:8px;">✕</button>
+      <button onclick="gramsClose()" style="background:none;border:none;color:#94a3b8;font-size:1.2rem;cursor:pointer;padding:4px 8px 4px 4px;line-height:1;flex-shrink:0;">✕</button>
     </div>
     <!-- NOME + MATITA INLINE -->
     <div style="margin-bottom:14px;">
-      <div id="grams-name-view" style="text-align:center;line-height:1.5;">
-        <span id="grams-food-name" style="font-size:1.1rem;font-weight:700;color:#e2e8f0;"></span><!--
-        --><button id="grams-name-edit-btn" onclick="gramsToggleNameEdit()" style="background:none;border:none;cursor:pointer;padding:0 0 1px 5px;font-size:0.8rem;line-height:1;color:#64748b;vertical-align:middle;">✏️</button>
-      </div>
+      <div id="grams-name-view" style="text-align:center;line-height:1.5;font-size:1.1rem;font-weight:700;color:#e2e8f0;"><span id="grams-food-name"></span><button id="grams-name-edit-btn" onclick="gramsToggleNameEdit()" style="background:none;border:none;cursor:pointer;padding:0 0 1px 4px;font-size:0.8rem;line-height:inherit;color:#64748b;vertical-align:middle;">✏️</button></div>
       <div id="grams-name-edit-row" style="display:none;gap:8px;margin-top:8px;">
         <input id="grams-food-name-input" type="text" autocomplete="off"
           style="display:block;width:100%;font-size:1.0rem;font-weight:700;color:#e2e8f0;background:#0f172a;border:1px solid #334155;border-radius:10px;padding:11px 12px;font-family:inherit;box-sizing:border-box;margin-bottom:8px;">
@@ -5613,9 +5610,11 @@ function openGramsSelector(food, meal) {
     document.getElementById('grams-ref-salt').value   = food.salt100      != null ? food.salt100      : '';
     // Nutri-Score bar — calcolato con i dati completi
     gramsRefUpdate();
-    // Reset checkbox contributo — deseleziona, rimane visibile
+    // Checkbox contributo: visibile solo per nuovi alimenti, nascosta in edit mode
     const gcb = document.getElementById('grams-contribute');
+    const gcr = document.getElementById('grams-contribute-row');
     if (gcb) gcb.checked = false;
+    if (gcr) gcr.style.display = window._nutEditMode ? 'none' : 'flex';
     // Reset stato modifica: disabilita tutti gli input
     const editBtn = document.getElementById('grams-edit-btn');
     if (editBtn) { editBtn.innerHTML = '✏️ Modifica'; editBtn.dataset.editing = '0'; editBtn.style.color = '#94a3b8'; editBtn.style.borderColor = 'rgba(255,255,255,0.12)'; }
@@ -5781,7 +5780,7 @@ function gramsConfirm() {
         window._nutEditMode = null;
         const idx = mealData[editMeal].findIndex(x => x.id === id);
         if (idx >= 0) {
-            entry.id = id; // keep original id
+            entry.id = id;
             mealData[editMeal][idx] = entry;
         }
         NUT.saveMeals(mealData);
@@ -5789,6 +5788,18 @@ function gramsConfirm() {
         nutTlUpdateUI();
         overlay.classList.remove('active');
         showToast('✓ ' + entry.name + ' aggiornato a ' + g + 'g', 'success');
+        // Edit mode: aggiorna DB automaticamente se il prodotto ha barcode
+        if (food.barcode && !food.incomplete) {
+            const foodToSave = Object.assign({}, food, {
+                name: entry.name, barcode: food.barcode,
+                kcal100: entry.kcal100, p100: entry.p100, c100: entry.c100, f100: entry.f100,
+                sugars100: entry.sugars100, saturated100: entry.saturated100,
+                fiber100: entry.fiber100, salt100: entry.salt100, nutriScore: entry.nutriScore,
+            });
+            sbClient.auth.getUser().then(({ data: { user } }) => {
+                if (user) awSaveProduct(foodToSave, user.id);
+            });
+        }
         return;
     }
     // New entry
@@ -5799,20 +5810,14 @@ function gramsConfirm() {
     nutTlUpdateUI();
     overlay.classList.remove('active');
     showToast('✓ ' + entry.name + ' (' + g + 'g) — ' + entry.kcal + ' kcal', 'success');
-    // Contributo DB Awakening — se checkbox spuntata (nome e/o valori modificati)
+    // Contributo DB Awakening — nuovi alimenti
     const gramsContribute = document.getElementById('grams-contribute')?.checked;
     if (gramsContribute && !food.incomplete) {
         const foodToSave = Object.assign({}, food, {
-            name:         entry.name,
-            kcal100:      entry.kcal100,
-            p100:         entry.p100,
-            c100:         entry.c100,
-            f100:         entry.f100,
-            sugars100:    entry.sugars100,
-            saturated100: entry.saturated100,
-            fiber100:     entry.fiber100,
-            salt100:      entry.salt100,
-            nutriScore:   entry.nutriScore,
+            name: entry.name, barcode: food.barcode || null,
+            kcal100: entry.kcal100, p100: entry.p100, c100: entry.c100, f100: entry.f100,
+            sugars100: entry.sugars100, saturated100: entry.saturated100,
+            fiber100: entry.fiber100, salt100: entry.salt100, nutriScore: entry.nutriScore,
         });
         sbClient.auth.getUser().then(({ data: { user } }) => {
             if (user) awSaveProduct(foodToSave, user.id);
