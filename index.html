@@ -4443,7 +4443,6 @@ async function awOfferSave(food) {
 
 async function awSaveProduct(food, userId) {
     try {
-        showToast('DB: avvio salvataggio barcode=' + (food.barcode||'null') + ' name=' + food.name, 'success');
         const newPayload = {
             barcode:      food.barcode || null,
             name:         food.name,
@@ -4459,17 +4458,16 @@ async function awSaveProduct(food, userId) {
             added_by:     userId
         };
 
+        // Cerca per barcode prima, poi per nome originale pre-modifica, poi per nome attuale
         let existing = null;
         if (food.barcode) {
             const res = await sbClient.from('aw_products').select('*').eq('barcode', food.barcode).maybeSingle();
-            if (res.error) showToast('DB fetch err: ' + res.error.message, 'error');
-            existing = res.data;
-            showToast('DB lookup barcode: ' + (existing ? 'TROVATO' : 'NON TROVATO'), 'success');
-        } else {
-            const res = await sbClient.from('aw_products').select('*').ilike('name', food.name.trim()).maybeSingle();
-            if (res.error) showToast('DB fetch err: ' + res.error.message, 'error');
-            existing = res.data;
-            showToast('DB lookup nome: ' + (existing ? 'TROVATO' : 'NON TROVATO'), 'success');
+            if (!res.error) existing = res.data;
+        }
+        if (!existing) {
+            const searchName = (food._searchByName || food.name).trim();
+            const res = await sbClient.from('aw_products').select('*').ilike('name', searchName).maybeSingle();
+            if (!res.error) existing = res.data;
         }
 
         if (existing) {
@@ -4480,26 +4478,22 @@ async function awSaveProduct(food, userId) {
             });
             if (newPayload.name && newPayload.name !== existing.name) diff.name = newPayload.name;
             if (newPayload.nutri_score && newPayload.nutri_score !== existing.nutri_score) diff.nutri_score = newPayload.nutri_score;
-
-            showToast('DB diff campi: ' + Object.keys(diff).join(', '), 'success');
+            if (newPayload.barcode && !existing.barcode) diff.barcode = newPayload.barcode;
 
             if (Object.keys(diff).length === 0) {
-                showToast('Nessuna modifica da aggiornare nel database', 'success');
+                showToast('Nessuna modifica da aggiornare', 'success');
                 return;
             }
-
-            const filterKey = food.barcode ? 'barcode' : 'id';
-            const filterVal = food.barcode ? food.barcode : existing.id;
-            const { error: updateErr } = await sbClient.from('aw_products').update(diff).eq(filterKey, filterVal);
+            const { error: updateErr } = await sbClient.from('aw_products').update(diff).eq('id', existing.id);
             if (updateErr) {
-                showToast('Errore aggiornamento: ' + updateErr.message, 'error');
+                showToast('Errore aggiornamento DB: ' + updateErr.message, 'error');
             } else {
                 showToast('✓ Database Awakening aggiornato', 'success');
             }
         } else {
-            const { data, error: insertErr } = await sbClient.from('aw_products').insert(newPayload).select();
+            const { error: insertErr } = await sbClient.from('aw_products').insert(newPayload);
             if (insertErr) {
-                showToast('Errore salvataggio: ' + insertErr.message, 'error');
+                showToast('Errore salvataggio DB: ' + insertErr.message, 'error');
             } else {
                 const prev = parseInt(localStorage.getItem('aw_contributions')||'0');
                 localStorage.setItem('aw_contributions', prev + 1);
@@ -4509,7 +4503,7 @@ async function awSaveProduct(food, userId) {
             }
         }
     } catch(e) {
-        showToast('DB eccezione: ' + e.message, 'error');
+        showToast('Errore DB: ' + e.message, 'error');
     }
 }
 
@@ -5780,15 +5774,16 @@ function gramsConfirm() {
         nutTlUpdateUI();
         overlay.classList.remove('active');
         showToast('✓ ' + entry.name + ' aggiornato a ' + g + 'g', 'success');
-        // Edit mode: aggiorna DB automaticamente se il prodotto ha barcode
-        showToast('Edit mode — barcode: ' + (food.barcode || 'MANCANTE'), 'success');
-        if (food.barcode && !food.incomplete) {
+        // Edit mode: aggiorna DB automaticamente (per barcode o per nome originale)
+        if (!food.incomplete) {
             const foodToSave = Object.assign({}, food, {
-                name: entry.name, barcode: food.barcode,
+                name: entry.name, barcode: food.barcode || null,
                 kcal100: entry.kcal100, p100: entry.p100, c100: entry.c100, f100: entry.f100,
                 sugars100: entry.sugars100, saturated100: entry.saturated100,
                 fiber100: entry.fiber100, salt100: entry.salt100, nutriScore: entry.nutriScore,
             });
+            // Se non c'è barcode, usa il nome originale (pre-modifica) per trovare il record
+            if (!foodToSave.barcode) foodToSave._searchByName = food.name;
             sbClient.auth.getUser().then(({ data: { user } }) => {
                 if (user) awSaveProduct(foodToSave, user.id);
             });
@@ -5805,7 +5800,6 @@ function gramsConfirm() {
     showToast('✓ ' + entry.name + ' (' + g + 'g) — ' + entry.kcal + ' kcal', 'success');
     // Contributo DB Awakening — nuovi alimenti
     const gramsContribute = document.getElementById('grams-contribute')?.checked;
-    showToast('Nuovo scan — checkbox: ' + (gramsContribute ? 'ON' : 'OFF') + ' barcode: ' + (food.barcode||'MANCANTE'), 'success');
     if (gramsContribute && !food.incomplete) {
         const foodToSave = Object.assign({}, food, {
             name: entry.name, barcode: food.barcode || null,
