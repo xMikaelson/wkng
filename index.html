@@ -2485,14 +2485,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <!-- ══ GRAMS SELECTOR OVERLAY ══ -->
 <div id="grams-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.92);z-index:5100;align-items:flex-end;justify-content:center;flex-direction:column;">
   <div style="background:#1e293b;border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:480px;box-sizing:border-box;position:relative;">
-    <!-- HEADER: label + X sulla stessa riga flex -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;margin-right:-8px;">
+    <!-- HEADER: label + X sulla stessa riga, X compensata dal padding -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;margin-left:-20px;margin-right:-20px;padding:0 12px 0 20px;">
       <span style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;white-space:nowrap;">Prodotto trovato</span>
-      <button onclick="gramsClose()" style="background:none;border:none;color:#94a3b8;font-size:1.2rem;cursor:pointer;padding:4px 8px 4px 4px;line-height:1;flex-shrink:0;">✕</button>
+      <button onclick="gramsClose()" style="background:none;border:none;color:#94a3b8;font-size:1.2rem;cursor:pointer;padding:4px 8px;line-height:1;flex-shrink:0;">✕</button>
     </div>
-    <!-- NOME + MATITA INLINE -->
+    <!-- NOME + MATITA: centrato, matita sulla stessa riga dell'ultima parola -->
     <div style="margin-bottom:14px;">
-      <div id="grams-name-view" style="text-align:center;line-height:1.5;font-size:1.1rem;font-weight:700;color:#e2e8f0;"><span id="grams-food-name"></span><button id="grams-name-edit-btn" onclick="gramsToggleNameEdit()" style="background:none;border:none;cursor:pointer;padding:0 0 1px 4px;font-size:0.8rem;line-height:inherit;color:#64748b;vertical-align:middle;">✏️</button></div>
+      <div id="grams-name-view" style="text-align:center;margin-bottom:2px;">
+        <span style="font-size:1.1rem;font-weight:700;color:#e2e8f0;line-height:1.5;display:inline;"><span id="grams-food-name" style="display:inline;"></span><button id="grams-name-edit-btn" onclick="gramsToggleNameEdit()" style="display:inline;background:none;border:none;cursor:pointer;padding:0 0 1px 5px;font-size:0.8rem;line-height:1;color:#64748b;vertical-align:middle;">✏️</button></span>
+      </div>
       <div id="grams-name-edit-row" style="display:none;gap:8px;margin-top:8px;">
         <input id="grams-food-name-input" type="text" autocomplete="off"
           style="display:block;width:100%;font-size:1.0rem;font-weight:700;color:#e2e8f0;background:#0f172a;border:1px solid #334155;border-radius:10px;padding:11px 12px;font-family:inherit;box-sizing:border-box;margin-bottom:8px;">
@@ -4443,7 +4445,7 @@ async function awOfferSave(food) {
 
 async function awSaveProduct(food, userId) {
     try {
-        console.log('[awSaveProduct] called', { barcode: food.barcode, name: food.name, userId });
+        showToast('DB: avvio salvataggio barcode=' + (food.barcode||'null') + ' name=' + food.name, 'success');
         const newPayload = {
             barcode:      food.barcode || null,
             name:         food.name,
@@ -4459,22 +4461,20 @@ async function awSaveProduct(food, userId) {
             added_by:     userId
         };
 
-        // Cerca duplicato per barcode (se disponibile) o per nome esatto
         let existing = null;
         if (food.barcode) {
             const res = await sbClient.from('aw_products').select('*').eq('barcode', food.barcode).maybeSingle();
-            if (res.error) console.warn('[awSaveProduct] fetch by barcode error:', res.error.message);
+            if (res.error) showToast('DB fetch err: ' + res.error.message, 'error');
             existing = res.data;
-            console.log('[awSaveProduct] lookup by barcode:', existing ? 'FOUND id=' + existing.id : 'NOT FOUND');
+            showToast('DB lookup barcode: ' + (existing ? 'TROVATO' : 'NON TROVATO'), 'success');
         } else {
             const res = await sbClient.from('aw_products').select('*').ilike('name', food.name.trim()).maybeSingle();
-            if (res.error) console.warn('[awSaveProduct] fetch by name error:', res.error.message);
+            if (res.error) showToast('DB fetch err: ' + res.error.message, 'error');
             existing = res.data;
-            console.log('[awSaveProduct] lookup by name:', existing ? 'FOUND id=' + existing.id : 'NOT FOUND');
+            showToast('DB lookup nome: ' + (existing ? 'TROVATO' : 'NON TROVATO'), 'success');
         }
 
         if (existing) {
-            // Calcola diff — numerico + nome + nutri_score
             const numFields = ['kcal100','p100','c100','f100','sugars100','saturated100','fiber100','salt100'];
             const diff = {};
             numFields.forEach(k => {
@@ -4483,7 +4483,7 @@ async function awSaveProduct(food, userId) {
             if (newPayload.name && newPayload.name !== existing.name) diff.name = newPayload.name;
             if (newPayload.nutri_score && newPayload.nutri_score !== existing.nutri_score) diff.nutri_score = newPayload.nutri_score;
 
-            console.log('[awSaveProduct] diff:', diff);
+            showToast('DB diff campi: ' + Object.keys(diff).join(', '), 'success');
 
             if (Object.keys(diff).length === 0) {
                 showToast('Nessuna modifica da aggiornare nel database', 'success');
@@ -4492,32 +4492,26 @@ async function awSaveProduct(food, userId) {
 
             const filterKey = food.barcode ? 'barcode' : 'id';
             const filterVal = food.barcode ? food.barcode : existing.id;
-            console.log('[awSaveProduct] updating', filterKey, '=', filterVal, 'diff:', diff);
             const { error: updateErr } = await sbClient.from('aw_products').update(diff).eq(filterKey, filterVal);
             if (updateErr) {
-                console.error('[awSaveProduct] update error:', updateErr.message);
                 showToast('Errore aggiornamento: ' + updateErr.message, 'error');
             } else {
                 showToast('✓ Database Awakening aggiornato', 'success');
             }
         } else {
-            console.log('[awSaveProduct] inserting new product');
             const { data, error: insertErr } = await sbClient.from('aw_products').insert(newPayload).select();
             if (insertErr) {
-                console.error('[awSaveProduct] insert error:', insertErr.message);
                 showToast('Errore salvataggio: ' + insertErr.message, 'error');
             } else {
-                console.log('[awSaveProduct] insert OK:', data);
                 const prev = parseInt(localStorage.getItem('aw_contributions')||'0');
                 localStorage.setItem('aw_contributions', prev + 1);
                 updateBadges();
                 syncExtraToSupabase();
-                showToast('Grazie! Prodotto aggiunto al database Awakening', 'success');
+                showToast('✓ Prodotto aggiunto al database Awakening', 'success');
             }
         }
     } catch(e) {
-        console.error('[awSaveProduct] exception:', e.message);
-        showToast('Errore: ' + e.message, 'error');
+        showToast('DB eccezione: ' + e.message, 'error');
     }
 }
 
