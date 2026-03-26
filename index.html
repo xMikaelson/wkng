@@ -2485,10 +2485,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <!-- ══ GRAMS SELECTOR OVERLAY ══ -->
 <div id="grams-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.92);z-index:5100;align-items:flex-end;justify-content:center;flex-direction:column;">
   <div style="background:#1e293b;border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:480px;box-sizing:border-box;position:relative;">
-    <!-- HEADER BAR full-width, X all'estrema destra -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin:-24px -20px 12px -20px;padding:16px 16px 12px 20px;border-bottom:1px solid rgba(255,255,255,0.05);">
+    <!-- HEADER -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
       <span style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;white-space:nowrap;">Prodotto trovato</span>
-      <button onclick="gramsClose()" style="background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:0;line-height:1;flex-shrink:0;">✕</button>
+      <button onclick="gramsClose()" style="background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:0;line-height:1;flex-shrink:0;margin-right:-4px;">✕</button>
     </div>
     <!-- NOME + MATITA INLINE -->
     <div style="margin-bottom:14px;">
@@ -4443,8 +4443,8 @@ async function awOfferSave(food) {
 
 async function awSaveProduct(food, userId) {
     try {
+        // Se non c'è barcode e la colonna è NOT NULL, non possiamo inserire — solo aggiornare se trovato per nome
         const newPayload = {
-            barcode:      food.barcode || null,
             name:         food.name,
             kcal100:      food.kcal100      || 0,
             p100:         food.p100         || 0,
@@ -4457,6 +4457,7 @@ async function awSaveProduct(food, userId) {
             nutri_score:  food.nutriScore    || null,
             added_by:     userId
         };
+        if (food.barcode) newPayload.barcode = food.barcode;
 
         // Cerca per barcode prima, poi per nome originale pre-modifica, poi per nome attuale
         let existing = null;
@@ -4471,6 +4472,7 @@ async function awSaveProduct(food, userId) {
         }
 
         if (existing) {
+            // Calcola diff
             const numFields = ['kcal100','p100','c100','f100','sugars100','saturated100','fiber100','salt100'];
             const diff = {};
             numFields.forEach(k => {
@@ -4478,19 +4480,27 @@ async function awSaveProduct(food, userId) {
             });
             if (newPayload.name && newPayload.name !== existing.name) diff.name = newPayload.name;
             if (newPayload.nutri_score && newPayload.nutri_score !== existing.nutri_score) diff.nutri_score = newPayload.nutri_score;
-            if (newPayload.barcode && !existing.barcode) diff.barcode = newPayload.barcode;
+            if (food.barcode && !existing.barcode) diff.barcode = food.barcode;
 
             if (Object.keys(diff).length === 0) {
                 showToast('Nessuna modifica da aggiornare', 'success');
                 return;
             }
-            const { error: updateErr } = await sbClient.from('aw_products').update(diff).eq('id', existing.id);
+            // Usa barcode come filtro se disponibile, altrimenti name
+            const filterKey = existing.barcode ? 'barcode' : 'name';
+            const filterVal = existing.barcode ? existing.barcode : existing.name;
+            const { error: updateErr } = await sbClient.from('aw_products').update(diff).eq(filterKey, filterVal);
             if (updateErr) {
                 showToast('Errore aggiornamento DB: ' + updateErr.message, 'error');
             } else {
                 showToast('✓ Database Awakening aggiornato', 'success');
             }
         } else {
+            // Non trovato → insert solo se abbiamo barcode (colonna NOT NULL)
+            if (!food.barcode) {
+                showToast('Prodotto senza barcode: impossibile aggiungere al DB', 'error');
+                return;
+            }
             const { error: insertErr } = await sbClient.from('aw_products').insert(newPayload);
             if (insertErr) {
                 showToast('Errore salvataggio DB: ' + insertErr.message, 'error');
