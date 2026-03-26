@@ -2485,18 +2485,18 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <!-- ══ GRAMS SELECTOR OVERLAY ══ -->
 <div id="grams-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.92);z-index:5100;align-items:flex-end;justify-content:center;flex-direction:column;">
   <div style="background:#1e293b;border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:480px;box-sizing:border-box;position:relative;">
-    <!-- X nell'angolo in alto a destra del pannello -->
-    <button onclick="gramsClose()" style="position:absolute;top:18px;right:18px;background:none;border:none;color:#94a3b8;font-size:1.2rem;cursor:pointer;padding:4px;line-height:1;z-index:10;">✕</button>
-    <!-- HEADER -->
-    <div style="margin-bottom:10px;padding-right:32px;">
-      <div style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;white-space:nowrap;">Prodotto trovato</div>
+    <!-- HEADER: label + X sulla stessa riga flex -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <span style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;white-space:nowrap;">Prodotto trovato</span>
+      <button onclick="gramsClose()" style="background:none;border:none;color:#94a3b8;font-size:1.2rem;cursor:pointer;padding:4px;line-height:1;margin-left:8px;">✕</button>
     </div>
     <!-- NOME + MATITA INLINE -->
     <div style="margin-bottom:14px;">
-      <div id="grams-name-view" style="text-align:center;margin-bottom:4px;">
-        <span id="grams-food-name" style="font-size:1.1rem;font-weight:700;color:#e2e8f0;line-height:1.4;"></span><button id="grams-name-edit-btn" onclick="gramsToggleNameEdit()" style="background:none;border:none;cursor:pointer;padding:0 0 2px 4px;font-size:0.8rem;line-height:1;color:#64748b;vertical-align:middle;display:inline;">✏️</button>
+      <div id="grams-name-view" style="text-align:center;line-height:1.5;">
+        <span id="grams-food-name" style="font-size:1.1rem;font-weight:700;color:#e2e8f0;"></span><!--
+        --><button id="grams-name-edit-btn" onclick="gramsToggleNameEdit()" style="background:none;border:none;cursor:pointer;padding:0 0 1px 5px;font-size:0.8rem;line-height:1;color:#64748b;vertical-align:middle;">✏️</button>
       </div>
-      <div id="grams-name-edit-row" style="display:none;gap:8px;margin-top:6px;">
+      <div id="grams-name-edit-row" style="display:none;gap:8px;margin-top:8px;">
         <input id="grams-food-name-input" type="text" autocomplete="off"
           style="display:block;width:100%;font-size:1.0rem;font-weight:700;color:#e2e8f0;background:#0f172a;border:1px solid #334155;border-radius:10px;padding:11px 12px;font-family:inherit;box-sizing:border-box;margin-bottom:8px;">
         <button onclick="gramsToggleNameEdit()"
@@ -4990,14 +4990,13 @@ function nutEditFood(food, meal) {
 
     const foodForEdit = {
         name:         food.name,
+        barcode:      food.barcode || null,
         kcal100, p100, c100, f100,
-        // Campi dettagliati — preservati se esistono, altrimenti stimati
         sugars100:    food.sugars100    != null ? food.sugars100    : parseFloat(((food.sugars    || 0) * factor).toFixed(1)),
         saturated100: food.saturated100 != null ? food.saturated100 : parseFloat(((food.saturated || 0) * factor).toFixed(1)),
         fiber100:     food.fiber100     != null ? food.fiber100     : parseFloat(((food.fiber     || 0) * factor).toFixed(1)),
         salt100:      food.salt100      != null ? food.salt100      : parseFloat(((food.salt      || 0) * factor).toFixed(2)),
         offCategory:  food.offCategory  || null,
-        // Nutri-Score già calcolato: passalo direttamente così grams-overlay lo mostra senza ricalcolo
         nutriScore:   food.nutriScore   || null,
         id:           food.id,
         _editId:      food.id,
@@ -5763,11 +5762,11 @@ function gramsConfirm() {
     const ns  = nutCalcScoreFull(ref.kcal100, ref.p100, ref.sugars100, ref.saturated100, ref.fiber100, ref.salt100, ref.f100, 0, cat);
     const entry  = {
         name: food.name,
+        barcode: food.barcode || null,
         kcal: Math.round(ref.kcal100 * factor),
         p:    parseFloat((ref.p100   * factor).toFixed(1)),
         c:    parseFloat((ref.c100   * factor).toFixed(1)),
         f:    parseFloat((ref.f100   * factor).toFixed(1)),
-        // Preserva i campi per 100g aggiornati (l'utente potrebbe averli corretti)
         kcal100: ref.kcal100, p100: ref.p100, c100: ref.c100, f100: ref.f100,
         sugars100: ref.sugars100, saturated100: ref.saturated100,
         fiber100: ref.fiber100, salt100: ref.salt100,
