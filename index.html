@@ -2587,12 +2587,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       </div>
     </div>
 
-    <!-- Checkbox contributo — sempre visibile -->
+    <!-- Checkbox contributo — visibile solo per nuovi scan -->
     <label id="grams-contribute-row" style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(52,211,153,0.05);border:1px solid rgba(52,211,153,0.15);border-radius:10px;cursor:pointer;margin-bottom:12px;">
       <input type="checkbox" id="grams-contribute" style="margin-top:2px;accent-color:#34d399;width:16px;height:16px;flex-shrink:0;">
       <span style="font-size:0.65rem;color:#94a3b8;line-height:1.5;">Contribuisci al database Awakening: condividi nome e valori nutrizionali con la community in modo anonimo.</span>
     </label>
-    <button onclick="gramsConfirm()"
+    <button id="grams-confirm-btn" onclick="gramsConfirm()"
       style="width:100%;padding:16px;background:linear-gradient(135deg,var(--primary),var(--accent));border:none;border-radius:14px;color:#000;font-size:1rem;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0.05em;">
       AGGIUNGI AL PASTO
     </button>
@@ -4489,10 +4489,9 @@ async function awSaveProduct(food, userId) {
                 showToast('Nessuna modifica da aggiornare', 'success');
                 return;
             }
-            // Usa sempre barcode come filtro se disponibile — più affidabile
+            // Usa barcode come filtro se disponibile — più affidabile
             const filterKey = existing.barcode ? 'barcode' : 'name';
             const filterVal = existing.barcode ? existing.barcode : existing.name;
-            showToast('Aggiorno ' + filterKey + '=' + filterVal + ' diff=' + JSON.stringify(diff), 'success');
             const { data: updatedRows, error: updateErr } = await sbClient
                 .from('aw_products')
                 .update(diff)
@@ -4501,9 +4500,9 @@ async function awSaveProduct(food, userId) {
             if (updateErr) {
                 showToast('Errore aggiornamento DB: ' + updateErr.message, 'error');
             } else if (!updatedRows || updatedRows.length === 0) {
-                showToast('RLS blocca update: nessuna riga modificata (policy Supabase)', 'error');
+                showToast('Nessuna riga aggiornata (controlla policy Supabase)', 'error');
             } else {
-                showToast('✓ Database Awakening aggiornato (' + updatedRows.length + ' riga)', 'success');
+                showToast('✓ Database Awakening aggiornato', 'success');
             }
         } else {
             // Non trovato → insert solo se abbiamo barcode (colonna NOT NULL)
@@ -5616,11 +5615,14 @@ function openGramsSelector(food, meal) {
     document.getElementById('grams-ref-salt').value   = food.salt100      != null ? food.salt100      : '';
     // Nutri-Score bar — calcolato con i dati completi
     gramsRefUpdate();
-    // Checkbox contributo: visibile solo per nuovi alimenti, nascosta in edit mode
+    // Modalità edit: nascondi checkbox, cambia testo bottone in "AGGIORNA"
+    const isEditMode = !!window._nutEditMode;
     const gcb = document.getElementById('grams-contribute');
     const gcr = document.getElementById('grams-contribute-row');
+    const confirmBtn = document.getElementById('grams-confirm-btn');
     if (gcb) gcb.checked = false;
-    if (gcr) gcr.style.display = window._nutEditMode ? 'none' : 'flex';
+    if (gcr) gcr.style.display = isEditMode ? 'none' : 'flex';
+    if (confirmBtn) confirmBtn.textContent = isEditMode ? 'AGGIORNA' : 'AGGIUNGI AL PASTO';
     // Reset stato modifica: disabilita tutti gli input
     const editBtn = document.getElementById('grams-edit-btn');
     if (editBtn) { editBtn.innerHTML = '✏️ Modifica'; editBtn.dataset.editing = '0'; editBtn.style.color = '#94a3b8'; editBtn.style.borderColor = 'rgba(255,255,255,0.12)'; }
