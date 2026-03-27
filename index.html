@@ -5579,8 +5579,12 @@ async function cameraFetchProduct(barcode, meal) {
                 }
             }
 
+            // Brand
+            const brand = (p.brands || '').split(',')[0].trim() || '';
+
             food = {
                 name: productName,
+                brand,
                 kcal100, p100, c100, f100,
                 sugars100, saturated100, fiber100,
                 sodium100, salt100, fvl100,
@@ -5615,7 +5619,7 @@ function openGramsSelector(food, meal) {
     // If no macro data, open manual entry pre-filled with product name + barcode
     if (food.incomplete) {
         showToast('Macro non disponibili per questo prodotto — inserisci manualmente', 'error');
-        setTimeout(() => mealManual(meal, food.name, food.barcode || null), 400);
+        setTimeout(() => mealManual(meal, food.name, food.barcode || null, food.brand || null), 400);
         return;
     }
     const overlay = document.getElementById('grams-overlay');
@@ -5942,7 +5946,7 @@ function manualToggleEdit() {
     }
 }
 
-function mealManual(meal, prefillName, prefillBarcode) {
+function mealManual(meal, prefillName, prefillBarcode, prefillBrand) {
     const overlay = document.getElementById('manual-food-overlay');
     const title   = document.getElementById('manual-food-title');
     const nameEl  = document.getElementById('manual-food-name');
@@ -5955,12 +5959,14 @@ function mealManual(meal, prefillName, prefillBarcode) {
     // Se non è stato passato un barcode esplicito ma prefillName sembra un barcode, usalo
     const resolvedBarcode = prefillBarcode || (isBarcodeLike ? prefillName : null);
     // Clear fields
-    ['manual-food-brand','manual-food-kcal','manual-food-p','manual-food-c','manual-food-sugars','manual-food-f','manual-food-sat','manual-food-fiber','manual-food-salt'].forEach(id => {
+    ['manual-food-kcal','manual-food-p','manual-food-c','manual-food-sugars','manual-food-f','manual-food-sat','manual-food-fiber','manual-food-salt'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
     const barcodeEl = document.getElementById('manual-food-barcode');
     if (barcodeEl) barcodeEl.value = resolvedBarcode || '';
+    const brandEl = document.getElementById('manual-food-brand');
+    if (brandEl) brandEl.value = prefillBrand || '';
     // Reset checkbox contributo e warned flag
     const cbEl = document.getElementById('manual-contribute');
     if (cbEl) cbEl.checked = false;
