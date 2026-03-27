@@ -2699,7 +2699,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 
     <!-- PUNTO 3: Checkbox contribuisci al DB Awakening -->
-    <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(52,211,153,0.05);border:1px solid rgba(52,211,153,0.15);border-radius:10px;cursor:pointer;margin-bottom:14px;">
+    <label id="manual-contribute-row" style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(52,211,153,0.05);border:1px solid rgba(52,211,153,0.15);border-radius:10px;cursor:pointer;margin-bottom:14px;">
       <input type="checkbox" id="manual-contribute" style="margin-top:2px;accent-color:#34d399;width:16px;height:16px;flex-shrink:0;">
       <span style="font-size:0.65rem;color:#94a3b8;line-height:1.5;">Vuoi contribuire a migliorare il database Awakening? Il prodotto verrà condiviso con la community in modo anonimo.</span>
     </label>
@@ -5607,7 +5607,7 @@ async function cameraFetchProduct(barcode, meal) {
         openGramsSelector(food, meal);
     } else {
         showToast('Prodotto non trovato — inserisci manualmente', 'error');
-        setTimeout(() => mealManual(meal, barcode), 500);
+        setTimeout(() => mealManual(meal, barcode, barcode), 500);
     }
 }
 
@@ -5942,7 +5942,7 @@ function manualToggleEdit() {
     }
 }
 
-function mealManual(meal, prefillName) {
+function mealManual(meal, prefillName, prefillBarcode) {
     const overlay = document.getElementById('manual-food-overlay');
     const title   = document.getElementById('manual-food-title');
     const nameEl  = document.getElementById('manual-food-name');
@@ -5956,10 +5956,12 @@ function mealManual(meal, prefillName) {
         if (el) el.value = '';
     });
     const barcodeEl = document.getElementById('manual-food-barcode');
-    if (barcodeEl) barcodeEl.value = '';
-    // Reset checkbox contributo
+    if (barcodeEl) barcodeEl.value = prefillBarcode || '';
+    // Reset checkbox contributo e warned flag
     const cbEl = document.getElementById('manual-contribute');
     if (cbEl) cbEl.checked = false;
+    const contRow = document.getElementById('manual-contribute-row');
+    if (contRow) contRow.dataset.warned = '';
     // Reset stato edit griglia
     const editBtn = document.getElementById('manual-edit-btn');
     if (editBtn) { editBtn.innerHTML = '✏️ Inserisci valori'; editBtn.dataset.editing = '0'; editBtn.style.color = '#94a3b8'; editBtn.style.borderColor = 'rgba(255,255,255,0.12)'; }
@@ -5980,6 +5982,18 @@ function mealManualSubmit() {
     if (!name) { showToast('Inserisci il nome', 'error'); return; }
     // Barcode obbligatorio solo se si vuole contribuire al DB
     const contribute = document.getElementById('manual-contribute')?.checked;
+    const contRow = document.getElementById('manual-contribute-row');
+    if (!contribute && contRow) {
+        // Shake al primo tap per invitare a spuntare, procedi al secondo
+        if (!contRow.dataset.warned) {
+            contRow.dataset.warned = '1';
+            contRow.classList.remove('contribute-shake');
+            void contRow.offsetWidth;
+            contRow.classList.add('contribute-shake');
+            setTimeout(() => contRow.classList.remove('contribute-shake'), 600);
+            return;
+        }
+    }
     if (contribute && !barcode) { showToast('Inserisci il codice a barre per contribuire al DB', 'error'); return; }
     const brand   = document.getElementById('manual-food-brand')?.value.trim() || '';
     const kcal   = parseFloat(document.getElementById('manual-food-kcal')?.value  || '0') || 0;
