@@ -4459,6 +4459,7 @@ async function awSaveProduct(food, userId) {
     try {
         const newPayload = {
             name:         food.name,
+            brand:        food.brand        || null,
             kcal100:      food.kcal100      || 0,
             p100:         food.p100         || 0,
             c100:         food.c100         || 0,
@@ -4496,6 +4497,7 @@ async function awSaveProduct(food, userId) {
                 if (Math.abs((newPayload[k] || 0) - (existing[k] || 0)) > 0.01) diff[k] = newPayload[k];
             });
             if (newPayload.name && newPayload.name !== existing.name) diff.name = newPayload.name;
+            if (newPayload.brand && newPayload.brand !== existing.brand) diff.brand = newPayload.brand;
             if (newPayload.nutri_score && newPayload.nutri_score !== existing.nutri_score) diff.nutri_score = newPayload.nutri_score;
             if (food.barcode && !existing.barcode) diff.barcode = food.barcode;
 
@@ -5001,7 +5003,8 @@ function nutEditFood(food, meal) {
 
     const foodForEdit = {
         name:         food.name,
-        barcode:      food.barcode || null,
+        brand:        food.brand        || null,
+        barcode:      food.barcode      || null,
         kcal100, p100, c100, f100,
         sugars100:    food.sugars100    != null ? food.sugars100    : parseFloat(((food.sugars    || 0) * factor).toFixed(1)),
         saturated100: food.saturated100 != null ? food.saturated100 : parseFloat(((food.saturated || 0) * factor).toFixed(1)),
@@ -5830,6 +5833,7 @@ function gramsConfirm() {
     const ns  = nutCalcScoreFull(ref.kcal100, ref.p100, ref.sugars100, ref.saturated100, ref.fiber100, ref.salt100, ref.f100, 0, cat);
     const entry  = {
         name: food.name,
+        brand: food.brand || null,
         barcode: food.barcode || null,
         kcal: Math.round(ref.kcal100 * factor),
         p:    parseFloat((ref.p100   * factor).toFixed(1)),
@@ -5862,6 +5866,7 @@ function gramsConfirm() {
             const originalNameForSearch = originalName || food.name;
             const foodToSave = Object.assign({}, food, {
                 name: entry.name,
+                brand: entry.brand || food.brand || null,
                 barcode: food.barcode || null,
                 _searchByName: originalNameForSearch,
                 kcal100: entry.kcal100, p100: entry.p100, c100: entry.c100, f100: entry.f100,
@@ -5886,7 +5891,8 @@ function gramsConfirm() {
     const gramsContribute = document.getElementById('grams-contribute')?.checked;
     if (gramsContribute && !food.incomplete) {
         const foodToSave = Object.assign({}, food, {
-            name: entry.name, barcode: food.barcode || null,
+            name: entry.name, brand: entry.brand || food.brand || null,
+            barcode: food.barcode || null,
             kcal100: entry.kcal100, p100: entry.p100, c100: entry.c100, f100: entry.f100,
             sugars100: entry.sugars100, saturated100: entry.saturated100,
             fiber100: entry.fiber100, salt100: entry.salt100, nutriScore: entry.nutriScore,
