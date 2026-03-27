@@ -2584,6 +2584,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <button onclick="document.getElementById('grams-input').value=200;gramsUpdatePreview()" style="flex:1;padding:6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:7px;color:#64748b;font-size:0.7rem;cursor:pointer;">200g</button>
         <button onclick="document.getElementById('grams-input').value=250;gramsUpdatePreview()" style="flex:1;padding:6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:7px;color:#64748b;font-size:0.7rem;cursor:pointer;">250g</button>
       </div>
+      <!-- Porzione suggerita dal prodotto -->
+      <div id="grams-serving-hint" style="display:none;margin-top:8px;text-align:center;font-size:0.62rem;color:#64748b;">
+        📦 Porzione indicata: <button id="grams-serving-btn" onclick="gramsApplyServing()" style="background:none;border:none;color:#34d399;font-size:0.62rem;cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:2px;font-family:inherit;"></button>
+      </div>
     </div>
 
     <!-- Calculated preview -->
@@ -5559,6 +5563,22 @@ async function cameraFetchProduct(barcode, meal) {
             // Sale: preferisce valore diretto dall'etichetta, fallback: sodium*2.5
             const salt100 = salt100_raw > 0 ? parseFloat(salt100_raw.toFixed(3)) : parseFloat((sodium100 * 2.5).toFixed(3));
             const fvl100  = parseFloat(firstVal(['fruits-vegetables-nuts_100g','fruits-vegetables-legumes-estimate-from-ingredients_100g']).toFixed(1));
+            // Porzione: estrai i grammi da serving_size (es. "125 g", "1 vasetto (125g)", "125")
+            let servingG = null;
+            const servingRaw = p.serving_size || p.serving_quantity || '';
+            if (servingRaw) {
+                // Cerca numero seguito da g/gr/grammi, o numero isolato se serving_quantity
+                const match = String(servingRaw).match(/(\d+(?:[.,]\d+)?)\s*g(?:r(?:ammi?)?)?/i)
+                           || String(servingRaw).match(/\((\d+(?:[.,]\d+)?)\s*g/i);
+                if (match) {
+                    const val = parseFloat(match[1].replace(',', '.'));
+                    if (val > 0 && val <= 2000) servingG = Math.round(val);
+                } else if (p.serving_quantity && !isNaN(parseFloat(p.serving_quantity))) {
+                    const val = parseFloat(p.serving_quantity);
+                    if (val > 0 && val <= 2000) servingG = Math.round(val);
+                }
+            }
+
             food = {
                 name: productName,
                 kcal100, p100, c100, f100,
@@ -5567,6 +5587,7 @@ async function cameraFetchProduct(barcode, meal) {
                 offCategory,
                 nutriScore: nutriScore || nutCalcScoreFull(kcal100, p100, sugars100, saturated100, fiber100, salt100, f100, fvl100, offCategory) || null,
                 barcode,
+                servingG,
                 id: Date.now(),
                 incomplete: isIncomplete
             };
@@ -5638,7 +5659,16 @@ function openGramsSelector(food, meal) {
         if (el) { el.style.background = 'transparent'; el.style.border = '1px solid transparent'; el.style.pointerEvents = 'none'; }
     });
     const gi = document.getElementById('grams-input');
-    gi.value = '100';
+    const servingHint = document.getElementById('grams-serving-hint');
+    const servingBtn  = document.getElementById('grams-serving-btn');
+    if (food.servingG && food.servingG !== 100) {
+        gi.value = food.servingG;
+        if (servingHint) servingHint.style.display = 'block';
+        if (servingBtn)  servingBtn.textContent = food.servingG + 'g';
+    } else {
+        gi.value = '100';
+        if (servingHint) servingHint.style.display = 'none';
+    }
     overlay.classList.add('active');
     gramsUpdatePreview();
     setTimeout(() => { gi.focus(); gi.select(); }, 150);
@@ -5860,6 +5890,16 @@ function gramsConfirm() {
         sbClient.auth.getUser().then(({ data: { user } }) => {
             if (user) awSaveProduct(foodToSave, user.id);
         });
+    }
+}
+
+function gramsApplyServing() {
+    const overlay = document.getElementById('grams-overlay');
+    const food = JSON.parse(overlay?.dataset.food || '{}');
+    if (food.servingG) {
+        const gi = document.getElementById('grams-input');
+        gi.value = food.servingG;
+        gramsUpdatePreview();
     }
 }
 
