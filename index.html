@@ -5612,10 +5612,10 @@ async function cameraFetchProduct(barcode, meal) {
 }
 
 function openGramsSelector(food, meal) {
-    // If no macro data, open manual entry pre-filled with product name
+    // If no macro data, open manual entry pre-filled with product name + barcode
     if (food.incomplete) {
         showToast('Macro non disponibili per questo prodotto — inserisci manualmente', 'error');
-        setTimeout(() => mealManual(meal, food.name), 400);
+        setTimeout(() => mealManual(meal, food.name, food.barcode || null), 400);
         return;
     }
     const overlay = document.getElementById('grams-overlay');
@@ -5949,14 +5949,18 @@ function mealManual(meal, prefillName, prefillBarcode) {
     if (!overlay) return;
     overlay.dataset.meal = meal;
     if (title) title.textContent = 'Aggiungi a ' + ({ colazione:'Colazione', pranzo:'Pranzo', snack:'Snack', cena:'Cena' }[meal] || meal);
-    if (nameEl) nameEl.value = prefillName && prefillName.length < 14 ? '' : (prefillName || '');
+    // prefillName: non mettere nel nome se è un barcode (tutto numerico)
+    const isBarcodeLike = prefillName && /^\d+$/.test(prefillName.trim());
+    if (nameEl) nameEl.value = (!prefillName || isBarcodeLike) ? '' : prefillName;
+    // Se non è stato passato un barcode esplicito ma prefillName sembra un barcode, usalo
+    const resolvedBarcode = prefillBarcode || (isBarcodeLike ? prefillName : null);
     // Clear fields
     ['manual-food-brand','manual-food-kcal','manual-food-p','manual-food-c','manual-food-sugars','manual-food-f','manual-food-sat','manual-food-fiber','manual-food-salt'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
     const barcodeEl = document.getElementById('manual-food-barcode');
-    if (barcodeEl) barcodeEl.value = prefillBarcode || '';
+    if (barcodeEl) barcodeEl.value = resolvedBarcode || '';
     // Reset checkbox contributo e warned flag
     const cbEl = document.getElementById('manual-contribute');
     if (cbEl) cbEl.checked = false;
