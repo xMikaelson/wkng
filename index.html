@@ -300,6 +300,16 @@
         #page-plans { overflow-y: auto; -webkit-overflow-scrolling: touch; }
         .page.active { display: block; animation: pageIn 0.2s cubic-bezier(0.22,1,0.36,1) both; }
         @keyframes pageIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes contributeShake {
+            0%,100% { transform:translateX(0); }
+            15%     { transform:translateX(-6px); }
+            30%     { transform:translateX(6px); }
+            45%     { transform:translateX(-5px); }
+            60%     { transform:translateX(5px); }
+            75%     { transform:translateX(-3px); }
+            90%     { transform:translateX(3px); }
+        }
+        .contribute-shake { animation: contributeShake 0.5s ease; border-color: rgba(251,191,36,0.6) !important; background: rgba(251,191,36,0.08) !important; }
         /* Mantieni compatibilità vecchia classe */
         .nav-page { display: none; }
         .nav-page.active { display: block; }
@@ -5612,11 +5622,12 @@ function openGramsSelector(food, meal) {
     gramsRefUpdate();
     // Modalità edit: nascondi checkbox, cambia testo bottone in "AGGIORNA"
     const isEditMode = !!window._nutEditMode;
+    const isInAwDB   = !!food.fromAwDB; // già presente nel DB Awakening
     const gcb = document.getElementById('grams-contribute');
     const gcr = document.getElementById('grams-contribute-row');
     const confirmBtn = document.getElementById('grams-confirm-btn');
     if (gcb) gcb.checked = false;
-    if (gcr) gcr.style.display = isEditMode ? 'none' : 'flex';
+    if (gcr) { gcr.style.display = (isEditMode || isInAwDB) ? 'none' : 'flex'; gcr.dataset.warned = ''; }
     if (confirmBtn) confirmBtn.textContent = isEditMode ? 'AGGIORNA' : 'AGGIUNGI AL PASTO';
     // Reset stato modifica: disabilita tutti gli input
     const editBtn = document.getElementById('grams-edit-btn');
@@ -5758,8 +5769,26 @@ function gramsConfirm() {
     } else if (nameSpan && nameSpan.textContent.trim()) {
         food.name = nameSpan.textContent.trim();
     }
-    food._searchByName = originalName; // usato da awSaveProduct per trovare il record anche se il nome è cambiato
+    food._searchByName = originalName;
     if (!meal || !food.name) return;
+
+    // Se prodotto nuovo (non in AwDB, non edit mode) e checkbox non spuntata → shake al primo tap, procedi al secondo
+    const isEditMode  = !!window._nutEditMode;
+    const isInAwDB    = !!food.fromAwDB;
+    const gcb = document.getElementById('grams-contribute');
+    const gcr = document.getElementById('grams-contribute-row');
+    if (!isEditMode && !isInAwDB && gcr && gcr.style.display !== 'none' && gcb && !gcb.checked) {
+        if (!gcr.dataset.warned) {
+            // Primo tap: shake e avverti
+            gcr.dataset.warned = '1';
+            gcr.classList.remove('contribute-shake');
+            void gcr.offsetWidth;
+            gcr.classList.add('contribute-shake');
+            setTimeout(() => gcr.classList.remove('contribute-shake'), 600);
+            return;
+        }
+        // Secondo tap: procedi senza aggiornare DB
+    }
     const factor = g / 100;
     // Usa i valori correnti dagli input (potrebbero essere stati modificati dall'utente)
     const ref = gramsGetRef();
