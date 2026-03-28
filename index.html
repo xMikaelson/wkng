@@ -4459,7 +4459,7 @@ async function awSaveProduct(food, userId) {
     try {
         const newPayload = {
             name:         food.name,
-            brand:        food.brand        || null,
+            brand:        food.brand ? food.brand.toUpperCase() : null,
             kcal100:      food.kcal100      || 0,
             p100:         food.p100         || 0,
             c100:         food.c100         || 0,
@@ -5582,8 +5582,8 @@ async function cameraFetchProduct(barcode, meal) {
                 }
             }
 
-            // Brand
-            const brand = (p.brands || '').split(',')[0].trim() || '';
+            // Brand — maiuscolo
+            const brand = (p.brands || '').split(',')[0].trim().toUpperCase() || '';
 
             food = {
                 name: productName,
@@ -6022,11 +6022,12 @@ function mealManualSubmit() {
     const salt   = parseFloat(document.getElementById('manual-food-salt')?.value  || '0') || 0;
     // Categoria: rilevamento automatico sempre
     const resolvedCat = nutDetectCategory(f2, p, fiber, sugars, kcal, []);
-    const displayName = brand ? name + ' (' + brand + ')' : name;
+    const brandUpper  = brand ? brand.toUpperCase() : null;
+    const displayName = brandUpper ? name + ' (' + brandUpper + ')' : name;
     const data = NUT.meals;
     const ns = nutCalcScoreFull(kcal, p, sugars, sat, fiber, salt, f2, 0, resolvedCat);
     data[meal].push({
-        name: displayName, brand: brand || null, barcode: barcode || null,
+        name: displayName, brand: brandUpper || null, barcode: barcode || null,
         kcal, p, c, f: f2,
         sugars, saturated: sat, fiber, salt,
         kcal100: kcal, p100: p, c100: c, f100: f2,
@@ -6043,8 +6044,8 @@ function mealManualSubmit() {
     // Contributo al DB Awakening se checkbox spuntata
     if (contribute) {
         const foodForDB = {
-            name: displayName,
-            brand: brand || null,
+            name: name,         // solo il nome, senza brand
+            brand: brandUpper,  // brand separato e maiuscolo
             barcode: barcode,
             kcal100: kcal, p100: p, c100: c, f100: f2,
             sugars100: sugars, saturated100: sat, fiber100: fiber, salt100: salt,
