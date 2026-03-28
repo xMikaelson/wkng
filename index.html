@@ -6026,9 +6026,9 @@ function mealManualSubmit() {
     const data = NUT.meals;
     const ns = nutCalcScoreFull(kcal, p, sugars, sat, fiber, salt, f2, 0, resolvedCat);
     data[meal].push({
-        name: displayName, kcal, p, c, f: f2,
+        name: displayName, brand: brand || null, barcode: barcode || null,
+        kcal, p, c, f: f2,
         sugars, saturated: sat, fiber, salt,
-        // Campi per 100g usati da grams-overlay (il manuale inserisce già valori per 100g)
         kcal100: kcal, p100: p, c100: c, f100: f2,
         sugars100: sugars, saturated100: sat, fiber100: fiber, salt100: salt,
         offCategory: resolvedCat,
@@ -6044,6 +6044,7 @@ function mealManualSubmit() {
     if (contribute) {
         const foodForDB = {
             name: displayName,
+            brand: brand || null,
             barcode: barcode,
             kcal100: kcal, p100: p, c100: c, f100: f2,
             sugars100: sugars, saturated100: sat, fiber100: fiber, salt100: salt,
