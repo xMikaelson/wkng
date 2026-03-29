@@ -6151,14 +6151,14 @@ function aiFoodRenderProductsForComponent(idx, products) {
     products.forEach((p, i) => {
         const serving = aiFoodParseServing(p);
         const row = document.createElement('div');
-        row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.07);border-radius:8px;padding:7px 10px;';
+        row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:8px;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.07);border-radius:8px;padding:7px 10px;';
         row.dataset.product = JSON.stringify(p);
         row.innerHTML =
-            '<div style="flex:1;min-width:0;">' +
-                '<div style="font-size:0.7rem;font-weight:600;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + p.name + (p.brand?' <span style="color:#64748b;font-weight:400;">('+p.brand+')</span>':'') + '</div>' +
-                '<div style="font-size:0.55rem;color:#475569;">' + p._source + (serving?' · '+serving+'g/pz':'') + ' · ' + p.kcal100 + ' kcal/100g</div>' +
+            '<div style="flex:1;min-width:0;overflow:hidden;">' +
+                '<div style="font-size:0.7rem;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (p.name||'') + (p.brand?' ('+p.brand+')':'') + '</div>' +
+                '<div style="font-size:0.55rem;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (p._source||'') + (serving?' · '+serving+'g':'') + ' · ' + (p.kcal100||0) + ' kcal/100g</div>' +
             '</div>' +
-            '<button onclick="aiFoodSelectForComponent('+idx+','+i+',this.closest(\'[data-product]\').dataset.product)" style="margin-left:8px;background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);color:#34d399;border-radius:6px;padding:4px 8px;font-size:0.6rem;cursor:pointer;font-family:inherit;flex-shrink:0;">Usa</button>';
+            '<button onclick="aiFoodSelectForComponent('+idx+','+i+',this.closest(\'[data-product]\').dataset.product)" style="flex-shrink:0;background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);color:#34d399;border-radius:6px;padding:5px 10px;font-size:0.62rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;">Usa</button>';
         el.appendChild(row);
     });
     if (!products.length) el.innerHTML = '<div style="font-size:0.6rem;color:#475569;font-style:italic;padding:4px 0;">Nessun prodotto trovato</div>';
