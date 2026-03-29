@@ -6053,8 +6053,8 @@ async function aiFoodAnalyze() {
         });
         const mediaType = file.type || 'image/jpeg';
         const prompt = `Analizza questa immagine di cibo. Rispondi SOLO con JSON valido:
-{"name":"nome alimento in italiano","units":numero unità visibili (es. 2 per 2 pancake, 1 se è un piatto unico),"gramsPerUnit":grammi stimati per unità,"uncertain":true/false}
-Se è un piatto unico metti units:1 e gramsPerUnit uguale al totale stimato.`;
+{"name":"nome alimento principale in italiano (1-2 parole, es: pancake, pasta, pollo)","keywords":["parola1","parola2"],"units":numero unità visibili,"gramsPerUnit":grammi stimati per unità,"kcal":kcal totali stimate,"protein":proteine g totali,"carbs":carboidrati g totali,"fat":grassi g totali,"uncertain":true/false}
+keywords = le parole chiave dell'alimento separate (es: ["pancake","banana","cannella"]). units=1 se piatto unico.
 
         const res = await fetch(SUPABASE_FUNCTION_URL, {
             method: 'POST',
@@ -6077,7 +6077,7 @@ Se è un piatto unico metti units:1 e gramsPerUnit uguale al totale stimato.`;
 
         // Cerca prodotti in background
         document.getElementById('ai-food-loading-msg').textContent = 'Cerco nel database...';
-        await aiFoodSearchProducts(parsed.name);
+        await aiFoodSearchProducts(parsed.name, parsed.keywords || []);
 
     } catch(e) {
         showToast('Errore analisi AI: ' + e.message, 'error');
@@ -6091,36 +6091,53 @@ function aiFoodShowAIResult(r) {
     const units = r.units || 1;
     const gramsPerUnit = r.gramsPerUnit || 100;
     const totalGrams = units * gramsPerUnit;
-    // Stima macro totali (placeholder finché non si seleziona un prodotto)
     document.getElementById('ai-food-name-result').textContent = r.name || 'Alimento non identificato';
     document.getElementById('ai-food-units-label').textContent = units > 1 ? units + ' unità · ' + totalGrams + 'g tot.' : totalGrams + 'g';
-    document.getElementById('ai-food-uncertainty').style.display = 'block'; // sempre approssimativa finché non c'è prodotto
-    document.getElementById('ai-res-kcal').textContent = '~';
-    document.getElementById('ai-res-p').textContent = '~';
-    document.getElementById('ai-res-c').textContent = '~';
-    document.getElementById('ai-res-f').textContent = '~';
+    document.getElementById('ai-food-uncertainty').style.display = 'block';
+    // Mostra stime AI se disponibili
+    document.getElementById('ai-res-kcal').textContent = r.kcal ? Math.round(r.kcal) : '~';
+    document.getElementById('ai-res-p').textContent = r.protein ? parseFloat(r.protein).toFixed(1) : '~';
+    document.getElementById('ai-res-c').textContent = r.carbs ? parseFloat(r.carbs).toFixed(1) : '~';
+    document.getElementById('ai-res-f').textContent = r.fat ? parseFloat(r.fat).toFixed(1) : '~';
     document.getElementById('ai-food-result').style.display = 'block';
     document.getElementById('ai-food-btn-confirm').style.display = 'flex';
 }
 
-async function aiFoodSearchProducts(name) {
+async function aiFoodSearchProducts(name, keywords) {
     const products = [];
-    // 1. Cerca su aw_products
-    try {
-        const { data: awProds } = await sbClient.from('aw_products').select('*').ilike('name', '%' + name + '%').limit(3);
-        if (awProds?.length) awProds.forEach(p => products.push({ ...p, _source: 'Awakening DB' }));
-    } catch(e) {}
+    const seen = new Set();
+    const addProduct = (p) => {
+        const key = (p.barcode || p.name || '').toLowerCase();
+        if (!seen.has(key)) { seen.add(key); products.push(p); }
+    };
 
-    // 2. Cerca su OFF se pochi risultati
-    if (products.length < 3) {
+    // Parole da cercare: keywords dall'AI + prima parola del nome
+    const searchTerms = [];
+    if (keywords && keywords.length) searchTerms.push(...keywords);
+    else searchTerms.push(name.split(' ')[0]);
+    // Deduplicazione termini
+    const uniqueTerms = [...new Set(searchTerms.map(t => t.toLowerCase()).filter(t => t.length > 2))];
+
+    // 1. Cerca su aw_products per ogni keyword
+    for (const term of uniqueTerms.slice(0, 3)) {
         try {
-            const offRes = await fetch(`https://it.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(name)}&search_simple=1&action=process&json=1&fields=product_name,brands,nutriments,serving_size,serving_quantity&page_size=5`, { signal: AbortSignal.timeout(6000) });
+            const { data: awProds } = await sbClient.from('aw_products').select('*').ilike('name', '%' + term + '%').limit(3);
+            if (awProds?.length) awProds.forEach(p => addProduct({ ...p, _source: 'Awakening DB' }));
+        } catch(e) {}
+        if (products.length >= 5) break;
+    }
+
+    // 2. Cerca su OFF per ogni keyword se pochi risultati
+    for (const term of uniqueTerms.slice(0, 2)) {
+        if (products.length >= 5) break;
+        try {
+            const offRes = await fetch(`https://it.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(term)}&search_simple=1&action=process&json=1&fields=product_name,brands,nutriments,serving_size,serving_quantity&page_size=4`, { signal: AbortSignal.timeout(6000) });
             const offData = await offRes.json();
-            (offData.products || []).slice(0, 3).forEach(p => {
+            (offData.products || []).forEach(p => {
                 const n = p.nutriments || {};
                 if (!n['energy-kcal_100g'] && !n['energy-kcal-100g']) return;
-                products.push({
-                    name: p.product_name || name,
+                addProduct({
+                    name: p.product_name || term,
                     brand: (p.brands || '').split(',')[0].trim().toUpperCase() || null,
                     kcal100: Math.round(n['energy-kcal_100g'] || n['energy-kcal-100g'] || (n['energy-kj_100g']||0)/4.184),
                     p100: parseFloat((n['proteins_100g']||0).toFixed(1)),
@@ -6134,7 +6151,7 @@ async function aiFoodSearchProducts(name) {
         } catch(e) {}
     }
 
-    aiFoodRenderProducts(products);
+    aiFoodRenderProducts(products.slice(0, 6));
 }
 
 function aiFoodParseServing(prod) {
