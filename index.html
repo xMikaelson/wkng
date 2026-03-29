@@ -2704,6 +2704,57 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
 </div>
 
+<!-- ══ AI FOOD PHOTO OVERLAY ══ -->
+<div id="ai-food-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.96);z-index:5200;flex-direction:column;align-items:center;justify-content:center;padding:24px;">
+  <div style="width:100%;max-width:420px;">
+    <!-- Header -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div>
+        <div style="font-size:1.1rem;font-weight:800;color:#e2e8f0;">✨ Analisi AI</div>
+        <div style="font-size:0.58rem;color:#64748b;margin-top:2px;">Scatta una foto al tuo piatto</div>
+      </div>
+      <button onclick="aiFoodClose()" style="background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:4px;">✕</button>
+    </div>
+
+    <!-- Photo preview / capture -->
+    <div id="ai-food-preview-wrap" style="width:100%;aspect-ratio:4/3;border-radius:16px;overflow:hidden;background:#0f172a;border:2px dashed #334155;display:flex;align-items:center;justify-content:center;margin-bottom:16px;position:relative;cursor:pointer;" onclick="document.getElementById('ai-food-input').click()">
+      <img id="ai-food-preview" src="" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:14px;">
+      <div id="ai-food-placeholder" style="text-align:center;">
+        <div style="font-size:2.5rem;margin-bottom:8px;">🍽️</div>
+        <div style="font-size:0.72rem;color:#475569;">Tocca per scattare una foto</div>
+      </div>
+    </div>
+    <input type="file" id="ai-food-input" accept="image/*" capture="environment" style="display:none;" onchange="aiFoodPreview(event)">
+
+    <!-- Analisi risultati -->
+    <div id="ai-food-result" style="display:none;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;margin-bottom:16px;">
+      <div id="ai-food-name-result" style="font-size:1rem;font-weight:700;color:#e2e8f0;margin-bottom:4px;"></div>
+      <div id="ai-food-uncertainty" style="display:none;font-size:0.6rem;color:#fbbf24;margin-bottom:10px;">⚠️ Stima approssimativa — i valori potrebbero variare</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;">
+        <div style="text-align:center;"><div id="ai-res-kcal" style="font-size:1rem;font-weight:800;color:#EF9F27;">—</div><div style="font-size:0.45rem;color:#64748b;margin-top:2px;">kcal</div></div>
+        <div style="text-align:center;"><div id="ai-res-p" style="font-size:1rem;font-weight:800;color:#5DCAA5;">—</div><div style="font-size:0.45rem;color:#64748b;margin-top:2px;">prot g</div></div>
+        <div style="text-align:center;"><div id="ai-res-c" style="font-size:1rem;font-weight:800;color:#85B7EB;">—</div><div style="font-size:0.45rem;color:#64748b;margin-top:2px;">carbo g</div></div>
+        <div style="text-align:center;"><div id="ai-res-f" style="font-size:1rem;font-weight:800;color:#EF9F27;">—</div><div style="font-size:0.45rem;color:#64748b;margin-top:2px;">grassi g</div></div>
+      </div>
+    </div>
+
+    <!-- Bottoni azione -->
+    <div id="ai-food-btn-analyze" style="display:none;">
+      <button onclick="aiFoodAnalyze()" style="width:100%;padding:14px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;border-radius:12px;color:#fff;font-size:0.9rem;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0.04em;">✨ Analizza</button>
+    </div>
+    <div id="ai-food-btn-confirm" style="display:none;gap:10px;flex-direction:column;">
+      <button onclick="aiFoodConfirm()" style="width:100%;padding:14px;background:linear-gradient(135deg,var(--primary),var(--accent));border:none;border-radius:12px;color:#000;font-size:0.9rem;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0.04em;">Aggiungi al pasto</button>
+      <button onclick="document.getElementById('ai-food-input').click()" style="width:100%;padding:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#94a3b8;font-size:0.8rem;cursor:pointer;font-family:inherit;">📷 Rifai la foto</button>
+    </div>
+
+    <!-- Loading -->
+    <div id="ai-food-loading" style="display:none;text-align:center;padding:20px 0;">
+      <div style="font-size:1.5rem;margin-bottom:10px;">✨</div>
+      <div style="font-size:0.75rem;color:#64748b;">Analisi in corso...</div>
+    </div>
+  </div>
+</div>
+
 <div id="login-modal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.95); z-index:3000; justify-content:center; align-items:center;">
   <div class="modal-content" style="text-align:center; max-width:380px; width:90%;">
     <h2 style="color:var(--primary); margin-bottom:6px; letter-spacing:2px;">AWAKENING</h2>
@@ -4984,7 +5035,7 @@ function nutTimelineRender() {
                 btnRow.innerHTML = `
                     <button onclick="cameraCurrentMeal='${meal}';mealScan('${meal}')"
                         style="flex:1;padding:9px 0;border-radius:10px;background:linear-gradient(135deg,var(--primary),var(--accent));border:none;color:#000;font-size:0.75rem;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0.03em;">📷 Scansiona</button>
-                    <button onclick="aiOpenChat()"
+                    <button onclick="aiFoodOpen('${meal}')"
                         style="flex:1;padding:9px 0;border-radius:10px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.35);color:#a5b4fc;font-size:0.75rem;font-weight:700;cursor:pointer;font-family:inherit;">✨ AI</button>
                 `;
                 right.appendChild(btnRow);
@@ -5904,6 +5955,120 @@ function gramsConfirm() {
             if (user) awSaveProduct(foodToSave, user.id);
         });
     }
+}
+
+// ══ AI FOOD PHOTO ══
+let _aiFoodMeal = null;
+let _aiFoodResult = null;
+
+function aiFoodOpen(meal) {
+    _aiFoodMeal = meal;
+    _aiFoodResult = null;
+    document.getElementById('ai-food-preview').style.display = 'none';
+    document.getElementById('ai-food-preview').src = '';
+    document.getElementById('ai-food-placeholder').style.display = 'block';
+    document.getElementById('ai-food-result').style.display = 'none';
+    document.getElementById('ai-food-btn-analyze').style.display = 'none';
+    document.getElementById('ai-food-btn-confirm').style.display = 'none';
+    document.getElementById('ai-food-loading').style.display = 'none';
+    document.getElementById('ai-food-input').value = '';
+    document.getElementById('ai-food-overlay').style.display = 'flex';
+}
+
+function aiFoodClose() {
+    document.getElementById('ai-food-overlay').style.display = 'none';
+    _aiFoodMeal = null;
+    _aiFoodResult = null;
+}
+
+function aiFoodPreview(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img = document.getElementById('ai-food-preview');
+        img.src = e.target.result;
+        img.style.display = 'block';
+        document.getElementById('ai-food-placeholder').style.display = 'none';
+        document.getElementById('ai-food-result').style.display = 'none';
+        document.getElementById('ai-food-btn-confirm').style.display = 'none';
+        document.getElementById('ai-food-btn-analyze').style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+}
+
+async function aiFoodAnalyze() {
+    const file = document.getElementById('ai-food-input').files[0];
+    if (!file) return;
+    document.getElementById('ai-food-btn-analyze').style.display = 'none';
+    document.getElementById('ai-food-loading').style.display = 'block';
+    try {
+        const base64 = await new Promise((res, rej) => {
+            const r = new FileReader();
+            r.onload = () => res(r.result.split(',')[1]);
+            r.onerror = rej;
+            r.readAsDataURL(file);
+        });
+        const mediaType = file.type || 'image/jpeg';
+        const prompt = `Analizza questa immagine di un piatto di cibo. Rispondi SOLO con un JSON valido senza testo aggiuntivo:\n{"name":"nome piatto in italiano","kcal":numero,"protein":grammi,"carbs":grammi,"fat":grammi,"grams":porzione in grammi,"uncertain":true/false}`;
+        const res = await fetch(SUPABASE_FUNCTION_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'apikey': SUPABASE_ANON_KEY },
+            body: JSON.stringify({
+                messages: [{ role: 'user', content: [
+                    { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+                    { type: 'text', text: prompt }
+                ]}],
+                max_tokens: 400
+            })
+        });
+        const data = await res.json();
+        const text = (data.content || []).map(b => b.text || '').join('').trim();
+        const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+        _aiFoodResult = parsed;
+        aiFoodShowResult(parsed);
+    } catch(e) {
+        showToast('Errore analisi AI: ' + e.message, 'error');
+        document.getElementById('ai-food-btn-analyze').style.display = 'block';
+    } finally {
+        document.getElementById('ai-food-loading').style.display = 'none';
+    }
+}
+
+function aiFoodShowResult(r) {
+    document.getElementById('ai-food-name-result').textContent = r.name || 'Piatto non identificato';
+    document.getElementById('ai-res-kcal').textContent = Math.round(r.kcal) || '—';
+    document.getElementById('ai-res-p').textContent = parseFloat(r.protein || 0).toFixed(1);
+    document.getElementById('ai-res-c').textContent = parseFloat(r.carbs || 0).toFixed(1);
+    document.getElementById('ai-res-f').textContent = parseFloat(r.fat || 0).toFixed(1);
+    document.getElementById('ai-food-uncertainty').style.display = r.uncertain ? 'block' : 'none';
+    document.getElementById('ai-food-result').style.display = 'block';
+    document.getElementById('ai-food-btn-confirm').style.display = 'flex';
+}
+
+function aiFoodConfirm() {
+    if (!_aiFoodResult || !_aiFoodMeal) return;
+    const r = _aiFoodResult;
+    const g = r.grams || 100;
+    const entry = {
+        name: r.name || 'Piatto AI',
+        kcal: Math.round(r.kcal || 0),
+        p: parseFloat((r.protein || 0).toFixed(1)),
+        c: parseFloat((r.carbs || 0).toFixed(1)),
+        f: parseFloat((r.fat || 0).toFixed(1)),
+        kcal100: g > 0 ? Math.round((r.kcal || 0) / g * 100) : 0,
+        p100: g > 0 ? parseFloat(((r.protein || 0) / g * 100).toFixed(1)) : 0,
+        c100: g > 0 ? parseFloat(((r.carbs || 0) / g * 100).toFixed(1)) : 0,
+        f100: g > 0 ? parseFloat(((r.fat || 0) / g * 100).toFixed(1)) : 0,
+        id: Date.now(), note: g + 'g', fromAI: true
+    };
+    const mealData = NUT.meals;
+    mealData[_aiFoodMeal].push(entry);
+    NUT.saveMeals(mealData);
+    nutUpdateUI();
+    nutTlUpdateUI();
+    aiFoodClose();
+    showToast('✓ ' + entry.name + ' — ' + entry.kcal + ' kcal', 'success');
 }
 
 function gramsApplyServing() {
@@ -10985,7 +11150,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       </div>
     </div>
     <div class="camera-hint" id="camera-hint" style="position:absolute;top:20px;left:0;right:0;text-align:center;">Inquadra il codice a barre</div>
-    <button class="camera-manual-btn" style="bottom:24px;" onclick="cameraClose(); mealManual(cameraCurrentMeal)">✏️ Inserisci manualmente</button>
+    <button class="camera-manual-btn" style="bottom:24px;width:auto;padding:10px 20px;" onclick="cameraClose(); mealManual(cameraCurrentMeal)">✏️ Inserisci manualmente</button>
   </div>
   <div class="camera-no-support" id="camera-no-support">
     <div class="camera-no-support-icon">📷</div>
