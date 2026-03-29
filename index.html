@@ -6108,6 +6108,10 @@ function aiFoodRenderComponents() {
 
 async function aiFoodSearchForComponent(idx) {
     const c = _aiFoodComponents[idx];
+    // Mostra stato di caricamento nel componente
+    const productsEl = document.getElementById('ai-comp-products-' + idx);
+    if (productsEl) productsEl.innerHTML = '<div style="font-size:0.6rem;color:#64748b;padding:4px 0;">🔍 Ricerca in corso...</div>';
+
     const products = [];
     const seen = new Set();
     const addP = (p) => { const k = (p.barcode||p.name||'').toLowerCase(); if(!seen.has(k)){seen.add(k);products.push(p);} };
@@ -6122,7 +6126,7 @@ async function aiFoodSearchForComponent(idx) {
     for (const term of terms) {
         if (products.length >= 4) break;
         try {
-            const r = await fetch('https://it.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(term)+'&search_simple=1&action=process&json=1&fields=product_name,brands,nutriments,serving_size,serving_quantity&page_size=3', {signal:AbortSignal.timeout(5000)});
+            const r = await fetch('https://it.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(term)+'&search_simple=1&action=process&json=1&fields=product_name,brands,nutriments,serving_size,serving_quantity&sort_by=unique_scans_n&page_size=4', {signal:AbortSignal.timeout(5000)});
             const d = await r.json();
             (d.products||[]).forEach(p => {
                 const n = p.nutriments||{};
@@ -6151,29 +6155,25 @@ function aiFoodRenderProductsForComponent(idx, products) {
     products.forEach((p, i) => {
         const serving = aiFoodParseServing(p);
         const row = document.createElement('div');
-        row.style.cssText = 'background:rgba(255,255,255,0.03);border:0.5px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 10px;cursor:pointer;transition:border-color 0.15s;';
+        row.style.cssText = 'display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.03);border:0.5px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 10px;cursor:pointer;transition:border-color 0.15s,background 0.15s;';
         row.dataset.product = JSON.stringify(p);
         row.dataset.idx = i;
         row.innerHTML =
-            '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
-                '<div style="flex:1;min-width:0;overflow:hidden;">' +
-                    '<div style="font-size:0.72rem;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (p.name||'—') + (p.brand?' <span style="color:#64748b;font-weight:400;">('+p.brand+')</span>':'') + '</div>' +
-                    '<div style="font-size:0.55rem;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;">' + (p._source||'') + (serving?' · '+serving+'g':'') + ' · ' + (p.kcal100||0) + ' kcal/100g</div>' +
-                '</div>' +
-                '<button class="ai-usa-btn" onclick="event.stopPropagation();aiFoodSelectForComponent('+idx+','+i+',this.closest(\'[data-product]\').dataset.product)" style="display:none;flex-shrink:0;background:rgba(52,211,153,0.2);border:1px solid rgba(52,211,153,0.4);color:#34d399;border-radius:6px;padding:5px 12px;font-size:0.62rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;">Usa</button>' +
-            '</div>';
-        // Tap sulla card → evidenzia e mostra bottone Usa
+            '<div style="flex:1;min-width:0;overflow:hidden;">' +
+                '<div style="font-size:0.72rem;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (p.name||'—') + (p.brand?' <span style="color:#64748b;font-weight:400;">('+p.brand+')</span>':'') + '</div>' +
+                '<div style="font-size:0.55rem;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;">' + (p._source||'') + (serving?' · '+serving+'g':'') + ' · ' + (p.kcal100||0) + ' kcal/100g</div>' +
+            '</div>' +
+            '<button class="ai-usa-btn" onclick="event.stopPropagation();aiFoodSelectForComponent('+idx+','+i+',this.closest(\'[data-product]\').dataset.product)" style="display:none;flex-shrink:0;width:auto;background:rgba(52,211,153,0.2);border:1px solid rgba(52,211,153,0.4);color:#34d399;border-radius:6px;padding:5px 10px;font-size:0.62rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;">Usa</button>';
         row.addEventListener('click', () => {
-            // Deseleziona tutte le altre card del componente
             el.querySelectorAll('[data-idx]').forEach(r => {
                 r.style.borderColor = 'rgba(255,255,255,0.08)';
                 r.style.background = 'rgba(255,255,255,0.03)';
-                r.querySelector('.ai-usa-btn').style.display = 'none';
+                const btn = r.querySelector('.ai-usa-btn');
+                if (btn) btn.style.display = 'none';
             });
-            // Evidenzia questa
             row.style.borderColor = 'rgba(52,211,153,0.5)';
             row.style.background = 'rgba(52,211,153,0.05)';
-            row.querySelector('.ai-usa-btn').style.display = 'block';
+            row.querySelector('.ai-usa-btn').style.display = 'inline-block';
         });
         el.appendChild(row);
     });
@@ -6218,6 +6218,8 @@ function aiFoodSearchManual(input, idx) {
     const resultsEl = document.getElementById('ai-comp-search-' + idx);
     if (!query || query.length < 2) { resultsEl.style.display = 'none'; return; }
     _aiFoodSearchTimer = setTimeout(async () => {
+        resultsEl.innerHTML = '<div style="padding:8px 10px;font-size:0.65rem;color:#64748b;">🔍 Ricerca in corso...</div>';
+        resultsEl.style.display = 'block';
         const results = [];
         const seen = new Set();
         const addP = p => { const k=(p.barcode||p.name||'').toLowerCase(); if(!seen.has(k)){seen.add(k);results.push(p);} };
@@ -6226,7 +6228,7 @@ function aiFoodSearchManual(input, idx) {
             if (data?.length) data.forEach(p => addP({...p,_source:'Awakening DB'}));
         } catch(e) {}
         try {
-            const r = await fetch('https://it.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(query)+'&search_simple=1&action=process&json=1&fields=product_name,brands,nutriments,serving_size,serving_quantity&page_size=3', {signal:AbortSignal.timeout(5000)});
+            const r = await fetch('https://it.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(query)+'&search_simple=1&action=process&json=1&fields=product_name,brands,nutriments,serving_size,serving_quantity&sort_by=unique_scans_n&page_size=4', {signal:AbortSignal.timeout(5000)});
             const d = await r.json();
             (d.products||[]).forEach(p => {
                 const n=p.nutriments||{};
