@@ -4984,8 +4984,8 @@ function nutTimelineRender() {
                 btnRow.innerHTML = `
                     <button onclick="cameraCurrentMeal='${meal}';mealScan('${meal}')"
                         style="flex:1;padding:9px 0;border-radius:10px;background:linear-gradient(135deg,var(--primary),var(--accent));border:none;color:#000;font-size:0.75rem;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0.03em;">📷 Scansiona</button>
-                    <button onclick="mealManual('${meal}')"
-                        style="flex:1;padding:9px 0;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#94a3b8;font-size:0.75rem;font-weight:700;cursor:pointer;font-family:inherit;">+ Manuale</button>
+                    <button onclick="aiOpenChat()"
+                        style="flex:1;padding:9px 0;border-radius:10px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.35);color:#a5b4fc;font-size:0.75rem;font-weight:700;cursor:pointer;font-family:inherit;">✨ AI</button>
                 `;
                 right.appendChild(btnRow);
             }
@@ -10985,6 +10985,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       </div>
     </div>
     <div class="camera-hint" id="camera-hint" style="position:absolute;top:20px;left:0;right:0;text-align:center;">Inquadra il codice a barre</div>
+    <button class="camera-manual-btn" style="bottom:24px;" onclick="cameraClose(); mealManual(cameraCurrentMeal)">✏️ Inserisci manualmente</button>
   </div>
   <div class="camera-no-support" id="camera-no-support">
     <div class="camera-no-support-icon">📷</div>
