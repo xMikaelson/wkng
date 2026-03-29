@@ -2705,10 +2705,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 </div>
 
 <!-- ══ AI FOOD PHOTO OVERLAY ══ -->
-<div id="ai-food-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.96);z-index:5200;flex-direction:column;align-items:center;justify-content:center;padding:24px;">
+<div id="ai-food-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.96);z-index:5200;flex-direction:column;align-items:center;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:24px 20px 40px;">
   <div style="width:100%;max-width:420px;">
     <!-- Header -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
       <div>
         <div style="font-size:1.1rem;font-weight:800;color:#e2e8f0;">✨ Analisi AI</div>
         <div style="font-size:0.58rem;color:#64748b;margin-top:2px;">Scatta una foto al tuo piatto</div>
@@ -2716,8 +2716,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <button onclick="aiFoodClose()" style="background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:4px;">✕</button>
     </div>
 
-    <!-- Photo preview / capture -->
-    <div id="ai-food-preview-wrap" style="width:100%;aspect-ratio:4/3;border-radius:16px;overflow:hidden;background:#0f172a;border:2px dashed #334155;display:flex;align-items:center;justify-content:center;margin-bottom:16px;position:relative;cursor:pointer;" onclick="document.getElementById('ai-food-input').click()">
+    <!-- Photo preview -->
+    <div id="ai-food-preview-wrap" style="width:100%;aspect-ratio:4/3;border-radius:16px;overflow:hidden;background:#0f172a;border:2px dashed #334155;display:flex;align-items:center;justify-content:center;margin-bottom:12px;position:relative;cursor:pointer;" onclick="document.getElementById('ai-food-input').click()">
       <img id="ai-food-preview" src="" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:14px;">
       <div id="ai-food-placeholder" style="text-align:center;">
         <div style="font-size:2.5rem;margin-bottom:8px;">🍽️</div>
@@ -2726,31 +2726,63 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     </div>
     <input type="file" id="ai-food-input" accept="image/*" capture="environment" style="display:none;" onchange="aiFoodPreview(event)">
 
-    <!-- Analisi risultati -->
-    <div id="ai-food-result" style="display:none;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;margin-bottom:16px;">
-      <div id="ai-food-name-result" style="font-size:1rem;font-weight:700;color:#e2e8f0;margin-bottom:4px;"></div>
-      <div id="ai-food-uncertainty" style="display:none;font-size:0.6rem;color:#fbbf24;margin-bottom:10px;">⚠️ Stima approssimativa — i valori potrebbero variare</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;">
-        <div style="text-align:center;"><div id="ai-res-kcal" style="font-size:1rem;font-weight:800;color:#EF9F27;">—</div><div style="font-size:0.45rem;color:#64748b;margin-top:2px;">kcal</div></div>
-        <div style="text-align:center;"><div id="ai-res-p" style="font-size:1rem;font-weight:800;color:#5DCAA5;">—</div><div style="font-size:0.45rem;color:#64748b;margin-top:2px;">prot g</div></div>
-        <div style="text-align:center;"><div id="ai-res-c" style="font-size:1rem;font-weight:800;color:#85B7EB;">—</div><div style="font-size:0.45rem;color:#64748b;margin-top:2px;">carbo g</div></div>
-        <div style="text-align:center;"><div id="ai-res-f" style="font-size:1rem;font-weight:800;color:#EF9F27;">—</div><div style="font-size:0.45rem;color:#64748b;margin-top:2px;">grassi g</div></div>
+    <!-- Loading -->
+    <div id="ai-food-loading" style="display:none;text-align:center;padding:16px 0;">
+      <div style="font-size:1.5rem;margin-bottom:8px;">✨</div>
+      <div id="ai-food-loading-msg" style="font-size:0.75rem;color:#64748b;">Analisi in corso...</div>
+    </div>
+
+    <!-- Stima AI iniziale -->
+    <div id="ai-food-result" style="display:none;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:14px;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">Stima AI</div>
+        <div id="ai-food-units-label" style="font-size:0.65rem;color:#94a3b8;"></div>
+      </div>
+      <div id="ai-food-name-result" style="font-size:0.95rem;font-weight:700;color:#e2e8f0;margin-bottom:6px;"></div>
+      <div id="ai-food-uncertainty" style="display:none;font-size:0.58rem;color:#fbbf24;margin-bottom:8px;">⚠️ Valori approssimativi</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+        <div style="text-align:center;"><div id="ai-res-kcal" style="font-size:0.95rem;font-weight:800;color:#EF9F27;">—</div><div style="font-size:0.42rem;color:#64748b;margin-top:1px;">kcal</div></div>
+        <div style="text-align:center;"><div id="ai-res-p" style="font-size:0.95rem;font-weight:800;color:#5DCAA5;">—</div><div style="font-size:0.42rem;color:#64748b;margin-top:1px;">prot g</div></div>
+        <div style="text-align:center;"><div id="ai-res-c" style="font-size:0.95rem;font-weight:800;color:#85B7EB;">—</div><div style="font-size:0.42rem;color:#64748b;margin-top:1px;">carbo g</div></div>
+        <div style="text-align:center;"><div id="ai-res-f" style="font-size:0.95rem;font-weight:800;color:#EF9F27;">—</div><div style="font-size:0.42rem;color:#64748b;margin-top:1px;">grassi g</div></div>
       </div>
     </div>
 
-    <!-- Bottoni azione -->
-    <div id="ai-food-btn-analyze" style="display:none;">
-      <button onclick="aiFoodAnalyze()" style="width:100%;padding:14px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;border-radius:12px;color:#fff;font-size:0.9rem;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0.04em;">✨ Analizza</button>
-    </div>
-    <div id="ai-food-btn-confirm" style="display:none;gap:10px;flex-direction:column;">
-      <button onclick="aiFoodConfirm()" style="width:100%;padding:14px;background:linear-gradient(135deg,var(--primary),var(--accent));border:none;border-radius:12px;color:#000;font-size:0.9rem;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0.04em;">Aggiungi al pasto</button>
-      <button onclick="document.getElementById('ai-food-input').click()" style="width:100%;padding:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#94a3b8;font-size:0.8rem;cursor:pointer;font-family:inherit;">📷 Rifai la foto</button>
+    <!-- Prodotti trovati -->
+    <div id="ai-food-products-section" style="display:none;margin-bottom:12px;">
+      <div style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Prodotti corrispondenti</div>
+      <div id="ai-food-products-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+      <!-- Ricerca manuale -->
+      <div style="margin-top:8px;display:flex;gap:6px;">
+        <input id="ai-food-search" type="text" placeholder="Cerca prodotto..." autocomplete="off"
+          style="flex:1;padding:8px 10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:0.75rem;font-family:inherit;"
+          oninput="aiFoodSearch(this.value)">
+      </div>
+      <div id="ai-food-search-results" style="display:none;background:#0f172a;border:1px solid #334155;border-radius:8px;margin-top:4px;overflow:hidden;"></div>
     </div>
 
-    <!-- Loading -->
-    <div id="ai-food-loading" style="display:none;text-align:center;padding:20px 0;">
-      <div style="font-size:1.5rem;margin-bottom:10px;">✨</div>
-      <div style="font-size:0.75rem;color:#64748b;">Analisi in corso...</div>
+    <!-- Valori aggiornati con dati reali -->
+    <div id="ai-food-refined" style="display:none;background:rgba(52,211,153,0.05);border:1px solid rgba(52,211,153,0.2);border-radius:14px;padding:14px;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="font-size:0.52rem;color:#34d399;text-transform:uppercase;letter-spacing:0.08em;">Valori aggiornati</div>
+        <div id="ai-refined-source" style="font-size:0.58rem;color:#64748b;"></div>
+      </div>
+      <div id="ai-refined-name" style="font-size:0.95rem;font-weight:700;color:#e2e8f0;margin-bottom:6px;"></div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+        <div style="text-align:center;"><div id="ai-ref-kcal" style="font-size:0.95rem;font-weight:800;color:#EF9F27;">—</div><div style="font-size:0.42rem;color:#64748b;margin-top:1px;">kcal</div></div>
+        <div style="text-align:center;"><div id="ai-ref-p" style="font-size:0.95rem;font-weight:800;color:#5DCAA5;">—</div><div style="font-size:0.42rem;color:#64748b;margin-top:1px;">prot g</div></div>
+        <div style="text-align:center;"><div id="ai-ref-c" style="font-size:0.95rem;font-weight:800;color:#85B7EB;">—</div><div style="font-size:0.42rem;color:#64748b;margin-top:1px;">carbo g</div></div>
+        <div style="text-align:center;"><div id="ai-ref-f" style="font-size:0.95rem;font-weight:800;color:#EF9F27;">—</div><div style="font-size:0.42rem;color:#64748b;margin-top:1px;">grassi g</div></div>
+      </div>
+    </div>
+
+    <!-- Bottoni -->
+    <div id="ai-food-btn-analyze" style="display:none;margin-bottom:8px;">
+      <button onclick="aiFoodAnalyze()" style="width:100%;padding:14px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;border-radius:12px;color:#fff;font-size:0.9rem;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0.04em;">✨ Analizza</button>
+    </div>
+    <div id="ai-food-btn-confirm" style="display:none;flex-direction:column;gap:8px;">
+      <button onclick="aiFoodConfirm()" style="width:100%;padding:14px;background:linear-gradient(135deg,var(--primary),var(--accent));border:none;border-radius:12px;color:#000;font-size:0.9rem;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0.04em;">Aggiungi al pasto</button>
+      <button onclick="document.getElementById('ai-food-input').click()" style="width:100%;padding:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#94a3b8;font-size:0.8rem;cursor:pointer;font-family:inherit;">📷 Rifai la foto</button>
     </div>
   </div>
 </div>
@@ -5959,26 +5991,34 @@ function gramsConfirm() {
 
 // ══ AI FOOD PHOTO ══
 let _aiFoodMeal = null;
-let _aiFoodResult = null;
+let _aiFoodResult = null;      // risposta AI grezza
+let _aiFoodRefined = null;     // valori aggiornati con DB
+let _aiFoodSelected = null;    // prodotto selezionato dalla lista
+let _aiFoodSearchTimer = null;
 
 function aiFoodOpen(meal) {
     _aiFoodMeal = meal;
     _aiFoodResult = null;
+    _aiFoodRefined = null;
+    _aiFoodSelected = null;
     document.getElementById('ai-food-preview').style.display = 'none';
     document.getElementById('ai-food-preview').src = '';
     document.getElementById('ai-food-placeholder').style.display = 'block';
     document.getElementById('ai-food-result').style.display = 'none';
+    document.getElementById('ai-food-products-section').style.display = 'none';
+    document.getElementById('ai-food-refined').style.display = 'none';
     document.getElementById('ai-food-btn-analyze').style.display = 'none';
     document.getElementById('ai-food-btn-confirm').style.display = 'none';
     document.getElementById('ai-food-loading').style.display = 'none';
+    document.getElementById('ai-food-search').value = '';
+    document.getElementById('ai-food-search-results').style.display = 'none';
     document.getElementById('ai-food-input').value = '';
     document.getElementById('ai-food-overlay').style.display = 'flex';
 }
 
 function aiFoodClose() {
     document.getElementById('ai-food-overlay').style.display = 'none';
-    _aiFoodMeal = null;
-    _aiFoodResult = null;
+    _aiFoodMeal = null; _aiFoodResult = null; _aiFoodRefined = null; _aiFoodSelected = null;
 }
 
 function aiFoodPreview(event) {
@@ -5986,11 +6026,12 @@ function aiFoodPreview(event) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => {
-        const img = document.getElementById('ai-food-preview');
-        img.src = e.target.result;
-        img.style.display = 'block';
+        document.getElementById('ai-food-preview').src = e.target.result;
+        document.getElementById('ai-food-preview').style.display = 'block';
         document.getElementById('ai-food-placeholder').style.display = 'none';
         document.getElementById('ai-food-result').style.display = 'none';
+        document.getElementById('ai-food-products-section').style.display = 'none';
+        document.getElementById('ai-food-refined').style.display = 'none';
         document.getElementById('ai-food-btn-confirm').style.display = 'none';
         document.getElementById('ai-food-btn-analyze').style.display = 'block';
     };
@@ -6002,6 +6043,7 @@ async function aiFoodAnalyze() {
     if (!file) return;
     document.getElementById('ai-food-btn-analyze').style.display = 'none';
     document.getElementById('ai-food-loading').style.display = 'block';
+    document.getElementById('ai-food-loading-msg').textContent = 'Analisi in corso...';
     try {
         const base64 = await new Promise((res, rej) => {
             const r = new FileReader();
@@ -6010,24 +6052,33 @@ async function aiFoodAnalyze() {
             r.readAsDataURL(file);
         });
         const mediaType = file.type || 'image/jpeg';
-        const prompt = `Analizza questa immagine di un piatto di cibo. Rispondi SOLO con un JSON valido senza testo aggiuntivo:\n{"name":"nome piatto in italiano","kcal":numero,"protein":grammi,"carbs":grammi,"fat":grammi,"grams":porzione in grammi,"uncertain":true/false}`;
+        const prompt = `Analizza questa immagine di cibo. Rispondi SOLO con JSON valido:
+{"name":"nome alimento in italiano","units":numero unità visibili (es. 2 per 2 pancake, 1 se è un piatto unico),"gramsPerUnit":grammi stimati per unità,"uncertain":true/false}
+Se è un piatto unico metti units:1 e gramsPerUnit uguale al totale stimato.`;
+
         const res = await fetch(SUPABASE_FUNCTION_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'apikey': SUPABASE_ANON_KEY },
             body: JSON.stringify({
-                model: 'claude-haiku-4-5-20251001',
                 messages: [{ role: 'user', content: [
                     { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
                     { type: 'text', text: prompt }
                 ]}],
-                max_tokens: 400
+                max_tokens: 200
             })
         });
         const data = await res.json();
         const text = (data.content || []).map(b => b.text || '').join('').trim();
         const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
         _aiFoodResult = parsed;
-        aiFoodShowResult(parsed);
+
+        // Mostra stima AI
+        aiFoodShowAIResult(parsed);
+
+        // Cerca prodotti in background
+        document.getElementById('ai-food-loading-msg').textContent = 'Cerco nel database...';
+        await aiFoodSearchProducts(parsed.name);
+
     } catch(e) {
         showToast('Errore analisi AI: ' + e.message, 'error');
         document.getElementById('ai-food-btn-analyze').style.display = 'block';
@@ -6036,33 +6087,225 @@ async function aiFoodAnalyze() {
     }
 }
 
-function aiFoodShowResult(r) {
-    document.getElementById('ai-food-name-result').textContent = r.name || 'Piatto non identificato';
-    document.getElementById('ai-res-kcal').textContent = Math.round(r.kcal) || '—';
-    document.getElementById('ai-res-p').textContent = parseFloat(r.protein || 0).toFixed(1);
-    document.getElementById('ai-res-c').textContent = parseFloat(r.carbs || 0).toFixed(1);
-    document.getElementById('ai-res-f').textContent = parseFloat(r.fat || 0).toFixed(1);
-    document.getElementById('ai-food-uncertainty').style.display = r.uncertain ? 'block' : 'none';
+function aiFoodShowAIResult(r) {
+    const units = r.units || 1;
+    const gramsPerUnit = r.gramsPerUnit || 100;
+    const totalGrams = units * gramsPerUnit;
+    // Stima macro totali (placeholder finché non si seleziona un prodotto)
+    document.getElementById('ai-food-name-result').textContent = r.name || 'Alimento non identificato';
+    document.getElementById('ai-food-units-label').textContent = units > 1 ? units + ' unità · ' + totalGrams + 'g tot.' : totalGrams + 'g';
+    document.getElementById('ai-food-uncertainty').style.display = 'block'; // sempre approssimativa finché non c'è prodotto
+    document.getElementById('ai-res-kcal').textContent = '~';
+    document.getElementById('ai-res-p').textContent = '~';
+    document.getElementById('ai-res-c').textContent = '~';
+    document.getElementById('ai-res-f').textContent = '~';
     document.getElementById('ai-food-result').style.display = 'block';
     document.getElementById('ai-food-btn-confirm').style.display = 'flex';
 }
 
-function aiFoodConfirm() {
-    if (!_aiFoodResult || !_aiFoodMeal) return;
-    const r = _aiFoodResult;
-    const g = r.grams || 100;
-    const entry = {
-        name: r.name || 'Piatto AI',
-        kcal: Math.round(r.kcal || 0),
-        p: parseFloat((r.protein || 0).toFixed(1)),
-        c: parseFloat((r.carbs || 0).toFixed(1)),
-        f: parseFloat((r.fat || 0).toFixed(1)),
-        kcal100: g > 0 ? Math.round((r.kcal || 0) / g * 100) : 0,
-        p100: g > 0 ? parseFloat(((r.protein || 0) / g * 100).toFixed(1)) : 0,
-        c100: g > 0 ? parseFloat(((r.carbs || 0) / g * 100).toFixed(1)) : 0,
-        f100: g > 0 ? parseFloat(((r.fat || 0) / g * 100).toFixed(1)) : 0,
-        id: Date.now(), note: g + 'g', fromAI: true
+async function aiFoodSearchProducts(name) {
+    const products = [];
+    // 1. Cerca su aw_products
+    try {
+        const { data: awProds } = await sbClient.from('aw_products').select('*').ilike('name', '%' + name + '%').limit(3);
+        if (awProds?.length) awProds.forEach(p => products.push({ ...p, _source: 'Awakening DB' }));
+    } catch(e) {}
+
+    // 2. Cerca su OFF se pochi risultati
+    if (products.length < 3) {
+        try {
+            const offRes = await fetch(`https://it.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(name)}&search_simple=1&action=process&json=1&fields=product_name,brands,nutriments,serving_size,serving_quantity&page_size=5`, { signal: AbortSignal.timeout(6000) });
+            const offData = await offRes.json();
+            (offData.products || []).slice(0, 3).forEach(p => {
+                const n = p.nutriments || {};
+                if (!n['energy-kcal_100g'] && !n['energy-kcal-100g']) return;
+                products.push({
+                    name: p.product_name || name,
+                    brand: (p.brands || '').split(',')[0].trim().toUpperCase() || null,
+                    kcal100: Math.round(n['energy-kcal_100g'] || n['energy-kcal-100g'] || (n['energy-kj_100g']||0)/4.184),
+                    p100: parseFloat((n['proteins_100g']||0).toFixed(1)),
+                    c100: parseFloat((n['carbohydrates_100g']||0).toFixed(1)),
+                    f100: parseFloat((n['fat_100g']||0).toFixed(1)),
+                    serving_size: p.serving_size || null,
+                    serving_quantity: p.serving_quantity || null,
+                    _source: 'Open Food Facts'
+                });
+            });
+        } catch(e) {}
+    }
+
+    aiFoodRenderProducts(products);
+}
+
+function aiFoodParseServing(prod) {
+    // Estrae grammi dalla serving_size o serving_quantity
+    if (prod.serving_quantity && !isNaN(parseFloat(prod.serving_quantity))) return parseFloat(prod.serving_quantity);
+    if (prod.serving_size) {
+        const m = String(prod.serving_size).match(/(\d+(?:[.,]\d+)?)\s*g/i);
+        if (m) return parseFloat(m[1].replace(',', '.'));
+    }
+    return null;
+}
+
+function aiFoodRenderProducts(products) {
+    const list = document.getElementById('ai-food-products-list');
+    list.innerHTML = '';
+    if (products.length === 0) {
+        list.innerHTML = '<div style="font-size:0.68rem;color:#475569;font-style:italic;padding:6px 0;">Nessun prodotto trovato — usa la ricerca manuale</div>';
+    } else {
+        products.forEach((p, i) => {
+            const card = document.createElement('div');
+            card.style.cssText = 'display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 12px;cursor:pointer;transition:border-color 0.15s;';
+            const serving = aiFoodParseServing(p);
+            card.innerHTML = `
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:0.75rem;font-weight:700;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}${p.brand ? ' <span style="color:#64748b;font-weight:400;">('+p.brand+')</span>' : ''}</div>
+                    <div style="font-size:0.6rem;color:#475569;margin-top:2px;">${p._source}${serving ? ' · porzione '+serving+'g' : ''} · ${p.kcal100} kcal/100g</div>
+                </div>
+                <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;margin-left:8px;">
+                    <button onclick="aiFoodSelectProduct(${i})" style="background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);color:#34d399;border-radius:6px;padding:4px 8px;font-size:0.62rem;cursor:pointer;font-family:inherit;">Usa</button>
+                    <button onclick="this.closest('[data-idx]').remove();if(!document.getElementById('ai-food-products-list').children.length)document.getElementById('ai-food-products-section').style.display='none';" style="background:none;border:none;color:#475569;cursor:pointer;font-size:0.9rem;padding:2px 4px;">✕</button>
+                </div>`;
+            card.dataset.idx = i;
+            card.dataset.product = JSON.stringify(p);
+            list.appendChild(card);
+        });
+    }
+    document.getElementById('ai-food-products-section').style.display = 'block';
+}
+
+function aiFoodSelectProduct(idx) {
+    const cards = document.querySelectorAll('#ai-food-products-list [data-idx]');
+    let prod = null;
+    cards.forEach(c => { if (parseInt(c.dataset.idx) === idx) prod = JSON.parse(c.dataset.product); });
+    if (!prod || !_aiFoodResult) return;
+    _aiFoodSelected = prod;
+
+    const units = _aiFoodResult.units || 1;
+    const gramsPerUnit = _aiFoodResult.gramsPerUnit || 100;
+    const serving = aiFoodParseServing(prod);
+    const totalGrams = serving ? units * serving : units * gramsPerUnit;
+    const factor = totalGrams / 100;
+
+    _aiFoodRefined = {
+        name: prod.name + (prod.brand ? ' (' + prod.brand + ')' : ''),
+        kcal: Math.round((prod.kcal100 || 0) * factor),
+        p: parseFloat(((prod.p100 || 0) * factor).toFixed(1)),
+        c: parseFloat(((prod.c100 || 0) * factor).toFixed(1)),
+        f: parseFloat(((prod.f100 || 0) * factor).toFixed(1)),
+        grams: Math.round(totalGrams),
+        kcal100: prod.kcal100, p100: prod.p100, c100: prod.c100, f100: prod.f100,
+        barcode: prod.barcode || null, brand: prod.brand || null
     };
+
+    document.getElementById('ai-refined-name').textContent = _aiFoodRefined.name;
+    document.getElementById('ai-refined-source').textContent = (serving ? units + ' × ' + serving + 'g' : Math.round(totalGrams) + 'g') + ' · ' + prod._source;
+    document.getElementById('ai-ref-kcal').textContent = _aiFoodRefined.kcal;
+    document.getElementById('ai-ref-p').textContent = _aiFoodRefined.p.toFixed(1);
+    document.getElementById('ai-ref-c').textContent = _aiFoodRefined.c.toFixed(1);
+    document.getElementById('ai-ref-f').textContent = _aiFoodRefined.f.toFixed(1);
+    document.getElementById('ai-food-refined').style.display = 'block';
+
+    // Evidenzia card selezionata
+    document.querySelectorAll('#ai-food-products-list [data-idx]').forEach(c => c.style.borderColor = 'rgba(255,255,255,0.08)');
+    document.querySelector('#ai-food-products-list [data-idx="'+idx+'"]').style.borderColor = 'rgba(52,211,153,0.4)';
+}
+
+async function aiFoodSearch(query) {
+    clearTimeout(_aiFoodSearchTimer);
+    const resultsEl = document.getElementById('ai-food-search-results');
+    if (!query || query.length < 2) { resultsEl.style.display = 'none'; return; }
+    _aiFoodSearchTimer = setTimeout(async () => {
+        const results = [];
+        try {
+            const { data } = await sbClient.from('aw_products').select('*').ilike('name', '%' + query + '%').limit(4);
+            if (data?.length) data.forEach(p => results.push({ ...p, _source: 'Awakening DB' }));
+        } catch(e) {}
+        if (results.length < 4) {
+            try {
+                const r = await fetch(`https://it.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&fields=product_name,brands,nutriments,serving_size,serving_quantity&page_size=4`, { signal: AbortSignal.timeout(5000) });
+                const d = await r.json();
+                (d.products || []).slice(0, 4 - results.length).forEach(p => {
+                    const n = p.nutriments || {};
+                    if (!n['energy-kcal_100g'] && !n['energy-kcal-100g']) return;
+                    results.push({
+                        name: p.product_name || query,
+                        brand: (p.brands||'').split(',')[0].trim().toUpperCase()||null,
+                        kcal100: Math.round(n['energy-kcal_100g']||n['energy-kcal-100g']||(n['energy-kj_100g']||0)/4.184),
+                        p100: parseFloat((n['proteins_100g']||0).toFixed(1)),
+                        c100: parseFloat((n['carbohydrates_100g']||0).toFixed(1)),
+                        f100: parseFloat((n['fat_100g']||0).toFixed(1)),
+                        serving_size: p.serving_size||null, serving_quantity: p.serving_quantity||null,
+                        _source: 'Open Food Facts'
+                    });
+                });
+            } catch(e) {}
+        }
+        resultsEl.innerHTML = '';
+        if (!results.length) { resultsEl.style.display = 'none'; return; }
+        results.forEach((p, i) => {
+            const row = document.createElement('div');
+            row.style.cssText = 'padding:8px 12px;border-bottom:0.5px solid #1e293b;cursor:pointer;font-size:0.72rem;color:#e2e8f0;';
+            row.innerHTML = `<strong>${p.name}</strong>${p.brand ? ' <span style="color:#64748b">('+p.brand+')</span>' : ''} <span style="color:#475569;font-size:0.6rem;">· ${p._source}</span>`;
+            row.addEventListener('click', () => {
+                // Aggiungi alla lista e seleziona
+                const list = document.getElementById('ai-food-products-list');
+                const newIdx = list.children.length;
+                const card = document.createElement('div');
+                card.style.cssText = 'display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.03);border:1px solid rgba(52,211,153,0.4);border-radius:10px;padding:10px 12px;cursor:pointer;';
+                const serving = aiFoodParseServing(p);
+                card.dataset.idx = newIdx;
+                card.dataset.product = JSON.stringify(p);
+                card.innerHTML = `<div style="flex:1;min-width:0;"><div style="font-size:0.75rem;font-weight:700;color:#e2e8f0;">${p.name}${p.brand?'  ('+p.brand+')':''}</div><div style="font-size:0.6rem;color:#475569;">${p._source}${serving?' · porzione '+serving+'g':''}</div></div><div style="display:flex;gap:6px;align-items:center;flex-shrink:0;margin-left:8px;"><button onclick="aiFoodSelectProduct(${newIdx})" style="background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);color:#34d399;border-radius:6px;padding:4px 8px;font-size:0.62rem;cursor:pointer;font-family:inherit;">Usa</button></div>`;
+                list.appendChild(card);
+                document.getElementById('ai-food-products-section').style.display = 'block';
+                resultsEl.style.display = 'none';
+                document.getElementById('ai-food-search').value = '';
+                aiFoodSelectProduct(newIdx);
+            });
+            resultsEl.appendChild(row);
+        });
+        resultsEl.style.display = 'block';
+    }, 400);
+}
+
+function aiFoodConfirm() {
+    if (!_aiFoodMeal) return;
+    const data = _aiFoodRefined || _aiFoodResult;
+    if (!data) return;
+    let entry;
+    if (_aiFoodRefined) {
+        entry = {
+            name: _aiFoodRefined.name,
+            barcode: _aiFoodRefined.barcode || null,
+            brand: _aiFoodRefined.brand || null,
+            kcal: _aiFoodRefined.kcal,
+            p: _aiFoodRefined.p,
+            c: _aiFoodRefined.c,
+            f: _aiFoodRefined.f,
+            kcal100: _aiFoodRefined.kcal100 || 0,
+            p100: _aiFoodRefined.p100 || 0,
+            c100: _aiFoodRefined.c100 || 0,
+            f100: _aiFoodRefined.f100 || 0,
+            id: Date.now(), note: _aiFoodRefined.grams + 'g', fromAI: true
+        };
+    } else {
+        // Fallback stima AI pura (nessun prodotto selezionato)
+        const r = _aiFoodResult;
+        const g = (r.units || 1) * (r.gramsPerUnit || 100);
+        entry = {
+            name: r.name || 'Piatto AI',
+            kcal: Math.round(r.kcal || 0),
+            p: parseFloat((r.protein || 0).toFixed(1)),
+            c: parseFloat((r.carbs || 0).toFixed(1)),
+            f: parseFloat((r.fat || 0).toFixed(1)),
+            kcal100: g > 0 ? Math.round((r.kcal||0)/g*100) : 0,
+            p100: g > 0 ? parseFloat(((r.protein||0)/g*100).toFixed(1)) : 0,
+            c100: g > 0 ? parseFloat(((r.carbs||0)/g*100).toFixed(1)) : 0,
+            f100: g > 0 ? parseFloat(((r.fat||0)/g*100).toFixed(1)) : 0,
+            id: Date.now(), note: g + 'g', fromAI: true
+        };
+    }
     const mealData = NUT.meals;
     mealData[_aiFoodMeal].push(entry);
     NUT.saveMeals(mealData);
