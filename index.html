@@ -6052,9 +6052,7 @@ async function aiFoodAnalyze() {
             r.readAsDataURL(file);
         });
         const mediaType = file.type || 'image/jpeg';
-        const prompt = `Analizza questa immagine di cibo. Rispondi SOLO con JSON valido:
-{"name":"nome alimento principale in italiano (1-2 parole, es: pancake, pasta, pollo)","keywords":["parola1","parola2"],"units":numero unità visibili,"gramsPerUnit":grammi stimati per unità,"kcal":kcal totali stimate,"protein":proteine g totali,"carbs":carboidrati g totali,"fat":grassi g totali,"uncertain":true/false}
-keywords = le parole chiave dell'alimento separate (es: ["pancake","banana","cannella"]). units=1 se piatto unico.
+        const prompt = `Analizza questa immagine di cibo. Rispondi SOLO con JSON valido:\n{"name":"nome alimento principale in italiano (1-2 parole, es: pancake, pasta, pollo)","keywords":["parola1","parola2"],"units":numero unità visibili,"gramsPerUnit":grammi stimati per unità,"kcal":kcal totali stimate,"protein":proteine g totali,"carbs":carboidrati g totali,"fat":grassi g totali,"uncertain":true/false}\nkeywords = parole chiave separate (es: ["pancake","banana"]). units=1 se piatto unico.`;
 
         const res = await fetch(SUPABASE_FUNCTION_URL, {
             method: 'POST',
