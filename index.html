@@ -6031,7 +6031,16 @@ async function aiFoodAnalyze() {
         });
         const data = await res.json();
         const text = (data.content || []).map(b => b.text || '').join('').trim();
-        const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+        // Pulizia robusta: rimuove markdown, asterischi, trova il blocco JSON
+        let clean = text
+            .replace(/```json/gi, '').replace(/```/g, '')  // backtick blocks
+            .replace(/\*+/g, '')                            // asterischi markdown
+            .trim();
+        // Estrai solo il blocco JSON tra { e } (l'ultimo carattere })
+        const jsonStart = clean.indexOf('{');
+        const jsonEnd = clean.lastIndexOf('}');
+        if (jsonStart >= 0 && jsonEnd > jsonStart) clean = clean.slice(jsonStart, jsonEnd + 1);
+        const parsed = JSON.parse(clean);
         const components = parsed.components || [];
         if (!components.length) throw new Error('Nessun componente identificato');
 
