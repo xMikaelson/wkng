@@ -3590,6 +3590,8 @@ async function onLoginSuccess(user, usernameOverride = null) {
     setTimeout(() => { nutUpdateUI(); nutTlUpdateUI(); }, 50);
 
     showToast('Bentornato, ' + username + '!', 'success');
+    // Schedula notifica promemoria peso
+    scheduleWeightNotification();
 }
 
 
@@ -8951,6 +8953,39 @@ function profileHeightInit() {
     const h = localStorage.getItem(HEIGHT_KEY);
     const inp = document.getElementById('bmi-height-input');
     if (h && inp) inp.value = h;
+}
+
+// ── NOTIFICA PESO GIORNALIERA ──────────────────────────
+// TEST: 12:05 | PRODUZIONE: 08:00
+// Cambia TEST_HOUR/TEST_MIN con PROD_HOUR/PROD_MIN per il lancio
+const WEIGHT_NOTIF_HOUR = 12; // produzione: 8
+const WEIGHT_NOTIF_MIN  = 5;  // produzione: 0
+
+async function scheduleWeightNotification() {
+    // 1) Il browser supporta notifiche?
+    if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
+
+    // 2) Richiedi permesso se non ancora concesso
+    if (Notification.permission === 'default') {
+        const result = await Notification.requestPermission();
+        if (result !== 'granted') return;
+    }
+    if (Notification.permission !== 'granted') return;
+
+    // 3) Calcola ms fino al prossimo orario target (oggi o domani)
+    const now    = new Date();
+    const target = new Date(now);
+    target.setHours(WEIGHT_NOTIF_HOUR, WEIGHT_NOTIF_MIN, 0, 0);
+    if (target <= now) target.setDate(target.getDate() + 1); // già passato → domani
+
+    const msUntil = target.getTime() - now.getTime();
+
+    // 4) Manda il timer al Service Worker
+    const reg = await navigator.serviceWorker.ready;
+    if (reg && reg.active) {
+        reg.active.postMessage({ type: 'SCHEDULE_WEIGHT_NOTIF', msUntil });
+        console.log('[App] Notifica peso schedulata tra', Math.round(msUntil/60000), 'min');
+    }
 }
 
 const WEIGHT_STORAGE_KEY = 'aw_weight_log';
