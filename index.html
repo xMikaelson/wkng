@@ -6068,7 +6068,10 @@ async function aiFoodAnalyze() {
         aiFoodUpdateTotal();
 
     } catch(e) {
-        showToast('Errore analisi AI: ' + e.message, 'error');
+        const msg = e.message && e.message.toLowerCase().includes('parse')
+            ? '🍽️ Nessun alimento riconosciuto — riprova con una foto del piatto'
+            : 'Errore analisi: ' + e.message;
+        showToast(msg, 'error');
         document.getElementById('ai-food-btn-analyze').style.display = 'block';
     } finally {
         document.getElementById('ai-food-loading').style.display = 'none';
