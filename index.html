@@ -2442,6 +2442,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <div class="settings-row-left"><span class="settings-row-icon">✨</span><span class="settings-row-label">Nuovo Protocollo</span></div>
       <span class="settings-row-arrow">›</span>
     </div>
+    <div class="settings-row" style="margin-top:4px" onclick="testPushNotification()">
+      <div class="settings-row-left"><span class="settings-row-icon">🔔</span><span class="settings-row-label">Test Notifica Push</span></div>
+      <span class="settings-row-arrow">›</span>
+    </div>
     <div class="settings-row" style="margin-top:12px" onclick="closeSettingsAndReset()">
       <div class="settings-row-left"><span class="settings-row-icon">🔄</span><span class="settings-row-label">Reset Dati</span></div>
       <span class="settings-row-arrow">›</span>
@@ -8953,6 +8957,27 @@ function profileHeightInit() {
     const h = localStorage.getItem(HEIGHT_KEY);
     const inp = document.getElementById('bmi-height-input');
     if (h && inp) inp.value = h;
+}
+
+// ── TEST NOTIFICA PUSH ─────────────────────────────────
+async function testPushNotification() {
+    if (!('Notification' in window)) {
+        showToast('Notifiche non supportate su questo browser', 'error'); return;
+    }
+    if (Notification.permission === 'default') {
+        const result = await Notification.requestPermission();
+        if (result !== 'granted') { showToast('Permesso notifiche negato', 'error'); return; }
+    }
+    if (Notification.permission !== 'granted') {
+        showToast('Abilita le notifiche nelle impostazioni', 'error'); return;
+    }
+    const reg = await navigator.serviceWorker.ready;
+    if (reg && reg.active) {
+        reg.active.postMessage({ type: 'SCHEDULE_WEIGHT_NOTIF', msUntil: 3000 });
+        showToast('Notifica in arrivo tra 3 secondi...', 'success');
+    } else {
+        showToast('Service Worker non pronto', 'error');
+    }
 }
 
 // ── NOTIFICA PESO GIORNALIERA ──────────────────────────
