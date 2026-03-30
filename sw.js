@@ -1,4 +1,4 @@
-const CACHE_NAME = 'awakening-v148';
+const CACHE_NAME = 'awakening-v149';
 
 // Files to cache for offline use
 const STATIC_ASSETS = [
@@ -69,4 +69,63 @@ self.addEventListener('fetch', event => {
             });
         })
     );
+});
+
+// ── PESO REMINDER ──────────────────────────────────────
+// Il client manda { type:'SCHEDULE_WEIGHT_NOTIF', msUntil } via postMessage.
+let _weightNotifTimer = null;
+
+self.addEventListener('message', event => {
+    const data = event.data;
+    if (!data || data.type !== 'SCHEDULE_WEIGHT_NOTIF') return;
+
+    if (_weightNotifTimer) { clearTimeout(_weightNotifTimer); _weightNotifTimer = null; }
+
+    const msUntil = data.msUntil;
+    if (typeof msUntil !== 'number' || msUntil < 0) return;
+
+    console.log('[SW] Notifica peso tra', Math.round(msUntil/1000/60), 'minuti');
+
+    _weightNotifTimer = setTimeout(() => {
+        _weightNotifTimer = null;
+        self.registration.showNotification('\u2696\ufe0f Awakening', {
+            body: 'Hai registrato il peso oggi? Aprimi per aggiornarlo!',
+            icon: './icon-192.png',
+            badge: './icon-192.png',
+            tag: 'peso-giornaliero',
+            renotify: true,
+            data: { url: './' }
+        });
+    }, msUntil);
+});
+
+// Tap sulla notifica: apre/focusa la PWA
+self.addEventListener('notificationclick', event => {
+    event.notification.close();
+    const target = (event.notification.data && event.notification.data.url) || './';
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+            for (const client of list) {
+                if (client.url.includes(self.location.origin) && 'focus' in client) {
+                    return client.focus();
+                }
+            }
+            if (clients.openWindow) return clients.openWindow(target);
+        })
+    );
+});
+
+// Push remoto (per uso futuro con server push)
+self.addEventListener('push', event => {
+    const payload = event.data ? event.data.json() : {};
+    const title   = payload.title || '\u2696\ufe0f Awakening';
+    const options = {
+        body:     payload.body || 'Ricordati di registrare il peso!',
+        icon:     './icon-192.png',
+        badge:    './icon-192.png',
+        tag:      'peso-giornaliero',
+        renotify: true,
+        data:     { url: './' }
+    };
+    event.waitUntil(self.registration.showNotification(title, options));
 });
