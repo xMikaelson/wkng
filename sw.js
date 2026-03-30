@@ -89,7 +89,7 @@ self.addEventListener('message', event => {
     _weightNotifTimer = setTimeout(() => {
         _weightNotifTimer = null;
         self.registration.showNotification('\u2696\ufe0f Awakening', {
-            body: 'Hai registrato il peso oggi? Aprimi per aggiornarlo!',
+            body: 'Le notifiche funzionano 2705',
             icon: './icon-192.png',
             badge: './icon-192.png',
             tag: 'peso-giornaliero',
