@@ -6106,15 +6106,68 @@ function aiFoodRenderComponents() {
     document.getElementById('ai-food-total').style.display = 'block';
 }
 
+const _IT_GDO = ['COOP','ESSELUNGA','CONAD','LIDL','EUROSPIN','ALDI','CARREFOUR','PAMS','SELEX','DESPAR','SIGMA','PEWEX','IPER','IL GIGANTE','SIMPLY','U2','ACQUA&SAPONE'];
+
+function _offParseProd(p, fallbackName) {
+    const n = p.nutriments||{};
+    if (!n['energy-kcal_100g'] && !n['energy-kcal-100g']) return null;
+    return {
+        name: p.product_name || fallbackName,
+        brand: (p.brands||'').split(',')[0].trim().toUpperCase() || null,
+        kcal100: Math.round(n['energy-kcal_100g']||n['energy-kcal-100g']||(n['energy-kj_100g']||0)/4.184),
+        p100: parseFloat((n['proteins_100g']||0).toFixed(1)),
+        c100: parseFloat((n['carbohydrates_100g']||0).toFixed(1)),
+        f100: parseFloat((n['fat_100g']||0).toFixed(1)),
+        serving_size: p.serving_size||null, serving_quantity: p.serving_quantity||null,
+        _source: 'Open Food Facts'
+    };
+}
+
+function _sortByItalian(products) {
+    return [...products].sort((a, b) => {
+        const aGdo = _IT_GDO.includes(a.brand||'') ? 0 : 1;
+        const bGdo = _IT_GDO.includes(b.brand||'') ? 0 : 1;
+        return aGdo - bGdo;
+    });
+}
+
+async function _fetchOFF(term, limit) {
+    const results = [];
+    // Prima: prodotti italiani per scansioni
+    try {
+        const r = await fetch(
+            'https://it.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(term)+
+            '&search_simple=1&action=process&json=1&fields=product_name,brands,nutriments,serving_size,serving_quantity'+
+            '&tagtype_0=countries&tag_contains_0=contains&tag_0=italy&sort_by=unique_scans_n&page_size='+limit,
+            {signal:AbortSignal.timeout(5000)}
+        );
+        const d = await r.json();
+        (d.products||[]).forEach(p => { const x=_offParseProd(p,term); if(x) results.push(x); });
+    } catch(e) {}
+    // Fallback: globale se pochi risultati italiani
+    if (results.length < 2) {
+        try {
+            const r = await fetch(
+                'https://it.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(term)+
+                '&search_simple=1&action=process&json=1&fields=product_name,brands,nutriments,serving_size,serving_quantity'+
+                '&sort_by=unique_scans_n&page_size='+limit,
+                {signal:AbortSignal.timeout(5000)}
+            );
+            const d = await r.json();
+            (d.products||[]).forEach(p => { const x=_offParseProd(p,term); if(x) results.push(x); });
+        } catch(e) {}
+    }
+    return _sortByItalian(results);
+}
+
 async function aiFoodSearchForComponent(idx) {
     const c = _aiFoodComponents[idx];
-    // Mostra stato di caricamento nel componente
     const productsEl = document.getElementById('ai-comp-products-' + idx);
     if (productsEl) productsEl.innerHTML = '<div style="font-size:0.6rem;color:#64748b;padding:4px 0;">🔍 Ricerca in corso...</div>';
 
     const products = [];
     const seen = new Set();
-    const addP = (p) => { const k = (p.barcode||p.name||'').toLowerCase(); if(!seen.has(k)){seen.add(k);products.push(p);} };
+    const addP = (p) => { const k=(p.barcode||p.name||'').toLowerCase(); if(!seen.has(k)){seen.add(k);products.push(p);} };
     const terms = [...new Set((c.keywords||[c.name.split(' ')[0]]).map(t=>t.toLowerCase()).filter(t=>t.length>2))].slice(0,2);
 
     for (const term of terms) {
@@ -6125,19 +6178,8 @@ async function aiFoodSearchForComponent(idx) {
     }
     for (const term of terms) {
         if (products.length >= 4) break;
-        try {
-            const r = await fetch('https://it.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(term)+'&search_simple=1&action=process&json=1&fields=product_name,brands,nutriments,serving_size,serving_quantity&sort_by=unique_scans_n&page_size=4', {signal:AbortSignal.timeout(5000)});
-            const d = await r.json();
-            (d.products||[]).forEach(p => {
-                const n = p.nutriments||{};
-                if (!n['energy-kcal_100g'] && !n['energy-kcal-100g']) return;
-                addP({name:p.product_name||term, brand:(p.brands||'').split(',')[0].trim().toUpperCase()||null,
-                    kcal100:Math.round(n['energy-kcal_100g']||n['energy-kcal-100g']||(n['energy-kj_100g']||0)/4.184),
-                    p100:parseFloat((n['proteins_100g']||0).toFixed(1)), c100:parseFloat((n['carbohydrates_100g']||0).toFixed(1)),
-                    f100:parseFloat((n['fat_100g']||0).toFixed(1)), serving_size:p.serving_size||null, serving_quantity:p.serving_quantity||null,
-                    _source:'Open Food Facts'});
-            });
-        } catch(e) {}
+        const offResults = await _fetchOFF(term, 4);
+        offResults.forEach(p => addP(p));
     }
     aiFoodRenderProductsForComponent(idx, products.slice(0,4));
 }
@@ -6227,19 +6269,8 @@ function aiFoodSearchManual(input, idx) {
             const {data} = await sbClient.from('aw_products').select('*').ilike('name','%'+query+'%').limit(3);
             if (data?.length) data.forEach(p => addP({...p,_source:'Awakening DB'}));
         } catch(e) {}
-        try {
-            const r = await fetch('https://it.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(query)+'&search_simple=1&action=process&json=1&fields=product_name,brands,nutriments,serving_size,serving_quantity&sort_by=unique_scans_n&page_size=4', {signal:AbortSignal.timeout(5000)});
-            const d = await r.json();
-            (d.products||[]).forEach(p => {
-                const n=p.nutriments||{};
-                if(!n['energy-kcal_100g']&&!n['energy-kcal-100g']) return;
-                addP({name:p.product_name||query, brand:(p.brands||'').split(',')[0].trim().toUpperCase()||null,
-                    kcal100:Math.round(n['energy-kcal_100g']||n['energy-kcal-100g']||(n['energy-kj_100g']||0)/4.184),
-                    p100:parseFloat((n['proteins_100g']||0).toFixed(1)), c100:parseFloat((n['carbohydrates_100g']||0).toFixed(1)),
-                    f100:parseFloat((n['fat_100g']||0).toFixed(1)), serving_size:p.serving_size||null, serving_quantity:p.serving_quantity||null,
-                    _source:'Open Food Facts'});
-            });
-        } catch(e) {}
+        const offResults = await _fetchOFF(query, 4);
+        offResults.forEach(p => addP(p));
         resultsEl.innerHTML = '';
         if (!results.length) { resultsEl.style.display='none'; return; }
         results.slice(0,5).forEach(p => {
