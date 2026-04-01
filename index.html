@@ -2452,8 +2452,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <div class="settings-row-left"><span class="settings-row-icon">✨</span><span class="settings-row-label">Nuovo Protocollo</span></div>
       <span class="settings-row-arrow">›</span>
     </div>
+    <div class="settings-row" style="margin-top:4px" onclick="activatePushNotifications()" id="settings-row-push">
+      <div class="settings-row-left"><span class="settings-row-icon">🔔</span><span class="settings-row-label" id="settings-push-label">Attiva Notifiche</span></div>
+      <span class="settings-row-arrow" id="settings-push-arrow">›</span>
+    </div>
     <div class="settings-row" style="margin-top:4px" onclick="testPushNotification()">
-      <div class="settings-row-left"><span class="settings-row-icon">🔔</span><span class="settings-row-label">Test Notifica Push</span></div>
+      <div class="settings-row-left"><span class="settings-row-icon">🧪</span><span class="settings-row-label">Test Notifica Push</span></div>
       <span class="settings-row-arrow">›</span>
     </div>
     <div class="settings-row" style="margin-top:12px" onclick="closeSettingsAndReset()">
@@ -3605,8 +3609,7 @@ async function onLoginSuccess(user, usernameOverride = null) {
     setTimeout(() => { nutUpdateUI(); nutTlUpdateUI(); }, 50);
 
     showToast('Bentornato, ' + username + '!', 'success');
-    // Schedula notifica promemoria peso
-    scheduleWeightNotification();
+    // La subscription push viene registrata dall'utente tramite il pulsante in Impostazioni
     updateWeightBadge();
 }
 
@@ -7143,6 +7146,7 @@ function navSwitch(tab) {
         const progPage = document.getElementById('page-progress');
         if (progPage) { progPage.classList.add('active'); updateProgressPage(); }
         updateWeightBadge();
+        updatePushSettingsRow();
     } else if (tab === 'piani') {
         const plPage = document.getElementById('page-plans');
         if (plPage) { plPage.classList.add('active'); renderPlanPage(APP.selectedViewWeek || 0); }
@@ -8985,6 +8989,47 @@ function updateWeightBadge() {
     badge.classList.toggle('visible', !hasPeso);
 }
 
+// ── ATTIVA NOTIFICHE (gesto utente richiesto da iOS) ───
+async function activatePushNotifications() {
+    if (!('Notification' in window) || !('PushManager' in window)) {
+        showToast('Notifiche non supportate su questo browser', 'error'); return;
+    }
+    if (Notification.permission === 'denied') {
+        showToast('Notifiche bloccate. Abilitale in Impostazioni > Safari > Notifiche', 'error'); return;
+    }
+    // Richiedi permesso — questo fa apparire il popup iOS
+    const result = await Notification.requestPermission();
+    if (result !== 'granted') {
+        showToast('Permesso notifiche negato', 'error');
+        updatePushSettingsRow();
+        return;
+    }
+    // Registra la subscription
+    await registerPushSubscription();
+    updatePushSettingsRow();
+    showToast('Notifiche attivate!', 'success');
+}
+
+function updatePushSettingsRow() {
+    const label = document.getElementById('settings-push-label');
+    const arrow = document.getElementById('settings-push-arrow');
+    const row   = document.getElementById('settings-row-push');
+    if (!label) return;
+    if (Notification.permission === 'granted') {
+        label.textContent = 'Notifiche Attive ✅';
+        if (arrow) arrow.textContent = '';
+        if (row)   row.style.opacity = '0.6';
+    } else if (Notification.permission === 'denied') {
+        label.textContent = 'Notifiche Bloccate ❌';
+        if (arrow) arrow.textContent = '';
+        if (row)   row.style.opacity = '0.6';
+    } else {
+        label.textContent = 'Attiva Notifiche';
+        if (arrow) arrow.textContent = '›';
+        if (row)   row.style.opacity = '1';
+    }
+}
+
 // ── TEST NOTIFICA PUSH ─────────────────────────────────
 async function testPushNotification() {
     if (!('Notification' in window)) {
@@ -9065,17 +9110,18 @@ async function registerPushSubscription() {
 }
 
 async function savePushSubscriptionToSupabase(subscription) {
-    const username = localStorage.getItem('aw_username');
-    if (!username) return;
+    const username = (typeof APP !== 'undefined' && APP.userName) ? APP.userName : null;
+    if (!username) { console.warn('[Push] userName non disponibile, skip salvataggio'); return; }
     try {
-        await sbClient.from('push_subscriptions').upsert({
+        const { error } = await sbClient.from('push_subscriptions').upsert({
             user_id: username,
             subscription: subscription.toJSON(),
             updated_at: new Date().toISOString()
         }, { onConflict: 'user_id' });
-        console.log('[Push] Subscription salvata su Supabase');
+        if (error) console.warn('[Push] Errore Supabase:', error.message);
+        else console.log('[Push] Subscription salvata per', username);
     } catch(e) {
-        console.warn('[Push] Errore salvataggio Supabase:', e.message);
+        console.warn('[Push] Errore salvataggio:', e.message);
     }
 }
 
