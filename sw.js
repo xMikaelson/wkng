@@ -1,6 +1,5 @@
-const CACHE_NAME = 'awakening-v149';
+const CACHE_NAME = 'awakening-v151';
 
-// Files to cache for offline use
 const STATIC_ASSETS = [
     './',
     './index.html',
@@ -11,7 +10,6 @@ const STATIC_ASSETS = [
     'https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js'
 ];
 
-// Install — cache static assets
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
@@ -21,7 +19,6 @@ self.addEventListener('install', event => {
     self.skipWaiting();
 });
 
-// Activate — clean old caches
 self.addEventListener('activate', event => {
     event.waitUntil(
         caches.keys().then(keys =>
@@ -34,69 +31,54 @@ self.addEventListener('activate', event => {
     self.clients.claim();
 });
 
-// Fetch — cache first for static, network first for API
 self.addEventListener('fetch', event => {
     const url = new URL(event.request.url);
+    const alwaysLive = ['supabase.co', 'openfoodfacts.org', 'youtube.com', 'googleapis.com', 'anthropic.com'];
+    if (alwaysLive.some(domain => url.hostname.includes(domain))) return;
 
-    // Always fetch live: Supabase, Open Food Facts, YouTube
-    const alwaysLive = [
-        'supabase.co',
-        'openfoodfacts.org',
-        'youtube.com',
-        'googleapis.com',
-        'anthropic.com'
-    ];
-    if (alwaysLive.some(domain => url.hostname.includes(domain))) {
-        return; // let browser handle normally
-    }
-
-    // Cache first for everything else (app shell, CDN libraries)
     event.respondWith(
         caches.match(event.request).then(cached => {
             if (cached) return cached;
             return fetch(event.request).then(response => {
-                // Cache successful GET responses
                 if (event.request.method === 'GET' && response.status === 200) {
                     const clone = response.clone();
                     caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
                 }
                 return response;
             }).catch(() => {
-                // Offline fallback for navigation requests
-                if (event.request.mode === 'navigate') {
-                    return caches.match('./index.html');
-                }
+                if (event.request.mode === 'navigate') return caches.match('./index.html');
             });
         })
     );
 });
 
-// ── PESO REMINDER ──────────────────────────────────────
-// Il client manda { type:'SCHEDULE_WEIGHT_NOTIF', msUntil } via postMessage.
-let _weightNotifTimer = null;
+// Notifica push dal server Supabase
+self.addEventListener('push', event => {
+    let title = '\u2696\ufe0f Awakening';
+    let body  = 'Hai un promemoria da Awakening!';
+    let tag   = 'awakening-reminder';
 
-self.addEventListener('message', event => {
-    const data = event.data;
-    if (!data || data.type !== 'SCHEDULE_WEIGHT_NOTIF') return;
+    if (event.data) {
+        try {
+            const payload = event.data.json();
+            if (payload.title) title = payload.title;
+            if (payload.body)  body  = payload.body;
+            if (payload.tag)   tag   = payload.tag;
+        } catch(e) {
+            body = event.data.text() || body;
+        }
+    }
 
-    if (_weightNotifTimer) { clearTimeout(_weightNotifTimer); _weightNotifTimer = null; }
-
-    const msUntil = data.msUntil;
-    if (typeof msUntil !== 'number' || msUntil < 0) return;
-
-    console.log('[SW] Notifica peso tra', Math.round(msUntil/1000/60), 'minuti');
-
-    _weightNotifTimer = setTimeout(() => {
-        _weightNotifTimer = null;
-        self.registration.showNotification('\u2696\ufe0f Awakening', {
-            body: 'Le notifiche funzionano 2705',
-            icon: './icon-192.png',
-            badge: './icon-192.png',
-            tag: 'peso-giornaliero',
-            renotify: true,
-            data: { url: './' }
-        });
-    }, msUntil);
+    event.waitUntil(
+        self.registration.showNotification(title, {
+            body,
+            icon:      './icon-192.png',
+            badge:     './icon-192.png',
+            tag,
+            renotify:  true,
+            data:      { url: './' }
+        })
+    );
 });
 
 // Tap sulla notifica: apre/focusa la PWA
@@ -113,19 +95,4 @@ self.addEventListener('notificationclick', event => {
             if (clients.openWindow) return clients.openWindow(target);
         })
     );
-});
-
-// Push remoto (per uso futuro con server push)
-self.addEventListener('push', event => {
-    const payload = event.data ? event.data.json() : {};
-    const title   = payload.title || '\u2696\ufe0f Awakening';
-    const options = {
-        body:     payload.body || 'Ricordati di registrare il peso!',
-        icon:     './icon-192.png',
-        badge:    './icon-192.png',
-        tag:      'peso-giornaliero',
-        renotify: true,
-        data:     { url: './' }
-    };
-    event.waitUntil(self.registration.showNotification(title, options));
 });

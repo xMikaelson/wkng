@@ -8997,46 +8997,91 @@ async function testPushNotification() {
     if (Notification.permission !== 'granted') {
         showToast('Abilita le notifiche nelle impostazioni', 'error'); return;
     }
-    const reg = await navigator.serviceWorker.ready;
-    if (reg && reg.active) {
-        reg.active.postMessage({ type: 'SCHEDULE_WEIGHT_NOTIF', msUntil: 3000 });
-        showToast('Notifica in arrivo tra 3 secondi...', 'success');
-    } else {
-        showToast('Service Worker non pronto', 'error');
+    // Mostra subito la notifica tramite SW (bypass del check data per il test)
+    try {
+        const reg = await navigator.serviceWorker.ready;
+        await reg.showNotification('⚖️ Awakening', {
+            body: 'Le notifiche funzionano ✅',
+            icon: './icon-192.png',
+            badge: './icon-192.png',
+            tag: 'peso-test',
+            data: { url: './' }
+        });
+        showToast('Notifica inviata!', 'success');
+    } catch(e) {
+        showToast('Errore: ' + e.message, 'error');
     }
 }
 
-// ── NOTIFICA PESO GIORNALIERA ──────────────────────────
-// TEST: 12:05 | PRODUZIONE: 08:00
-// Cambia TEST_HOUR/TEST_MIN con PROD_HOUR/PROD_MIN per il lancio
-const WEIGHT_NOTIF_HOUR = 8;
-const WEIGHT_NOTIF_MIN  = 0;
+// ── WEB PUSH — registrazione subscription VAPID ─────────────────────
+// La chiave pubblica VAPID identifica il server Supabase che manderà le notifiche.
+// La subscription (endpoint + chiavi) viene salvata su Supabase in push_subscriptions.
 
-async function scheduleWeightNotification() {
-    // 1) Il browser supporta notifiche?
-    if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
+const VAPID_PUBLIC_KEY = 'BP_HHDsYlfkdxEZcoU7JeR9g-tH4f_lAqUA84TEAZnHF1v7D368z5SDXKCsvPQDcjVklKOt1pZ3-LuO6lksBgTo';
+const PUSH_SUB_STORAGE_KEY = 'aw_push_subscribed';
 
-    // 2) Richiedi permesso se non ancora concesso
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = atob(base64);
+    return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+
+async function registerPushSubscription() {
+    if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+        console.log('[Push] Non supportato su questo browser');
+        return;
+    }
+
+    // Richiedi permesso notifiche
     if (Notification.permission === 'default') {
         const result = await Notification.requestPermission();
         if (result !== 'granted') return;
     }
     if (Notification.permission !== 'granted') return;
 
-    // 3) Calcola ms fino al prossimo orario target (oggi o domani)
-    const now    = new Date();
-    const target = new Date(now);
-    target.setHours(WEIGHT_NOTIF_HOUR, WEIGHT_NOTIF_MIN, 0, 0);
-    if (target <= now) target.setDate(target.getDate() + 1); // già passato → domani
+    try {
+        const reg = await navigator.serviceWorker.ready;
 
-    const msUntil = target.getTime() - now.getTime();
+        // Controlla se già sottoscritto
+        const existing = await reg.pushManager.getSubscription();
+        if (existing) {
+            // Già registrato: assicurati che sia salvato su Supabase
+            await savePushSubscriptionToSupabase(existing);
+            return;
+        }
 
-    // 4) Manda il timer al Service Worker
-    const reg = await navigator.serviceWorker.ready;
-    if (reg && reg.active) {
-        reg.active.postMessage({ type: 'SCHEDULE_WEIGHT_NOTIF', msUntil });
-        console.log('[App] Notifica peso schedulata tra', Math.round(msUntil/60000), 'min');
+        // Crea nuova subscription
+        const subscription = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+        });
+
+        await savePushSubscriptionToSupabase(subscription);
+        console.log('[Push] Subscription registrata con successo');
+    } catch(e) {
+        console.warn('[Push] Errore registrazione:', e.message);
     }
+}
+
+async function savePushSubscriptionToSupabase(subscription) {
+    const username = localStorage.getItem('aw_username');
+    if (!username) return;
+    try {
+        await sbClient.from('push_subscriptions').upsert({
+            user_id: username,
+            subscription: subscription.toJSON(),
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+        console.log('[Push] Subscription salvata su Supabase');
+    } catch(e) {
+        console.warn('[Push] Errore salvataggio Supabase:', e.message);
+    }
+}
+
+// Mantenuta per compatibilità: ora chiama registerPushSubscription
+async function scheduleWeightNotification() {
+    await registerPushSubscription();
 }
 
 const WEIGHT_STORAGE_KEY = 'aw_weight_log';
