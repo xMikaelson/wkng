@@ -1,4 +1,4 @@
-const CACHE_NAME = 'awakening-v151';
+const CACHE_NAME = 'awakening-v152';
 
 const STATIC_ASSETS = [
     './',
@@ -60,13 +60,19 @@ self.addEventListener('push', event => {
 
     if (event.data) {
         try {
-            const payload = event.data.json();
-            if (payload.title) title = payload.title;
-            if (payload.body)  body  = payload.body;
-            if (payload.tag)   tag   = payload.tag;
+            const text = event.data.text();
+            console.log('[SW] Push ricevuto:', text);
+            if (text && text.trim().startsWith('{')) {
+                const payload = JSON.parse(text);
+                if (payload.title) title = payload.title;
+                if (payload.body)  body  = payload.body;
+                if (payload.tag)   tag   = payload.tag;
+            }
         } catch(e) {
-            body = event.data.text() || body;
+            console.warn('[SW] Errore parsing push:', e);
         }
+    } else {
+        console.log('[SW] Push ricevuto senza data');
     }
 
     event.waitUntil(
@@ -76,6 +82,7 @@ self.addEventListener('push', event => {
             badge:     './icon-192.png',
             tag,
             renotify:  true,
+            silent:    false,
             data:      { url: './' }
         })
     );
