@@ -8997,6 +8997,15 @@ function updateWeightBadge() {
 }
 
 // ── ATTIVA NOTIFICHE (gesto utente richiesto da iOS) ───
+// Helper: restituisce il permesso notifiche reale (localStorage come fallback per iOS Safari)
+function getNotifPermission() {
+    if ('Notification' in window && Notification.permission !== 'default') {
+        return Notification.permission;
+    }
+    // iOS Safari non aggiorna Notification.permission in tempo reale → usa localStorage
+    return localStorage.getItem('aw_notif_permission') || Notification.permission || 'default';
+}
+
 async function activatePushNotifications() {
     if (!('Notification' in window) || !('PushManager' in window)) {
         showToast('Notifiche non supportate su questo browser', 'error'); return;
@@ -9006,6 +9015,8 @@ async function activatePushNotifications() {
     }
     // Richiedi permesso — questo fa apparire il popup iOS
     const result = await Notification.requestPermission();
+    // Salva in localStorage per iOS Safari che non aggiorna Notification.permission live
+    localStorage.setItem('aw_notif_permission', result);
     if (result !== 'granted') {
         showToast('Permesso notifiche negato', 'error');
         updatePushSettingsRow();
@@ -9022,11 +9033,11 @@ function updatePushSettingsRow() {
     const arrow = document.getElementById('settings-push-arrow');
     const row   = document.getElementById('settings-row-push');
     if (!label) return;
-    if (Notification.permission === 'granted') {
+    if (getNotifPermission() === 'granted') {
         label.textContent = 'Notifiche Attive ✅';
         if (arrow) arrow.textContent = '';
         if (row)   row.style.opacity = '0.6';
-    } else if (Notification.permission === 'denied') {
+    } else if (getNotifPermission() === 'denied') {
         label.textContent = 'Notifiche Bloccate ❌';
         if (arrow) arrow.textContent = '';
         if (row)   row.style.opacity = '0.6';
@@ -9180,7 +9191,7 @@ function renderNotifDebug() {
             '</div>';
     }
 
-    const permStatus = ('Notification' in window) ? Notification.permission : 'non supportato';
+    const permStatus = ('Notification' in window) ? getNotifPermission() : 'non supportato';
     const permColor  = permStatus === 'granted' ? '#34d399' : '#f43f5e';
     html += '<div style="margin-top:8px;font-size:0.6rem;color:' + permColor + '">Permesso: ' + permStatus + '</div>';
 
@@ -9200,7 +9211,7 @@ const CLIENT_NOTIF_SCHEDULE = [
 let _clientNotifTimers = [];
 
 async function scheduleClientNotifications() {
-    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    if (!('Notification' in window) || getNotifPermission() !== 'granted') return;
     _clientNotifTimers.forEach(t => clearTimeout(t));
     _clientNotifTimers = [];
     const now = new Date();
