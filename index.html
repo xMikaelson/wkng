@@ -2460,6 +2460,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <div class="settings-row-left"><span class="settings-row-icon">🧪</span><span class="settings-row-label">Test Notifica Push</span></div>
       <span class="settings-row-arrow">›</span>
     </div>
+    <div class="settings-row" style="margin-top:4px" onclick="toggleNotifDebug()">
+      <div class="settings-row-left"><span class="settings-row-icon">🕐</span><span class="settings-row-label">Debug Orari Notifiche</span></div>
+      <span class="settings-row-arrow" id="notif-debug-arrow">›</span>
+    </div>
+    <div id="notif-debug-panel" style="display:none; background:rgba(255,255,255,0.03); border-radius:10px; padding:10px 14px; margin-bottom:4px;">
+      <div id="notif-debug-list"></div>
+    </div>
     <div class="settings-row" style="margin-top:12px" onclick="closeSettingsAndReset()">
       <div class="settings-row-left"><span class="settings-row-icon">🔄</span><span class="settings-row-label">Reset Dati</span></div>
       <span class="settings-row-arrow">›</span>
@@ -9125,9 +9132,101 @@ async function savePushSubscriptionToSupabase(subscription) {
     }
 }
 
-// Mantenuta per compatibilità: ora chiama registerPushSubscription
+// Mantenuta per compatibilità: ora chiama registerPushSubscription + schedula client-side
 async function scheduleWeightNotification() {
     await registerPushSubscription();
+    scheduleClientNotifications();
+}
+
+// ── DEBUG ORARI NOTIFICHE ──────────────────────────────
+function toggleNotifDebug() {
+    const panel = document.getElementById('notif-debug-panel');
+    const arrow = document.getElementById('notif-debug-arrow');
+    if (!panel) return;
+    const open = panel.style.display === 'block';
+    panel.style.display = open ? 'none' : 'block';
+    if (arrow) arrow.textContent = open ? '›' : '‹';
+    if (!open) renderNotifDebug();
+}
+
+function renderNotifDebug() {
+    const list = document.getElementById('notif-debug-list');
+    if (!list) return;
+
+    const now = new Date();
+    const todayKey = now.toISOString().split('T')[0];
+
+    // Leggi da localStorage quali notifiche sono state mostrate oggi
+    let fired = {};
+    try { fired = JSON.parse(localStorage.getItem('aw_notif_fired') || '{}'); } catch(e) {}
+
+    let html = '';
+    for (const notif of CLIENT_NOTIF_SCHEDULE) {
+        const hh  = String(notif.h).padStart(2, '0');
+        const mm  = String(notif.m).padStart(2, '0');
+        const key = todayKey + '-' + notif.h + '-' + notif.m;
+
+        const target = new Date(now);
+        target.setHours(notif.h, notif.m, 0, 0);
+
+        const isFired   = !!fired[key];
+        const isPast    = target <= now;
+        const statusIcon = isFired ? '✅' : (isPast ? '❌' : '⏰');
+        const statusColor = isFired ? '#34d399' : (isPast ? '#f43f5e' : '#94a3b8');
+
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05)">' +
+            '<span style="font-size:0.72rem;color:#e2e8f0">' + notif.title + ' <span style="color:#475569;font-size:0.62rem">' + hh + ':' + mm + '</span></span>' +
+            '<span style="font-size:1rem;color:' + statusColor + '">' + statusIcon + '</span>' +
+            '</div>';
+    }
+
+    const permStatus = ('Notification' in window) ? Notification.permission : 'non supportato';
+    const permColor  = permStatus === 'granted' ? '#34d399' : '#f43f5e';
+    html += '<div style="margin-top:8px;font-size:0.6rem;color:' + permColor + '">Permesso: ' + permStatus + '</div>';
+
+    list.innerHTML = html;
+}
+
+// NOTIFICHE CLIENT-SIDE (backup quando l'app e' in background)
+const CLIENT_NOTIF_SCHEDULE = [
+    { h:7,  m:15, title:'\u2696\ufe0f Peso',         body:'Buongiorno! Registra il tuo peso di oggi.' },
+    { h:8,  m:0,  title:'\u2615 Colazione',          body:'Ora di colazione! Ricordati di loggarla su Awakening.' },
+    { h:10, m:30, title:'\U0001f34e Snack + Acqua',  body:'Spuntino di meta mattina! Hai bevuto abbastanza acqua?' },
+    { h:13, m:0,  title:'\U0001f35d Pranzo',         body:'Ora di pranzo! Registra il pasto su Awakening.' },
+    { h:16, m:0,  title:'\U0001f34a Snack + Acqua',  body:'Spuntino pomeridiano! Ricordati di bere.' },
+    { h:20, m:0,  title:'\U0001f37d\ufe0f Cena',     body:'Ora di cena! Registra il pasto su Awakening.' },
+];
+
+let _clientNotifTimers = [];
+
+async function scheduleClientNotifications() {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    _clientNotifTimers.forEach(t => clearTimeout(t));
+    _clientNotifTimers = [];
+    const now = new Date();
+    for (const notif of CLIENT_NOTIF_SCHEDULE) {
+        const target = new Date(now);
+        target.setHours(notif.h, notif.m, 0, 0);
+        if (target <= now) continue;
+        const msUntil = target.getTime() - now.getTime();
+        const timer = setTimeout(async () => {
+            try {
+                const reg = await navigator.serviceWorker.ready;
+                await reg.showNotification(notif.title, {
+                    body: notif.body, icon: './icon-192.png', badge: './icon-192.png',
+                    tag: 'awakening-' + notif.h + '-' + notif.m, renotify: true, data: { url: './' }
+                });
+                // Segna come fired
+                const todayK = new Date().toISOString().split('T')[0];
+                const firedKey = todayK + '-' + notif.h + '-' + notif.m;
+                let fired = {}; try { fired = JSON.parse(localStorage.getItem('aw_notif_fired') || '{}'); } catch(e) {}
+                fired[firedKey] = true;
+                localStorage.setItem('aw_notif_fired', JSON.stringify(fired));
+            } catch(e) { console.warn('[ClientNotif] Errore:', e); }
+        }, msUntil);
+        _clientNotifTimers.push(timer);
+        console.log('[ClientNotif]', notif.title, 'tra', Math.round(msUntil/60000), 'min');
+    }
 }
 
 const WEIGHT_STORAGE_KEY = 'aw_weight_log';
