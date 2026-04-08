@@ -131,6 +131,9 @@
         }
         .nav-badge.visible { display: block; }
         .nav-item { position: relative; }
+        .nav-badge { position:absolute; top:2px; right:6px; width:8px; height:8px; border-radius:50%; background:#f43f5e; border:1.5px solid #0f172a; pointer-events:none; display:none; }
+        .nav-badge.visible { display:block; }
+        .nav-item { position:relative; }
         .nav-label { font-size: 0.44rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: #334155; transition: color 0.15s; }
         .nav-item.active .nav-icon { transform: scale(1.15); }
         .nav-item.active .nav-label { color: var(--primary); }
@@ -327,6 +330,26 @@
         /* Progressi page */
         #page-progress { padding-top: 0; padding-left: 0; padding-right: 0; padding-bottom: 20px; }
         .prog-page-title { font-size:1.3rem; font-weight:900; letter-spacing:-0.02em; margin-bottom:16px; }
+        .prog-menu-item { border-radius:14px; overflow:hidden; margin-bottom:8px; border:1px solid rgba(255,255,255,0.06); transition:border-color 0.15s; cursor:pointer; }
+        .prog-menu-item.open { border-color:rgba(var(--pr,52,211,153),0.3); }
+        .prog-menu-row { display:flex; align-items:center; gap:12px; padding:12px 14px; }
+        .prog-menu-icon-wrap { position:relative; flex-shrink:0; }
+        .prog-menu-icon { width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:19px; background:rgba(var(--pr,52,211,153),0.1); border:1px solid rgba(var(--pr,52,211,153),0.2); transition:background 0.3s,border-color 0.3s; }
+        .prog-menu-badge { position:absolute; top:-5px; right:-5px; background:#f43f5e; color:#fff; font-size:7px; font-weight:800; letter-spacing:0.06em; padding:2px 4px; border-radius:6px; border:1.5px solid #0f172a; line-height:1; }
+        .prog-menu-content { flex:1; min-width:0; }
+        .prog-menu-top { display:flex; justify-content:space-between; align-items:center; }
+        .prog-menu-label { font-size:14px; font-weight:600; color:#e2e8f0; }
+        .prog-menu-value { font-size:14px; font-weight:800; color:var(--primary); margin-left:8px; flex-shrink:0; }
+        .prog-menu-bottom { display:flex; justify-content:space-between; align-items:center; margin-top:2px; }
+        .prog-menu-sub { font-size:11px; color:#4b5563; }
+        .prog-menu-pct { font-size:10px; color:#374151; }
+        .prog-menu-bar-wrap { height:3px; background:rgba(255,255,255,0.06); border-radius:99px; overflow:hidden; margin-top:7px; }
+        .prog-menu-bar { height:100%; border-radius:99px; background:var(--primary); transition:width 0.7s cubic-bezier(0.34,1.56,0.64,1),background 0.3s; }
+        .prog-menu-chevron { color:#21262d; font-size:16px; flex-shrink:0; transition:transform 0.2s; }
+        .prog-menu-item.open .prog-menu-chevron { transform:rotate(90deg); }
+        .prog-menu-detail { padding:10px 14px 14px 66px; background:rgba(var(--pr,52,211,153),0.03); border-top:1px solid rgba(255,255,255,0.05); border-left:3px solid rgba(var(--pr,52,211,153),0.25); font-size:12px; color:#6b7280; line-height:1.8; display:none; }
+        .prog-menu-item.open .prog-menu-detail { display:block; }
+        .prog-menu-detail-btn { margin-top:8px; background:rgba(var(--pr,52,211,153),0.1); border:1px solid rgba(var(--pr,52,211,153),0.25); color:var(--primary); border-radius:8px; padding:5px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; }
         .prog-page-title span { color: var(--primary); }
 
 
@@ -2298,6 +2321,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <div class="prog-header">
     <div class="page-title">I tuoi <span>progressi</span></div>
   </div>
+  <div id="prog-menu-list" style="padding:0 16px;margin-bottom:16px;"></div>
+
   <div class="prog-grid" id="prog-grid">
     <div class="prog-card"><div class="prog-card-label">Volume totale</div><div class="prog-card-val" id="prog-vol">—</div><div class="prog-card-sub" id="prog-vol-sub">nessun allenamento</div></div>
     <div class="prog-card"><div class="prog-card-label">PR attivi</div><div class="prog-card-val" id="prog-pr-count">0</div><div class="prog-card-sub" id="prog-pr-names">—</div></div>
@@ -2465,6 +2490,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <span class="settings-row-arrow" id="notif-debug-arrow">›</span>
     </div>
     <div id="notif-debug-panel" style="display:none; background:rgba(255,255,255,0.03); border-radius:10px; padding:10px 14px; margin-bottom:4px;">
+      <div id="notif-debug-list"></div>
+    </div>
+    <div class="settings-row" style="margin-top:4px" onclick="activatePushNotifications()" id="settings-row-push">
+      <div class="settings-row-left"><span class="settings-row-icon">🔔</span><span class="settings-row-label" id="settings-push-label">Attiva Notifiche</span></div>
+      <span class="settings-row-arrow" id="settings-push-arrow">›</span>
+    </div>
+    <div class="settings-row" style="margin-top:4px" onclick="testPushNotification()">
+      <div class="settings-row-left"><span class="settings-row-icon">🧪</span><span class="settings-row-label">Test Notifica Push</span></div>
+      <span class="settings-row-arrow">›</span>
+    </div>
+    <div class="settings-row" style="margin-top:4px" onclick="toggleNotifDebug()">
+      <div class="settings-row-left"><span class="settings-row-icon">🕐</span><span class="settings-row-label">Debug Orari Notifiche</span></div>
+      <span class="settings-row-arrow" id="notif-debug-arrow">›</span>
+    </div>
+    <div id="notif-debug-panel" style="display:none;background:rgba(255,255,255,0.03);border-radius:10px;padding:10px 14px;margin-bottom:4px;">
       <div id="notif-debug-list"></div>
     </div>
     <div class="settings-row" style="margin-top:12px" onclick="closeSettingsAndReset()">
@@ -3616,6 +3656,8 @@ async function onLoginSuccess(user, usernameOverride = null) {
     setTimeout(() => { nutUpdateUI(); nutTlUpdateUI(); }, 50);
 
     showToast('Bentornato, ' + username + '!', 'success');
+    refreshNotifPermission();
+    updateWeightBadge();
     // La subscription push viene registrata dall'utente tramite il pulsante in Impostazioni
     refreshNotifPermission();
     updateWeightBadge();
@@ -4042,7 +4084,355 @@ document.addEventListener('touchend', e => {
 // ════════════════════════════════════════════════
 // PROGRESSI — updateProgressPage
 // ════════════════════════════════════════════════
+// ── BADGE PESO (pallino rosso nav) ─────────────────────
+function updateWeightBadge() {
+    var badge = document.getElementById('weight-nav-badge');
+    if (!badge) return;
+    var now = new Date();
+    if (now.getHours() < 8) { badge.classList.remove('visible'); return; }
+    var today = now.toISOString().split('T')[0];
+    var log = weightGetLog();
+    var hasPeso = log.some(function(e) { return e.date === today; });
+    badge.classList.toggle('visible', !hasPeso);
+}
+
+// ── PERMESSO NOTIFICHE ──────────────────────────────────
+var _cachedNotifPermission = null;
+function getNotifPermission() {
+    if ('Notification' in window && Notification.permission !== 'default') {
+        _cachedNotifPermission = Notification.permission;
+        return Notification.permission;
+    }
+    if (_cachedNotifPermission) return _cachedNotifPermission;
+    return localStorage.getItem('aw_notif_permission') || 'default';
+}
+function refreshNotifPermission() {
+    if (!('Notification' in window)) return;
+    var p = Notification.permission;
+    if (p !== 'default') {
+        _cachedNotifPermission = p;
+        try { localStorage.setItem('aw_notif_permission', p); } catch(e) {}
+    }
+    if (p === 'default' && 'serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then(function(reg) {
+            reg.pushManager.getSubscription().then(function(sub) {
+                if (sub) {
+                    _cachedNotifPermission = 'granted';
+                    try { localStorage.setItem('aw_notif_permission', 'granted'); } catch(e) {}
+                    updatePushSettingsRow();
+                    scheduleClientNotifications();
+                }
+            }).catch(function(){});
+        }).catch(function(){});
+    }
+}
+
+// ── ATTIVA NOTIFICHE ────────────────────────────────────
+async function activatePushNotifications() {
+    if (!('Notification' in window) || !('PushManager' in window)) {
+        showToast('Notifiche non supportate su questo browser', 'error'); return;
+    }
+    if (Notification.permission === 'denied') {
+        showToast('Notifiche bloccate. Abilitale in Impostazioni > Safari', 'error'); return;
+    }
+    var result = await Notification.requestPermission();
+    localStorage.setItem('aw_notif_permission', result);
+    _cachedNotifPermission = result;
+    if (result !== 'granted') {
+        showToast('Permesso notifiche negato', 'error');
+        updatePushSettingsRow(); return;
+    }
+    await registerPushSubscription();
+    updatePushSettingsRow();
+    showToast('Notifiche attivate!', 'success');
+}
+
+function updatePushSettingsRow() {
+    var label = document.getElementById('settings-push-label');
+    var arrow = document.getElementById('settings-push-arrow');
+    var row   = document.getElementById('settings-row-push');
+    if (!label) return;
+    var p = getNotifPermission();
+    if (p === 'granted') {
+        label.textContent = 'Notifiche Attive \u2705';
+        if (arrow) arrow.textContent = '';
+        if (row)   row.style.opacity = '0.6';
+    } else if (p === 'denied') {
+        label.textContent = 'Notifiche Bloccate \u274c';
+        if (arrow) arrow.textContent = '';
+        if (row)   row.style.opacity = '0.6';
+    } else {
+        label.textContent = 'Attiva Notifiche';
+        if (arrow) arrow.textContent = '\u203a';
+        if (row)   row.style.opacity = '1';
+    }
+}
+
+// ── TEST NOTIFICA PUSH ──────────────────────────────────
+async function testPushNotification() {
+    if (!('Notification' in window)) {
+        showToast('Notifiche non supportate su questo browser', 'error'); return;
+    }
+    if (Notification.permission === 'default') {
+        var result = await Notification.requestPermission();
+        if (result !== 'granted') { showToast('Permesso notifiche negato', 'error'); return; }
+    }
+    if (Notification.permission !== 'granted') {
+        showToast('Abilita le notifiche nelle impostazioni', 'error'); return;
+    }
+    try {
+        var reg = await navigator.serviceWorker.ready;
+        await reg.showNotification('\u2696\ufe0f Awakening', {
+            body: 'Le notifiche funzionano \u2705',
+            icon: './icon-192.png', badge: './icon-192.png',
+            tag: 'peso-test', data: { url: './' }
+        });
+        showToast('Notifica inviata!', 'success');
+    } catch(e) {
+        showToast('Errore: ' + e.message, 'error');
+    }
+}
+
+// ── DEBUG ORARI NOTIFICHE ───────────────────────────────
+function toggleNotifDebug() {
+    var panel = document.getElementById('notif-debug-panel');
+    var arrow = document.getElementById('notif-debug-arrow');
+    if (!panel) return;
+    var open = panel.style.display === 'block';
+    panel.style.display = open ? 'none' : 'block';
+    if (arrow) arrow.textContent = open ? '\u203a' : '\u2039';
+    if (!open) renderNotifDebug();
+}
+
+function renderNotifDebug() {
+    var list = document.getElementById('notif-debug-list');
+    if (!list) return;
+    var now = new Date();
+    var todayKey = now.toISOString().split('T')[0];
+    var fired = {};
+    try { fired = JSON.parse(localStorage.getItem('aw_notif_fired') || '{}'); } catch(e) {}
+    var html = '';
+    CLIENT_NOTIF_SCHEDULE.forEach(function(notif) {
+        var hh = String(notif.h).padStart(2,'0');
+        var mm = String(notif.m).padStart(2,'0');
+        var key = todayKey + '-' + notif.h + '-' + notif.m;
+        var target = new Date(now);
+        target.setHours(notif.h, notif.m, 0, 0);
+        var isFired = !!fired[key];
+        var isPast  = target <= now;
+        var statusIcon  = isFired ? '\u2705' : (isPast ? '\u274c' : '\u23f0');
+        var statusColor = isFired ? '#34d399' : (isPast ? '#f43f5e' : '#94a3b8');
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05)">' +
+            '<span style="font-size:0.72rem;color:#e2e8f0">' + notif.title + ' <span style="color:#475569;font-size:0.62rem">' + hh + ':' + mm + '</span></span>' +
+            '<span style="font-size:1rem;color:' + statusColor + '">' + statusIcon + '</span>' +
+            '</div>';
+    });
+    var permStatus = ('Notification' in window) ? getNotifPermission() : 'non supportato';
+    var permColor  = permStatus === 'granted' ? '#34d399' : '#f43f5e';
+    html += '<div style="margin-top:8px;font-size:0.6rem;color:' + permColor + '">Permesso: ' + permStatus + '</div>';
+    list.innerHTML = html;
+}
+
+// ── WEB PUSH REGISTRATION ───────────────────────────────
+var VAPID_PUBLIC_KEY = 'BP_HHDsYlfkdxEZcoU7JeR9g-tH4f_lAqUA84TEAZnHF1v7D368z5SDXKCsvPQDcjVklKOt1pZ3-LuO6lksBgTo';
+
+function urlBase64ToUint8Array(base64String) {
+    var padding = '='.repeat((4 - base64String.length % 4) % 4);
+    var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    var rawData = atob(base64);
+    return Uint8Array.from(Array.from(rawData).map(function(c) { return c.charCodeAt(0); }));
+}
+
+async function registerPushSubscription() {
+    if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if (getNotifPermission() !== 'granted') return;
+    try {
+        var reg = await navigator.serviceWorker.ready;
+        var existing = await reg.pushManager.getSubscription();
+        if (existing) { await savePushSubscriptionToSupabase(existing); return; }
+        var subscription = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+        });
+        await savePushSubscriptionToSupabase(subscription);
+    } catch(e) {
+        console.warn('[Push] Errore registrazione:', e.message);
+    }
+}
+
+async function savePushSubscriptionToSupabase(subscription) {
+    var username = (typeof APP !== 'undefined' && APP.userName) ? APP.userName : null;
+    if (!username) return;
+    try {
+        var res = await sbClient.from('push_subscriptions').upsert({
+            user_id: username,
+            subscription: subscription.toJSON(),
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+        if (res.error) console.warn('[Push] Errore Supabase:', res.error.message);
+    } catch(e) {
+        console.warn('[Push] Errore salvataggio:', e.message);
+    }
+}
+
+async function scheduleWeightNotification() {
+    await registerPushSubscription();
+    scheduleClientNotifications();
+}
+
+// ── NOTIFICHE CLIENT-SIDE ───────────────────────────────
+var CLIENT_NOTIF_SCHEDULE = [
+    { h:7,  m:15, title:'\u2696\ufe0f Peso',         body:'Buongiorno! Registra il tuo peso di oggi.' },
+    { h:8,  m:0,  title:'\u2615 Colazione',           body:'Ora di colazione! Ricordati di loggarla su Awakening.' },
+    { h:10, m:30, title:'\U0001f34e Snack + Acqua',   body:'Spuntino di meta mattina! Hai bevuto abbastanza acqua?' },
+    { h:13, m:0,  title:'\U0001f35d Pranzo',          body:'Ora di pranzo! Registra il pasto su Awakening.' },
+    { h:16, m:0,  title:'\U0001f34a Snack + Acqua',   body:'Spuntino pomeridiano! Ricordati di bere.' },
+    { h:20, m:0,  title:'\U0001f37d\ufe0f Cena',      body:'Ora di cena! Registra il pasto su Awakening.' },
+];
+
+var _clientNotifTimers = [];
+
+async function scheduleClientNotifications() {
+    if (getNotifPermission() !== 'granted') return;
+    _clientNotifTimers.forEach(function(t) { clearTimeout(t); });
+    _clientNotifTimers = [];
+    var now = new Date();
+    CLIENT_NOTIF_SCHEDULE.forEach(function(notif) {
+        var target = new Date(now);
+        target.setHours(notif.h, notif.m, 0, 0);
+        if (target <= now) return;
+        var msUntil = target.getTime() - now.getTime();
+        var timer = setTimeout(async function() {
+            try {
+                var reg = await navigator.serviceWorker.ready;
+                await reg.showNotification(notif.title, {
+                    body: notif.body, icon: './icon-192.png', badge: './icon-192.png',
+                    tag: 'awakening-' + notif.h + '-' + notif.m, renotify: true, data: { url: './' }
+                });
+                var todayK = new Date().toISOString().split('T')[0];
+                var firedKey = todayK + '-' + notif.h + '-' + notif.m;
+                var fired = {}; try { fired = JSON.parse(localStorage.getItem('aw_notif_fired') || '{}'); } catch(e) {}
+                fired[firedKey] = true;
+                localStorage.setItem('aw_notif_fired', JSON.stringify(fired));
+            } catch(e) { console.warn('[ClientNotif] Errore:', e); }
+        }, msUntil);
+        _clientNotifTimers.push(timer);
+    });
+}
+
+// ── MENU PROGRESSI ──────────────────────────────────────
+var PROG_MENU_ITEMS = [
+    {
+        id: 'massa', icon: '\u2696\ufe0f', label: 'Massa Corporea',
+        getValue: function() {
+            var log = weightGetLog();
+            if (!log.length) return { value: '\u2014', sub: 'nessuna pesata', progress: 0, badge: true, detail: 'Registra la prima pesata per iniziare il tracking' };
+            var today = new Date().toISOString().split('T')[0];
+            var hasPeso = log.some(function(e) { return e.date === today; });
+            var cur = log[log.length-1].kg;
+            var goal = weightGetGoal();
+            var first = log[0].kg;
+            var progress = 0;
+            if (goal && first !== goal) progress = Math.min(100, Math.max(0, Math.round(Math.abs(first-cur)/Math.abs(first-goal)*100)));
+            var diff = first !== cur ? (cur-first).toFixed(1) : null;
+            return {
+                value: cur + ' kg',
+                sub: diff ? (parseFloat(diff)>0?'+':'') + diff + 'kg dall\'inizio' : 'prima pesata',
+                progress: progress,
+                badge: !hasPeso && new Date().getHours() >= 8,
+                detail: (goal ? 'Obiettivo: '+goal+'kg \u00b7 ' : '') + (diff ? 'Variazione: '+(parseFloat(diff)>0?'+':'')+diff+'kg' : '') + ' \u00b7 '+log.length+' pesate totali'
+            };
+        }
+    },
+    {
+        id: 'volume', icon: '\U0001f4c8', label: 'Volume Allenamenti',
+        getValue: function() {
+            var totalVol = 0;
+            if (APP.exerciseData && APP.exerciseData.length) APP.exerciseData.forEach(function(d){ totalVol += (d.totalVolume||0); });
+            var workouts = APP.totalWorkouts || 0;
+            return {
+                value: totalVol>0 ? (totalVol>=1000?(totalVol/1000).toFixed(1)+'t':totalVol+'kg') : '\u2014',
+                sub: workouts + ' allenamenti totali',
+                progress: Math.min(100, workouts*5),
+                badge: false,
+                detail: 'Volume totale: '+totalVol+'kg \u00b7 Sessioni: '+workouts
+            };
+        }
+    },
+    {
+        id: 'pesi', icon: '\U0001f3cb\ufe0f', label: 'Progressi nei Pesi',
+        getValue: function() {
+            var prs = 0;
+            if (APP.exerciseData) APP.exerciseData.forEach(function(d){ if(d.isPR) prs++; });
+            return { value: prs+' PR', sub: 'record personali', progress: Math.min(100,prs*12), badge: false, detail: 'Record personali: '+prs+' \u00b7 Continua ad allenarti per superarli' };
+        }
+    },
+    {
+        id: 'streak', icon: '\U0001f525', label: 'Streak & Costanza',
+        getValue: function() {
+            var streak = parseInt(localStorage.getItem('aw_streak')||'0');
+            var record = parseInt(localStorage.getItem('aw_streak_record')||'0');
+            var pct = record>0 ? Math.round(streak/record*100) : (streak>0?100:0);
+            return { value: streak+'gg', sub: 'record: '+record+'gg', progress: Math.min(100,pct), badge: false, detail: 'Streak: '+streak+' giorni \u00b7 Record: '+record+' giorni' };
+        }
+    },
+    {
+        id: 'badge', icon: '\U0001f3f6\ufe0f', label: 'Badge & Achievements',
+        getValue: function() {
+            var earned = []; try { earned = JSON.parse(localStorage.getItem('awakening_badges')||'[]'); } catch(e){}
+            var total = (typeof BADGES_CONFIG!=='undefined') ? BADGES_CONFIG.length : 20;
+            var pct = Math.round(earned.length/total*100);
+            return { value: earned.length+'/'+total, sub: 'traguardi sbloccati', progress: pct, badge: false, detail: 'Sbloccati: '+earned.length+' su '+total+' \u00b7 '+(total-earned.length)+' ancora da conquistare' };
+        }
+    },
+];
+
+function renderProgMenu() {
+    var container = document.getElementById('prog-menu-list');
+    if (!container) return;
+    container.innerHTML = '';
+    PROG_MENU_ITEMS.forEach(function(item) {
+        var data = item.getValue();
+        var div = document.createElement('div');
+        div.className = 'prog-menu-item';
+        div.id = 'prog-menu-' + item.id;
+        div.innerHTML =
+            '<div class="prog-menu-row" onclick="toggleProgMenuItem(\'' + item.id + '\')">' +
+                '<div class="prog-menu-icon-wrap">' +
+                    '<div class="prog-menu-icon">' + item.icon + '</div>' +
+                    (data.badge ? '<div class="prog-menu-badge">NUOVO</div>' : '') +
+                '</div>' +
+                '<div class="prog-menu-content">' +
+                    '<div class="prog-menu-top">' +
+                        '<span class="prog-menu-label">' + item.label + '</span>' +
+                        '<span class="prog-menu-value">' + data.value + '</span>' +
+                    '</div>' +
+                    '<div class="prog-menu-bottom">' +
+                        '<span class="prog-menu-sub">' + data.sub + '</span>' +
+                        '<span class="prog-menu-pct">' + data.progress + '%</span>' +
+                    '</div>' +
+                    '<div class="prog-menu-bar-wrap"><div class="prog-menu-bar" style="width:' + data.progress + '%"></div></div>' +
+                '</div>' +
+                '<span class="prog-menu-chevron">\u203a</span>' +
+            '</div>' +
+            '<div class="prog-menu-detail">' + (data.detail||'') + '<br>' +
+            '<button class="prog-menu-detail-btn">Vedi dettaglio \u2192</button></div>';
+        container.appendChild(div);
+    });
+}
+
+function toggleProgMenuItem(id) {
+    var el = document.getElementById('prog-menu-' + id);
+    if (!el) return;
+    var wasOpen = el.classList.contains('open');
+    document.querySelectorAll('.prog-menu-item.open').forEach(function(i){ i.classList.remove('open'); });
+    if (!wasOpen) el.classList.add('open');
+}
+
+
+
 function updateProgressPage() {
+    renderProgMenu();
     weightUpdateUI();
     const exData = APP.exerciseData || [];
     // Volume = per ogni chapter: (sessioni_completate) × sum_esercizi(sets × reps × kg_chapter)
@@ -7155,6 +7545,8 @@ function navSwitch(tab) {
         if (progPage) { progPage.classList.add('active'); updateProgressPage(); }
         updateWeightBadge();
         updatePushSettingsRow();
+        updateWeightBadge();
+        updatePushSettingsRow();
     } else if (tab === 'piani') {
         const plPage = document.getElementById('page-plans');
         if (plPage) { plPage.classList.add('active'); renderPlanPage(APP.selectedViewWeek || 0); }
@@ -8984,295 +9376,6 @@ function profileHeightInit() {
     if (h && inp) inp.value = h;
 }
 
-// ── BADGE PESO (pallino rosso nav) ─────────────────────
-function updateWeightBadge() {
-    const badge = document.getElementById('weight-nav-badge');
-    if (!badge) return;
-    const now = new Date();
-    // Mostra badge solo se sono le 08:00 o oltre
-    if (now.getHours() < 8) { badge.classList.remove('visible'); return; }
-    const today = now.toISOString().split('T')[0];
-    const log   = weightGetLog();
-    const hasPeso = log.some(e => e.date === today);
-    badge.classList.toggle('visible', !hasPeso);
-}
-
-// ── ATTIVA NOTIFICHE (gesto utente richiesto da iOS) ───
-// Helper: restituisce il permesso notifiche reale
-// Su iOS Safari Notification.permission può restare 'default' anche dopo aver concesso,
-// quindi usiamo la presenza di una push subscription come prova che il permesso è granted.
-let _cachedNotifPermission = null;
-
-function getNotifPermission() {
-    // Se Notification.permission è esplicito (non default) → fidati
-    if ('Notification' in window && Notification.permission !== 'default') {
-        _cachedNotifPermission = Notification.permission;
-        return Notification.permission;
-    }
-    // Cache in memoria (non localStorage, che iOS può svuotare)
-    if (_cachedNotifPermission) return _cachedNotifPermission;
-    // Fallback a localStorage se disponibile
-    const stored = localStorage.getItem('aw_notif_permission');
-    if (stored) return stored;
-    return 'default';
-}
-
-// Aggiorna cache permesso — chiamato dopo ogni requestPermission e al login
-function refreshNotifPermission() {
-    if (!('Notification' in window)) return;
-    const p = Notification.permission;
-    if (p !== 'default') {
-        _cachedNotifPermission = p;
-        try { localStorage.setItem('aw_notif_permission', p); } catch(e) {}
-    }
-    // Se è ancora default ma abbiamo una subscription → è granted
-    if (p === 'default' && 'serviceWorker' in navigator) {
-        navigator.serviceWorker.ready.then(reg => {
-            reg.pushManager.getSubscription().then(sub => {
-                if (sub) {
-                    _cachedNotifPermission = 'granted';
-                    try { localStorage.setItem('aw_notif_permission', 'granted'); } catch(e) {}
-                    updatePushSettingsRow();
-                    scheduleClientNotifications();
-                }
-            }).catch(() => {});
-        }).catch(() => {});
-    }
-}
-
-async function activatePushNotifications() {
-    if (!('Notification' in window) || !('PushManager' in window)) {
-        showToast('Notifiche non supportate su questo browser', 'error'); return;
-    }
-    if (Notification.permission === 'denied') {
-        showToast('Notifiche bloccate. Abilitale in Impostazioni > Safari > Notifiche', 'error'); return;
-    }
-    // Richiedi permesso — questo fa apparire il popup iOS
-    const result = await Notification.requestPermission();
-    // Salva in localStorage per iOS Safari che non aggiorna Notification.permission live
-    localStorage.setItem('aw_notif_permission', result);
-    if (result !== 'granted') {
-        showToast('Permesso notifiche negato', 'error');
-        updatePushSettingsRow();
-        return;
-    }
-    // Registra la subscription
-    await registerPushSubscription();
-    updatePushSettingsRow();
-    showToast('Notifiche attivate!', 'success');
-}
-
-function updatePushSettingsRow() {
-    const label = document.getElementById('settings-push-label');
-    const arrow = document.getElementById('settings-push-arrow');
-    const row   = document.getElementById('settings-row-push');
-    if (!label) return;
-    if (getNotifPermission() === 'granted') {
-        label.textContent = 'Notifiche Attive ✅';
-        if (arrow) arrow.textContent = '';
-        if (row)   row.style.opacity = '0.6';
-    } else if (getNotifPermission() === 'denied') {
-        label.textContent = 'Notifiche Bloccate ❌';
-        if (arrow) arrow.textContent = '';
-        if (row)   row.style.opacity = '0.6';
-    } else {
-        label.textContent = 'Attiva Notifiche';
-        if (arrow) arrow.textContent = '›';
-        if (row)   row.style.opacity = '1';
-    }
-}
-
-// ── TEST NOTIFICA PUSH ─────────────────────────────────
-async function testPushNotification() {
-    if (!('Notification' in window)) {
-        showToast('Notifiche non supportate su questo browser', 'error'); return;
-    }
-    if (Notification.permission === 'default') {
-        const result = await Notification.requestPermission();
-        if (result !== 'granted') { showToast('Permesso notifiche negato', 'error'); return; }
-    }
-    if (Notification.permission !== 'granted') {
-        showToast('Abilita le notifiche nelle impostazioni', 'error'); return;
-    }
-    // Mostra subito la notifica tramite SW (bypass del check data per il test)
-    try {
-        const reg = await navigator.serviceWorker.ready;
-        await reg.showNotification('⚖️ Awakening', {
-            body: 'Le notifiche funzionano ✅',
-            icon: './icon-192.png',
-            badge: './icon-192.png',
-            tag: 'peso-test',
-            data: { url: './' }
-        });
-        showToast('Notifica inviata!', 'success');
-    } catch(e) {
-        showToast('Errore: ' + e.message, 'error');
-    }
-}
-
-// ── WEB PUSH — registrazione subscription VAPID ─────────────────────
-// La chiave pubblica VAPID identifica il server Supabase che manderà le notifiche.
-// La subscription (endpoint + chiavi) viene salvata su Supabase in push_subscriptions.
-
-const VAPID_PUBLIC_KEY = 'BP_HHDsYlfkdxEZcoU7JeR9g-tH4f_lAqUA84TEAZnHF1v7D368z5SDXKCsvPQDcjVklKOt1pZ3-LuO6lksBgTo';
-const PUSH_SUB_STORAGE_KEY = 'aw_push_subscribed';
-
-function urlBase64ToUint8Array(base64String) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-    const rawData = atob(base64);
-    return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
-}
-
-async function registerPushSubscription() {
-    if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
-        console.log('[Push] Non supportato su questo browser');
-        return;
-    }
-
-    // Richiedi permesso notifiche
-    if (Notification.permission === 'default') {
-        const result = await Notification.requestPermission();
-        if (result !== 'granted') return;
-    }
-    if (Notification.permission !== 'granted') return;
-
-    try {
-        const reg = await navigator.serviceWorker.ready;
-
-        // Controlla se già sottoscritto
-        const existing = await reg.pushManager.getSubscription();
-        if (existing) {
-            // Già registrato: assicurati che sia salvato su Supabase
-            await savePushSubscriptionToSupabase(existing);
-            return;
-        }
-
-        // Crea nuova subscription
-        const subscription = await reg.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-        });
-
-        await savePushSubscriptionToSupabase(subscription);
-        console.log('[Push] Subscription registrata con successo');
-    } catch(e) {
-        console.warn('[Push] Errore registrazione:', e.message);
-    }
-}
-
-async function savePushSubscriptionToSupabase(subscription) {
-    const username = (typeof APP !== 'undefined' && APP.userName) ? APP.userName : null;
-    if (!username) { console.warn('[Push] userName non disponibile, skip salvataggio'); return; }
-    try {
-        const { error } = await sbClient.from('push_subscriptions').upsert({
-            user_id: username,
-            subscription: subscription.toJSON(),
-            updated_at: new Date().toISOString()
-        }, { onConflict: 'user_id' });
-        if (error) console.warn('[Push] Errore Supabase:', error.message);
-        else console.log('[Push] Subscription salvata per', username);
-    } catch(e) {
-        console.warn('[Push] Errore salvataggio:', e.message);
-    }
-}
-
-// Mantenuta per compatibilità: ora chiama registerPushSubscription + schedula client-side
-async function scheduleWeightNotification() {
-    await registerPushSubscription();
-    scheduleClientNotifications();
-}
-
-// ── DEBUG ORARI NOTIFICHE ──────────────────────────────
-function toggleNotifDebug() {
-    const panel = document.getElementById('notif-debug-panel');
-    const arrow = document.getElementById('notif-debug-arrow');
-    if (!panel) return;
-    const open = panel.style.display === 'block';
-    panel.style.display = open ? 'none' : 'block';
-    if (arrow) arrow.textContent = open ? '›' : '‹';
-    if (!open) renderNotifDebug();
-}
-
-function renderNotifDebug() {
-    const list = document.getElementById('notif-debug-list');
-    if (!list) return;
-
-    const now = new Date();
-    const todayKey = now.toISOString().split('T')[0];
-
-    // Leggi da localStorage quali notifiche sono state mostrate oggi
-    let fired = {};
-    try { fired = JSON.parse(localStorage.getItem('aw_notif_fired') || '{}'); } catch(e) {}
-
-    let html = '';
-    for (const notif of CLIENT_NOTIF_SCHEDULE) {
-        const hh  = String(notif.h).padStart(2, '0');
-        const mm  = String(notif.m).padStart(2, '0');
-        const key = todayKey + '-' + notif.h + '-' + notif.m;
-
-        const target = new Date(now);
-        target.setHours(notif.h, notif.m, 0, 0);
-
-        const isFired   = !!fired[key];
-        const isPast    = target <= now;
-        const statusIcon = isFired ? '✅' : (isPast ? '❌' : '⏰');
-        const statusColor = isFired ? '#34d399' : (isPast ? '#f43f5e' : '#94a3b8');
-
-        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05)">' +
-            '<span style="font-size:0.72rem;color:#e2e8f0">' + notif.title + ' <span style="color:#475569;font-size:0.62rem">' + hh + ':' + mm + '</span></span>' +
-            '<span style="font-size:1rem;color:' + statusColor + '">' + statusIcon + '</span>' +
-            '</div>';
-    }
-
-    const permStatus = ('Notification' in window) ? getNotifPermission() : 'non supportato';
-    const permColor  = permStatus === 'granted' ? '#34d399' : '#f43f5e';
-    html += '<div style="margin-top:8px;font-size:0.6rem;color:' + permColor + '">Permesso: ' + permStatus + '</div>';
-
-    list.innerHTML = html;
-}
-
-// NOTIFICHE CLIENT-SIDE (backup quando l'app e' in background)
-const CLIENT_NOTIF_SCHEDULE = [
-    { h:7,  m:15, title:'\u2696\ufe0f Peso',         body:'Buongiorno! Registra il tuo peso di oggi.' },
-    { h:8,  m:0,  title:'\u2615 Colazione',          body:'Ora di colazione! Ricordati di loggarla su Awakening.' },
-    { h:10, m:30, title:'🍎 Snack + Acqua',  body:'Spuntino di meta mattina! Hai bevuto abbastanza acqua?' },
-    { h:13, m:0,  title:'🍝 Pranzo',         body:'Ora di pranzo! Registra il pasto su Awakening.' },
-    { h:16, m:0,  title:'🍊 Snack + Acqua',  body:'Spuntino pomeridiano! Ricordati di bere.' },
-    { h:20, m:0,  title:'🍽️ Cena',     body:'Ora di cena! Registra il pasto su Awakening.' },
-];
-
-let _clientNotifTimers = [];
-
-async function scheduleClientNotifications() {
-    if (!('Notification' in window) || getNotifPermission() !== 'granted') return;
-    _clientNotifTimers.forEach(t => clearTimeout(t));
-    _clientNotifTimers = [];
-    const now = new Date();
-    for (const notif of CLIENT_NOTIF_SCHEDULE) {
-        const target = new Date(now);
-        target.setHours(notif.h, notif.m, 0, 0);
-        if (target <= now) continue;
-        const msUntil = target.getTime() - now.getTime();
-        const timer = setTimeout(async () => {
-            try {
-                const reg = await navigator.serviceWorker.ready;
-                await reg.showNotification(notif.title, {
-                    body: notif.body, icon: './icon-192.png', badge: './icon-192.png',
-                    tag: 'awakening-' + notif.h + '-' + notif.m, renotify: true, data: { url: './' }
-                });
-                // Segna come fired
-                const todayK = new Date().toISOString().split('T')[0];
-                const firedKey = todayK + '-' + notif.h + '-' + notif.m;
-                let fired = {}; try { fired = JSON.parse(localStorage.getItem('aw_notif_fired') || '{}'); } catch(e) {}
-                fired[firedKey] = true;
-                localStorage.setItem('aw_notif_fired', JSON.stringify(fired));
-            } catch(e) { console.warn('[ClientNotif] Errore:', e); }
-        }, msUntil);
-        _clientNotifTimers.push(timer);
-        console.log('[ClientNotif]', notif.title, 'tra', Math.round(msUntil/60000), 'min');
-    }
-}
 
 const WEIGHT_STORAGE_KEY = 'aw_weight_log';
 const WEIGHT_GOAL_KEY    = 'aw_weight_goal';
@@ -11788,6 +11891,14 @@ document.addEventListener('visibilitychange', () => {
         if (getNotifPermission() === 'granted') {
             scheduleClientNotifications();
         }
+        updateWeightBadge();
+    }
+});
+
+document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') {
+        refreshNotifPermission();
+        if (getNotifPermission() === 'granted') scheduleClientNotifications();
         updateWeightBadge();
     }
 });
