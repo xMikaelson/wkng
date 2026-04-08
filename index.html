@@ -2323,11 +2323,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
   <div id="prog-menu-list" style="padding:0 16px;margin-bottom:16px;"></div>
 
-  <div class="prog-grid" id="prog-grid">
+  <div class="prog-grid" id="prog-grid" style="display:none;">
     <div class="prog-card"><div class="prog-card-label">Volume totale</div><div class="prog-card-val" id="prog-vol">—</div><div class="prog-card-sub" id="prog-vol-sub">nessun allenamento</div></div>
     <div class="prog-card"><div class="prog-card-label">PR attivi</div><div class="prog-card-val" id="prog-pr-count">0</div><div class="prog-card-sub" id="prog-pr-names">—</div></div>
   </div>
-  <div class="chart-placeholder" id="prog-chart">
+  <div class="chart-placeholder" id="prog-chart" style="display:none;">
     <div style="display:flex;flex-direction:column;width:100%;height:100%">
       <div style="font-size:0.52rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;flex-shrink:0">Volume settimanale (kg)</div>
       <div style="display:flex;flex:1;min-height:0;gap:6px;">
@@ -2341,7 +2341,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 
   <!-- WEIGHT TRACKER -->
-  <div class="weight-section">
+  <div class="weight-section" id="weight-section-wrap" style="display:none;">
     <div class="prog-ex-chart-header">
       <span class="prog-ex-chart-title">⚖️ Peso corporeo</span>
     </div>
@@ -4345,7 +4345,7 @@ var PROG_MENU_ITEMS = [
         }
     },
     {
-        id: 'volume', icon: '\U0001f4c8', label: 'Volume Allenamenti',
+        id: 'volume', icon: '📈', label: 'Volume Allenamenti',
         getValue: function() {
             var totalVol = 0;
             if (APP.exerciseData && APP.exerciseData.length) APP.exerciseData.forEach(function(d){ totalVol += (d.totalVolume||0); });
@@ -4360,7 +4360,7 @@ var PROG_MENU_ITEMS = [
         }
     },
     {
-        id: 'pesi', icon: '\U0001f3cb\ufe0f', label: 'Progressi nei Pesi',
+        id: 'pesi', icon: '🏋️', label: 'Progressi nei Pesi',
         getValue: function() {
             var prs = 0;
             if (APP.exerciseData) APP.exerciseData.forEach(function(d){ if(d.isPR) prs++; });
@@ -4368,7 +4368,7 @@ var PROG_MENU_ITEMS = [
         }
     },
     {
-        id: 'streak', icon: '\U0001f525', label: 'Streak & Costanza',
+        id: 'streak', icon: '🔥', label: 'Streak & Costanza',
         getValue: function() {
             var streak = parseInt(localStorage.getItem('aw_streak')||'0');
             var record = parseInt(localStorage.getItem('aw_streak_record')||'0');
@@ -4377,7 +4377,7 @@ var PROG_MENU_ITEMS = [
         }
     },
     {
-        id: 'badge', icon: '\U0001f3f6\ufe0f', label: 'Badge & Achievements',
+        id: 'badge', icon: '🏅', label: 'Badge & Achievements',
         getValue: function() {
             var earned = []; try { earned = JSON.parse(localStorage.getItem('awakening_badges')||'[]'); } catch(e){}
             var total = (typeof BADGES_CONFIG!=='undefined') ? BADGES_CONFIG.length : 20;
@@ -4415,8 +4415,9 @@ function renderProgMenu() {
                 '</div>' +
                 '<span class="prog-menu-chevron">\u203a</span>' +
             '</div>' +
-            '<div class="prog-menu-detail">' + (data.detail||'') + '<br>' +
-            '<button class="prog-menu-detail-btn">Vedi dettaglio \u2192</button></div>';
+            '<div class="prog-menu-detail">' + (data.detail||'') +
+            (data.detailHtml ? data.detailHtml : '<br><button class="prog-menu-detail-btn" onclick="openProgDetail(\'' + item.id + '\')" >Vedi dettaglio \u2192</button>') +
+            '</div>';
         container.appendChild(div);
     });
 }
@@ -4427,6 +4428,24 @@ function toggleProgMenuItem(id) {
     var wasOpen = el.classList.contains('open');
     document.querySelectorAll('.prog-menu-item.open').forEach(function(i){ i.classList.remove('open'); });
     if (!wasOpen) el.classList.add('open');
+}
+
+function openProgDetail(id) {
+    // Mostra la sezione dettaglio corrispondente e nascondi le altre
+    var volGrid   = document.getElementById('prog-grid');
+    var volChart  = document.getElementById('prog-chart');
+    var weightSec = document.getElementById('weight-section-wrap');
+    // Nascondi tutto
+    if (volGrid)   volGrid.style.display   = 'none';
+    if (volChart)  volChart.style.display  = 'none';
+    if (weightSec) weightSec.style.display = 'none';
+    // Mostra quello corretto
+    if (id === 'volume') {
+        if (volGrid)  volGrid.style.display  = 'grid';
+        if (volChart) volChart.style.display = 'flex';
+    } else if (id === 'massa') {
+        if (weightSec) weightSec.style.display = 'block';
+    }
 }
 
 
