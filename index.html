@@ -3617,6 +3617,7 @@ async function onLoginSuccess(user, usernameOverride = null) {
 
     showToast('Bentornato, ' + username + '!', 'success');
     // La subscription push viene registrata dall'utente tramite il pulsante in Impostazioni
+    refreshNotifPermission();
     updateWeightBadge();
 }
 
@@ -8997,13 +8998,46 @@ function updateWeightBadge() {
 }
 
 // ── ATTIVA NOTIFICHE (gesto utente richiesto da iOS) ───
-// Helper: restituisce il permesso notifiche reale (localStorage come fallback per iOS Safari)
+// Helper: restituisce il permesso notifiche reale
+// Su iOS Safari Notification.permission può restare 'default' anche dopo aver concesso,
+// quindi usiamo la presenza di una push subscription come prova che il permesso è granted.
+let _cachedNotifPermission = null;
+
 function getNotifPermission() {
+    // Se Notification.permission è esplicito (non default) → fidati
     if ('Notification' in window && Notification.permission !== 'default') {
+        _cachedNotifPermission = Notification.permission;
         return Notification.permission;
     }
-    // iOS Safari non aggiorna Notification.permission in tempo reale → usa localStorage
-    return localStorage.getItem('aw_notif_permission') || Notification.permission || 'default';
+    // Cache in memoria (non localStorage, che iOS può svuotare)
+    if (_cachedNotifPermission) return _cachedNotifPermission;
+    // Fallback a localStorage se disponibile
+    const stored = localStorage.getItem('aw_notif_permission');
+    if (stored) return stored;
+    return 'default';
+}
+
+// Aggiorna cache permesso — chiamato dopo ogni requestPermission e al login
+function refreshNotifPermission() {
+    if (!('Notification' in window)) return;
+    const p = Notification.permission;
+    if (p !== 'default') {
+        _cachedNotifPermission = p;
+        try { localStorage.setItem('aw_notif_permission', p); } catch(e) {}
+    }
+    // Se è ancora default ma abbiamo una subscription → è granted
+    if (p === 'default' && 'serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then(reg => {
+            reg.pushManager.getSubscription().then(sub => {
+                if (sub) {
+                    _cachedNotifPermission = 'granted';
+                    try { localStorage.setItem('aw_notif_permission', 'granted'); } catch(e) {}
+                    updatePushSettingsRow();
+                    scheduleClientNotifications();
+                }
+            }).catch(() => {});
+        }).catch(() => {});
+    }
 }
 
 async function activatePushNotifications() {
@@ -11159,6 +11193,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
             await onLoginSuccess(session.user);
+            // Badge peso: delay per assicurarsi che la navbar sia visibile
+            setTimeout(() => updateWeightBadge(), 300);
             return;
         }
         // Non loggato: ripristina solo stato UI
@@ -11743,6 +11779,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 </div>
 
 <script>
+// Rischedulazione notifiche quando la PWA torna in primo piano
+// iOS resetta i setTimeout quando mette in background la PWA
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        // App tornata in primo piano: aggiorna permesso e rischeduliamo
+        refreshNotifPermission(); // rileva automaticamente se subscription esiste
+        if (getNotifPermission() === 'granted') {
+            scheduleClientNotifications();
+        }
+        updateWeightBadge();
+    }
+});
+
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         // Only register SW if served from root scope (not subdirectory)
