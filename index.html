@@ -1581,14 +1581,27 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .plan-proto-item.active-item { border-color:var(--primary); color:var(--primary); }
         .plan-proto-item-name { flex:1; white-space:normal; overflow:visible; word-break:break-word; line-height:1.3; }
         .plan-proto-drag-icon { font-size:0.6rem; color:#334155; margin-left:4px; transition:transform 0.2s; }
-        .plan-proto-detail { overflow:hidden; max-height:0; transition:max-height 0.28s cubic-bezier(0.22,1,0.36,1),opacity 0.2s; opacity:0; }
-        .plan-proto-detail.open { max-height:300px; opacity:1; }
-        .plan-proto-detail-inner { background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.18); border-top:none; border-radius:0 0 8px 8px; padding:8px 10px; margin-bottom:2px; }
-        .detail-ex-row { display:flex; justify-content:space-between; align-items:center; padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.04); font-size:0.62rem; }
-        .detail-ex-row:last-child { border-bottom:none; }
-        .detail-ex-name { color:#94a3b8; flex:1; }
-        .detail-ex-sr { color:var(--accent); font-weight:700; font-size:0.58rem; }
-        .detail-ex-kg { color:var(--primary); font-weight:700; font-size:0.58rem; margin-left:8px; }
+        /* Protocol exercise editor (separate box below main plan block) */
+        .proto-editor-box { background:var(--card); border-radius:14px; padding:14px; margin-top:14px; border:1px solid rgba(99,102,241,0.25); animation:protoEditorIn 0.28s cubic-bezier(0.22,1,0.36,1); }
+        @keyframes protoEditorIn { 0% { opacity:0; transform:translateY(-8px); } 100% { opacity:1; transform:translateY(0); } }
+        .proto-editor-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; gap:8px; }
+        .proto-editor-title { font-size:0.62rem; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:0.12em; flex:1; min-width:0; word-break:break-word; }
+        .proto-editor-close { background:rgba(255,255,255,0.06); border:0.5px solid rgba(255,255,255,0.12); color:#94a3b8; width:26px; height:26px; border-radius:7px; font-size:0.9rem; cursor:pointer; font-family:inherit; flex-shrink:0; padding:0; line-height:1; }
+        .proto-editor-close:hover { color:#e2e8f0; background:rgba(255,255,255,0.1); }
+        .proto-editor-list { display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
+        .proto-ex-row { display:grid; grid-template-columns:1fr 60px 60px 26px; gap:5px; align-items:center; position:relative; }
+        .proto-ex-row input { background:#0f172a; border:1px solid #334155; color:#e2e8f0; padding:7px 8px; border-radius:6px; font-size:0.65rem; width:100%; box-sizing:border-box; font-family:inherit; }
+        .proto-ex-row input:focus { outline:none; border-color:var(--accent); }
+        .proto-ex-row .suggestions { top:34px; left:0; width:100%; }
+        .proto-ex-row .pe-name { color:#e2e8f0; }
+        .proto-ex-row .pe-sr { text-align:center; color:var(--accent); font-weight:600; }
+        .proto-ex-row .pe-kg { text-align:center; color:var(--primary); font-weight:600; }
+        .proto-ex-row .pe-del { background:rgba(239,68,68,0.08); border:0.5px solid rgba(239,68,68,0.3); color:#ef4444; width:26px; height:30px; border-radius:6px; font-size:0.85rem; cursor:pointer; font-family:inherit; padding:0; display:flex; align-items:center; justify-content:center; }
+        .proto-ex-row .pe-del:hover { background:rgba(239,68,68,0.18); }
+        .proto-editor-add { width:100%; padding:8px; background:none; color:var(--primary); border:1px dashed var(--primary); border-radius:8px; font-size:0.7rem; font-weight:600; cursor:pointer; font-family:inherit; transition:background 0.15s; }
+        .proto-editor-add:hover { background:rgba(0,255,136,0.06); }
+        .proto-editor-empty { font-size:0.62rem; color:#475569; text-align:center; padding:8px 0; }
+        .proto-editor-hint { font-size:0.52rem; color:#475569; text-align:center; margin-top:6px; line-height:1.4; }
         .plan-sched-row { display:flex; justify-content:space-between; align-items:center; padding:3px 8px; border-radius:5px; min-height:22px; box-sizing:border-box; font-size:0.64rem; margin-bottom:2px; }
         .plan-sched-row:nth-child(odd) { background:rgba(255,255,255,0.02); }
         .plan-sched-day { color:#64748b; font-weight:700; min-width:26px; font-size:0.6rem; }
@@ -3785,28 +3798,17 @@ function renderPlanPage(w) {
 
     if (APP.savedProtocols && APP.savedProtocols.length > 0) {
         APP.savedProtocols.forEach(proto => {
-            const wrapper = document.createElement('div');
             const item = document.createElement('div');
-            item.className = 'plan-proto-item' + (proto.id === APP.activeProtocolId ? ' active-item' : ''); item.title = proto.id === APP.activeProtocolId ? 'Protocollo attivo (usato in workout)' : '';
             const isExp = planExpandedProto === proto.id;
-            item.style.borderRadius = isExp ? '5px 5px 0 0' : '5px';
+            item.className = 'plan-proto-item' + (proto.id === APP.activeProtocolId ? ' active-item' : '') + (isExp ? ' expanded' : '');
+            item.title = proto.id === APP.activeProtocolId ? 'Protocollo attivo (usato in workout)' : '';
             item.innerHTML = `<span class="plan-proto-item-name">${escapeHTML(proto.name)}</span><span class="plan-proto-drag-icon" style="transform:rotate(${isExp?'90':'0'}deg)">›</span>`;
             item.addEventListener('click', () => {
                 planExpandedProto = planExpandedProto === proto.id ? null : proto.id;
                 renderPlanPage(w);
             });
             if (isUnlocked) planSetupDrag(item, proto.id, proto.name);
-            wrapper.appendChild(item);
-            const detail = document.createElement('div');
-            detail.className = 'plan-proto-detail' + (isExp ? ' open' : '');
-            const exs = proto.exercises || [];
-            detail.innerHTML = `<div class="plan-proto-detail-inner">${
-                exs.length > 0
-                ? exs.map(e => `<div class="detail-ex-row"><span class="detail-ex-name">${escapeHTML(exItalian(e.name))}</span><span class="detail-ex-sr">${escapeHTML(e.sr)}</span><span class="detail-ex-kg">${e.baseWeight}kg</span></div>`).join('')
-                : '<div style="font-size:0.6rem;color:#475569;padding:4px 0">Nessun esercizio</div>'
-            }</div>`;
-            wrapper.appendChild(detail);
-            protoCol.appendChild(wrapper);
+            protoCol.appendChild(item);
         });
     } else {
         protoCol.innerHTML += '<div style="font-size:0.62rem;color:#334155;padding:8px 0">Nessun protocollo. Creane uno dal Profilo.</div>';
@@ -3841,6 +3843,16 @@ function renderPlanPage(w) {
     }
 
     container.appendChild(block);
+
+    // ─── EDITOR BOX (shown when a protocol is expanded) ───
+    if (planExpandedProto && isUnlocked) {
+        const proto = APP.savedProtocols.find(p => p.id === planExpandedProto);
+        if (proto) {
+            container.appendChild(buildProtoEditorBox(proto, w));
+        } else {
+            planExpandedProto = null;
+        }
+    }
 
     // Lock overlay for locked chapters
     if (!isUnlocked) {
@@ -3895,6 +3907,143 @@ function renderPlanPage(w) {
         }));
     }
 
+}
+
+// ════════════════════════════════════════════════
+// PROTOCOL EXERCISE EDITOR (separate box below plan block)
+// ════════════════════════════════════════════════
+function buildProtoEditorBox(proto, weekIdx) {
+    const box = document.createElement('div');
+    box.className = 'proto-editor-box';
+    box.id = 'proto-editor-box';
+
+    // Header: protocol name + close
+    const head = document.createElement('div');
+    head.className = 'proto-editor-head';
+    const title = document.createElement('div');
+    title.className = 'proto-editor-title';
+    title.textContent = `📝 ${proto.name}`;
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'proto-editor-close';
+    closeBtn.innerHTML = '✕';
+    closeBtn.title = 'Chiudi';
+    closeBtn.onclick = () => { planExpandedProto = null; renderPlanPage(weekIdx); };
+    head.appendChild(title);
+    head.appendChild(closeBtn);
+    box.appendChild(head);
+
+    // Exercise list
+    const list = document.createElement('div');
+    list.className = 'proto-editor-list';
+    list.id = 'proto-editor-list';
+    box.appendChild(list);
+
+    if (!proto.exercises) proto.exercises = [];
+
+    function rerenderList() {
+        list.innerHTML = '';
+        if (!proto.exercises || proto.exercises.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'proto-editor-empty';
+            empty.textContent = 'Nessun esercizio. Aggiungine uno qui sotto.';
+            list.appendChild(empty);
+            return;
+        }
+        proto.exercises.forEach((ex, idx) => {
+            const row = document.createElement('div');
+            row.className = 'proto-ex-row';
+            row.innerHTML = `
+                <input type="text" class="pe-name" placeholder="Esercizio..." value="${escapeHTML(ex.name || '')}" oninput="debouncedSearch(this); protoEditorMarkDirty('${proto.id}', ${idx}, 'name', this.value)">
+                <div class="suggestions"></div>
+                <input type="text" class="pe-sr" placeholder="5x5" value="${escapeHTML(ex.sr || '')}" oninput="protoEditorMarkDirty('${proto.id}', ${idx}, 'sr', this.value)">
+                <input type="number" class="pe-kg" placeholder="kg" min="0" step="0.5" value="${ex.baseWeight ?? ''}" inputmode="decimal" oninput="protoEditorMarkDirty('${proto.id}', ${idx}, 'baseWeight', this.value)">
+                <button class="pe-del" title="Rimuovi" data-idx="${idx}">✕</button>
+            `;
+            row.querySelector('.pe-del').onclick = () => {
+                proto.exercises.splice(idx, 1);
+                protoEditorPersist(proto);
+                rerenderList();
+            };
+            list.appendChild(row);
+        });
+    }
+    rerenderList();
+
+    // Add button
+    const addBtn = document.createElement('button');
+    addBtn.className = 'proto-editor-add';
+    addBtn.textContent = '+ Aggiungi esercizio';
+    addBtn.onclick = () => {
+        const defaultSr = (proto.goal === 'forza') ? '5 x 5' : '4 x 10';
+        proto.exercises.push({ name: '', sr: defaultSr, baseWeight: 0 });
+        protoEditorPersist(proto);
+        rerenderList();
+        // Focus the new row's name input
+        setTimeout(() => {
+            const rows = list.querySelectorAll('.proto-ex-row');
+            const last = rows[rows.length - 1];
+            if (last) {
+                const nameInput = last.querySelector('.pe-name');
+                if (nameInput) nameInput.focus();
+            }
+        }, 50);
+    };
+    box.appendChild(addBtn);
+
+    const hint = document.createElement('div');
+    hint.className = 'proto-editor-hint';
+    hint.textContent = 'Le modifiche vengono salvate automaticamente';
+    box.appendChild(hint);
+
+    return box;
+}
+
+// Debounced persist when typing in editor inputs
+let _protoEditorTimer = null;
+let _protoEditorPending = null;
+function protoEditorMarkDirty(protoId, idx, field, value) {
+    const proto = APP.savedProtocols.find(p => p.id === protoId);
+    if (!proto || !proto.exercises[idx]) return;
+    if (field === 'baseWeight') {
+        const n = parseFloat(value);
+        proto.exercises[idx].baseWeight = isNaN(n) ? 0 : n;
+    } else {
+        proto.exercises[idx][field] = value;
+    }
+    _protoEditorPending = proto;
+    if (_protoEditorTimer) clearTimeout(_protoEditorTimer);
+    _protoEditorTimer = setTimeout(() => {
+        if (_protoEditorPending) protoEditorPersist(_protoEditorPending);
+        _protoEditorPending = null;
+    }, 600);
+}
+
+function protoEditorPersist(proto) {
+    saveState();
+    if (typeof saveProtocolToSupabase === 'function') {
+        try { saveProtocolToSupabase(proto); } catch(e) { console.warn('saveProtocolToSupabase failed:', e); }
+    }
+    // If editing the active protocol, refresh APP.exerciseData and homepage inputs
+    if (proto.id === APP.activeProtocolId) {
+        APP.exerciseData = proto.exercises.map(ex => {
+            const base = parseFloat(ex.baseWeight) || 0;
+            const loads = [base * 0.70, base * 0.80, base * 0.90, base * 0.60];
+            return { name: ex.name, sr: ex.sr, loads, baseWeight: base };
+        });
+        const inputList = document.getElementById('input-list');
+        if (inputList) {
+            inputList.innerHTML = '';
+            proto.exercises.forEach(ex => {
+                const div = document.createElement('div');
+                div.className = 'input-group';
+                div.innerHTML = `<input type="text" class="ex-name" placeholder="Cerca esercizio..." oninput="debouncedSearch(this)" value="${escapeHTML(ex.name)}"><div class="suggestions"></div><input type="text" class="ex-sr" value="${escapeHTML(ex.sr)}"><input type="number" class="ex-weight" placeholder="Kg" min="0" step="0.5" value="${ex.baseWeight}">`;
+                inputList.appendChild(div);
+            });
+        }
+    }
+    // Update schedule labels (in case proto.name was edited elsewhere — not here, but harmless)
+    const sched = document.querySelectorAll('.plan-sched-row .plan-sched-proto');
+    if (sched.length) { /* schedule shows proto names, unaffected by exercise edits */ }
 }
 
 
