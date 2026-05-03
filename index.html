@@ -4094,6 +4094,10 @@ function buildProtoEditorBox(proto, weekIdx) {
     }
     rerenderList();
 
+    // Quando il Coach applica la sua lista, aggiorna il DOM via rerenderList
+    // (il draft è già stato sincronizzato in-place da protoEditorCommit)
+    list.addEventListener('coach-applied', function() { rerenderList(); });
+
     // ── Bottone + Aggiungi esercizio ──
     var addBtn = document.createElement('button');
     addBtn.className = 'proto-editor-add';
@@ -4391,15 +4395,24 @@ function protoEditorParseCoachList(text) {
 // ── Fase 3: salvataggio definitivo ──
 function protoEditorCommit(proto, exercises, weekIdx, saveBtn, coachApplied) {
     proto.exercises = JSON.parse(JSON.stringify(exercises));
-    // Cancella il draft
-    delete _protoEditorDrafts[proto.id];
     protoEditorPersist(proto);
 
     if (coachApplied) {
-        // Lista accettata dal Coach: blocca il bottone analisi per questa sessione di editor
-        // e salva un flag sul protocollo per mostrarlo chiuso al prossimo open
         proto._coachOptimizedAt = Date.now();
-        // Non chiudiamo l'editor — aggiorniamo la UI in-place
+
+        // ── Aggiorna il draft in-place (stesso array nella closure) ──
+        // In questo modo rerenderList() e addBtn usano già la lista ottimizzata
+        var liveDraft = _protoEditorDrafts[proto.id];
+        if (liveDraft) {
+            liveDraft.splice(0, liveDraft.length);
+            proto.exercises.forEach(function(ex) {
+                liveDraft.push(JSON.parse(JSON.stringify(ex)));
+            });
+        } else {
+            // Se per qualche motivo il draft non esiste, ricrealo
+            _protoEditorDrafts[proto.id] = JSON.parse(JSON.stringify(proto.exercises));
+        }
+
         // Aggiorna il bottone
         if (saveBtn) {
             saveBtn.textContent = '✅ Lista ottimizzata dal Coach';
@@ -4408,27 +4421,22 @@ function protoEditorCommit(proto, exercises, weekIdx, saveBtn, coachApplied) {
             saveBtn.style.color = 'var(--primary)';
             saveBtn.style.border = '1px solid rgba(0,255,136,0.3)';
         }
-        // Rimuovi la coach box (già letta)
-        var cBox = document.getElementById('proto-editor-box')?.querySelector('.proto-coach-box');
+
+        // Rimuovi la coach box
+        var cBox = document.getElementById('proto-editor-box') && document.getElementById('proto-editor-box').querySelector('.proto-coach-box');
         if (cBox) cBox.remove();
-        // Aggiorna la lista esercizi nell'editor per mostrare quella appena applicata
-        var list = document.getElementById('proto-editor-list');
-        if (list) {
-            list.innerHTML = '';
-            proto.exercises.forEach(function(ex, idx) {
-                var row = document.createElement('div');
-                row.className = 'proto-ex-row';
-                row.innerHTML = '<input type="text" class="pe-name" placeholder="Cerca esercizio..." value="' + escapeHTML(ex.name || '') + '" oninput="debouncedSearch(this)">' +
-                    '<div class="suggestions"></div>' +
-                    '<input type="text" class="pe-sr" placeholder="5x5" value="' + escapeHTML(ex.sr || '') + '">' +
-                    '<input type="number" class="pe-kg" placeholder="kg" min="0" step="0.5" value="' + (ex.baseWeight || '') + '" inputmode="decimal">' +
-                    '<button class="pe-del" title="Rimuovi" data-idx="' + idx + '">✕</button>';
-                list.appendChild(row);
-            });
+
+        // Ridisegna la lista tramite il rerenderList della closure
+        // Lo facciamo triggering un evento custom sull'elemento lista
+        var listEl = document.getElementById('proto-editor-list');
+        if (listEl) {
+            listEl.dispatchEvent(new CustomEvent('coach-applied'));
         }
+
         showToast('Lista del Coach applicata e salvata ✓', 'success');
     } else {
-        // Utente tiene la sua lista: chiudi e ridisegna
+        // Cancella il draft e chiudi
+        delete _protoEditorDrafts[proto.id];
         showToast('Protocollo "' + proto.name + '" salvato.', 'success');
         planExpandedProto = null;
         renderPlanPage(weekIdx);
