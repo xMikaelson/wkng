@@ -3956,6 +3956,23 @@ function buildProtoEditorBox(proto, weekIdx) {
     var title = document.createElement('div');
     title.className = 'proto-editor-title';
     title.textContent = '📝 ' + proto.name;
+
+    // Badge tipo allenamento
+    var sg = (proto._splitGroup || '').toLowerCase();
+    var badgeType, badgeColor, badgeText;
+    if (sg === 'upper' || sg === 'lower') {
+        badgeType = 'forza'; badgeColor = '#f59e0b'; badgeText = '⚡ FORZA — ' + sg.toUpperCase() + ' · 5×5 / 5×6';
+    } else if (sg === 'push' || sg === 'pull' || sg === 'legs') {
+        badgeType = 'ipertrofia'; badgeColor = '#818cf8'; badgeText = '💪 IPERTROFIA — ' + sg.toUpperCase() + ' · 4×8 / 4×10';
+    } else if (proto.goal === 'forza') {
+        badgeType = 'forza'; badgeColor = '#f59e0b'; badgeText = '⚡ FORZA · 5×5 / 5×6';
+    } else {
+        badgeType = 'ipertrofia'; badgeColor = '#818cf8'; badgeText = '💪 IPERTROFIA · 4×8 / 4×10';
+    }
+    var badge = document.createElement('div');
+    badge.style.cssText = 'font-size:0.5rem;font-weight:700;color:' + badgeColor + ';text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;padding:3px 8px;background:' + badgeColor + '18;border:0.5px solid ' + badgeColor + '44;border-radius:6px;display:inline-block;';
+    badge.textContent = badgeText;
+    box.appendChild(badge);
     var closeBtn = document.createElement('button');
     closeBtn.className = 'proto-editor-close';
     closeBtn.innerHTML = '✕';
@@ -4025,7 +4042,9 @@ function buildProtoEditorBox(proto, weekIdx) {
     addBtn.className = 'proto-editor-add';
     addBtn.textContent = '+ Aggiungi esercizio';
     addBtn.onclick = function() {
-        var defaultSr = (proto.goal === 'forza') ? '5 x 5' : '4 x 10';
+        var sg = (proto._splitGroup || '').toLowerCase();
+        var isForza = sg === 'upper' || sg === 'lower' || proto.goal === 'forza';
+        var defaultSr = isForza ? '5 x 5' : '4 x 10';
         draft.push({ name: '', sr: defaultSr, baseWeight: 0 });
         rerenderList();
         setTimeout(function() {
@@ -4046,7 +4065,7 @@ function buildProtoEditorBox(proto, weekIdx) {
 
     var saveBtn = document.createElement('button');
     saveBtn.className = 'proto-editor-save-btn';
-    saveBtn.textContent = '💾 Salva con analisi Coach';
+    saveBtn.textContent = '🤖 Analisi Coach AI';
     saveBtn.onclick = function() {
         protoEditorStartSave(proto, draft, weekIdx, saveBtn, box);
     };
@@ -4081,24 +4100,51 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
         '<span>Il Coach sta analizzando il tuo protocollo…</span></div>';
     box.appendChild(coachBox);
 
-    // Costruisci il messaggio per il Coach
+    // Determina il tipo di allenamento in base a splitGroup e goal
+    var splitGroup = proto._splitGroup ? proto._splitGroup.toLowerCase() : '';
     var goal = proto.goal || 'ipertrofia';
+
+    // Logica hybrid: upper/lower → forza, push/pull/legs → ipertrofia
+    var tipoAllenamento, serieSuggerite, tipoLabel;
+    if (splitGroup === 'upper' || splitGroup === 'lower') {
+        tipoAllenamento = 'forza';
+        serieSuggerite = '5×5 oppure 5×6 (a seconda dell\'esercizio)';
+        tipoLabel = 'FORZA (scheda ' + splitGroup.toUpperCase() + ' del programma Hybrid)';
+    } else if (splitGroup === 'push' || splitGroup === 'pull' || splitGroup === 'legs') {
+        tipoAllenamento = 'ipertrofia';
+        serieSuggerite = '4×8 oppure 4×10 (a seconda dell\'esercizio)';
+        tipoLabel = 'IPERTROFIA (scheda ' + splitGroup.toUpperCase() + ' del programma Hybrid)';
+    } else if (goal === 'forza') {
+        tipoAllenamento = 'forza';
+        serieSuggerite = '5×5 oppure 5×6 (a seconda dell\'esercizio)';
+        tipoLabel = 'FORZA';
+    } else {
+        tipoAllenamento = 'ipertrofia';
+        serieSuggerite = '4×8 oppure 4×10 (a seconda dell\'esercizio)';
+        tipoLabel = 'IPERTROFIA';
+    }
+
     var exList = draft.map(function(e, i) {
         return (i+1) + '. ' + (e.name || '(senza nome)') + ' — ' + (e.sr || '?') + ' — ' + (e.baseWeight || 0) + 'kg';
     }).join('\n');
 
-    var prompt = 'Analizza il seguente protocollo di allenamento in italiano. ' +
-        'Obiettivo dichiarato: ' + goal + '.\n' +
+    var prompt = 'Sei un coach di forza e condizionamento. Analizza il seguente protocollo in italiano.\n\n' +
+        'TIPO DI ALLENAMENTO: ' + tipoLabel + '\n' +
+        'Serie raccomandate per questo tipo: ' + serieSuggerite + '\n\n' +
         'Esercizi inseriti dall\'utente:\n' + exList + '\n\n' +
-        'Rispondi SOLO in italiano. La tua risposta deve avere questa struttura:\n' +
+        'ISTRUZIONI IMPORTANTI:\n' +
+        '- Questo è un protocollo di ' + tipoAllenamento.toUpperCase() + ', quindi nella lista ottimizzata usa OBBLIGATORIAMENTE ' + serieSuggerite + '.\n' +
+        '- Se le serie indicate dall\'utente non corrispondono al tipo di allenamento, segnalalo come punto critico.\n' +
+        '- Considera muscoli mancanti, squilibri, esercizi inadatti al tipo.\n\n' +
+        'Rispondi SOLO in italiano con questa struttura:\n' +
         '⚠️ PUNTI CRITICI\n(max 3 problemi principali, brevi)\n\n' +
         '✅ COSA VA BENE\n(max 2 punti)\n\n' +
         '💡 CONSIGLIO\n(una frase concreta)\n\n' +
         '📋 LISTA OTTIMIZZATA\n' +
-        'Scrivi qui la lista corretta in questo formato esatto, un esercizio per riga:\n' +
+        'Un esercizio per riga nel formato ESATTO:\n' +
         'ESERCIZIO | SERIE×RIP | KG\n' +
-        'Esempio: Squat | 4 x 8 | 80\n\n' +
-        'Sii diretto e conciso. Non superare le 250 parole in totale.';
+        'Esempio (' + tipoAllenamento + '): ' + (tipoAllenamento === 'forza' ? 'Squat | 5 x 5 | 80' : 'Leg Press | 4 x 10 | 100') + '\n\n' +
+        'Sii diretto e conciso. Non superare le 280 parole totali.';
 
     var AI_COACH_URL = 'https://trojbppshlfhrsimyxjl.supabase.co/functions/v1/ai-coach';
     var ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyb2picHBzaGxmaHJzaW15eGpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0MzgzNTgsImV4cCI6MjA4NzAxNDM1OH0.rKKyXa7N5XoBnN2kmVZGS4Lr2kax1NuodbyHD_wGjK8';
@@ -4133,7 +4179,7 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
 // ── Fase 2: mostra risultato Coach + bottoni scelta ──
 function protoEditorShowCoachResult(proto, draft, weekIdx, saveBtn, coachBox, coachText) {
     saveBtn.disabled = false;
-    saveBtn.textContent = '💾 Salva con analisi Coach';
+    saveBtn.textContent = '🤖 Analisi Coach AI';
 
     var loading = coachBox.querySelector('#pce-loading');
     if (loading) loading.remove();
