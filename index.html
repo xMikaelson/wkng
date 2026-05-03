@@ -3032,6 +3032,7 @@ async function saveProtocolToSupabase(proto) {
             exercises_json.totalWorkouts = proto.totalWorkouts;
             exercises_json._splitGroup = proto._splitGroup;
             exercises_json._splitSlot = proto._splitSlot;
+            exercises_json._env = proto._env || null;
         }
         const payload = { id: proto.id, user_id: user.id, name: proto.name, goal: proto.goal, exercises_json };
         // Try upsert first; if it fails (RLS/constraint), try insert then update
@@ -3591,7 +3592,8 @@ async function onLoginSuccess(user, usernameOverride = null) {
             exerciseTracking: p.exercises_json?.exerciseTracking || [],
             totalWorkouts: p.exercises_json?.totalWorkouts || 0,
             _splitGroup: p.exercises_json?._splitGroup || null,
-            _splitSlot: p.exercises_json?._splitSlot || null
+            _splitSlot: p.exercises_json?._splitSlot || null,
+            _env: p.exercises_json?._env || null
         }));
     }
     document.getElementById('btn-login-trigger').style.display = 'none';
@@ -3958,17 +3960,27 @@ function buildProtoEditorBox(proto, weekIdx) {
     title.textContent = '📝 ' + proto.name;
 
     // Badge tipo allenamento
-    var sg = (proto._splitGroup || '').toLowerCase();
-    var badgeType, badgeColor, badgeText;
-    if (sg === 'upper' || sg === 'lower') {
-        badgeType = 'forza'; badgeColor = '#f59e0b'; badgeText = '⚡ FORZA — ' + sg.toUpperCase() + ' · 5×5 / 5×6';
-    } else if (sg === 'push' || sg === 'pull' || sg === 'legs') {
-        badgeType = 'ipertrofia'; badgeColor = '#818cf8'; badgeText = '💪 IPERTROFIA — ' + sg.toUpperCase() + ' · 4×8 / 4×10';
+    var sg = (proto._splitSlot || '').toLowerCase();
+    var env = proto._env || '';
+    var badgeColor, badgeText;
+    if (sg === 'upper') {
+        badgeColor = '#f59e0b'; badgeText = '⚡ FORZA · UPPER BODY · 5×5/5×6';
+    } else if (sg === 'lower') {
+        badgeColor = '#f59e0b'; badgeText = '⚡ FORZA · LOWER BODY · 5×5/5×6';
+    } else if (sg === 'push') {
+        badgeColor = '#818cf8'; badgeText = '💪 IPERTROFIA · PUSH · 4×8/4×10';
+    } else if (sg === 'pull') {
+        badgeColor = '#818cf8'; badgeText = '💪 IPERTROFIA · PULL · 4×8/4×10';
+    } else if (sg === 'legs') {
+        badgeColor = '#818cf8'; badgeText = '💪 IPERTROFIA · LEGS · 4×8/4×10';
     } else if (proto.goal === 'forza') {
-        badgeType = 'forza'; badgeColor = '#f59e0b'; badgeText = '⚡ FORZA · 5×5 / 5×6';
+        badgeColor = '#f59e0b'; badgeText = '⚡ FORZA · 5×5/5×6';
     } else {
-        badgeType = 'ipertrofia'; badgeColor = '#818cf8'; badgeText = '💪 IPERTROFIA · 4×8 / 4×10';
+        badgeColor = '#818cf8'; badgeText = '💪 IPERTROFIA · 4×8/4×10';
     }
+    // Aggiunge info attrezzatura al badge
+    var envLabel = env === 'casa' ? ' · 🏠 Casa' : env === 'palestra' ? ' · 🏋️ Palestra' : '';
+    badgeText += envLabel;
     var badge = document.createElement('div');
     badge.style.cssText = 'font-size:0.5rem;font-weight:700;color:' + badgeColor + ';text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;padding:3px 8px;background:' + badgeColor + '18;border:0.5px solid ' + badgeColor + '44;border-radius:6px;display:inline-block;';
     badge.textContent = badgeText;
@@ -4042,8 +4054,8 @@ function buildProtoEditorBox(proto, weekIdx) {
     addBtn.className = 'proto-editor-add';
     addBtn.textContent = '+ Aggiungi esercizio';
     addBtn.onclick = function() {
-        var sg = (proto._splitGroup || '').toLowerCase();
-        var isForza = sg === 'upper' || sg === 'lower' || proto.goal === 'forza';
+        var sl = (proto._splitSlot || '').toLowerCase();
+        var isForza = sl === 'upper' || sl === 'lower' || proto.goal === 'forza';
         var defaultSr = isForza ? '5 x 5' : '4 x 10';
         draft.push({ name: '', sr: defaultSr, baseWeight: 0 });
         rerenderList();
@@ -4100,51 +4112,103 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
         '<span>Il Coach sta analizzando il tuo protocollo…</span></div>';
     box.appendChild(coachBox);
 
-    // Determina il tipo di allenamento in base a splitGroup e goal
-    var splitGroup = proto._splitGroup ? proto._splitGroup.toLowerCase() : '';
+    // ── Determina tipo allenamento ──
+    var splitSlot = (proto._splitSlot || '').toLowerCase();
+    var splitGroup = (proto._splitGroup || '');  // è l'ID del gruppo, non il nome slot
     var goal = proto.goal || 'ipertrofia';
 
-    // Logica hybrid: upper/lower → forza, push/pull/legs → ipertrofia
-    var tipoAllenamento, serieSuggerite, tipoLabel;
-    if (splitGroup === 'upper' || splitGroup === 'lower') {
+    // Logica hybrid: _splitSlot è il campo che contiene upper/lower/push/pull/legs
+    var tipoAllenamento, serieSuggerite, tipoLabel, muscoliTarget, muscoliEsclusi;
+
+    if (splitSlot === 'upper') {
         tipoAllenamento = 'forza';
-        serieSuggerite = '5×5 oppure 5×6 (a seconda dell\'esercizio)';
-        tipoLabel = 'FORZA (scheda ' + splitGroup.toUpperCase() + ' del programma Hybrid)';
-    } else if (splitGroup === 'push' || splitGroup === 'pull' || splitGroup === 'legs') {
+        serieSuggerite = '5×5 oppure 5×6 (scegli in base al movimento)';
+        tipoLabel = 'FORZA — Upper Body (parte superiore)';
+        muscoliTarget = 'petto, schiena, spalle, bicipiti, tricipiti';
+        muscoliEsclusi = 'quadricipiti, femorali, glutei, polpacci — sono esclusivamente per la scheda Lower Body';
+    } else if (splitSlot === 'lower') {
+        tipoAllenamento = 'forza';
+        serieSuggerite = '5×5 oppure 5×6 (scegli in base al movimento)';
+        tipoLabel = 'FORZA — Lower Body (parte inferiore)';
+        muscoliTarget = 'quadricipiti, femorali, glutei, polpacci, core';
+        muscoliEsclusi = 'petto, spalle, bicipiti, tricipiti — sono esclusivamente per la scheda Upper Body';
+    } else if (splitSlot === 'push') {
         tipoAllenamento = 'ipertrofia';
-        serieSuggerite = '4×8 oppure 4×10 (a seconda dell\'esercizio)';
-        tipoLabel = 'IPERTROFIA (scheda ' + splitGroup.toUpperCase() + ' del programma Hybrid)';
+        serieSuggerite = '4×8 oppure 4×10 (scegli in base al movimento)';
+        tipoLabel = 'IPERTROFIA — Push';
+        muscoliTarget = 'petto, spalle anteriori/laterali, tricipiti';
+        muscoliEsclusi = 'bicipiti, dorsali, rematori — sono per Pull; quadricipiti e glutei — sono per Legs';
+    } else if (splitSlot === 'pull') {
+        tipoAllenamento = 'ipertrofia';
+        serieSuggerite = '4×8 oppure 4×10 (scegli in base al movimento)';
+        tipoLabel = 'IPERTROFIA — Pull';
+        muscoliTarget = 'dorsali, trapezi, romboidi, bicipiti, deltoide posteriore';
+        muscoliEsclusi = 'petto, tricipiti, spalle anteriori — sono per Push; quadricipiti e glutei — sono per Legs';
+    } else if (splitSlot === 'legs') {
+        tipoAllenamento = 'ipertrofia';
+        serieSuggerite = '4×8 oppure 4×10 (a eccezione dei polpacci: 4×15)';
+        tipoLabel = 'IPERTROFIA — Legs';
+        muscoliTarget = 'quadricipiti, femorali, glutei, polpacci, abduttori';
+        muscoliEsclusi = 'petto, schiena, spalle, bicipiti, tricipiti — sono per Push e Pull';
     } else if (goal === 'forza') {
         tipoAllenamento = 'forza';
-        serieSuggerite = '5×5 oppure 5×6 (a seconda dell\'esercizio)';
-        tipoLabel = 'FORZA';
+        serieSuggerite = '5×5 oppure 5×6';
+        tipoLabel = 'FORZA — Full Body';
+        muscoliTarget = 'tutto il corpo con focus su movimenti composti';
+        muscoliEsclusi = '';
     } else {
         tipoAllenamento = 'ipertrofia';
-        serieSuggerite = '4×8 oppure 4×10 (a seconda dell\'esercizio)';
+        serieSuggerite = '4×8 oppure 4×10';
         tipoLabel = 'IPERTROFIA';
+        muscoliTarget = 'tutto il corpo';
+        muscoliEsclusi = '';
+    }
+
+    // ── Determina attrezzatura disponibile ──
+    var env = proto._env || '';
+    // Fallback: prova a dedurla dal nome del protocollo se non salvata
+    if (!env) {
+        var nomeL = proto.name.toLowerCase();
+        if (nomeL.indexOf('casa') !== -1 || nomeL.indexOf('home') !== -1 || nomeL.indexOf('manubri') !== -1) env = 'casa';
+        else if (nomeL.indexOf('palestra') !== -1 || nomeL.indexOf('gym') !== -1) env = 'palestra';
+    }
+    var attrezzaturaLabel, attrezzaturaDesc;
+    if (env === 'casa') {
+        attrezzaturaLabel = 'CASA (solo manubri e panca piana)';
+        attrezzaturaDesc = 'L\'utente si allena a casa con soli manubri e panca piana. VIETATO consigliare: bilanciere, macchine, lat machine, cavi, leg press, smith machine, multipower. USA SOLO esercizi con manubri o a corpo libero.';
+    } else {
+        attrezzaturaLabel = 'PALESTRA (attrezzatura completa)';
+        attrezzaturaDesc = 'L\'utente ha accesso a palestra completa: bilanciere, manubri, macchine, cavi, lat machine, leg press, smith machine.';
     }
 
     var exList = draft.map(function(e, i) {
         return (i+1) + '. ' + (e.name || '(senza nome)') + ' — ' + (e.sr || '?') + ' — ' + (e.baseWeight || 0) + 'kg';
     }).join('\n');
 
-    var prompt = 'Sei un coach di forza e condizionamento. Analizza il seguente protocollo in italiano.\n\n' +
-        'TIPO DI ALLENAMENTO: ' + tipoLabel + '\n' +
-        'Serie raccomandate per questo tipo: ' + serieSuggerite + '\n\n' +
-        'Esercizi inseriti dall\'utente:\n' + exList + '\n\n' +
-        'ISTRUZIONI IMPORTANTI:\n' +
-        '- Questo è un protocollo di ' + tipoAllenamento.toUpperCase() + ', quindi nella lista ottimizzata usa OBBLIGATORIAMENTE ' + serieSuggerite + '.\n' +
-        '- Se le serie indicate dall\'utente non corrispondono al tipo di allenamento, segnalalo come punto critico.\n' +
-        '- Considera muscoli mancanti, squilibri, esercizi inadatti al tipo.\n\n' +
+    var prompt = 'Sei un coach esperto di forza e ipertrofia. Analizza questo protocollo.\n\n' +
+        '━━ CONTESTO ━━\n' +
+        'Nome protocollo: "' + proto.name + '"\n' +
+        'Tipo di allenamento: ' + tipoLabel + '\n' +
+        'Serie raccomandate: ' + serieSuggerite + '\n' +
+        'Muscoli TARGET di questa scheda: ' + muscoliTarget + '\n' +
+        (muscoliEsclusi ? 'Muscoli ESCLUSI (non vanno in questa scheda): ' + muscoliEsclusi + '\n' : '') +
+        'Attrezzatura: ' + attrezzaturaLabel + '\n' +
+        attrezzaturaDesc + '\n\n' +
+        '━━ ESERCIZI INSERITI ━━\n' + exList + '\n\n' +
+        '━━ ISTRUZIONI OBBLIGATORIE ━━\n' +
+        '1. Nella LISTA OTTIMIZZATA usa SOLO muscoli target elencati sopra. Se l\'utente ha inserito esercizi per muscoli sbagliati, rimuovili e segnalalo.\n' +
+        '2. Usa OBBLIGATORIAMENTE le serie: ' + serieSuggerite + '.\n' +
+        '3. Rispetta l\'attrezzatura: ' + (env === 'casa' ? 'SOLO manubri e panca piana, no macchine né bilanciere.' : 'puoi usare qualsiasi attrezzatura da palestra.') + '\n' +
+        '4. Se le serie dell\'utente sono sbagliate per il tipo, segnalalo nei punti critici.\n\n' +
         'Rispondi SOLO in italiano con questa struttura:\n' +
-        '⚠️ PUNTI CRITICI\n(max 3 problemi principali, brevi)\n\n' +
+        '⚠️ PUNTI CRITICI\n(max 3 problemi principali)\n\n' +
         '✅ COSA VA BENE\n(max 2 punti)\n\n' +
-        '💡 CONSIGLIO\n(una frase concreta)\n\n' +
+        '💡 CONSIGLIO\n(una frase concreta e pratica)\n\n' +
         '📋 LISTA OTTIMIZZATA\n' +
-        'Un esercizio per riga nel formato ESATTO:\n' +
-        'ESERCIZIO | SERIE×RIP | KG\n' +
-        'Esempio (' + tipoAllenamento + '): ' + (tipoAllenamento === 'forza' ? 'Squat | 5 x 5 | 80' : 'Leg Press | 4 x 10 | 100') + '\n\n' +
-        'Sii diretto e conciso. Non superare le 280 parole totali.';
+        'Formato esatto — un esercizio per riga:\n' +
+        'NOME ESERCIZIO | SERIE×RIP | KG\n' +
+        'Esempio: ' + (tipoAllenamento === 'forza' ? 'Bench Press | 5 x 5 | 60' : 'Panca Manubri | 4 x 10 | 22') + '\n\n' +
+        'Sii diretto. Max 300 parole totali.';
 
     var AI_COACH_URL = 'https://trojbppshlfhrsimyxjl.supabase.co/functions/v1/ai-coach';
     var ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyb2picHBzaGxmaHJzaW15eGpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0MzgzNTgsImV4cCI6MjA4NzAxNDM1OH0.rKKyXa7N5XoBnN2kmVZGS4Lr2kax1NuodbyHD_wGjK8';
@@ -9505,7 +9569,8 @@ function generateSplitProtocols(baseName, goal, splitType) {
             exerciseTracking: [],
             totalWorkouts: 0,
             _splitGroup: groupId,
-            _splitSlot: session.key
+            _splitSlot: session.key,
+            _env: env
         };
 
         APP.savedProtocols.push(newProto);
@@ -9551,7 +9616,8 @@ function generateHybridProtocols(baseName) {
             exerciseTracking: [],
             totalWorkouts: 0,
             _splitGroup: groupId,
-            _splitSlot: slot.key
+            _splitSlot: slot.key,
+            _env: env
         };
 
         APP.savedProtocols.push(newProto);
@@ -9666,7 +9732,8 @@ function autoSaveProtocol() {
         selectedViewWeek: APP.selectedViewWeek,
         startDate: APP.startDate ? APP.startDate.toISOString() : null,
         exerciseTracking: JSON.parse(JSON.stringify(APP.exerciseTracking)),
-        totalWorkouts: APP.totalWorkouts
+        totalWorkouts: APP.totalWorkouts,
+        _env: onboarding.env || null
     };
 
     APP.savedProtocols.push(newProto);
