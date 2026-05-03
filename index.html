@@ -3987,19 +3987,19 @@ function buildProtoEditorBox(proto, weekIdx) {
     var env = proto._env || '';
     var badgeColor, badgeText;
     if (sg === 'upper') {
-        badgeColor = '#f59e0b'; badgeText = '⚡ FORZA · UPPER BODY · 5×5/5×6';
+        badgeColor = '#f59e0b'; badgeText = '⚡ FORZA · UPPER BODY · 5×5 / 3×8';
     } else if (sg === 'lower') {
-        badgeColor = '#f59e0b'; badgeText = '⚡ FORZA · LOWER BODY · 5×5/5×6';
+        badgeColor = '#f59e0b'; badgeText = '⚡ FORZA · LOWER BODY · 5×5 / 3×8';
     } else if (sg === 'push') {
-        badgeColor = '#818cf8'; badgeText = '💪 IPERTROFIA · PUSH · 4×8/4×10';
+        badgeColor = '#818cf8'; badgeText = '💪 IPERTROFIA · PUSH · 4×10 / 4×12';
     } else if (sg === 'pull') {
-        badgeColor = '#818cf8'; badgeText = '💪 IPERTROFIA · PULL · 4×8/4×10';
+        badgeColor = '#818cf8'; badgeText = '💪 IPERTROFIA · PULL · 4×10 / 4×12';
     } else if (sg === 'legs') {
-        badgeColor = '#818cf8'; badgeText = '💪 IPERTROFIA · LEGS · 4×8/4×10';
+        badgeColor = '#818cf8'; badgeText = '💪 IPERTROFIA · LEGS · 4×10 / 4×12';
     } else if (proto.goal === 'forza') {
-        badgeColor = '#f59e0b'; badgeText = '⚡ FORZA · 5×5/5×6';
+        badgeColor = '#f59e0b'; badgeText = '⚡ FORZA · 5×5 / 3×8';
     } else {
-        badgeColor = '#818cf8'; badgeText = '💪 IPERTROFIA · 4×8/4×10';
+        badgeColor = '#818cf8'; badgeText = '💪 IPERTROFIA · 4×10 / 4×12';
     }
     // Aggiunge info attrezzatura al badge
     var envLabel = env === 'casa' ? ' · 🏠 Casa' : env === 'palestra' ? ' · 🏋️ Palestra' : '';
@@ -4230,9 +4230,25 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
         muscoliEsclusi = '';
     }
 
+    // ── Regole serie per tipo di allenamento ──
+    // Usate sia nel badge che nel prompt, in modo esplicito e non ambiguo
+    var regoleSerie;
+    if (tipoAllenamento === 'forza') {
+        regoleSerie =
+            'REGOLE SERIE OBBLIGATORIE PER FORZA:\n' +
+            '• Esercizi multiarticolari (squat, stacco, panca piana, rematore, overhead press, pull-up, dip) → 5 x 5\n' +
+            '• Esercizi isolati / accessori (curl, lateral raise, face pull, tricep pushdown, leg curl isolato, calf raise) → 3 x 8\n' +
+            'NON usare 5x6, 4x8, 4x10 o qualsiasi altra combinazione non elencata sopra.';
+    } else {
+        regoleSerie =
+            'REGOLE SERIE OBBLIGATORIE PER IPERTROFIA:\n' +
+            '• Esercizi composti principali (panca inclinata, lat machine, leg press, RDL, shoulder press, cable row) → 4 x 10\n' +
+            '• Esercizi isolati (curl, lateral raise, fly, tricep pushdown, leg extension, leg curl, calf raise, face pull) → 4 x 12\n' +
+            'NON usare 5x5, 5x6, 3x8, 4x8 o qualsiasi altra combinazione non elencata sopra.';
+    }
+
     // ── Determina attrezzatura disponibile ──
     var env = proto._env || '';
-    // Fallback: prova a dedurla dal nome del protocollo se non salvata
     if (!env) {
         var nomeL = proto.name.toLowerCase();
         if (nomeL.indexOf('casa') !== -1 || nomeL.indexOf('home') !== -1 || nomeL.indexOf('manubri') !== -1) env = 'casa';
@@ -4251,31 +4267,34 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
         return (i+1) + '. ' + (e.name || '(senza nome)') + ' — ' + (e.sr || '?') + ' — ' + (e.baseWeight || 0) + 'kg';
     }).join('\n');
 
-    var prompt = 'Sei un coach esperto di forza e ipertrofia. Analizza questo protocollo.\n\n' +
+    var esempioForza   = 'Bench Press | 5 x 5 | 60\nLateral Raise | 3 x 8 | 10';
+    var esempioIpert   = 'Lat Machine | 4 x 10 | 55\nCurl Manubri | 4 x 12 | 14';
+    var esempioRiga    = tipoAllenamento === 'forza' ? esempioForza : esempioIpert;
+
+    var prompt =
+        'Sei un coach esperto. Analizza questo protocollo e rispondi SOLO in italiano.\n\n' +
         '━━ CONTESTO ━━\n' +
         'Nome protocollo: "' + proto.name + '"\n' +
-        'Tipo di allenamento: ' + tipoLabel + '\n' +
-        'Serie raccomandate: ' + serieSuggerite + '\n' +
-        'Muscoli TARGET di questa scheda: ' + muscoliTarget + '\n' +
-        (muscoliEsclusi ? 'Muscoli ESCLUSI (non vanno in questa scheda): ' + muscoliEsclusi + '\n' : '') +
-        'Attrezzatura: ' + attrezzaturaLabel + '\n' +
-        attrezzaturaDesc + '\n\n' +
+        'Tipo: ' + tipoLabel + '\n' +
+        'Muscoli TARGET: ' + muscoliTarget + '\n' +
+        (muscoliEsclusi ? 'Muscoli ESCLUSI da questa scheda: ' + muscoliEsclusi + '\n' : '') +
+        'Attrezzatura: ' + attrezzaturaLabel + ' — ' + attrezzaturaDesc + '\n\n' +
+        '━━ REGOLE SERIE (VINCOLANTI) ━━\n' +
+        regoleSerie + '\n\n' +
         '━━ ESERCIZI INSERITI ━━\n' + exList + '\n\n' +
-        '━━ ISTRUZIONI OBBLIGATORIE ━━\n' +
-        '1. Nella LISTA OTTIMIZZATA usa SOLO muscoli target elencati sopra. Se l\'utente ha inserito esercizi per muscoli sbagliati, rimuovili e segnalalo.\n' +
-        '2. Usa OBBLIGATORIAMENTE le serie: ' + serieSuggerite + '.\n' +
-        '3. Rispetta l\'attrezzatura: ' + (env === 'casa' ? 'SOLO manubri e panca piana, no macchine né bilanciere.' : 'puoi usare qualsiasi attrezzatura da palestra.') + '\n' +
-        '4. Se le serie dell\'utente sono sbagliate per il tipo, segnalalo nei punti critici.\n\n' +
-        'Rispondi SOLO in italiano con questa struttura:\n' +
-        '⚠️ PUNTI CRITICI\n(max 3 problemi principali)\n\n' +
-        '✅ COSA VA BENE\n(max 2 punti)\n\n' +
-        '💡 CONSIGLIO\n(una frase concreta e pratica)\n\n' +
+        '━━ ISTRUZIONI ━━\n' +
+        '1. Usa SOLO i muscoli target. Rimuovi esercizi per muscoli sbagliati e segnalalo.\n' +
+        '2. Applica le regole serie sopra SENZA ECCEZIONI. Non inventare combinazioni diverse.\n' +
+        '3. Rispetta l\'attrezzatura: ' + (env === 'casa' ? 'SOLO manubri/corpo libero.' : 'qualsiasi attrezzatura da palestra.') + '\n\n' +
+        'Struttura risposta:\n' +
+        '⚠️ PUNTI CRITICI\n(max 3, brevi)\n\n' +
+        '✅ COSA VA BENE\n(max 2)\n\n' +
+        '💡 CONSIGLIO\n(una frase)\n\n' +
         '📋 LISTA DEFINITIVA\n' +
-        'Produci la lista COMPLETA e DEFINITIVA — quella che non necessita di ulteriori modifiche se rianalizzata.\n' +
-        'Formato esatto — un esercizio per riga:\n' +
-        'NOME ESERCIZIO | SERIE×RIP | KG\n' +
-        'Esempio: ' + (tipoAllenamento === 'forza' ? 'Bench Press | 5 x 5 | 60' : 'Panca Manubri | 4 x 10 | 22') + '\n\n' +
-        'Sii diretto. Max 300 parole totali.';
+        'Lista completa e definitiva. Formato — un esercizio per riga:\n' +
+        'NOME | SERIE x RIP | KG\n' +
+        'Esempio:\n' + esempioRiga + '\n\n' +
+        'Max 300 parole totali.';
 
     var AI_COACH_URL = 'https://trojbppshlfhrsimyxjl.supabase.co/functions/v1/ai-coach';
     var ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyb2picHBzaGxmaHJzaW15eGpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0MzgzNTgsImV4cCI6MjA4NzAxNDM1OH0.rKKyXa7N5XoBnN2kmVZGS4Lr2kax1NuodbyHD_wGjK8';
