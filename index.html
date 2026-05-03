@@ -4053,18 +4053,40 @@ function buildProtoEditorBox(proto, weekIdx) {
                 '<button class="pe-del" title="Rimuovi">✕</button>';
 
             // Aggiornamento in tempo reale del draft (solo in memoria)
+            // + reset del flag Coach se l'utente modifica manualmente dopo accettazione
+            function onManualEdit() {
+                if (proto._coachOptimizedAt) {
+                    proto._coachOptimizedAt = null;
+                    // Sblocca il bottone Analisi in-place senza re-render
+                    var sb = box.querySelector('.proto-editor-save-btn');
+                    if (sb && sb.disabled) {
+                        sb.textContent = '🤖 Analisi Coach AI';
+                        sb.disabled = false;
+                        sb.style.background = '';
+                        sb.style.color = '';
+                        sb.style.border = '';
+                        sb.onclick = function() { protoEditorStartSave(proto, draft, weekIdx, sb, box); };
+                        var hint = sb.parentElement.querySelector('div');
+                        if (hint) hint.remove();
+                    }
+                }
+            }
             row.querySelector('.pe-name').addEventListener('input', function() {
                 draft[idx].name = this.value;
+                onManualEdit();
             });
             row.querySelector('.pe-sr').addEventListener('input', function() {
                 draft[idx].sr = this.value;
+                onManualEdit();
             });
             row.querySelector('.pe-kg').addEventListener('input', function() {
                 var n = parseFloat(this.value);
                 draft[idx].baseWeight = isNaN(n) ? 0 : n;
+                onManualEdit();
             });
             row.querySelector('.pe-del').onclick = function() {
                 draft.splice(idx, 1);
+                onManualEdit();
                 rerenderList();
             };
             list.appendChild(row);
@@ -4100,11 +4122,29 @@ function buildProtoEditorBox(proto, weekIdx) {
 
     var saveBtn = document.createElement('button');
     saveBtn.className = 'proto-editor-save-btn';
-    saveBtn.textContent = '🤖 Analisi Coach AI';
-    saveBtn.onclick = function() {
-        protoEditorStartSave(proto, draft, weekIdx, saveBtn, box);
-    };
-    saveRow.appendChild(saveBtn);
+
+    // Se il protocollo è stato ottimizzato dal Coach in questa sessione (< 10 min),
+    // mostra il bottone come già completato
+    var justOptimized = proto._coachOptimizedAt && (Date.now() - proto._coachOptimizedAt) < 600000;
+    if (justOptimized) {
+        saveBtn.textContent = '✅ Lista ottimizzata dal Coach';
+        saveBtn.disabled = true;
+        saveBtn.style.background = 'rgba(0,255,136,0.12)';
+        saveBtn.style.color = 'var(--primary)';
+        saveBtn.style.border = '1px solid rgba(0,255,136,0.3)';
+        // Piccolo hint sotto
+        var optimizedHint = document.createElement('div');
+        optimizedHint.style.cssText = 'font-size:0.5rem;color:#475569;text-align:center;margin-top:6px;';
+        optimizedHint.textContent = 'Modifica la lista per sbloccare una nuova analisi';
+        saveRow.appendChild(saveBtn);
+        saveRow.appendChild(optimizedHint);
+    } else {
+        saveBtn.textContent = '🤖 Analisi Coach AI';
+        saveBtn.onclick = function() {
+            protoEditorStartSave(proto, draft, weekIdx, saveBtn, box);
+        };
+        saveRow.appendChild(saveBtn);
+    }
     box.appendChild(saveRow);
 
     return box;
@@ -4226,7 +4266,8 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
         '⚠️ PUNTI CRITICI\n(max 3 problemi principali)\n\n' +
         '✅ COSA VA BENE\n(max 2 punti)\n\n' +
         '💡 CONSIGLIO\n(una frase concreta e pratica)\n\n' +
-        '📋 LISTA OTTIMIZZATA\n' +
+        '📋 LISTA DEFINITIVA\n' +
+        'Produci la lista COMPLETA e DEFINITIVA — quella che non necessita di ulteriori modifiche se rianalizzata.\n' +
         'Formato esatto — un esercizio per riga:\n' +
         'NOME ESERCIZIO | SERIE×RIP | KG\n' +
         'Esempio: ' + (tipoAllenamento === 'forza' ? 'Bench Press | 5 x 5 | 60' : 'Panca Manubri | 4 x 10 | 22') + '\n\n' +
@@ -4275,8 +4316,8 @@ function protoEditorShowCoachResult(proto, draft, weekIdx, saveBtn, coachBox, co
 
     var textDiv = document.createElement('div');
     textDiv.className = 'proto-coach-text';
-    // Mostra il testo del Coach escludendo il blocco "LISTA OTTIMIZZATA" per non duplicarlo
-    var displayText = coachText.replace(/📋 LISTA OTTIMIZZATA[\s\S]*/i, '').trim();
+    // Mostra il testo del Coach escludendo il blocco "LISTA DEFINITIVA" per non duplicarlo
+    var displayText = coachText.replace(/📋 LISTA DEFINITIVA[\s\S]*/i, '').trim();
     if (!displayText) displayText = coachText;
     textDiv.textContent = displayText;
     coachBox.appendChild(textDiv);
@@ -4309,7 +4350,7 @@ function protoEditorShowCoachResult(proto, draft, weekIdx, saveBtn, coachBox, co
         applyBtn.className = 'proto-coach-apply';
         applyBtn.textContent = '✨ Applica i consigli del Coach';
         applyBtn.onclick = function() {
-            protoEditorCommit(proto, suggestedExercises, weekIdx);
+            protoEditorCommit(proto, suggestedExercises, weekIdx, saveBtn, true);
         };
         actionsDiv.appendChild(applyBtn);
     }
@@ -4318,7 +4359,7 @@ function protoEditorShowCoachResult(proto, draft, weekIdx, saveBtn, coachBox, co
     keepBtn.className = 'proto-coach-keep';
     keepBtn.textContent = '💪 Tieni la mia lista';
     keepBtn.onclick = function() {
-        protoEditorCommit(proto, draft, weekIdx);
+        protoEditorCommit(proto, draft, weekIdx, saveBtn, false);
     };
     actionsDiv.appendChild(keepBtn);
     coachBox.appendChild(actionsDiv);
@@ -4327,8 +4368,8 @@ function protoEditorShowCoachResult(proto, draft, weekIdx, saveBtn, coachBox, co
 // ── Parsing della lista ottimizzata dalla risposta del Coach ──
 function protoEditorParseCoachList(text) {
     var result = [];
-    // Cerca il blocco dopo "LISTA OTTIMIZZATA"
-    var match = text.match(/LISTA OTTIMIZZATA[\s\S]*?\n([\s\S]+)/i);
+    // Cerca il blocco dopo "LISTA DEFINITIVA" o "LISTA OTTIMIZZATA" (retrocompatibilità)
+    var match = text.match(/LISTA (?:DEFINITIVA|OTTIMIZZATA)[\s\S]*?\n([\s\S]+)/i);
     if (!match) return result;
     var lines = match[1].split('\n');
     lines.forEach(function(line) {
@@ -4348,14 +4389,50 @@ function protoEditorParseCoachList(text) {
 }
 
 // ── Fase 3: salvataggio definitivo ──
-function protoEditorCommit(proto, exercises, weekIdx) {
+function protoEditorCommit(proto, exercises, weekIdx, saveBtn, coachApplied) {
     proto.exercises = JSON.parse(JSON.stringify(exercises));
-    // Cancella il draft ora che è stato committato
+    // Cancella il draft
     delete _protoEditorDrafts[proto.id];
     protoEditorPersist(proto);
-    showToast('Protocollo "' + proto.name + '" salvato.', 'success');
-    planExpandedProto = null;
-    renderPlanPage(weekIdx);
+
+    if (coachApplied) {
+        // Lista accettata dal Coach: blocca il bottone analisi per questa sessione di editor
+        // e salva un flag sul protocollo per mostrarlo chiuso al prossimo open
+        proto._coachOptimizedAt = Date.now();
+        // Non chiudiamo l'editor — aggiorniamo la UI in-place
+        // Aggiorna il bottone
+        if (saveBtn) {
+            saveBtn.textContent = '✅ Lista ottimizzata dal Coach';
+            saveBtn.disabled = true;
+            saveBtn.style.background = 'rgba(0,255,136,0.12)';
+            saveBtn.style.color = 'var(--primary)';
+            saveBtn.style.border = '1px solid rgba(0,255,136,0.3)';
+        }
+        // Rimuovi la coach box (già letta)
+        var cBox = document.getElementById('proto-editor-box')?.querySelector('.proto-coach-box');
+        if (cBox) cBox.remove();
+        // Aggiorna la lista esercizi nell'editor per mostrare quella appena applicata
+        var list = document.getElementById('proto-editor-list');
+        if (list) {
+            list.innerHTML = '';
+            proto.exercises.forEach(function(ex, idx) {
+                var row = document.createElement('div');
+                row.className = 'proto-ex-row';
+                row.innerHTML = '<input type="text" class="pe-name" placeholder="Cerca esercizio..." value="' + escapeHTML(ex.name || '') + '" oninput="debouncedSearch(this)">' +
+                    '<div class="suggestions"></div>' +
+                    '<input type="text" class="pe-sr" placeholder="5x5" value="' + escapeHTML(ex.sr || '') + '">' +
+                    '<input type="number" class="pe-kg" placeholder="kg" min="0" step="0.5" value="' + (ex.baseWeight || '') + '" inputmode="decimal">' +
+                    '<button class="pe-del" title="Rimuovi" data-idx="' + idx + '">✕</button>';
+                list.appendChild(row);
+            });
+        }
+        showToast('Lista del Coach applicata e salvata ✓', 'success');
+    } else {
+        // Utente tiene la sua lista: chiudi e ridisegna
+        showToast('Protocollo "' + proto.name + '" salvato.', 'success');
+        planExpandedProto = null;
+        renderPlanPage(weekIdx);
+    }
 }
 
 function protoEditorPersist(proto) {
