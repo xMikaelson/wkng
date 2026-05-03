@@ -4260,7 +4260,7 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
         attrezzaturaDesc = 'L\'utente si allena a casa con soli manubri e panca piana. VIETATO consigliare: bilanciere, macchine, lat machine, cavi, leg press, smith machine, multipower. USA SOLO esercizi con manubri o a corpo libero.';
     } else {
         attrezzaturaLabel = 'PALESTRA (attrezzatura completa)';
-        attrezzaturaDesc = 'L\'utente ha accesso a palestra completa: bilanciere, manubri, macchine, cavi, lat machine, leg press, smith machine.';
+        attrezzaturaDesc = 'L\'utente ha accesso a palestra completa: bilanciere, manubri, macchine, cavi, lat machine, leg press, smith machine. Sono ammessi anche esercizi a corpo libero come accessori (dip, chin-up, push-up, plank, ecc.).';
     }
 
     var exList = draft.map(function(e, i) {
@@ -4334,31 +4334,31 @@ function protoEditorShowCoachResult(proto, draft, weekIdx, saveBtn, coachBox, co
     var loading = coachBox.querySelector('#pce-loading');
     if (loading) loading.remove();
 
-    // Parsing della lista ottimizzata dal testo del Coach
+    // Parsing della lista dal testo del Coach
     var suggestedExercises = protoEditorParseCoachList(coachText);
 
     var textDiv = document.createElement('div');
     textDiv.className = 'proto-coach-text';
-    // Mostra il testo del Coach escludendo il blocco "LISTA DEFINITIVA" per non duplicarlo
-    var displayText = coachText.replace(/📋 LISTA DEFINITIVA[\s\S]*/i, '').trim();
+    // Mostra il testo del Coach escludendo il blocco lista per non duplicarlo
+    var displayText = coachText.replace(/📋\s*LISTA\s*(DEFINITIVA|OTTIMIZZATA)[\s\S]*/i, '').trim();
     if (!displayText) displayText = coachText;
     textDiv.textContent = displayText;
     coachBox.appendChild(textDiv);
 
-    // Se il Coach ha suggerito una lista, mostrala come anteprima
-    if (suggestedExercises && suggestedExercises.length > 0) {
+    // Anteprima lista (sempre mostrata se abbiamo esercizi)
+    if (suggestedExercises.length > 0) {
         var previewDiv = document.createElement('div');
         previewDiv.style.cssText = 'background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);border-radius:9px;padding:10px 12px;margin-bottom:10px;';
         var previewTitle = document.createElement('div');
         previewTitle.style.cssText = 'font-size:0.52rem;color:#6366f1;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-bottom:6px;';
-        previewTitle.textContent = '📋 Lista ottimizzata dal Coach';
+        previewTitle.textContent = '📋 Lista definitiva del Coach (' + suggestedExercises.length + ' esercizi)';
         previewDiv.appendChild(previewTitle);
         suggestedExercises.forEach(function(e) {
             var row = document.createElement('div');
             row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.62rem;';
             row.innerHTML = '<span style="color:#cbd5e1;flex:1;">' + escapeHTML(e.name) + '</span>' +
                 '<span style="color:#818cf8;font-weight:700;margin-left:8px;">' + escapeHTML(e.sr) + '</span>' +
-                '<span style="color:#00ff88;font-weight:700;margin-left:8px;">' + e.baseWeight + 'kg</span>';
+                '<span style="color:#00ff88;font-weight:700;margin-left:8px;">' + (e.baseWeight || '—') + (e.baseWeight ? 'kg' : '') + '</span>';
             previewDiv.appendChild(row);
         });
         coachBox.appendChild(previewDiv);
@@ -4368,15 +4368,22 @@ function protoEditorShowCoachResult(proto, draft, weekIdx, saveBtn, coachBox, co
     var actionsDiv = document.createElement('div');
     actionsDiv.className = 'proto-coach-actions';
 
-    if (suggestedExercises && suggestedExercises.length > 0) {
-        var applyBtn = document.createElement('button');
-        applyBtn.className = 'proto-coach-apply';
-        applyBtn.textContent = '✨ Applica i consigli del Coach';
+    // "Applica" è sempre presente — se il parser ha trovato esercizi li usa,
+    // altrimenti è disabilitato con spiegazione
+    var applyBtn = document.createElement('button');
+    applyBtn.className = 'proto-coach-apply';
+    if (suggestedExercises.length > 0) {
+        applyBtn.textContent = '✨ Applica la lista del Coach';
         applyBtn.onclick = function() {
             protoEditorCommit(proto, suggestedExercises, weekIdx, saveBtn, true);
         };
-        actionsDiv.appendChild(applyBtn);
+    } else {
+        applyBtn.textContent = '⚠️ Lista non rilevata — riprova';
+        applyBtn.style.opacity = '0.5';
+        applyBtn.style.cursor = 'not-allowed';
+        applyBtn.title = 'Il Coach non ha prodotto una lista nel formato atteso. Riprova l\'analisi.';
     }
+    actionsDiv.appendChild(applyBtn);
 
     var keepBtn = document.createElement('button');
     keepBtn.className = 'proto-coach-keep';
@@ -4388,26 +4395,48 @@ function protoEditorShowCoachResult(proto, draft, weekIdx, saveBtn, coachBox, co
     coachBox.appendChild(actionsDiv);
 }
 
-// ── Parsing della lista ottimizzata dalla risposta del Coach ──
+// ── Parsing della lista dalla risposta del Coach ──
 function protoEditorParseCoachList(text) {
     var result = [];
-    // Cerca il blocco dopo "LISTA DEFINITIVA" o "LISTA OTTIMIZZATA" (retrocompatibilità)
-    var match = text.match(/LISTA (?:DEFINITIVA|OTTIMIZZATA)[\s\S]*?\n([\s\S]+)/i);
-    if (!match) return result;
-    var lines = match[1].split('\n');
+
+    // 1. Trova il blocco lista: cerca l'intestazione LISTA DEFINITIVA/OTTIMIZZATA
+    //    Accetta varianti con/senza emoji, spazi extra, asterischi markdown
+    var blockMatch = text.match(/(?:📋\s*)?(?:\*{0,2})LISTA\s+(?:DEFINITIVA|OTTIMIZZATA)(?:\*{0,2})[\s\S]*?\n([\s\S]+)/i);
+    var block = blockMatch ? blockMatch[1] : text; // fallback: prova a parsare tutto
+
+    var lines = block.split('\n');
     lines.forEach(function(line) {
         line = line.trim();
-        if (!line || line.startsWith('ESERCIZIO')) return;
-        // Formato atteso: "Nome | serie×rip | kg" oppure "Nome | 4 x 8 | 80"
-        var parts = line.split('|');
-        if (parts.length >= 2) {
-            var name = parts[0].replace(/^\d+\.\s*/, '').trim();
-            var sr = parts[1] ? parts[1].trim() : '4 x 10';
-            var kgRaw = parts[2] ? parts[2].trim() : '0';
+        // Salta righe vuote, intestazioni colonna, righe di esempio
+        if (!line) return;
+        if (/^(nome|esercizio|esempio|format|NOME|ESERCIZIO)/i.test(line)) return;
+        if (/^[-=─━]+$/.test(line)) return; // righe separatrici
+
+        // Prova separatore | (formato principale)
+        if (line.indexOf('|') !== -1) {
+            var parts = line.split('|').map(function(p) { return p.trim(); });
+            var name = parts[0].replace(/^[\d\.\)\-\*•]+\s*/, '').replace(/\*+/g, '').trim();
+            var sr   = parts[1] ? parts[1].replace(/\*+/g, '').trim() : '';
+            var kgRaw = parts[2] ? parts[2].replace(/\*+/g, '').trim() : '0';
             var kg = parseFloat(kgRaw.replace(/[^0-9.]/g, '')) || 0;
-            if (name.length > 0) result.push({ name: name, sr: sr, baseWeight: kg });
+            if (name.length > 1 && sr.length > 0) {
+                result.push({ name: name, sr: sr, baseWeight: kg });
+                return;
+            }
+        }
+
+        // Prova separatore — o – (formato alternativo: "Esercizio — 4 x 10 — 60kg")
+        var dashMatch = line.match(/^([\w\s\u00C0-\u024F]+?)\s*[—–-]+\s*([\dx\s×]+)\s*[—–-]+\s*([\d.]+)/i);
+        if (dashMatch) {
+            var name2 = dashMatch[1].replace(/^[\d\.\)\-\*•]+\s*/, '').trim();
+            var sr2   = dashMatch[2].trim();
+            var kg2   = parseFloat(dashMatch[3]) || 0;
+            if (name2.length > 1) {
+                result.push({ name: name2, sr: sr2, baseWeight: kg2 });
+            }
         }
     });
+
     return result;
 }
 
