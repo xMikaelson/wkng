@@ -3941,10 +3941,33 @@ function renderPlanPage(w) {
 // Chiave: proto.id → array di esercizi (deep copy dell'originale all'apertura).
 var _protoEditorDrafts = {};
 
+// ── Helper: risolve lo slot (upper/lower/push/pull/legs) da _splitSlot o dal nome ──
+function protoResolveSlot(proto) {
+    var slot = (proto._splitSlot || '').toLowerCase();
+    if (slot) return slot;
+    var nL = (proto.name || '').toLowerCase();
+    if (/upper[\s_-]?body|upperbody|corpo superiore|busto/.test(nL) || / - upper\b|-upper\b/.test(nL)) return 'upper';
+    if (/lower[\s_-]?body|lowerbody|corpo inferiore/.test(nL)        || / - lower\b|-lower\b/.test(nL)) return 'lower';
+    if (/\bpush\b|\bspinta\b/.test(nL)                               || / - push\b|-push\b/.test(nL))   return 'push';
+    if (/\bpull\b|\btiro\b/.test(nL)                                 || / - pull\b|-pull\b/.test(nL))   return 'pull';
+    if (/\blegs\b|\bgambe\b/.test(nL)                                || / - legs\b|-legs\b/.test(nL))   return 'legs';
+    return '';
+}
+
 function buildProtoEditorBox(proto, weekIdx) {
     var box = document.createElement('div');
     box.className = 'proto-editor-box';
     box.id = 'proto-editor-box';
+
+    // Patch retroattiva: se _splitSlot manca ma è deducibile dal nome, lo scriviamo subito
+    if (!proto._splitSlot) {
+        var resolved = protoResolveSlot(proto);
+        if (resolved) {
+            proto._splitSlot = resolved;
+            // Salva silenziosamente su Supabase così i protocolli vecchi vengono aggiornati
+            try { saveProtocolToSupabase(proto); } catch(e) {}
+        }
+    }
 
     // Inizializza il draft se non esiste ancora per questo protocollo
     if (!_protoEditorDrafts[proto.id]) {
@@ -3960,7 +3983,7 @@ function buildProtoEditorBox(proto, weekIdx) {
     title.textContent = '📝 ' + proto.name;
 
     // Badge tipo allenamento
-    var sg = (proto._splitSlot || '').toLowerCase();
+    var sg = protoResolveSlot(proto);
     var env = proto._env || '';
     var badgeColor, badgeText;
     if (sg === 'upper') {
@@ -4054,7 +4077,7 @@ function buildProtoEditorBox(proto, weekIdx) {
     addBtn.className = 'proto-editor-add';
     addBtn.textContent = '+ Aggiungi esercizio';
     addBtn.onclick = function() {
-        var sl = (proto._splitSlot || '').toLowerCase();
+        var sl = protoResolveSlot(proto);
         var isForza = sl === 'upper' || sl === 'lower' || proto.goal === 'forza';
         var defaultSr = isForza ? '5 x 5' : '4 x 10';
         draft.push({ name: '', sr: defaultSr, baseWeight: 0 });
@@ -4113,11 +4136,10 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
     box.appendChild(coachBox);
 
     // ── Determina tipo allenamento ──
-    var splitSlot = (proto._splitSlot || '').toLowerCase();
-    var splitGroup = (proto._splitGroup || '');  // è l'ID del gruppo, non il nome slot
+    var splitSlot = protoResolveSlot(proto);
     var goal = proto.goal || 'ipertrofia';
 
-    // Logica hybrid: _splitSlot è il campo che contiene upper/lower/push/pull/legs
+    // Logica hybrid: _splitSlot contiene upper/lower/push/pull/legs
     var tipoAllenamento, serieSuggerite, tipoLabel, muscoliTarget, muscoliEsclusi;
 
     if (splitSlot === 'upper') {
