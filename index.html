@@ -1727,6 +1727,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wo-active-state { display: none; }
         #page-workout.wo-running .wo-idle-state  { display: none; }
         #page-workout.wo-running .wo-active-state { display: block; }
+        /* Schermata "allenamento terminato" */
+        .wo-done-banner { display:none; flex-direction:column; align-items:center; justify-content:center; padding:32px 20px 24px; text-align:center; gap:10px; }
+        .wo-done-banner.visible { display:flex; }
+        .wo-done-icon { font-size:2.8rem; animation:prPop 0.6s cubic-bezier(0.34,1.56,0.64,1); }
+        .wo-done-title { font-size:1.1rem; font-weight:900; color:var(--primary); letter-spacing:0.02em; }
+        .wo-done-sub { font-size:0.68rem; color:#64748b; line-height:1.5; }
+        .wo-done-redo { margin-top:8px; padding:10px 24px; background:rgba(0,255,136,0.08); border:1px solid rgba(0,255,136,0.25); color:var(--primary); font-size:0.72rem; font-weight:700; border-radius:10px; cursor:pointer; font-family:inherit; }
+        /* Pulsante "preparati!" nel timer */
+        .wo-preparati { display:inline-block; animation:preparatiPulse 0.5s ease-in-out; }
+        @keyframes preparatiPulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:0.6;transform:scale(0.94);} }
         /* Stat preview boxes */
         .wo-stat-boxes { display:flex; gap:10px; padding:0 16px 16px; }
         .wo-stat-box { flex:1; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:14px 12px; text-align:center; }
@@ -2192,6 +2202,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <span class="wo-start-icon">▶</span>
         INIZIA ALLENAMENTO
       </button>
+      <!-- Schermata "allenamento terminato oggi" -->
+      <div class="wo-done-banner" id="wo-done-banner">
+        <div class="wo-done-icon">🏆</div>
+        <div class="wo-done-title">Allenamento completato!</div>
+        <div class="wo-done-sub" id="wo-done-sub">Ottimo lavoro per oggi.<br>Riposa e torna domani più forte.</div>
+        <button class="wo-done-redo" onclick="woRedoWorkout()">↺ Rifai allenamento</button>
+      </div>
       <div id="wo-preview-list" style="padding:0 16px 20px;"></div>
     </div>
 
@@ -4156,6 +4173,20 @@ function buildProtoEditorBox(proto, weekIdx) {
 
 // ── Fase 1: chiamata al Coach AI ──
 function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
+    // Sincronizza DOM → draft (legge i valori attuali degli input HTML)
+    // Prima di mandare la richiesta, assicura che il draft rispecchi esattamente
+    // quello che l'utente vede negli input, anche se non ha scatenato eventi 'input'
+    var rows = box.querySelectorAll('.proto-ex-row');
+    rows.forEach(function(row, idx) {
+        if (!draft[idx]) return;
+        var nameEl = row.querySelector('.pe-name');
+        var srEl   = row.querySelector('.pe-sr');
+        var kgEl   = row.querySelector('.pe-kg');
+        if (nameEl) draft[idx].name = nameEl.value;
+        if (srEl)   draft[idx].sr   = srEl.value;
+        if (kgEl)   { var n = parseFloat(kgEl.value); draft[idx].baseWeight = isNaN(n) ? 0 : n; }
+    });
+
     // Validazione minima
     var valid = draft.filter(function(e) { return e.name && e.name.trim().length > 0; });
     if (valid.length === 0) {
@@ -4336,6 +4367,8 @@ function protoEditorShowCoachResult(proto, draft, weekIdx, saveBtn, coachBox, co
 
     // Parsing della lista dal testo del Coach
     var suggestedExercises = protoEditorParseCoachList(coachText);
+    console.log('[Coach Parser] testo ricevuto:', coachText.substring(0, 300));
+    console.log('[Coach Parser] esercizi estratti:', suggestedExercises);
 
     var textDiv = document.createElement('div');
     textDiv.className = 'proto-coach-text';
@@ -4398,42 +4431,66 @@ function protoEditorShowCoachResult(proto, draft, weekIdx, saveBtn, coachBox, co
 // ── Parsing della lista dalla risposta del Coach ──
 function protoEditorParseCoachList(text) {
     var result = [];
+    if (!text) return result;
 
-    // 1. Trova il blocco lista: cerca l'intestazione LISTA DEFINITIVA/OTTIMIZZATA
-    //    Accetta varianti con/senza emoji, spazi extra, asterischi markdown
-    var blockMatch = text.match(/(?:📋\s*)?(?:\*{0,2})LISTA\s+(?:DEFINITIVA|OTTIMIZZATA)(?:\*{0,2})[\s\S]*?\n([\s\S]+)/i);
-    var block = blockMatch ? blockMatch[1] : text; // fallback: prova a parsare tutto
+    // Strategia: cerca TUTTE le righe che hanno il pattern "testo | testo | numero"
+    // indipendentemente dall'intestazione. Salta righe di intestazione colonna.
+    // Il Coach produce quasi sempre il formato "Nome | 4 x 10 | 60" o "Nome | 5 x 5 | 80"
+    var lines = text.split('\n');
+    var inListBlock = false;
 
-    var lines = block.split('\n');
-    lines.forEach(function(line) {
-        line = line.trim();
-        // Salta righe vuote, intestazioni colonna, righe di esempio
+    lines.forEach(function(rawLine) {
+        var line = rawLine.trim();
         if (!line) return;
-        if (/^(nome|esercizio|esempio|format|NOME|ESERCIZIO)/i.test(line)) return;
-        if (/^[-=─━]+$/.test(line)) return; // righe separatrici
 
-        // Prova separatore | (formato principale)
-        if (line.indexOf('|') !== -1) {
-            var parts = line.split('|').map(function(p) { return p.trim(); });
-            var name = parts[0].replace(/^[\d\.\)\-\*•]+\s*/, '').replace(/\*+/g, '').trim();
-            var sr   = parts[1] ? parts[1].replace(/\*+/g, '').trim() : '';
-            var kgRaw = parts[2] ? parts[2].replace(/\*+/g, '').trim() : '0';
-            var kg = parseFloat(kgRaw.replace(/[^0-9.]/g, '')) || 0;
-            if (name.length > 1 && sr.length > 0) {
-                result.push({ name: name, sr: sr, baseWeight: kg });
-                return;
-            }
+        // Rileva inizio sezione lista (intestazione con LISTA o 📋)
+        if (/(?:📋|lista\s+(?:definitiva|ottimizzata))/i.test(line)) {
+            inListBlock = true;
+            return;
         }
 
-        // Prova separatore — o – (formato alternativo: "Esercizio — 4 x 10 — 60kg")
-        var dashMatch = line.match(/^([\w\s\u00C0-\u024F]+?)\s*[—–-]+\s*([\dx\s×]+)\s*[—–-]+\s*([\d.]+)/i);
-        if (dashMatch) {
-            var name2 = dashMatch[1].replace(/^[\d\.\)\-\*•]+\s*/, '').trim();
-            var sr2   = dashMatch[2].trim();
-            var kg2   = parseFloat(dashMatch[3]) || 0;
-            if (name2.length > 1) {
-                result.push({ name: name2, sr: sr2, baseWeight: kg2 });
+        // Se siamo in un blocco lista OPPURE la riga ha pattern pipe-separato, processala
+        var hasPipe = line.indexOf('|') !== -1;
+        if (!hasPipe) {
+            // Fuori dal blocco lista, salta
+            // Ma se siamo in blocco lista e la riga è un'istruzione di testo, esci
+            if (inListBlock && /^[⚠✅💡🔴🟡🟢•\-–]/.test(line)) {
+                inListBlock = false;
             }
+            return;
+        }
+
+        // Salta righe intestazione colonna
+        if (/^\s*(nome|esercizio|esempio|format|NOME|ESERCIZIO|serie|rip)/i.test(line.split('|')[0])) return;
+        // Salta righe separatrici
+        if (/^[\s\-=─━|]+$/.test(line)) return;
+
+        var parts = line.split('|').map(function(p) {
+            return p.replace(/\*+/g, '').replace(/`/g, '').trim();
+        });
+
+        if (parts.length < 2) return;
+
+        // Parte 0: nome esercizio (rimuovi numerazione, bullet, asterischi)
+        var name = parts[0]
+            .replace(/^[\d]+[\.\)\:]?\s*/, '')  // "1. " o "1) "
+            .replace(/^[-•*]\s*/, '')             // "- " o "• "
+            .replace(/\*+/g, '')                  // **bold**
+            .trim();
+
+        // Parte 1: serie x rip — deve contenere un pattern numerico tipo "4 x 10" o "5x5"
+        var sr = parts[1].trim();
+        var srValid = /\d+\s*[xX×]\s*\d+/.test(sr);
+        if (!srValid) return; // non è una riga esercizio
+
+        // Parte 2: kg (opzionale)
+        var kg = 0;
+        if (parts[2]) {
+            kg = parseFloat(parts[2].replace(/[^0-9.]/g, '')) || 0;
+        }
+
+        if (name.length > 1) {
+            result.push({ name: name, sr: sr, baseWeight: kg });
         }
     });
 
@@ -5238,7 +5295,26 @@ function initWorkoutPage() {
         document.getElementById('wo-today-sub').textContent  = `Chapter ${w+1} · ${chapterNames[w]}`;
     }
     if (noProtoEl) noProtoEl.style.display = 'none';
-    if (startBtn)  startBtn.style.display  = 'block';
+
+    // Controlla se oggi è già stato completato
+    const todayIsDone = APP.chipStates[w] && APP.chipStates[w][todayMon] === 'done';
+    const doneBanner = document.getElementById('wo-done-banner');
+
+    if (todayIsDone) {
+        if (startBtn)  startBtn.style.display  = 'none';
+        if (doneBanner) {
+            doneBanner.classList.add('visible');
+            const doneSub = document.getElementById('wo-done-sub');
+            if (doneSub) {
+                const proto = APP.savedProtocols && APP.savedProtocols.find(p => p.id === (assignment && assignment.protoId));
+                const nome = proto ? proto.name : (assignment && (assignment.protoName || assignment.name)) || 'Allenamento';
+                doneSub.innerHTML = `<strong>${escapeHTML(nome)}</strong><br>Ottimo lavoro per oggi! Riposa e torna domani più forte. 💪`;
+            }
+        }
+    } else {
+        if (startBtn)  startBtn.style.display  = 'block';
+        if (doneBanner) doneBanner.classList.remove('visible');
+    }
 
     // ── Calcola e mostra le stat boxes ──
     const statBoxes = document.getElementById('wo-stat-boxes');
@@ -7908,7 +7984,7 @@ function woRenderEx() {
     if (!woState.restRunning) {
         document.getElementById('wo-timer').textContent = 'PRONTO';
         document.getElementById('wo-timer').style.color = 'var(--primary)';
-        document.getElementById('wo-timer-lbl').textContent = 'Inizia';
+        document.getElementById('wo-timer-lbl').textContent = 'In allenamento';
     }
 }
 
@@ -7956,10 +8032,20 @@ function woKgChanged(val) {
     if (isNaN(kg) || kg < 0) return;
     const ex = (APP.exerciseData || [])[woState.exIndex];
     if (!ex) return;
-    // Salva SOLO nella sessione corrente — ex.loads resta invariato
+    // Salva nella sessione corrente — ex.loads resta invariato
     ex._sessionKg = kg;
-    // Controlla PR
-    _woCheckPR(ex.name, kg);
+    // Mostra solo il PR precedente come riferimento, senza registrare il nuovo
+    const pr = APP.personalRecords[ex.name];
+    const badge = document.getElementById('wo-pr-badge');
+    if (badge) {
+        if (kg > (pr || 0)) {
+            badge.textContent = '🏆 Nuovo PR se completi la serie!';
+            badge.style.color = 'var(--primary)';
+        } else {
+            badge.textContent = pr ? ('PR attuale: ' + pr + ' kg') : '';
+            badge.style.color = '#64748b';
+        }
+    }
 }
 
 function _woCheckPR(exName, kg) {
@@ -7991,14 +8077,24 @@ function woCompleteSet() {
     if (!ex) return;
     const srParts = ex.sr ? ex.sr.match(/(\d+)\s*[xX×]\s*(\d+)/) : null;
     const totalSets = srParts ? parseInt(srParts[1]) : 3;
+
+    // ── PR: conferma solo alla PRIMA serie (setIndex === 0 prima dell'incremento) ──
+    if (woState.setIndex === 0) {
+        const kgEl = document.getElementById('wo-kg-val');
+        if (kgEl) {
+            const kg = parseFloat(kgEl.value);
+            if (!isNaN(kg) && kg > 0) _woCheckPR(ex.name, kg);
+        }
+    }
+
     woState.setIndex++;
 
     const isLastSet = woState.setIndex >= totalSets;
     const isLastEx  = isLastSet && (woState.exIndex + 1 >= exData.length);
 
     if (isLastEx) {
-        // Workout complete
-        woState.setIndex = totalSets; // cap
+        // ── Workout completato ──
+        woState.setIndex = totalSets;
         document.getElementById('wo-ex-name').textContent = 'ALLENAMENTO COMPLETATO 🎉';
         document.getElementById('wo-ex-scheme').textContent = 'Ottimo lavoro!';
         document.getElementById('wo-timer').textContent = '✓';
@@ -8007,15 +8103,34 @@ function woCompleteSet() {
         const rw=document.getElementById('wo-rest-wrap'); if (rw) rw.style.display='none';
         if (woState.timer) clearInterval(woState.timer);
         _woBeep(440,0.1,'sine'); setTimeout(()=>_woBeep(550,0.1,'sine'),120); setTimeout(()=>_woBeep(660,0.35,'triangle'),240);
-        // Avanza indice per riflettere fine
         woState.exIndex = exData.length;
         woRenderExList();
+
+        // ── Marca automaticamente la chip del giorno come "done" ──
+        const wIdx = APP.selectedViewWeek;
+        const di = woState._todayDayIdx;
+        if (di !== undefined && di !== null && APP.chipStates[wIdx] && APP.chipStates[wIdx][di] !== 'done') {
+            APP.chipStates[wIdx][di] = 'done';
+            saveState();
+            const chipEl = document.querySelector(`[data-week="${wIdx}"][data-day="${di}"]`);
+            if (chipEl) { chipEl.className = 'chip done'; chipEl.textContent = '✓'; }
+            checkChapterCompletion(wIdx);
+            updateProgressPage();
+        }
         return;
     }
 
     if (isLastSet) {
         woState.exIndex++;
         woState.setIndex = 0;
+    }
+
+    // ── Reset kg al valore base dell'esercizio corrente (dopo l'eventuale avanzamento) ──
+    const curEx = exData[woState.exIndex];
+    if (curEx) {
+        const wIdx2 = APP.selectedViewWeek;
+        const baseKg = (curEx.loads ? curEx.loads[wIdx2] : null) || curEx.baseWeight || 0;
+        curEx._sessionKg = parseFloat(baseKg);
     }
 
     // Start rest timer
@@ -8037,6 +8152,31 @@ function woCompleteSet() {
     document.getElementById('wo-timer').style.color = 'var(--accent)';
     _woBeep(330, 0.15, 'sine');
     woRenderEx();
+}
+
+// Rifai l'allenamento di oggi (resetta la chip e mostra il bottone start)
+function woRedoWorkout() {
+    const wIdx = APP.selectedViewWeek;
+    const di = woState._todayDayIdx;
+    if (di !== undefined && di !== null && APP.chipStates[wIdx]) {
+        // Riporta la chip da 'done' ad 'assigned'
+        APP.chipStates[wIdx][di] = 'rest';
+        // Se c'è un assignment, rimetti lo stato a 'assigned' visivamente
+        if (APP.dayAssignments[wIdx] && APP.dayAssignments[wIdx][di]) {
+            APP.chipStates[wIdx][di] = 'rest'; // il chip onClick lo riporterà a assigned
+        }
+        saveState();
+        const chipEl = document.querySelector(`[data-week="${wIdx}"][data-day="${di}"]`);
+        if (chipEl) {
+            chipEl.className = APP.dayAssignments[wIdx][di] ? 'chip assigned' : 'chip locked';
+            chipEl.textContent = DAYS[di];
+        }
+    }
+    // Nascondi banner done, mostra bottone start
+    const doneBanner = document.getElementById('wo-done-banner');
+    if (doneBanner) doneBanner.classList.remove('visible');
+    const startBtn = document.getElementById('wo-start-btn');
+    if (startBtn) startBtn.style.display = 'block';
 }
 
 function woSkipEx() {
@@ -8082,16 +8222,22 @@ function woTick() {
         const rb=document.getElementById('wo-rest-bar');
         if (rb) rb.style.width=Math.round((woState.restSecs/woState.restTotal)*100)+'%';
 
-        // Beep countdown ultimi 3 secondi
-        if (woState.restSecs > 0 && woState.restSecs <= 3) {
+        // Ultimi 5 secondi: "PREPARATI!" pulsante ogni secondo
+        if (woState.restSecs > 0 && woState.restSecs <= 5) {
             _woBeep(440, 0.12, 'square');
+            const timerLbl = document.getElementById('wo-timer-lbl');
+            if (timerLbl) {
+                timerLbl.innerHTML = '<span class="wo-preparati">PREPARATI!</span>';
+                // Riavvia l'animazione ad ogni secondo
+                const el = timerLbl.querySelector('.wo-preparati');
+                if (el) { el.style.animation='none'; void el.offsetWidth; el.style.animation=''; }
+            }
         }
         if (woState.restSecs === 0) {
             woState.restRunning=false;
-            // Nascondi barra recupero
             const rw=document.getElementById('wo-rest-wrap'); if (rw) rw.style.display='none';
-            if (wt) { wt.textContent='VAI'; wt.style.color='var(--primary)'; }
-            document.getElementById('wo-timer-lbl').textContent='Pronto!';
+            if (wt) { wt.textContent='VAI!'; wt.style.color='var(--primary)'; }
+            document.getElementById('wo-timer-lbl').textContent='Al lavoro 💪';
             // Beep doppio fine recupero
             _woBeep(660, 0.25, 'sine');
             setTimeout(() => _woBeep(880, 0.35, 'sine'), 150);
