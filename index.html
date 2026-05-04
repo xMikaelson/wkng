@@ -7963,8 +7963,9 @@ function woRenderEx() {
         prBadgeEl.className = 'wo-pr-badge';
         prContainer.appendChild(prBadgeEl);
     }
-    prBadgeEl.textContent = prEl ? (isPR ? '🏆 Nuovo PR!' : 'PR: '+prEl+' kg') : '';
-    prBadgeEl.style.color = isPR ? 'var(--primary)' : '#64748b';
+    prBadgeEl.textContent = '';
+    prBadgeEl.style.color = '#64748b';
+    // Il badge PR viene aggiornato dinamicamente da woKgChanged all'apertura
 
     // Sets
     const setsEl = document.getElementById('wo-sets-container');
@@ -7982,10 +7983,14 @@ function woRenderEx() {
 
     // Timer — non resettare se stiamo solo aggiornando after rest
     if (!woState.restRunning) {
-        document.getElementById('wo-timer').textContent = 'PRONTO';
+        document.getElementById('wo-timer').textContent = '💪';
         document.getElementById('wo-timer').style.color = 'var(--primary)';
         document.getElementById('wo-timer-lbl').textContent = 'In allenamento';
     }
+
+    // Inizializza badge PR con il carico attuale
+    const kgInput = document.getElementById('wo-kg-input');
+    if (kgInput) woKgChanged(kgInput.value);
 }
 
 function woRenderExList() {
@@ -8032,41 +8037,65 @@ function woKgChanged(val) {
     if (isNaN(kg) || kg < 0) return;
     const ex = (APP.exerciseData || [])[woState.exIndex];
     if (!ex) return;
-    // Salva nella sessione corrente — ex.loads resta invariato
     ex._sessionKg = kg;
-    // Mostra solo il PR precedente come riferimento, senza registrare il nuovo
-    const pr = APP.personalRecords[ex.name];
+    // Mostra feedback PR rispetto al PR registrato (non al carico pianificato)
+    const pr = APP.personalRecords[ex.name] || 0;
     const badge = document.getElementById('wo-pr-badge');
     if (badge) {
-        if (kg > (pr || 0)) {
+        if (pr > 0 && kg > pr) {
             badge.textContent = '🏆 Nuovo PR se completi la serie!';
             badge.style.color = 'var(--primary)';
-        } else {
-            badge.textContent = pr ? ('PR attuale: ' + pr + ' kg') : '';
+        } else if (pr > 0) {
+            badge.textContent = 'PR attuale: ' + pr + ' kg';
             badge.style.color = '#64748b';
+        } else {
+            badge.textContent = '';
         }
     }
 }
 
 function _woCheckPR(exName, kg) {
-    const pr = APP.personalRecords[exName];
+    const pr = APP.personalRecords[exName] || 0;
     const badge = document.getElementById('wo-pr-badge');
-    if (kg > (pr || 0)) {
-        // Nuovo PR!
+
+    if (kg > pr) {
+        // Nuovo PR — registra
         APP.personalRecords[exName] = kg;
         saveState();
-        updateProgressPage(); // Aggiorna PR attivi nella pagina progressi
+        updateProgressPage();
         if (badge) {
             badge.textContent = '🏆 Nuovo PR!';
             badge.style.color = 'var(--primary)';
             badge.style.animation = 'prPop 0.4s cubic-bezier(0.34,1.56,0.64,1)';
-            setTimeout(() => { if(badge) badge.style.animation=''; }, 500);
+            setTimeout(() => { if (badge) badge.style.animation = ''; }, 500);
         }
         showToast(`🏆 Personal Record: ${exName} — ${kg} kg!`, 'success');
-        woRenderExList(); // Aggiorna lista con trofeo
-    } else if (badge) {
-        badge.textContent = pr ? ('PR precedente: ' + pr + ' kg') : '';
-        badge.style.color = '#64748b';
+        woRenderExList();
+    } else {
+        // Carico minore o uguale: memorizza comunque il carico modificato sul protocollo attivo
+        // così la prossima sessione parte dal peso effettivamente usato
+        const proto = APP.savedProtocols && APP.savedProtocols.find(p => p.id === APP.activeProtocolId);
+        if (proto && proto.exercises) {
+            const exEntry = proto.exercises.find(e => e.name === exName);
+            if (exEntry && kg > 0 && kg !== exEntry.baseWeight) {
+                exEntry.baseWeight = kg;
+                // Aggiorna anche exerciseData in memoria
+                const exD = (APP.exerciseData || []).find(e => e.name === exName);
+                if (exD) {
+                    exD.baseWeight = kg;
+                    const loads = [kg*0.70, kg*0.80, kg*0.90, kg*0.60];
+                    exD.loads = loads;
+                }
+                if (typeof saveProtocolToSupabase === 'function') {
+                    try { saveProtocolToSupabase(proto); } catch(e) {}
+                }
+                saveState();
+            }
+        }
+        if (badge) {
+            badge.textContent = pr > 0 ? ('PR attuale: ' + pr + ' kg') : '';
+            badge.style.color = '#64748b';
+        }
     }
 }
 
