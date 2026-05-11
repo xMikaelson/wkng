@@ -1928,13 +1928,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             <div class="banner-layer" id="banner-layer-prev">
                 <div class="chapter-banner-ghost">28</div>
                 <div class="banner-sub" id="banner-label-prev">CHAPTER 1 · ACTIVATION</div>
-                <div class="banner-title">SETTIMANA<br><span id="banner-week-prev">01</span> DI 04</div>
+                <div class="banner-title">SETTIMANA<br><span id="banner-week-prev">01</span> DI 05</div>
             </div>
             <!-- Layer attuale (fade in) -->
             <div class="banner-layer" id="banner-layer-curr">
                 <div class="chapter-banner-ghost">28</div>
                 <div class="banner-sub" id="banner-chapter-label">CHAPTER 1 · ACTIVATION</div>
-                <div class="banner-title">SETTIMANA<br><span id="banner-week-num">01</span> DI 04</div>
+                <div class="banner-title">SETTIMANA<br><span id="banner-week-num">01</span> DI 05</div>
             </div>
         </div>
 
@@ -2363,7 +2363,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div class="chapter-tab active" onclick="selectPlanChapter(0)">Ch.1 Activation</div>
     <div class="chapter-tab" onclick="selectPlanChapter(1)">Ch.2 Momentum</div>
     <div class="chapter-tab" onclick="selectPlanChapter(2)">Ch.3 The Peak</div>
-    <div class="chapter-tab" onclick="selectPlanChapter(3)">Ch.4 Integration</div>
+    <div class="chapter-tab" onclick="selectPlanChapter(3)">Ch.4 Overload</div>
+    <div class="chapter-tab" onclick="selectPlanChapter(4)">Ch.5 Deload 🔄</div>
   </div>
   <div id="plan-week-container" style="padding:0 16px 20px;"></div>
 </div>
@@ -2901,7 +2902,7 @@ const APP = {
     myChart: null,
     currentVisibleWeek: 0,
     selectedViewWeek: 0,
-    completedWeeks: [false, false, false, false],
+    completedWeeks: [false, false, false, false, false],
     availableWeeks: [0],
     // Chip states per week: array of 7 values each ('rest', 'selected', 'done')
     chipStates: [
@@ -2910,7 +2911,7 @@ const APP = {
         ['rest','rest','rest','rest','rest','rest','rest'],
         ['rest','rest','rest','rest','rest','rest','rest']
     ],
-    _weekCelebrated: [false,false,false,false],
+    _weekCelebrated: [false,false,false,false,false],
     workoutSeconds: 0,
     restSeconds: 0,
     exerciseTracking: [],
@@ -2932,7 +2933,12 @@ const APP = {
 };
 
 const DAYS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
-const CHAPTER_NAMES = ['Activation', 'Momentum', 'The Peak', 'Integration'];
+const CHAPTER_NAMES = ['Activation', 'Momentum', 'The Peak', 'Overload', 'Deload'];
+const N_WEEKS = 5;
+const DELOAD_WEEK = 4; // indice (0-based) della settimana deload
+// Percentuali del baseWeight per ogni settimana
+// W1:65%  W2:75%  W3:85%  W4:92.5%  W5(Deload):50%
+const WEEK_LOADS = [0.65, 0.75, 0.85, 0.925, 0.50];
 const STORAGE_KEY = 'awakening_state';
 
 const MOTIVATIONAL_QUOTES = [
@@ -3092,13 +3098,14 @@ function loadState() {
         APP.startDate = saved.startDate ? new Date(saved.startDate) : null;
         APP.userName = saved.userName || null;
         APP.selectedViewWeek = saved.selectedViewWeek || 0;
-        APP.completedWeeks = saved.completedWeeks || [false, false, false, false];
+        APP.completedWeeks = saved.completedWeeks || [false, false, false, false, false];
         // Recompute availableWeeks from completedWeeks — never trust saved value
         // ch0 always available; ch(n) available only if ch(n-1) completed
-        const _cw = saved.completedWeeks || [false,false,false,false];
+        const _cw = saved.completedWeeks || [false,false,false,false,false];
         APP.availableWeeks = [0];
-        for (let _i = 0; _i < 3; _i++) { if (_cw[_i]) APP.availableWeeks.push(_i+1); }
+        for (let _i = 0; _i < N_WEEKS-1; _i++) { if (_cw[_i]) APP.availableWeeks.push(_i+1); }
         APP.chipStates = saved.chipStates || [
+            ['rest','rest','rest','rest','rest','rest','rest'],
             ['rest','rest','rest','rest','rest','rest','rest'],
             ['rest','rest','rest','rest','rest','rest','rest'],
             ['rest','rest','rest','rest','rest','rest','rest'],
@@ -3112,6 +3119,7 @@ function loadState() {
             [null,null,null,null,null,null,null],
             [null,null,null,null,null,null,null],
             [null,null,null,null,null,null,null],
+            [null,null,null,null,null,null,null],
             [null,null,null,null,null,null,null]
         ];
         
@@ -3119,7 +3127,7 @@ function loadState() {
         APP.motivationalQuotes = saved.motivationalQuotes || ['', '', '', ''];
         
         // Inizializza le frasi mancanti per settimane con allenamenti completati
-        for (let w = 0; w < 4; w++) {
+        for (let w = 0; w < N_WEEKS; w++) {
             const doneCount = APP.chipStates[w].filter(s => s === 'done').length;
             if (doneCount > 0 && !APP.motivationalQuotes[w]) {
                 APP.motivationalQuotes[w] = getMotivationalQuote();
@@ -3177,7 +3185,7 @@ function restoreUI() {
 }
 
 function restoreChipStates() {
-    for (let w = 0; w < 4; w++) {
+    for (let w = 0; w < N_WEEKS; w++) {
         const chipsEl = document.getElementById(`w-${w}`);
         if (!chipsEl) continue;
         const chips = chipsEl.querySelectorAll('.chip');
@@ -3561,7 +3569,7 @@ async function onLoginSuccess(user, usernameOverride = null) {
         APP.totalWorkouts = s.totalWorkouts || 0;
         APP.startDate = s.startDate ? new Date(s.startDate) : null;
         APP.selectedViewWeek = s.selectedViewWeek || 0;
-        APP.completedWeeks = s.completedWeeks || [false,false,false,false];
+        APP.completedWeeks = s.completedWeeks || [false,false,false,false,false];
         APP.availableWeeks = s.availableWeeks || [0];
         APP.chipStates = s.chipStates || [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']];
         APP.exerciseTracking = s.exerciseTracking || [];
@@ -3585,7 +3593,7 @@ async function onLoginSuccess(user, usernameOverride = null) {
             // Davvero nessun protocollo: resetta
             APP.dayAssignments = [[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null]];
             APP.chipStates = [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']];
-            APP.completedWeeks = [false,false,false,false];
+            APP.completedWeeks = [false,false,false,false,false];
             APP.availableWeeks = [0];
             APP.selectedViewWeek = 0;
             APP.activeProtocolId = null;
@@ -3603,7 +3611,7 @@ async function onLoginSuccess(user, usernameOverride = null) {
             createdAt: p.created_at,
             // Preserva stato del protocollo se salvato in exercises_json
             chipStates: p.exercises_json?.chipStates || [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']],
-            completedWeeks: p.exercises_json?.completedWeeks || [false,false,false,false],
+            completedWeeks: p.exercises_json?.completedWeeks || [false,false,false,false,false],
             availableWeeks: p.exercises_json?.availableWeeks || [0],
             selectedViewWeek: p.exercises_json?.selectedViewWeek || 0,
             exerciseTracking: p.exercises_json?.exerciseTracking || [],
@@ -3622,7 +3630,7 @@ async function onLoginSuccess(user, usernameOverride = null) {
         if (protoToActivate) {
             APP.activeProtocolId = protoToActivate.id;
             APP.exerciseData = protoToActivate.exercises.map(ex => {
-                const loads = [ex.baseWeight * 0.70, ex.baseWeight * 0.80, ex.baseWeight * 0.90, ex.baseWeight * 0.60];
+                const loads = [WEEK_LOADS.map(function(p){return ex.baseWeight*p;})];
                 return { name: ex.name, sr: ex.sr, loads, baseWeight: ex.baseWeight };
             });
             // Ricostruisce i campi input
@@ -3760,7 +3768,7 @@ function renderPlanPage(w) {
     container.innerHTML = '';
 
     // Sync tabs: active + locked state
-    const CHAPTER_NAMES_LOC = ['Activation','Momentum','The Peak','Integration'];
+    const CHAPTER_NAMES_LOC = CHAPTER_NAMES;
     const DAYS_SHORT = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
     document.querySelectorAll('#plan-tabs .chapter-tab').forEach((t,i) => {
         t.classList.toggle('active', i===w);
@@ -3772,6 +3780,16 @@ function renderPlanPage(w) {
 
     const block = document.createElement('div');
     block.className = 'plan-week-block';
+
+    // Banner informativo per la Deload week
+    if (w === DELOAD_WEEK && isUnlocked) {
+        const deloadBanner = document.createElement('div');
+        deloadBanner.style.cssText = 'background:rgba(99,102,241,0.09);border:1px solid rgba(99,102,241,0.25);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:0.62rem;line-height:1.5;color:#94a3b8;';
+        deloadBanner.innerHTML = '<div style="font-weight:800;color:#818cf8;margin-bottom:4px;">🔄 Settimana Deload</div>' +
+            'Carico al <strong>50%</strong> del massimale · Serie ridotte a <strong>3</strong> · Volume dimezzato.<br>' +
+            'Questa settimana serve al corpo per recuperare e supercompensare: non saltarla!';
+        block.appendChild(deloadBanner);
+    }
 
     // Title
     const titleEl = document.createElement('div');
@@ -4557,7 +4575,7 @@ function protoEditorPersist(proto) {
     if (proto.id === APP.activeProtocolId) {
         APP.exerciseData = proto.exercises.map(function(ex) {
             var base = parseFloat(ex.baseWeight) || 0;
-            return { name: ex.name, sr: ex.sr, loads: [base*0.70, base*0.80, base*0.90, base*0.60], baseWeight: base };
+            return { name: ex.name, sr: ex.sr, loads: [WEEK_LOADS.map(function(p){return base*p;})], baseWeight: base };
         });
         var inputList = document.getElementById('input-list');
         if (inputList) {
@@ -5116,10 +5134,10 @@ function updateProgressPage() {
     const exData = APP.exerciseData || [];
     // Volume = per ogni chapter: (sessioni_completate) × sum_esercizi(sets × reps × kg_chapter)
     let totalVol = 0;
-    const donePerChapter = [0,1,2,3].map(wi =>
+    const donePerChapter = [...Array(N_WEEKS).keys()].map(wi =>
         APP.chipStates[wi].filter(s => s === 'done').length
     );
-    [0,1,2,3].forEach(wi => {
+    [...Array(N_WEEKS).keys()].forEach(wi => {
         if (donePerChapter[wi] === 0) return;
         let sessionVol = 0;
         exData.forEach(ex => {
@@ -5155,7 +5173,7 @@ function updateProgressPage() {
     const yaxisEl = document.getElementById('prog-yaxis');
     if (barsEl) {
         // Calcola volume reale per ogni chapter
-        const volPerChapter = [0,1,2,3].map(wi => {
+        const volPerChapter = [...Array(N_WEEKS).keys()].map(wi => {
             const doneSessions = APP.chipStates[wi].filter(s => s==='done').length;
             if (doneSessions === 0) return 0;
             let sv = 0;
@@ -5254,7 +5272,7 @@ function initWorkoutPage() {
         const proto = APP.savedProtocols.find(p => p.id === assignment.protoId || p.name === assignment.protoName);
         if (proto && proto.exercises) {
             exData = proto.exercises.map(ex => {
-                const loads = [ex.baseWeight * 0.70, ex.baseWeight * 0.80, ex.baseWeight * 0.90, ex.baseWeight * 0.60];
+                const loads = [WEEK_LOADS.map(function(p){return ex.baseWeight*p;})];
                 return { name: ex.name, sr: ex.sr, loads, baseWeight: ex.baseWeight };
             });
             // ← sync: woStartWorkout and _woBeginWorkout both read APP.exerciseData
@@ -5285,7 +5303,7 @@ function initWorkoutPage() {
 
     // Workout found for today
     const protoName = assignment.protoName || assignment.name || 'Protocollo';
-    const chapterNames = ['Activation','Momentum','The Peak','Integration'];
+    const chapterNames = CHAPTER_NAMES;
     if (protoNameEl) protoNameEl.textContent = protoName;
 
     if (bannerEl) {
@@ -5349,10 +5367,12 @@ function initWorkoutPage() {
     // Preview exercise list
     if (prevList) {
         const kgW = w;
-        prevList.innerHTML = `
-            <div style="font-size:0.55rem;color:#475569;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;font-weight:700;">Programma · ${protoName}</div>
+        const isDeload = kgW === DELOAD_WEEK;
+        prevList.innerHTML = (isDeload ? `<div style="background:rgba(99,102,241,0.09);border:1px solid rgba(99,102,241,0.22);border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:0.6rem;color:#818cf8;font-weight:700;">🔄 Deload Week — carico 50% · 3 serie</div>` : '') +
+            `<div style="font-size:0.55rem;color:#475569;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;font-weight:700;">Programma · ${protoName}</div>
             ${exData.map((ex,i) => {
                 const kg = ex.loads ? ex.loads[kgW].toFixed(1) : (ex.baseWeight||0);
+                const srDisplay = isDeload ? woDeloadSr(ex.sr) : ex.sr;
                 return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
                     <div style="display:flex;gap:8px;align-items:center;">
                         <div style="width:20px;height:20px;border-radius:6px;background:rgba(var(--pr,52,211,153),0.12);border:1px solid rgba(var(--pr,52,211,153),0.25);display:flex;align-items:center;justify-content:center;font-size:0.55rem;font-weight:800;color:var(--primary);">${i+1}</div>
@@ -5360,7 +5380,7 @@ function initWorkoutPage() {
                     </div>
                     <div style="text-align:right;">
                         <div style="font-size:0.65rem;color:var(--primary);font-weight:700;">${kg} kg</div>
-                        <div style="font-size:0.55rem;color:#475569;">${escapeHTML(ex.sr)}</div>
+                        <div style="font-size:0.55rem;color:#475569;">${escapeHTML(srDisplay)}</div>
                     </div>
                 </div>`;
             }).join('')}`;
@@ -7829,7 +7849,7 @@ function updateChapterTip(w) {
     if (!row) return;
     const chapter = (typeof w !== 'undefined') ? w : (APP.selectedViewWeek || 0);
     row.classList.add('visible');
-    [0,1,2,3].forEach(i => {
+    [...Array(N_WEEKS).keys()].forEach(i => {
         const card = document.getElementById('tip-ch-' + i);
         if (card) card.classList.toggle('active', i === chapter);
     });
@@ -7931,6 +7951,15 @@ function woStop() {
     navSwitch('home');
 }
 
+// Deload: riduce le serie a 3 e le ripetizioni al 60% (arrotondato)
+function woDeloadSr(sr) {
+    if (!sr) return '3 x 6';
+    const m = sr.match(/(\d+)\s*[xX×]\s*(\d+)/);
+    if (!m) return sr;
+    const reps = Math.max(4, Math.round(parseInt(m[2]) * 0.6));
+    return '3 x ' + reps;
+}
+
 function woRenderEx() {
     const exData = APP.exerciseData || [];
     const ex = exData[woState.exIndex];
@@ -7938,13 +7967,15 @@ function woRenderEx() {
     const w = APP.selectedViewWeek || 0;
     const kg = ex.loads ? ex.loads[w].toFixed(1) : (ex.baseWeight||0);
     const totalEx = exData.length;
-    const srParts = ex.sr ? ex.sr.match(/(\d+)\s*[xX×]\s*(\d+)/) : null;
+    // In deload week: usa serie ridotte
+    const displaySr = (w === DELOAD_WEEK) ? woDeloadSr(ex.sr) : ex.sr;
+    const srParts = displaySr ? displaySr.match(/(\d+)\s*[xX×]\s*(\d+)/) : null;
     const totalSets = srParts ? parseInt(srParts[1]) : 3;
 
     // proto name already set in initWorkoutPage
     document.getElementById('wo-ex-num').textContent = `Esercizio ${woState.exIndex+1} di ${totalEx}`;
     document.getElementById('wo-ex-name').textContent = exItalian(ex.name);
-    document.getElementById('wo-ex-scheme').textContent = ex.sr;
+    document.getElementById('wo-ex-scheme').textContent = displaySr + (w === DELOAD_WEEK ? ' 🔄' : '');
     // Carico editabile
     const prEl = APP.personalRecords[ex.name];
     const isPR = prEl && parseFloat(kg) >= prEl;
@@ -8083,7 +8114,7 @@ function _woCheckPR(exName, kg) {
                 const exD = (APP.exerciseData || []).find(e => e.name === exName);
                 if (exD) {
                     exD.baseWeight = kg;
-                    const loads = [kg*0.70, kg*0.80, kg*0.90, kg*0.60];
+                    const loads = [WEEK_LOADS.map(function(p){return kg*p;})];
                     exD.loads = loads;
                 }
                 if (typeof saveProtocolToSupabase === 'function') {
@@ -8104,7 +8135,9 @@ function woCompleteSet() {
     const exData = APP.exerciseData || [];
     const ex = exData[woState.exIndex];
     if (!ex) return;
-    const srParts = ex.sr ? ex.sr.match(/(\d+)\s*[xX×]\s*(\d+)/) : null;
+    const w = APP.selectedViewWeek || 0;
+    const displaySr = (w === DELOAD_WEEK) ? woDeloadSr(ex.sr) : ex.sr;
+    const srParts = displaySr ? displaySr.match(/(\d+)\s*[xX×]\s*(\d+)/) : null;
     const totalSets = srParts ? parseInt(srParts[1]) : 3;
 
     // ── PR: conferma solo alla PRIMA serie (setIndex === 0 prima dell'incremento) ──
@@ -8374,7 +8407,7 @@ function navSwitch(tab) {
 
 function buildProfiloPage() {
     const username = document.getElementById('dash-username')?.textContent || 'Agente';
-    const chapterNames = ['Activation','Momentum','The Peak','Integration'];
+    const chapterNames = CHAPTER_NAMES;
     const currentChapter = chapterNames[APP.selectedViewWeek || 0] || 'Activation';
     const startDate = APP.startDate ? APP.startDate.toLocaleDateString('it-IT') : '—';
     // Calcola giorni con fallback: se startDate non c'è usa totalWorkouts
@@ -8442,7 +8475,7 @@ function performLogout() {
     sbClient.auth.signOut();
     localStorage.removeItem(STORAGE_KEY);
     APP.userName = null; APP.exerciseData = []; APP.totalWorkouts = 0; APP.startDate = null;
-    APP.selectedViewWeek = 0; APP.completedWeeks = [false,false,false,false]; APP.availableWeeks = [0];
+    APP.selectedViewWeek = 0; APP.completedWeeks = [false,false,false,false,false]; APP.availableWeeks = [0];
     APP.chipStates = [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']];
     APP.exerciseTracking = []; APP.currentExerciseIndex = 0; APP.activeProtocolId = null;
     APP.savedProtocols = []; APP.dayAssignments = [[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null]];
@@ -8571,7 +8604,7 @@ function showProtocolInWeekBox(protoId, editMode = false) {
             const row = document.createElement('div');
             row.className = 'exercise-row';
             row.innerHTML = `
-                <div class="exercise-row-content"><span>${escapeHTML(ex.name)}</span><b>${(ex.baseWeight * [0.7, 0.85, 1.0, 0.6][APP.selectedViewWeek]).toFixed(1)}kg</b></div>
+                <div class="exercise-row-content"><span>${escapeHTML(ex.name)}</span><b>${(ex.baseWeight * WEEK_LOADS[APP.selectedViewWeek]).toFixed(1)}kg</b></div>
                 <div class="exercise-sr">${escapeHTML(ex.sr)}</div>
             `;
             card.appendChild(row);
@@ -8590,7 +8623,7 @@ function showProtocolInWeekBox(protoId, editMode = false) {
             const row = document.createElement('div');
             row.className = 'exercise-row editable-row';
             row.innerHTML = `
-                <div class="exercise-row-content"><span>${escapeHTML(ex.name)}</span><b>${(ex.baseWeight * [0.7, 0.85, 1.0, 0.6][APP.selectedViewWeek]).toFixed(1)}kg</b></div>
+                <div class="exercise-row-content"><span>${escapeHTML(ex.name)}</span><b>${(ex.baseWeight * WEEK_LOADS[APP.selectedViewWeek]).toFixed(1)}kg</b></div>
                 <div class="exercise-sr">${escapeHTML(ex.sr)}</div>
                 <button class="ex-remove-btn" onclick="event.stopPropagation(); removeExFromProtocol('${proto.id}', ${i})" title="Rimuovi">✕</button>
             `;
@@ -8697,7 +8730,7 @@ function initDashboard() {
     const container = document.getElementById('week-selector-container');
     container.innerHTML = '';
 
-    for (let w = 0; w < 4; w++) {
+    for (let w = 0; w < N_WEEKS; w++) {
         const block = document.createElement('div');
         block.className = w === APP.selectedViewWeek ? 'week-block' : 'week-block hidden';
         block.id = `week-block-${w}`;
@@ -8856,7 +8889,7 @@ function initDashboard() {
     }
 
     // Restore donut/motivation/schedule for all weeks
-    for (let w = 0; w < 4; w++) {
+    for (let w = 0; w < N_WEEKS; w++) {
         updateDonutChart(w);
         updateMotivationText(w);
         renderDaySchedule(w);
@@ -9892,7 +9925,7 @@ function generateSplitProtocols(baseName, goal, splitType) {
             exercises: exercises.map(e => ({ name: e.name, sr: sr, baseWeight: e.weight })),
             createdAt: new Date().toISOString(),
             chipStates: [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']],
-            completedWeeks: [false, false, false, false],
+            completedWeeks: [false, false, false, false, false],
             availableWeeks: [0],
             selectedViewWeek: 0,
             startDate: null,
@@ -9939,7 +9972,7 @@ function generateHybridProtocols(baseName) {
             exercises: exercises.map(e => ({ name: e.name, sr: e.sr || (slot.goal === 'forza' ? '5 x 5' : '4 x 10'), baseWeight: e.weight })),
             createdAt: new Date().toISOString(),
             chipStates: [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']],
-            completedWeeks: [false, false, false, false],
+            completedWeeks: [false, false, false, false, false],
             availableWeeks: [0],
             selectedViewWeek: 0,
             startDate: null,
@@ -9979,7 +10012,7 @@ function generate(isRestore = false) {
         const nameVal = names[i].value.trim();
         const weightVal = parseFloat(weights[i].value);
         if (nameVal && !isNaN(weightVal) && weightVal > 0) {
-            const loads = [weightVal * 0.7, weightVal * 0.85, weightVal * 1.0, weightVal * 0.6];
+            const loads = [WEEK_LOADS.map(function(p){return weightVal*p;})];
             APP.exerciseData.push({ name: nameVal, sr: sr[i].value, loads, baseWeight: weightVal });
             body.innerHTML += `<tr><td style="text-align:left; padding-left:10px;">${escapeHTML(nameVal)}</td><td>${loads[0].toFixed(1)}</td><td class="${blurClass}">${loads[1].toFixed(1)}</td><td class="${blurClass}">${loads[2].toFixed(1)}</td><td class="${blurClass}">${loads[3].toFixed(1)}</td></tr>`;
         }
@@ -10027,7 +10060,7 @@ function autoSaveProtocol() {
     }
 
     // Nuovo protocollo: reset settimane per ripartire da Chapter 1
-    APP.completedWeeks = [false, false, false, false];
+    APP.completedWeeks = [false, false, false, false, false];
     APP.availableWeeks = [0];
     APP.selectedViewWeek = 0;
     APP.chipStates = [
@@ -10458,10 +10491,10 @@ function renderExerciseChart() {
     }
 
     // Predicted loads: 70%, 80%, 90%, 60%
-    const pctsMult = [0.70, 0.80, 0.90, 0.60];
+    const pctsMult = WEEK_LOADS;
     const predicted = pctsMult.map(m => parseFloat((baseWeight * m).toFixed(1)));
-    const chapterLabels = ['Ch.1\nActivation', 'Ch.2\nMomentum', 'Ch.3\nThe Peak', 'Ch.4\nIntegration'];
-    const chapterShort = ['Ch.1', 'Ch.2', 'Ch.3', 'Ch.4'];
+    const chapterLabels = ['Ch.1\nActivation','Ch.2\nMomentum','Ch.3\nThe Peak','Ch.4\nOverload','Ch.5\nDeload'];
+    const chapterShort = ['Ch.1','Ch.2','Ch.3','Ch.4','Ch.5'];
 
     // Actual PR — we only have the global max PR, not per-chapter
     // Show the PR as a horizontal reference line if available
@@ -10472,7 +10505,7 @@ function renderExerciseChart() {
     const padL = 38, padR = 16, padT = 14, padB = 36;
     const chartW = W - padL - padR;
     const chartH = H - padT - padB;
-    const n = 4; // chapters
+    const n = N_WEEKS;
 
     // Y scale: min=0, max = max(predicted, prMax) * 1.15
     const allVals = [...predicted, prMax > 0 ? prMax : 0];
@@ -10660,7 +10693,7 @@ function updateCards() {
     container.innerHTML = '';
     if (existingOverlay) container.appendChild(existingOverlay);
 
-    for (let w = 0; w < 4; w++) {
+    for (let w = 0; w < N_WEEKS; w++) {
         const card = document.createElement('div');
         card.className = 'week-card';
         if (!APP.isUnlocked && w > 0) card.classList.add('blur-cell');
@@ -11004,9 +11037,10 @@ function saveNewProtocol() {
             ['rest','rest','rest','rest','rest','rest','rest'],
             ['rest','rest','rest','rest','rest','rest','rest'],
             ['rest','rest','rest','rest','rest','rest','rest'],
+            ['rest','rest','rest','rest','rest','rest','rest'],
             ['rest','rest','rest','rest','rest','rest','rest']
         ],
-        completedWeeks: [false, false, false, false],
+        completedWeeks: [false, false, false, false, false],
         availableWeeks: [0],
         selectedViewWeek: 0,
         startDate: null,
@@ -11061,7 +11095,7 @@ function renderProtocolList() {
 }
 
 function renderChapterProtoLists() {
-    for (let w = 0; w < 4; w++) {
+    for (let w = 0; w < N_WEEKS; w++) {
         const list = document.getElementById(`chapter-proto-list-${w}`);
         if (!list) continue;
         list.innerHTML = '';
@@ -11108,7 +11142,7 @@ function activateProtocol(protoId, preserveCurrentWeek = false) {
 
     // Load protocol exercise data into APP state
     APP.exerciseData = proto.exercises.map(ex => {
-        const loads = [ex.baseWeight * 0.7, ex.baseWeight * 0.85, ex.baseWeight * 1.0, ex.baseWeight * 0.6];
+        const loads = [WEEK_LOADS.map(function(p){return ex.baseWeight*p;})];
         return { name: ex.name, sr: ex.sr, loads, baseWeight: ex.baseWeight };
     });
     // NOTE: chipStates and dayAssignments are GLOBAL (shared across protocols), NOT overwritten here
@@ -11165,7 +11199,7 @@ function deleteProtocol(protoId) {
     deleteProtocolFromSupabase(protoId);
 
     // Rimuovi dalle dayAssignments tutti i riferimenti al protocollo eliminato
-    for (let w = 0; w < 4; w++) {
+    for (let w = 0; w < N_WEEKS; w++) {
         for (let d = 0; d < 7; d++) {
             if (APP.dayAssignments[w][d] && APP.dayAssignments[w][d].protoId === protoId) {
                 APP.dayAssignments[w][d] = null;
@@ -11198,7 +11232,7 @@ function deleteProtocol(protoId) {
                 [null,null,null,null,null,null,null],
                 [null,null,null,null,null,null,null]
             ];
-            APP.completedWeeks = [false, false, false, false];
+            APP.completedWeeks = [false, false, false, false, false];
             APP.availableWeeks = [0];
             APP.selectedViewWeek = 0;
             APP.exerciseTracking = [];
@@ -11212,7 +11246,7 @@ function deleteProtocol(protoId) {
     }
 
     renderProtocolList();
-    for (let w = 0; w < 4; w++) renderDaySchedule(w);
+    for (let w = 0; w < N_WEEKS; w++) renderDaySchedule(w);
     updateStats();
     saveState();
     showToast('Protocollo eliminato');
@@ -11620,7 +11654,7 @@ async function performFullReset() {
     APP.totalWorkouts = 0;
     APP.startDate = null;
     APP.selectedViewWeek = 0;
-    APP.completedWeeks = [false, false, false, false];
+    APP.completedWeeks = [false, false, false, false, false];
     APP.availableWeeks = [0];
     APP.chipStates = [
         ['rest','rest','rest','rest','rest','rest','rest'],
@@ -11755,7 +11789,7 @@ const BADGES_CONFIG = [
 function computeStreak() {
     // Conta giorni consecutivi guardando i chipStates done a ritroso da oggi
     const allDone = [];
-    for (let w = 0; w < 4; w++) {
+    for (let w = 0; w < N_WEEKS; w++) {
         for (let d = 0; d < 7; d++) {
             if (APP.chipStates[w][d] === 'done') allDone.push(`${w}-${d}`);
         }
