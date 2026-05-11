@@ -3630,7 +3630,7 @@ async function onLoginSuccess(user, usernameOverride = null) {
         if (protoToActivate) {
             APP.activeProtocolId = protoToActivate.id;
             APP.exerciseData = protoToActivate.exercises.map(ex => {
-                const loads = [WEEK_LOADS.map(function(p){return ex.baseWeight*p;})];
+                const loads = WEEK_LOADS.map(function(p){return ex.baseWeight*p;});
                 return { name: ex.name, sr: ex.sr, loads, baseWeight: ex.baseWeight };
             });
             // Ricostruisce i campi input
@@ -4575,7 +4575,7 @@ function protoEditorPersist(proto) {
     if (proto.id === APP.activeProtocolId) {
         APP.exerciseData = proto.exercises.map(function(ex) {
             var base = parseFloat(ex.baseWeight) || 0;
-            return { name: ex.name, sr: ex.sr, loads: [WEEK_LOADS.map(function(p){return base*p;})], baseWeight: base };
+            return { name: ex.name, sr: ex.sr, loads: WEEK_LOADS.map(function(p){return base*p;}), baseWeight: base };
         });
         var inputList = document.getElementById('input-list');
         if (inputList) {
@@ -5272,7 +5272,7 @@ function initWorkoutPage() {
         const proto = APP.savedProtocols.find(p => p.id === assignment.protoId || p.name === assignment.protoName);
         if (proto && proto.exercises) {
             exData = proto.exercises.map(ex => {
-                const loads = [WEEK_LOADS.map(function(p){return ex.baseWeight*p;})];
+                const loads = WEEK_LOADS.map(function(p){return ex.baseWeight*p;});
                 return { name: ex.name, sr: ex.sr, loads, baseWeight: ex.baseWeight };
             });
             // ← sync: woStartWorkout and _woBeginWorkout both read APP.exerciseData
@@ -8114,7 +8114,7 @@ function _woCheckPR(exName, kg) {
                 const exD = (APP.exerciseData || []).find(e => e.name === exName);
                 if (exD) {
                     exD.baseWeight = kg;
-                    const loads = [WEEK_LOADS.map(function(p){return kg*p;})];
+                    const loads = WEEK_LOADS.map(function(p){return kg*p;});
                     exD.loads = loads;
                 }
                 if (typeof saveProtocolToSupabase === 'function') {
@@ -8915,10 +8915,11 @@ function updateStats() {
     // Weeks completed — read only from completedWeeks, never modify here
     const weeksOk = APP.completedWeeks.filter(Boolean).length;
     document.getElementById('weeks-count').innerText = weeksOk;
-    document.getElementById('cycles-count').innerText = Math.floor(weeksOk / 4);
+    document.getElementById('cycles-count').innerText = Math.floor(weeksOk / N_WEEKS);
 
     updateNavigationControls();
     updateChart();
+    updateBadges();
 }
 
 function updateNavigationControls() {
@@ -10012,7 +10013,7 @@ function generate(isRestore = false) {
         const nameVal = names[i].value.trim();
         const weightVal = parseFloat(weights[i].value);
         if (nameVal && !isNaN(weightVal) && weightVal > 0) {
-            const loads = [WEEK_LOADS.map(function(p){return weightVal*p;})];
+            const loads = WEEK_LOADS.map(function(p){return weightVal*p;});
             APP.exerciseData.push({ name: nameVal, sr: sr[i].value, loads, baseWeight: weightVal });
             body.innerHTML += `<tr><td style="text-align:left; padding-left:10px;">${escapeHTML(nameVal)}</td><td>${loads[0].toFixed(1)}</td><td class="${blurClass}">${loads[1].toFixed(1)}</td><td class="${blurClass}">${loads[2].toFixed(1)}</td><td class="${blurClass}">${loads[3].toFixed(1)}</td></tr>`;
         }
@@ -11142,7 +11143,7 @@ function activateProtocol(protoId, preserveCurrentWeek = false) {
 
     // Load protocol exercise data into APP state
     APP.exerciseData = proto.exercises.map(ex => {
-        const loads = [WEEK_LOADS.map(function(p){return ex.baseWeight*p;})];
+        const loads = WEEK_LOADS.map(function(p){return ex.baseWeight*p;});
         return { name: ex.name, sr: ex.sr, loads, baseWeight: ex.baseWeight };
     });
     // NOTE: chipStates and dayAssignments are GLOBAL (shared across protocols), NOT overwritten here
@@ -12018,30 +12019,15 @@ function updateBadges() {
     const grid = document.getElementById('badges-grid');
     if (!section || !grid) return;
 
-    // Badge peso e helper sono sempre verificabili, indipendentemente dall'exerciseData
-    const alwaysIds = ['weight_first','weight_1kg','weight_5kg','weight_goal','helper_first','helper_10'];
-    const hasWorkout = APP.exerciseData.length > 0;
-    if (!hasWorkout) {
-        // Controlla solo badge peso/helper anche senza protocollo
-        const unlocked = JSON.parse(localStorage.getItem('awakening_badges') || '[]');
-        const newlyUnlocked = [];
-        BADGES_CONFIG.filter(b => alwaysIds.includes(b.id)).forEach(b => {
-            if (b.check() && !unlocked.includes(b.id)) {
-                unlocked.push(b.id); newlyUnlocked.push(b);
-            }
-        });
-        if (newlyUnlocked.length > 0) {
-            localStorage.setItem('awakening_badges', JSON.stringify(unlocked));
-            newlyUnlocked.forEach(b => showBadgeToast(b));
-        }
-        return;
-    }
-    section.classList.add('visible');
-
     const unlocked = JSON.parse(localStorage.getItem('awakening_badges') || '[]');
     const newlyUnlocked = [];
 
-    BADGES_CONFIG.forEach(b => {
+    // Controlla tutti i badge se c'è un protocollo attivo, altrimenti solo peso/helper
+    const alwaysIds = ['weight_first','weight_1kg','weight_5kg','weight_goal','helper_first','helper_10'];
+    const hasWorkout = APP.exerciseData && APP.exerciseData.length > 0;
+    const toCheck = hasWorkout ? BADGES_CONFIG : BADGES_CONFIG.filter(b => alwaysIds.includes(b.id));
+
+    toCheck.forEach(b => {
         if (b.check() && !unlocked.includes(b.id)) {
             unlocked.push(b.id); newlyUnlocked.push(b);
         }
@@ -12052,6 +12038,13 @@ function updateBadges() {
         newlyUnlocked.forEach(b => showBadgeToast(b));
         syncExtraToSupabase();
     }
+
+    // Mostra la sezione se ci sono badge sbloccati (con o senza protocollo)
+    if (unlocked.length > 0) {
+        section.classList.add('visible');
+    }
+
+    if (!hasWorkout && unlocked.length === 0) return;
 
     // ── PUNTO 2: mostra solo 6 badge, resto con "Mostra tutto" ────────────
     const VISIBLE_DEFAULT = 6;
