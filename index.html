@@ -4944,7 +4944,35 @@ function showChipDebugPanel() {
     }
     lines.push('availableWeeks='+JSON.stringify(APP.availableWeeks));
     lines.push('selectedViewWeek='+APP.selectedViewWeek);
+    lines.push('_loginBadgeSnapshot='+_loginBadgeSnapshot);
     panel.textContent = lines.join('\n');
+
+    // Bottoni test
+    var btnRow = document.createElement('div');
+    btnRow.style.cssText = 'display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;';
+
+    var btnCCC = document.createElement('button');
+    btnCCC.textContent = '▶ checkChapterCompletion(0)';
+    btnCCC.style.cssText = 'padding:6px 10px;font-size:11px;background:#334155;color:#fff;border:none;border-radius:6px;';
+    btnCCC.onclick = function() {
+        APP._weekCelebrated[0] = false;
+        checkChapterCompletion(0);
+        setTimeout(function() {
+            panel.textContent += '\nDopo CCC: completed='+APP.completedWeeks[0]+' celebrated='+APP._weekCelebrated[0]+' available='+JSON.stringify(APP.availableWeeks);
+        }, 100);
+    };
+
+    var btnAnim = document.createElement('button');
+    btnAnim.textContent = '🎉 showWeekComplete(0)';
+    btnAnim.style.cssText = 'padding:6px 10px;font-size:11px;background:#334155;color:#fff;border:none;border-radius:6px;';
+    btnAnim.onclick = function() {
+        _loginBadgeSnapshot = null;
+        showWeekComplete(0);
+    };
+
+    btnRow.appendChild(btnCCC);
+    btnRow.appendChild(btnAnim);
+    panel.appendChild(btnRow);
 }
 
 function renderNotifDebug() {
