@@ -12057,32 +12057,39 @@ function updateBadges() {
 
     if (!hasWorkout && unlocked.length === 0) return;
 
-    // ── PUNTO 2: mostra solo 6 badge, resto con "Mostra tutto" ────────────
-    const VISIBLE_DEFAULT = 6;
-    let showAll = grid.dataset.showAll === '1';
+    // ── Mostra solo i badge sbloccati ─────────────────────────────────────────────
+    var VISIBLE_DEFAULT = 6;
+    var showAll = grid.dataset.showAll === '1';
     grid.innerHTML = '';
-    const toShow = showAll ? BADGES_CONFIG : BADGES_CONFIG.slice(0, VISIBLE_DEFAULT);
-    toShow.forEach(b => {
-        const isUnlocked = unlocked.includes(b.id);
-        const isNew = newlyUnlocked.find(x => x.id === b.id);
-        const card = document.createElement('div');
-        card.className = 'badge-home-card' + (isUnlocked ? ' unlocked' : ' locked') + (isNew ? ' newly-unlocked' : '');
-        card.innerHTML = `
-            ${isUnlocked ? '<div class="badge-home-check">\u2713</div>' : ''}
-            <span class="badge-home-icon">${b.icon}</span>
-            <div class="badge-home-name">${b.name}</div>
-            <div class="badge-home-desc">${b.desc}</div>
-        `;
+
+    // Filtra solo i badge effettivamente sbloccati
+    var unlockedBadges = BADGES_CONFIG.filter(function(b) { return unlocked.indexOf(b.id) !== -1; });
+
+    if (unlockedBadges.length === 0) {
+        section.classList.remove('visible');
+        return;
+    }
+
+    var toShow = showAll ? unlockedBadges : unlockedBadges.slice(0, VISIBLE_DEFAULT);
+    toShow.forEach(function(b) {
+        var isNew = newlyUnlocked.find(function(x) { return x.id === b.id; });
+        var card = document.createElement('div');
+        card.className = 'badge-home-card unlocked' + (isNew ? ' newly-unlocked' : '');
+        card.innerHTML =
+            '<div class="badge-home-check">✓</div>' +
+            '<span class="badge-home-icon">' + b.icon + '</span>' +
+            '<div class="badge-home-name">' + b.name + '</div>' +
+            '<div class="badge-home-desc">' + b.desc + '</div>';
         grid.appendChild(card);
     });
 
-    // Bottone mostra tutto / mostra meno
-    const remaining = BADGES_CONFIG.length - VISIBLE_DEFAULT;
+    // Bottone mostra tutti / mostra meno (solo se ci sono piu' di VISIBLE_DEFAULT badge sbloccati)
+    var remaining = unlockedBadges.length - VISIBLE_DEFAULT;
     if (remaining > 0) {
-        const btn = document.createElement('div');
+        var btn = document.createElement('div');
         btn.style.cssText = 'grid-column:1/-1;text-align:center;padding:4px 0 2px;';
-        btn.innerHTML = `<button onclick="badgesToggleAll(this)" style="background:none;border:none;color:#475569;font-size:0.6rem;cursor:pointer;font-family:inherit;padding:4px 12px;border-radius:6px;">`
-            + (showAll ? '\u2191 Mostra meno' : `+ ${remaining} altri achievements`) + `</button>`;
+        btn.innerHTML = '<button onclick="badgesToggleAll(this)" style="background:none;border:none;color:#475569;font-size:0.6rem;cursor:pointer;font-family:inherit;padding:4px 12px;border-radius:6px;">'
+            + (showAll ? '↑ Mostra meno' : '+ ' + remaining + ' altri achievements') + '</button>';
         grid.appendChild(btn);
     }
 }
