@@ -1572,7 +1572,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .plan-chips { display:flex; gap:5px; flex-wrap:wrap; justify-content:center; margin-bottom:14px; }
         .plan-chip { width:40px; height:40px; border-radius:8px; border:1px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.07); display:flex; align-items:center; justify-content:center; font-size:0.55rem; font-weight:700; color:#64748b; transition:all 0.18s cubic-bezier(0.34,1.56,0.64,1); cursor:not-allowed; user-select:none; }
         .plan-chip.assigned { cursor:pointer; border-color:rgba(99,102,241,0.4); background:rgba(99,102,241,0.12); color:#94a3b8; }
-        .plan-chip.done { width:35px; height:35px; background:var(--primary); border-color:var(--primary); color:#000; font-size:0.82rem; font-weight:900; box-shadow:0 0 0 3px rgba(var(--pr,0,255,136),0.2),0 0 14px rgba(var(--pr,0,255,136),0.5); }
+        .plan-chip.done { width:35px; height:35px; background:var(--primary); border-color:var(--primary); color:#000; font-size:0.82rem; font-weight:900; box-shadow:0 0 0 3px rgba(var(--pr,0,255,136),0.2),0 0 14px rgba(var(--pr,0,255,136),0.5); cursor:pointer; }
         .plan-chip.locked { opacity:0.2; }
         .plan-chip.drag-over { border-color:var(--primary)!important; background:rgba(var(--pr,0,255,136),0.2)!important; transform:scale(1.14); }
         .plan-bottom-cols { display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:start; border-top:1px solid #334155; padding-top:12px; margin-top:4px; }
@@ -3821,14 +3821,16 @@ function renderPlanPage(w) {
         chip.textContent = st==='done' ? '✓' : d;
         chip.dataset.week = w; chip.dataset.day = di;
         if (isUnlocked) {
-            chip.onclick = () => {
-                // Legge stato LIVE da APP (non la var catturata alla creazione)
+            // Handler unico richiamato sia da touch che da click
+            var chipHandler = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                // Legge stato LIVE da APP
                 var curSt = APP.chipStates[w][di];
                 var curHasA = !!APP.dayAssignments[w][di];
                 if (!curHasA && curSt !== 'done') return;
 
                 if (curSt === 'done') {
-                    // da done → rest: aggiorna chip immediatamente
                     APP.chipStates[w][di] = 'rest';
                     APP.dayAssignments[w][di] = null;
                     APP.totalWorkouts = Math.max(0, APP.totalWorkouts - 1);
@@ -3836,7 +3838,6 @@ function renderPlanPage(w) {
                     chip.className = 'plan-chip';
                     chip.textContent = d;
                 } else {
-                    // da assigned → done: aggiorna chip immediatamente
                     APP.chipStates[w][di] = 'done';
                     APP.totalWorkouts++;
                     chip.className = 'plan-chip done';
@@ -3844,10 +3845,10 @@ function renderPlanPage(w) {
                     checkNextStepCompletion();
                 }
 
-                // Aggiorna la riga schedule corrispondente senza ricostruire tutto
-                var container = document.getElementById('plan-week-container');
-                if (container) {
-                    var allRows = container.querySelectorAll('.plan-sched-row');
+                // Aggiorna la riga schedule corrispondente nel DOM esistente
+                var planContainer = document.getElementById('plan-week-container');
+                if (planContainer) {
+                    var allRows = planContainer.querySelectorAll('.plan-sched-row');
                     var targetRow = allRows[di];
                     if (targetRow) {
                         var protoSpan = targetRow.querySelector('.plan-sched-proto');
@@ -3869,6 +3870,14 @@ function renderPlanPage(w) {
                 }
                 checkChapterCompletion(w);
             };
+            // touchend per iOS Safari (più affidabile di onclick su div)
+            chip.addEventListener('touchend', chipHandler, {passive: false});
+            // click come fallback per desktop/altri browser
+            chip.addEventListener('click', function(e) {
+                // Evita doppia esecuzione se touchend ha già gestito l'evento
+                if (e.sourceCapabilities && e.sourceCapabilities.firesTouchEvents) return;
+                chipHandler(e);
+            });
         }
         chipsEl.appendChild(chip);
     });
