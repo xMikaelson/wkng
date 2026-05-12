@@ -3875,6 +3875,7 @@ function renderPlanPage(w) {
                 if (document.getElementById('page-progress')?.classList.contains('active')) {
                     updateProgressPage();
                 }
+                alert('chipHandler: sto chiamando checkChapterCompletion('+w+') stato='+APP.chipStates[w][di]);
                 checkChapterCompletion(w);
             };
             // Solo touchend — niente click (il click sintetico iOS causerebbe doppio fire)
@@ -4639,6 +4640,9 @@ function checkChapterCompletion(w) {
     if (planned === 0) return;
     if (done < planned) return;
 
+    // DEBUG — rimuovere dopo fix
+    alert('CCC raggiunta! w='+w+' planned='+planned+' done='+done+' celebrated='+APP._weekCelebrated[w]);
+
     APP.completedWeeks[w] = true;
     if (APP._weekCelebrated[w]) return;
     APP._weekCelebrated[w] = true;
@@ -4977,8 +4981,13 @@ function showChipDebugPanel() {
         APP._weekCelebrated[0] = false;
         APP.completedWeeks[0] = false;
         APP.availableWeeks = [0];
+        // Riporta tutte le chip done → assigned
+        for (var i = 0; i < 7; i++) {
+            if (APP.chipStates[0][i] === 'done') APP.chipStates[0][i] = 'assigned';
+        }
         saveState();
-        panel.textContent += '\nReset fatto. Ora completa le chip manualmente.';
+        renderPlanPage(0);
+        panel.textContent += '\nReset fatto — chip riportate ad assigned.';
     };
     btnRow.appendChild(btnReset);
     btnRow.appendChild(btnCCC);
