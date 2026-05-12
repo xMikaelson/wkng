@@ -3822,26 +3822,38 @@ function renderPlanPage(w) {
         chip.dataset.week = w; chip.dataset.day = di;
         if (isUnlocked) {
             chip.onclick = () => {
-                if (!APP.dayAssignments[w][di] && st!=='done') return;
-                if (chip.classList.contains('done')) {
+                // Legge lo stato LIVE da APP (non la variabile st catturata alla creazione)
+                var curSt = APP.chipStates[w][di];
+                var curHasA = !!APP.dayAssignments[w][di];
+                if (!curHasA && curSt !== 'done') return;
+
+                if (curSt === 'done') {
+                    // Disattiva: feedback visivo immediato
+                    chip.className = 'plan-chip assigned';
+                    chip.textContent = d;
                     APP.chipStates[w][di] = 'rest';
                     APP.dayAssignments[w][di] = null;
                     APP.totalWorkouts = Math.max(0, APP.totalWorkouts-1);
                     APP._weekCelebrated[w] = false;
                 } else {
+                    // Attiva: feedback visivo immediato
+                    chip.className = 'plan-chip done';
+                    chip.textContent = '✓';
                     APP.chipStates[w][di] = 'done';
                     APP.totalWorkouts++;
                     checkNextStepCompletion();
                 }
                 saveState();
                 updateStats();
-                renderPlanPage(w);
-                // Aggiorna grafico volume se la pagina progressi è aperta
-                if (document.getElementById('page-progress')?.classList.contains('active')) {
-                    updateProgressPage();
-                }
-                // Check chapter completion
-                checkChapterCompletion(w);
+                // requestAnimationFrame garantisce che il browser dipinga il feedback immediato
+                // prima di eseguire il re-render pesante
+                requestAnimationFrame(function() {
+                    renderPlanPage(w);
+                    if (document.getElementById('page-progress')?.classList.contains('active')) {
+                        updateProgressPage();
+                    }
+                    checkChapterCompletion(w);
+                });
             };
         }
         chipsEl.appendChild(chip);
@@ -8177,9 +8189,17 @@ function woCompleteSet() {
         const di = woState._todayDayIdx;
         if (di !== undefined && di !== null && APP.chipStates[wIdx] && APP.chipStates[wIdx][di] !== 'done') {
             APP.chipStates[wIdx][di] = 'done';
+            APP.totalWorkouts = APP.chipStates.flat().filter(s => s === 'done').length;
             saveState();
-            const chipEl = document.querySelector(`[data-week="${wIdx}"][data-day="${di}"]`);
-            if (chipEl) { chipEl.className = 'chip done'; chipEl.textContent = '✓'; }
+            // Refresh completo di tutte le viste che mostrano lo stato dei workout:
+            // - chip della Home (pagina results) + donut + motivazione
+            // - chip della pagina Plans (se renderizzata)
+            // - pagina Progressi (volumi/streak/badges)
+            // L'aggiornamento manuale di un singolo chipEl non bastava: lasciava
+            // home e donut non aggiornati finché non cambiavi tab/categoria.
+            if (typeof restoreChipStates === 'function') restoreChipStates();
+            if (typeof renderPlanPage === 'function') renderPlanPage(wIdx);
+            if (typeof updateStats === 'function') updateStats();
             checkChapterCompletion(wIdx);
             updateProgressPage();
         }
@@ -11689,19 +11709,25 @@ async function performFullReset() {
     localStorage.removeItem('aw_height_cm');
 
     // Cancella protocolli da Supabase e azzera colonne extra
+    // Wrap in try/catch: il reset locale deve completarsi anche se Supabase fallisce
+    // (es. offline, sessione scaduta, network lento)
     if (APP.userName) {
-        const { data: { session } } = await sbClient.auth.getSession();
-        if (session) {
-            await sbClient.from('protocols').delete().eq('user_id', session.user.id);
-            await sbClient.from('profiles').update({
-                state_json:    null,
-                weight_log:    [],
-                weight_goal:   null,
-                badges_json:   [],
-                streak_record: 0,
-                contributions: 0,
-                height_cm:     null
-            }).eq('id', session.user.id);
+        try {
+            const { data: { session } } = await sbClient.auth.getSession();
+            if (session) {
+                await sbClient.from('protocols').delete().eq('user_id', session.user.id);
+                await sbClient.from('profiles').update({
+                    state_json:    null,
+                    weight_log:    [],
+                    weight_goal:   null,
+                    badges_json:   [],
+                    streak_record: 0,
+                    contributions: 0,
+                    height_cm:     null
+                }).eq('id', session.user.id);
+            }
+        } catch (e) {
+            console.warn('Reset Supabase fallito (continuo comunque):', e && e.message);
         }
     }
     APP.savedProtocols = [];
@@ -11760,7 +11786,8 @@ async function performFullReset() {
     showToast('Dati resettati con successo', 'success');
 
     // 6. Utente è ancora loggato: avvia subito wizard nuovo protocollo
-    setTimeout(() => startOnboarding(), 300);
+    //    Chiamata sincrona — niente setTimeout: evita la finestra di schermo vuoto
+    startOnboarding();
 }
 
 // ============= STREAK & BADGES =============
