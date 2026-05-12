@@ -3822,38 +3822,52 @@ function renderPlanPage(w) {
         chip.dataset.week = w; chip.dataset.day = di;
         if (isUnlocked) {
             chip.onclick = () => {
-                // Legge lo stato LIVE da APP (non la variabile st catturata alla creazione)
+                // Legge stato LIVE da APP (non la var catturata alla creazione)
                 var curSt = APP.chipStates[w][di];
                 var curHasA = !!APP.dayAssignments[w][di];
                 if (!curHasA && curSt !== 'done') return;
 
                 if (curSt === 'done') {
-                    // Disattiva: feedback visivo immediato
-                    chip.className = 'plan-chip assigned';
-                    chip.textContent = d;
+                    // da done → rest: aggiorna chip immediatamente
                     APP.chipStates[w][di] = 'rest';
                     APP.dayAssignments[w][di] = null;
-                    APP.totalWorkouts = Math.max(0, APP.totalWorkouts-1);
+                    APP.totalWorkouts = Math.max(0, APP.totalWorkouts - 1);
                     APP._weekCelebrated[w] = false;
+                    chip.className = 'plan-chip';
+                    chip.textContent = d;
                 } else {
-                    // Attiva: feedback visivo immediato
-                    chip.className = 'plan-chip done';
-                    chip.textContent = '✓';
+                    // da assigned → done: aggiorna chip immediatamente
                     APP.chipStates[w][di] = 'done';
                     APP.totalWorkouts++;
+                    chip.className = 'plan-chip done';
+                    chip.textContent = '✓';
                     checkNextStepCompletion();
                 }
+
+                // Aggiorna la riga schedule corrispondente senza ricostruire tutto
+                var container = document.getElementById('plan-week-container');
+                if (container) {
+                    var allRows = container.querySelectorAll('.plan-sched-row');
+                    var targetRow = allRows[di];
+                    if (targetRow) {
+                        var protoSpan = targetRow.querySelector('.plan-sched-proto');
+                        var newSt = APP.chipStates[w][di];
+                        var newA = APP.dayAssignments[w][di];
+                        if (protoSpan) {
+                            protoSpan.textContent = newA ? escapeHTML(newA.protoName || newA.name || '—') : '—';
+                            protoSpan.className = 'plan-sched-proto' + (newA ? '' : ' rest');
+                            protoSpan.style.textDecoration = newSt === 'done' ? 'line-through' : '';
+                            protoSpan.style.opacity = newSt === 'done' ? '0.5' : '';
+                        }
+                    }
+                }
+
                 saveState();
                 updateStats();
-                // requestAnimationFrame garantisce che il browser dipinga il feedback immediato
-                // prima di eseguire il re-render pesante
-                requestAnimationFrame(function() {
-                    renderPlanPage(w);
-                    if (document.getElementById('page-progress')?.classList.contains('active')) {
-                        updateProgressPage();
-                    }
-                    checkChapterCompletion(w);
-                });
+                if (document.getElementById('page-progress')?.classList.contains('active')) {
+                    updateProgressPage();
+                }
+                checkChapterCompletion(w);
             };
         }
         chipsEl.appendChild(chip);
