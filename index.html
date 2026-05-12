@@ -3821,22 +3821,22 @@ function renderPlanPage(w) {
         chip.textContent = st==='done' ? '✓' : d;
         chip.dataset.week = w; chip.dataset.day = di;
         if (isUnlocked) {
-            // Handler unico richiamato sia da touch che da click
+            var chipLastTouch = 0;
             var chipHandler = function(e) {
                 e.preventDefault();
-                e.stopPropagation();
-                // Legge stato LIVE da APP
+                var now = Date.now();
+                if (now - chipLastTouch < 500) return;
+                chipLastTouch = now;
+
                 var curSt = APP.chipStates[w][di];
                 var curHasA = !!APP.dayAssignments[w][di];
                 if (!curHasA && curSt !== 'done') return;
 
                 if (curSt === 'done') {
-                    // Deseleziona: torna ad "assigned" senza rimuovere l'allenamento
                     APP.chipStates[w][di] = 'assigned';
                     APP.totalWorkouts = Math.max(0, APP.totalWorkouts - 1);
                     APP.completedWeeks[w] = false;
                     APP._weekCelebrated[w] = false;
-                    // NON tocca dayAssignments: l'allenamento rimane assegnato
                     chip.className = 'plan-chip assigned';
                     chip.textContent = d;
                 } else {
@@ -3847,7 +3847,7 @@ function renderPlanPage(w) {
                     checkNextStepCompletion();
                 }
 
-                // Aggiorna la riga schedule corrispondente nel DOM esistente
+                // Aggiorna riga schedule nel DOM esistente
                 var planContainer = document.getElementById('plan-week-container');
                 if (planContainer) {
                     var allRows = planContainer.querySelectorAll('.plan-sched-row');
@@ -3872,14 +3872,8 @@ function renderPlanPage(w) {
                 }
                 checkChapterCompletion(w);
             };
-            // touchend per iOS Safari (più affidabile di onclick su div)
             chip.addEventListener('touchend', chipHandler, {passive: false});
-            // click come fallback per desktop/altri browser
-            chip.addEventListener('click', function(e) {
-                // Evita doppia esecuzione se touchend ha già gestito l'evento
-                if (e.sourceCapabilities && e.sourceCapabilities.firesTouchEvents) return;
-                chipHandler(e);
-            });
+            chip.addEventListener('click', chipHandler);
         }
         chipsEl.appendChild(chip);
     });
@@ -4646,7 +4640,7 @@ function checkChapterCompletion(w) {
 
     // Sblocca chapter successivo
     if (!APP.availableWeeks.includes(w)) APP.availableWeeks.push(w);
-    if (w < 3 && !APP.availableWeeks.includes(w + 1)) {
+    if (w < 4 && !APP.availableWeeks.includes(w + 1)) {
         APP.availableWeeks.push(w + 1);
     }
     saveState();
@@ -8814,35 +8808,25 @@ function initDashboard() {
             btn.setAttribute('data-day', dayIndex);
 
             btn.onclick = () => {
-                // Cliccabile solo se ha un protocollo assegnato
                 if (!APP.dayAssignments[w][dayIndex] && !btn.classList.contains('done')) return;
                 if (btn.classList.contains('done')) {
-                    // done → rest (annulla allenamento)
-                    btn.className = 'chip locked';
+                    // done → assigned (deseleziona ma mantiene l'allenamento)
+                    btn.className = 'chip assigned';
                     btn.textContent = DAYS[dayIndex];
-                    APP.chipStates[w][dayIndex] = 'rest';
-                    APP.dayAssignments[w][dayIndex] = null;
+                    APP.chipStates[w][dayIndex] = 'assigned';
                     APP.totalWorkouts = Math.max(0, APP.totalWorkouts - 1);
+                    APP.completedWeeks[w] = false;
                     APP._weekCelebrated[w] = false;
                     const remainingDone = APP.chipStates[w].filter(s => s === 'done').length;
                     APP.motivationalQuotes[w] = remainingDone > 0 ? getMotivationalQuote() : '';
                 } else {
-                    // rest → done (allenamento completato)
+                    // assigned → done
                     btn.className = 'chip done';
                     btn.textContent = '✓';
                     APP.chipStates[w][dayIndex] = 'done';
                     APP.totalWorkouts++;
-                    // Micro-bounce
                     btn.style.transform = 'scale(1.3)';
                     setTimeout(() => { btn.style.transform = ''; }, 180);
-                    // Week completion check
-                    const doneDays = APP.chipStates[w].filter(s => s === 'done').length;
-                    const _chipsEl2 = document.getElementById(`w-${w}`);
-                    const totalDays = _chipsEl2 ? Array.from(_chipsEl2.querySelectorAll('.chip')).filter(c => c.classList.contains('assigned') || c.classList.contains('done')).length : 0;
-                    if (totalDays > 0 && doneDays === totalDays && !APP._weekCelebrated[w]) {
-                        APP._weekCelebrated[w] = true;
-                        setTimeout(() => showWeekComplete(w), 450);
-                    }
                     APP.motivationalQuotes[w] = getMotivationalQuote();
                     checkNextStepCompletion();
                     if (!APP.startDate) {
@@ -8855,7 +8839,7 @@ function initDashboard() {
                 updateCurrentWeekDisplay();
                 renderDaySchedule(w);
                 saveState();
-                // Refresh profile page live if open
+                checkChapterCompletion(w);
                 if (document.getElementById('page-profile')?.classList.contains('active')) {
                     buildProfiloPage();
                 }
