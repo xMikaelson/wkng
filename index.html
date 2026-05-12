@@ -1941,20 +1941,24 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <!-- CHAPTER TIPS — one card per chapter, shown dynamically -->
         <div class="chapter-tips-row" id="chapter-tips-row">
             <div class="chapter-tip-card" id="tip-ch-0">
-                <div class="tip-chapter-label">💡 Chapter 1 · Activation</div>
-                <div class="tip-chapter-text">Non avere fretta. Se il 70% ti sembra troppo leggero, resisti alla tentazione di caricare di più. Il tuo corpo sta risvegliando schemi motori dimenticati. <strong>Concentrati sulla tecnica perfetta</strong>, sulla stabilità, sul controllo. Ogni ripetizione deve essere una dichiarazione di intenti. Questo è il momento in cui ricostruisci le fondamenta.</div>
+                <div class="tip-chapter-label">💡 Chapter 1 · Activation — 65%</div>
+                <div class="tip-chapter-text">Non avere fretta. Se il 65% ti sembra troppo leggero, resisti alla tentazione di caricare di più. Il tuo corpo sta risvegliando schemi motori dimenticati. <strong>Concentrati sulla tecnica perfetta</strong>, sulla stabilità, sul controllo. Ogni ripetizione deve essere una dichiarazione di intenti. Questo è il momento in cui ricostruisci le fondamenta.</div>
             </div>
             <div class="chapter-tip-card" id="tip-ch-1">
-                <div class="tip-chapter-label">💡 Chapter 2 · Momentum</div>
-                <div class="tip-chapter-text">Concentrati sulla respirazione e sulla costanza. L'80% è il territorio dove il comfort inizia a scricchiolare. Qui la mente ti dirà di rallentare. <strong>Non ascoltarla.</strong> Ogni serie completata è un mattone che posi sulla tua nuova identità. Il progresso non è lineare, ma la direzione è chiara: avanti. Sempre avanti.</div>
+                <div class="tip-chapter-label">💡 Chapter 2 · Momentum — 75%</div>
+                <div class="tip-chapter-text">Concentrati sulla respirazione e sulla costanza. Il 75% è il territorio dove il comfort inizia a scricchiolare. Qui la mente ti dirà di rallentare. <strong>Non ascoltarla.</strong> Ogni serie completata è un mattone che posi sulla tua nuova identità. Il progresso non è lineare, ma la direzione è chiara: avanti. Sempre avanti.</div>
             </div>
             <div class="chapter-tip-card" id="tip-ch-2">
-                <div class="tip-chapter-label">💡 Chapter 3 · Breakthrough</div>
-                <div class="tip-chapter-text">Assicurati di aver dormito a sufficienza. Al 90% del carico, il margine di errore si restringe. <strong>Riscaldati con cura e visualizza ogni movimento</strong> prima di eseguirlo. Stai sfidando i tuoi vecchi limiti. Questo è il breakthrough. Non temerlo. Abbraccialo.</div>
+                <div class="tip-chapter-label">💡 Chapter 3 · The Peak — 85%</div>
+                <div class="tip-chapter-text">Assicurati di aver dormito a sufficienza. All'85% del carico, il margine di errore si restringe. <strong>Riscaldati con cura e visualizza ogni movimento</strong> prima di eseguirlo. Stai sfidando i tuoi vecchi limiti. Questo è il breakthrough. Non temerlo. Abbraccialo.</div>
             </div>
             <div class="chapter-tip-card" id="tip-ch-3">
-                <div class="tip-chapter-label">💡 Chapter 4 · Integration</div>
-                <div class="tip-chapter-text">Non saltare gli allenamenti solo perché il carico è basso. Il 60% non è un passo indietro: <strong>è l'integrazione intelligente.</strong> Il corpo si adatta nel recupero attivo, non nel riposo totale. Questi allenamenti consolidano tutto ciò che hai costruito. Sei rinato.</div>
+                <div class="tip-chapter-label">💡 Chapter 4 · Overload — 90%</div>
+                <div class="tip-chapter-text">Hai costruito tutto per arrivare qui. Al 90% stai entrando nel territorio del vero overreaching controllato: il corpo viene spinto oltre la zona di comfort per innescare adattamenti profondi. <strong>Esegui ogni serie come se fosse l'ultima della tua vita.</strong> Recupera bene tra le sessioni. La settimana dopo ti ringrazierai.</div>
+            </div>
+            <div class="chapter-tip-card" id="tip-ch-4">
+                <div class="tip-chapter-label">🔄 Chapter 5 · Deload — 50%</div>
+                <div class="tip-chapter-text">Non è una settimana di riposo: è una settimana di <strong>supercompensazione</strong>. Il corpo ripara i micro-traumi accumulati e si ricostruisce più forte. Il 50% del carico con volume ridotto mantiene i pattern motori senza stressare il sistema nervoso. Chi salta il deload perde fino al 20% dei guadagni. Non farlo.</div>
             </div>
         </div>
 
@@ -2938,7 +2942,7 @@ const N_WEEKS = 5;
 const DELOAD_WEEK = 4; // indice (0-based) della settimana deload
 // Percentuali del baseWeight per ogni settimana
 // W1:65%  W2:75%  W3:85%  W4:92.5%  W5(Deload):50%
-const WEEK_LOADS = [0.65, 0.75, 0.85, 0.925, 0.50];
+const WEEK_LOADS = [0.65, 0.75, 0.85, 0.90, 0.50];
 const STORAGE_KEY = 'awakening_state';
 
 const MOTIVATIONAL_QUOTES = [
@@ -11809,26 +11813,31 @@ function getStreak() {
 
 function applyChapterTheme(w) {
     const themes = [
-        // Ch1 Activation — colori originali: verde + viola
+        // Ch1 Activation — verde + viola
         { primary: '#34d399', accent: '#6366f1',
           pr: '52,211,153',   ac: '99,102,241',
           progGrad: 'linear-gradient(90deg,#34d399,#6366f1)',
           btnGrad:  'linear-gradient(135deg,#059669,#4f46e5)' },
-        // Ch2 Momentum — gold/ambra: energia in crescita
+        // Ch2 Momentum — gold/ambra
         { primary: '#fbbf24', accent: '#f59e0b',
           pr: '251,191,36',   ac: '245,158,11',
           progGrad: 'linear-gradient(90deg,#f59e0b,#d97706)',
           btnGrad:  'linear-gradient(135deg,#d97706,#b45309)' },
-        // Ch3 The Peak — rosso fuoco: massima intensità
+        // Ch3 The Peak — rosso fuoco
         { primary: '#f87171', accent: '#ef4444',
           pr: '248,113,113',  ac: '239,68,68',
           progGrad: 'linear-gradient(90deg,#ef4444,#dc2626)',
           btnGrad:  'linear-gradient(135deg,#dc2626,#991b1b)' },
-        // Ch4 Integration — cyan/blu: padronanza completa
-        { primary: '#22d3ee', accent: '#0ea5e9',
-          pr: '34,211,238',   ac: '14,165,233',
-          progGrad: 'linear-gradient(90deg,#0ea5e9,#6366f1)',
-          btnGrad:  'linear-gradient(135deg,#0284c7,#4f46e5)' },
+        // Ch4 Overload — viola intenso + rosso
+        { primary: '#c084fc', accent: '#a855f7',
+          pr: '192,132,252',  ac: '168,85,247',
+          progGrad: 'linear-gradient(90deg,#a855f7,#dc2626)',
+          btnGrad:  'linear-gradient(135deg,#7c3aed,#b91c1c)' },
+        // Ch5 Deload — teal + indigo: recupero attivo
+        { primary: '#2dd4bf', accent: '#4f46e5',
+          pr: '45,212,191',   ac: '79,70,229',
+          progGrad: 'linear-gradient(90deg,#0d9488,#4f46e5)',
+          btnGrad:  'linear-gradient(135deg,#0f766e,#4338ca)' },
     ];
     const t = themes[w] || themes[0];
     const root = document.documentElement;
@@ -11864,13 +11873,14 @@ function restartBannerAnimations() {
     if (curr) curr.classList.remove('crossfading');
 }
 function updateChapterBannerSilent() {
-    const names = ['ACTIVATION', 'MOMENTUM', 'THE PEAK', 'INTEGRATION'];
-    const pcts  = [70, 80, 90, 60];
+    const names = CHAPTER_NAMES.map(n => n.toUpperCase());
+    const pcts  = [65, 75, 85, 90, 50];
     const bannerGrads = [
         'linear-gradient(135deg,#1d4ed8,#7c3aed)',
         'linear-gradient(135deg,#065f46,#b45309)',
         'linear-gradient(135deg,#991b1b,#d97706)',
-        'linear-gradient(135deg,#00c875,#4f46e5)'
+        'linear-gradient(135deg,#6d28d9,#dc2626)',
+        'linear-gradient(135deg,#0f766e,#4f46e5)'
     ];
     const w = APP.selectedViewWeek || 0;
 
@@ -11882,7 +11892,7 @@ function updateChapterBannerSilent() {
     const caricoEl = document.getElementById('carico-val-home');
     if (caricoEl) caricoEl.textContent = pcts[w] + '%';
     const bar = document.getElementById('carico-prog-bar');
-    if (bar) bar.style.width = ((w+1)/4*100) + '%';
+    if (bar) bar.style.width = ((w+1)/N_WEEKS*100) + '%';
 
     // Aggiorna banner gradient fisso
     const banner = document.getElementById('chapter-banner');
@@ -11897,13 +11907,14 @@ function updateChapterBannerSilent() {
 }
 
 function updateChapterBanner(animate) {
-    const names = ['ACTIVATION', 'MOMENTUM', 'THE PEAK', 'INTEGRATION'];
-    const pcts  = [70, 80, 90, 60];
+    const names = CHAPTER_NAMES.map(n => n.toUpperCase());
+    const pcts  = [65, 75, 85, 90, 50];
     const bannerGrads = [
         'linear-gradient(135deg,#1d4ed8,#7c3aed)',
         'linear-gradient(135deg,#065f46,#b45309)',
         'linear-gradient(135deg,#991b1b,#d97706)',
-        'linear-gradient(135deg,#00c875,#4f46e5)'
+        'linear-gradient(135deg,#6d28d9,#dc2626)',
+        'linear-gradient(135deg,#0f766e,#4f46e5)'
     ];
 
     const w = (APP.selectedViewWeek !== undefined && APP.selectedViewWeek !== null)
@@ -11918,7 +11929,7 @@ function updateChapterBanner(animate) {
     const caricoEl = document.getElementById('carico-val-home');
     if (caricoEl) caricoEl.textContent = pcts[w] + '%';
     const bar = document.getElementById('carico-prog-bar');
-    if (bar) bar.style.width = ((w+1)/4*100) + '%';
+    if (bar) bar.style.width = ((w+1)/N_WEEKS*100) + '%';
 
     // Aggiorna testi
     const lblCurr = document.getElementById('banner-chapter-label');
