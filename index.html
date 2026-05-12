@@ -3826,16 +3826,16 @@ function renderPlanPage(w) {
         chip.textContent = st==='done' ? '✓' : d;
         chip.dataset.week = w; chip.dataset.day = di;
         if (isUnlocked) {
-            var chipLastTouch = 0;
+            var _chipBusy = false;
             var chipHandler = function(e) {
                 e.preventDefault();
-                var now = Date.now();
-                if (now - chipLastTouch < 500) return;
-                chipLastTouch = now;
+                if (_chipBusy) return;
+                _chipBusy = true;
+                setTimeout(function(){ _chipBusy = false; }, 600);
 
                 var curSt = APP.chipStates[w][di];
                 var curHasA = !!APP.dayAssignments[w][di];
-                if (!curHasA && curSt !== 'done') return;
+                if (!curHasA && curSt !== 'done') { _chipBusy = false; return; }
 
                 if (curSt === 'done') {
                     APP.chipStates[w][di] = 'assigned';
@@ -3877,8 +3877,8 @@ function renderPlanPage(w) {
                 }
                 checkChapterCompletion(w);
             };
+            // Solo touchend — niente click (il click sintetico iOS causerebbe doppio fire)
             chip.addEventListener('touchend', chipHandler, {passive: false});
-            chip.addEventListener('click', chipHandler);
         }
         chipsEl.appendChild(chip);
     });
@@ -4970,6 +4970,17 @@ function showChipDebugPanel() {
         showWeekComplete(0);
     };
 
+    var btnReset = document.createElement('button');
+    btnReset.textContent = '🔄 Reset W0 celebrated';
+    btnReset.style.cssText = 'padding:6px 10px;font-size:11px;background:#7f1d1d;color:#fff;border:none;border-radius:6px;';
+    btnReset.onclick = function() {
+        APP._weekCelebrated[0] = false;
+        APP.completedWeeks[0] = false;
+        APP.availableWeeks = [0];
+        saveState();
+        panel.textContent += '\nReset fatto. Ora completa le chip manualmente.';
+    };
+    btnRow.appendChild(btnReset);
     btnRow.appendChild(btnCCC);
     btnRow.appendChild(btnAnim);
     panel.appendChild(btnRow);
