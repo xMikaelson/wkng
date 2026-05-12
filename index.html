@@ -8992,13 +8992,13 @@ function updateNavigationControls() {
     const nextBtn = document.getElementById('next-week');
 
     const hasCompleted = APP.completedWeeks.some(Boolean);
-    arrowLeft.classList.toggle('active', hasCompleted);
-    arrowRight.classList.toggle('active', hasCompleted);
+    if (arrowLeft) arrowLeft.classList.toggle('active', hasCompleted);
+    if (arrowRight) arrowRight.classList.toggle('active', hasCompleted);
 
     APP.availableWeeks.sort((a, b) => a - b);
     const currentIndex = APP.availableWeeks.indexOf(APP.selectedViewWeek);
-    prevBtn.disabled = currentIndex <= 0;
-    nextBtn.disabled = currentIndex >= APP.availableWeeks.length - 1;
+    if (prevBtn) prevBtn.disabled = currentIndex <= 0;
+    if (nextBtn) nextBtn.disabled = currentIndex >= APP.availableWeeks.length - 1;
     setTimeout(renderChapterProtoLists, 50);
 }
 
