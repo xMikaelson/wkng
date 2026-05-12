@@ -3828,21 +3828,19 @@ function renderPlanPage(w) {
                     APP.dayAssignments[w][di] = null;
                     APP.totalWorkouts = Math.max(0, APP.totalWorkouts-1);
                     APP._weekCelebrated[w] = false;
-                    chip.className = 'plan-chip';
-                    chip.textContent = d;
                 } else {
                     APP.chipStates[w][di] = 'done';
                     APP.totalWorkouts++;
-                    chip.className = 'plan-chip done';
-                    chip.textContent = '✓';
                     checkNextStepCompletion();
                 }
                 saveState();
                 updateStats();
                 renderPlanPage(w);
+                // Aggiorna grafico volume se la pagina progressi è aperta
                 if (document.getElementById('page-progress')?.classList.contains('active')) {
                     updateProgressPage();
                 }
+                // Check chapter completion
                 checkChapterCompletion(w);
             };
         }
@@ -4611,7 +4609,7 @@ function checkChapterCompletion(w) {
     APP._weekCelebrated[w] = true;
     if (!APP.availableWeeks.includes(w)) APP.availableWeeks.push(w);
     // Sblocca il chapter successivo
-    if (w < 4 && !APP.availableWeeks.includes(w+1)) {
+    if (w < 3 && !APP.availableWeeks.includes(w+1)) {
         APP.availableWeeks.push(w+1);
     }
     saveState();
@@ -8179,17 +8177,9 @@ function woCompleteSet() {
         const di = woState._todayDayIdx;
         if (di !== undefined && di !== null && APP.chipStates[wIdx] && APP.chipStates[wIdx][di] !== 'done') {
             APP.chipStates[wIdx][di] = 'done';
-            APP.totalWorkouts = APP.chipStates.flat().filter(s => s === 'done').length;
             saveState();
-            // Refresh completo di tutte le viste che mostrano lo stato dei workout:
-            // - chip della Home (pagina results) + donut + motivazione
-            // - chip della pagina Plans (se renderizzata)
-            // - pagina Progressi (volumi/streak/badges)
-            // L'aggiornamento manuale di un singolo chipEl non bastava: lasciava
-            // home e donut non aggiornati finché non cambiavi tab/categoria.
-            if (typeof restoreChipStates === 'function') restoreChipStates();
-            if (typeof renderPlanPage === 'function') renderPlanPage(wIdx);
-            if (typeof updateStats === 'function') updateStats();
+            const chipEl = document.querySelector(`[data-week="${wIdx}"][data-day="${di}"]`);
+            if (chipEl) { chipEl.className = 'chip done'; chipEl.textContent = '✓'; }
             checkChapterCompletion(wIdx);
             updateProgressPage();
         }
@@ -8941,13 +8931,15 @@ function updateNavigationControls() {
     const arrowRight = document.getElementById('arrow-right');
     const prevBtn = document.getElementById('prev-week');
     const nextBtn = document.getElementById('next-week');
+
     const hasCompleted = APP.completedWeeks.some(Boolean);
-    if (arrowLeft) arrowLeft.classList.toggle('active', hasCompleted);
-    if (arrowRight) arrowRight.classList.toggle('active', hasCompleted);
+    arrowLeft.classList.toggle('active', hasCompleted);
+    arrowRight.classList.toggle('active', hasCompleted);
+
     APP.availableWeeks.sort((a, b) => a - b);
     const currentIndex = APP.availableWeeks.indexOf(APP.selectedViewWeek);
-    if (prevBtn) prevBtn.disabled = currentIndex <= 0;
-    if (nextBtn) nextBtn.disabled = currentIndex >= APP.availableWeeks.length - 1;
+    prevBtn.disabled = currentIndex <= 0;
+    nextBtn.disabled = currentIndex >= APP.availableWeeks.length - 1;
     setTimeout(renderChapterProtoLists, 50);
 }
 
@@ -11697,25 +11689,19 @@ async function performFullReset() {
     localStorage.removeItem('aw_height_cm');
 
     // Cancella protocolli da Supabase e azzera colonne extra
-    // Wrap in try/catch: il reset locale deve completarsi anche se Supabase fallisce
-    // (es. offline, sessione scaduta, network lento)
     if (APP.userName) {
-        try {
-            const { data: { session } } = await sbClient.auth.getSession();
-            if (session) {
-                await sbClient.from('protocols').delete().eq('user_id', session.user.id);
-                await sbClient.from('profiles').update({
-                    state_json:    null,
-                    weight_log:    [],
-                    weight_goal:   null,
-                    badges_json:   [],
-                    streak_record: 0,
-                    contributions: 0,
-                    height_cm:     null
-                }).eq('id', session.user.id);
-            }
-        } catch (e) {
-            console.warn('Reset Supabase fallito (continuo comunque):', e && e.message);
+        const { data: { session } } = await sbClient.auth.getSession();
+        if (session) {
+            await sbClient.from('protocols').delete().eq('user_id', session.user.id);
+            await sbClient.from('profiles').update({
+                state_json:    null,
+                weight_log:    [],
+                weight_goal:   null,
+                badges_json:   [],
+                streak_record: 0,
+                contributions: 0,
+                height_cm:     null
+            }).eq('id', session.user.id);
         }
     }
     APP.savedProtocols = [];
@@ -11774,8 +11760,7 @@ async function performFullReset() {
     showToast('Dati resettati con successo', 'success');
 
     // 6. Utente è ancora loggato: avvia subito wizard nuovo protocollo
-    //    Chiamata sincrona — niente setTimeout: evita la finestra di schermo vuoto
-    startOnboarding();
+    setTimeout(() => startOnboarding(), 300);
 }
 
 // ============= STREAK & BADGES =============
@@ -12072,39 +12057,32 @@ function updateBadges() {
 
     if (!hasWorkout && unlocked.length === 0) return;
 
-    // ── Mostra solo i badge sbloccati ─────────────────────────────────────────────
-    var VISIBLE_DEFAULT = 6;
-    var showAll = grid.dataset.showAll === '1';
+    // ── PUNTO 2: mostra solo 6 badge, resto con "Mostra tutto" ────────────
+    const VISIBLE_DEFAULT = 6;
+    let showAll = grid.dataset.showAll === '1';
     grid.innerHTML = '';
-
-    // Filtra solo i badge effettivamente sbloccati
-    var unlockedBadges = BADGES_CONFIG.filter(function(b) { return unlocked.indexOf(b.id) !== -1; });
-
-    if (unlockedBadges.length === 0) {
-        section.classList.remove('visible');
-        return;
-    }
-
-    var toShow = showAll ? unlockedBadges : unlockedBadges.slice(0, VISIBLE_DEFAULT);
-    toShow.forEach(function(b) {
-        var isNew = newlyUnlocked.find(function(x) { return x.id === b.id; });
-        var card = document.createElement('div');
-        card.className = 'badge-home-card unlocked' + (isNew ? ' newly-unlocked' : '');
-        card.innerHTML =
-            '<div class="badge-home-check">✓</div>' +
-            '<span class="badge-home-icon">' + b.icon + '</span>' +
-            '<div class="badge-home-name">' + b.name + '</div>' +
-            '<div class="badge-home-desc">' + b.desc + '</div>';
+    const toShow = showAll ? BADGES_CONFIG : BADGES_CONFIG.slice(0, VISIBLE_DEFAULT);
+    toShow.forEach(b => {
+        const isUnlocked = unlocked.includes(b.id);
+        const isNew = newlyUnlocked.find(x => x.id === b.id);
+        const card = document.createElement('div');
+        card.className = 'badge-home-card' + (isUnlocked ? ' unlocked' : ' locked') + (isNew ? ' newly-unlocked' : '');
+        card.innerHTML = `
+            ${isUnlocked ? '<div class="badge-home-check">\u2713</div>' : ''}
+            <span class="badge-home-icon">${b.icon}</span>
+            <div class="badge-home-name">${b.name}</div>
+            <div class="badge-home-desc">${b.desc}</div>
+        `;
         grid.appendChild(card);
     });
 
-    // Bottone mostra tutti / mostra meno (solo se ci sono piu' di VISIBLE_DEFAULT badge sbloccati)
-    var remaining = unlockedBadges.length - VISIBLE_DEFAULT;
+    // Bottone mostra tutto / mostra meno
+    const remaining = BADGES_CONFIG.length - VISIBLE_DEFAULT;
     if (remaining > 0) {
-        var btn = document.createElement('div');
+        const btn = document.createElement('div');
         btn.style.cssText = 'grid-column:1/-1;text-align:center;padding:4px 0 2px;';
-        btn.innerHTML = '<button onclick="badgesToggleAll(this)" style="background:none;border:none;color:#475569;font-size:0.6rem;cursor:pointer;font-family:inherit;padding:4px 12px;border-radius:6px;">'
-            + (showAll ? '↑ Mostra meno' : '+ ' + remaining + ' altri achievements') + '</button>';
+        btn.innerHTML = `<button onclick="badgesToggleAll(this)" style="background:none;border:none;color:#475569;font-size:0.6rem;cursor:pointer;font-family:inherit;padding:4px 12px;border-radius:6px;">`
+            + (showAll ? '\u2191 Mostra meno' : `+ ${remaining} altri achievements`) + `</button>`;
         grid.appendChild(btn);
     }
 }
