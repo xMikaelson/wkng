@@ -3831,11 +3831,13 @@ function renderPlanPage(w) {
                 if (!curHasA && curSt !== 'done') return;
 
                 if (curSt === 'done') {
-                    APP.chipStates[w][di] = 'rest';
-                    APP.dayAssignments[w][di] = null;
+                    // Deseleziona: torna ad "assigned" senza rimuovere l'allenamento
+                    APP.chipStates[w][di] = 'assigned';
                     APP.totalWorkouts = Math.max(0, APP.totalWorkouts - 1);
+                    APP.completedWeeks[w] = false;
                     APP._weekCelebrated[w] = false;
-                    chip.className = 'plan-chip';
+                    // NON tocca dayAssignments: l'allenamento rimane assegnato
+                    chip.className = 'plan-chip assigned';
                     chip.textContent = d;
                 } else {
                     APP.chipStates[w][di] = 'done';
@@ -4655,9 +4657,10 @@ function checkChapterCompletion(w) {
     });
     // Mostra celebration con delay
     setTimeout(() => showWeekComplete(w), 450);
-    // Aggiorna volume
+    // Aggiorna volume e re-render piani (sblocco chapter successivo visibile)
     setTimeout(() => {
         if (document.getElementById('page-progress')?.classList.contains('active')) updateProgressPage();
+        renderPlanPage(w);
     }, 600);
 }
 
