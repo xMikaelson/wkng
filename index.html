@@ -3826,18 +3826,13 @@ function renderPlanPage(w) {
         chip.textContent = st==='done' ? '✓' : d;
         chip.dataset.week = w; chip.dataset.day = di;
         if (isUnlocked) {
-            var _chipBusy = false;
-            var chipHandler = function(e) {
-                e.preventDefault();
-                if (_chipBusy) return;
-                _chipBusy = true;
-                setTimeout(function(){ _chipBusy = false; }, 600);
-
+            chip.onclick = function() {
                 var curSt = APP.chipStates[w][di];
                 var curHasA = !!APP.dayAssignments[w][di];
-                if (!curHasA && curSt !== 'done') { _chipBusy = false; return; }
+                if (!curHasA && curSt !== 'done') return;
 
                 if (curSt === 'done') {
+                    // Deseleziona: torna assigned, mantiene l'allenamento
                     APP.chipStates[w][di] = 'assigned';
                     APP.totalWorkouts = Math.max(0, APP.totalWorkouts - 1);
                     APP.completedWeeks[w] = false;
@@ -3845,6 +3840,7 @@ function renderPlanPage(w) {
                     chip.className = 'plan-chip assigned';
                     chip.textContent = d;
                 } else {
+                    // Seleziona: done
                     APP.chipStates[w][di] = 'done';
                     APP.totalWorkouts++;
                     chip.className = 'plan-chip done';
@@ -3852,7 +3848,7 @@ function renderPlanPage(w) {
                     checkNextStepCompletion();
                 }
 
-                // Aggiorna riga schedule nel DOM esistente
+                // Aggiorna riga schedule senza ricostruire tutto il DOM
                 var planContainer = document.getElementById('plan-week-container');
                 if (planContainer) {
                     var allRows = planContainer.querySelectorAll('.plan-sched-row');
@@ -3875,11 +3871,8 @@ function renderPlanPage(w) {
                 if (document.getElementById('page-progress')?.classList.contains('active')) {
                     updateProgressPage();
                 }
-                alert('chipHandler: sto chiamando checkChapterCompletion('+w+') stato='+APP.chipStates[w][di]);
                 checkChapterCompletion(w);
             };
-            // Solo touchend — niente click (il click sintetico iOS causerebbe doppio fire)
-            chip.addEventListener('touchend', chipHandler, {passive: false});
         }
         chipsEl.appendChild(chip);
     });
@@ -4639,9 +4632,6 @@ function checkChapterCompletion(w) {
 
     if (planned === 0) return;
     if (done < planned) return;
-
-    // DEBUG — rimuovere dopo fix
-    alert('CCC raggiunta! w='+w+' planned='+planned+' done='+done+' celebrated='+APP._weekCelebrated[w]);
 
     APP.completedWeeks[w] = true;
     if (APP._weekCelebrated[w]) return;
