@@ -3867,6 +3867,18 @@ function renderPlanPage(w) {
 
                 saveState();
                 updateStats();
+                // DEBUG VISIVO — rimuovere dopo fix
+                (function showChipDebug() {
+                    var el = document.getElementById('_dbg_overlay');
+                    if (!el) {
+                        el = document.createElement('div');
+                        el.id = '_dbg_overlay';
+                        el.style.cssText = 'position:fixed;bottom:80px;left:10px;right:10px;background:rgba(0,0,0,0.92);color:#0f0;font-size:11px;font-family:monospace;padding:10px;border-radius:8px;z-index:99999;white-space:pre-wrap;max-height:200px;overflow:auto;';
+                        el.onclick = function(){ el.remove(); };
+                        document.body.appendChild(el);
+                    }
+                    el.textContent = 'CHIP w='+w+' di='+di+'\nstato='+APP.chipStates[w][di]+'\nstates='+JSON.stringify(APP.chipStates[w])+'\ndayA='+JSON.stringify((APP.dayAssignments[w]||[]).map(function(a){return a?'OK':'null';}))+'\n---\n';
+                })();
                 if (document.getElementById('page-progress')?.classList.contains('active')) {
                     updateProgressPage();
                 }
@@ -4633,35 +4645,55 @@ function protoEditorPersist(proto) {
 
 
 function checkChapterCompletion(w) {
-    // Conta solo i giorni che hanno un assignment (dayAssignments non null)
-    const assignments = (APP.dayAssignments[w] || []).filter(a => a !== null);
-    if (assignments.length === 0) return; // nessun giorno pianificato
-    const done = APP.chipStates[w].filter(s => s === 'done').length;
-    // Completo solo se TUTTI i giorni pianificati sono done
-    if (done < assignments.length) return;
-    // Chapter completato!
+    var states = APP.chipStates[w] || [];
+    var planned = states.filter(function(s) { return s === 'done' || s === 'assigned'; }).length;
+    var done    = states.filter(function(s) { return s === 'done'; }).length;
+
+    // DEBUG VISIVO — rimuovere dopo fix
+    (function showDebug(msg) {
+        var el = document.getElementById('_dbg_overlay');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = '_dbg_overlay';
+            el.style.cssText = 'position:fixed;bottom:80px;left:10px;right:10px;background:rgba(0,0,0,0.92);color:#0f0;font-size:11px;font-family:monospace;padding:10px;border-radius:8px;z-index:99999;white-space:pre-wrap;max-height:200px;overflow:auto;';
+            el.onclick = function(){ el.remove(); };
+            document.body.appendChild(el);
+        }
+        el.textContent += msg + '\n';
+    })('CCC w='+w+' states='+JSON.stringify(states)+'\nplanned='+planned+' done='+done+' celebrated='+APP._weekCelebrated[w]);
+
+    if (planned === 0) return;
+    if (done < planned) return;
+
     APP.completedWeeks[w] = true;
-    // Mostra notifica solo se non già mostrata in questa sessione
+
+    (function showDebug2(msg) {
+        var el = document.getElementById('_dbg_overlay');
+        if (el) el.textContent += msg + '\n';
+    })('>>> COMPLETATO! celebrated='+APP._weekCelebrated[w]);
+
     if (APP._weekCelebrated[w]) return;
     APP._weekCelebrated[w] = true;
+
+    // Sblocca chapter successivo
     if (!APP.availableWeeks.includes(w)) APP.availableWeeks.push(w);
-    // Sblocca il chapter successivo
-    if (w < 3 && !APP.availableWeeks.includes(w+1)) {
-        APP.availableWeeks.push(w+1);
+    if (w < 3 && !APP.availableWeeks.includes(w + 1)) {
+        APP.availableWeeks.push(w + 1);
     }
     saveState();
-    // Aggiorna i tab nel pannello piani
-    document.querySelectorAll('#plan-tabs .chapter-tab').forEach((t,i) => {
-        const unlocked = i===0 || APP.completedWeeks[i-1];
+
+    // Aggiorna tab (sblocca il prossimo)
+    document.querySelectorAll('#plan-tabs .chapter-tab').forEach(function(t, i) {
+        var unlocked = i === 0 || APP.completedWeeks[i - 1];
         t.classList.toggle('locked-tab', !unlocked);
     });
-    // Mostra celebration con delay
-    setTimeout(() => showWeekComplete(w), 450);
-    // Aggiorna volume e re-render piani (sblocco chapter successivo visibile)
-    setTimeout(() => {
+
+    // Animazione + re-render dopo celebration
+    setTimeout(function() { showWeekComplete(w); }, 450);
+    setTimeout(function() {
         if (document.getElementById('page-progress')?.classList.contains('active')) updateProgressPage();
         renderPlanPage(w);
-    }, 600);
+    }, 900);
 }
 
 
