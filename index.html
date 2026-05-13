@@ -3579,7 +3579,7 @@ async function onLoginSuccess(user, usernameOverride = null) {
         APP.exerciseTracking = s.exerciseTracking || [];
         APP.currentExerciseIndex = s.currentExerciseIndex || 0;
         APP.motivationalQuotes = s.motivationalQuotes || ['','','',''];
-        APP.dayAssignments = s.dayAssignments || [[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null]];
+        APP.dayAssignments = s.dayAssignments || [[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null]];
         if (s.goal) document.getElementById('goal').value = s.goal;
         if (s.activeProtocolId) APP.activeProtocolId = s.activeProtocolId;
         // Restore cached protocols if Supabase hasn't loaded them yet
@@ -3595,7 +3595,7 @@ async function onLoginSuccess(user, usernameOverride = null) {
         const _ls = (() => { try { const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : null; } catch(e) { return null; } })();
         if (!_ls || !_ls.savedProtocols || _ls.savedProtocols.length === 0) {
             // Davvero nessun protocollo: resetta
-            APP.dayAssignments = [[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null]];
+            APP.dayAssignments = [[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null]];
             APP.chipStates = [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']];
             APP.completedWeeks = [false,false,false,false,false];
             APP.availableWeeks = [0];
@@ -3828,19 +3828,21 @@ function renderPlanPage(w) {
                     APP.dayAssignments[w][di] = null;
                     APP.totalWorkouts = Math.max(0, APP.totalWorkouts-1);
                     APP._weekCelebrated[w] = false;
+                    chip.className = 'plan-chip';
+                    chip.textContent = d;
                 } else {
                     APP.chipStates[w][di] = 'done';
                     APP.totalWorkouts++;
+                    chip.className = 'plan-chip done';
+                    chip.textContent = '✓';
                     checkNextStepCompletion();
                 }
                 saveState();
                 updateStats();
                 renderPlanPage(w);
-                // Aggiorna grafico volume se la pagina progressi è aperta
                 if (document.getElementById('page-progress')?.classList.contains('active')) {
                     updateProgressPage();
                 }
-                // Check chapter completion
                 checkChapterCompletion(w);
             };
         }
@@ -4609,7 +4611,7 @@ function checkChapterCompletion(w) {
     APP._weekCelebrated[w] = true;
     if (!APP.availableWeeks.includes(w)) APP.availableWeeks.push(w);
     // Sblocca il chapter successivo
-    if (w < 3 && !APP.availableWeeks.includes(w+1)) {
+    if (w < 4 && !APP.availableWeeks.includes(w+1)) {
         APP.availableWeeks.push(w+1);
     }
     saveState();
@@ -8177,9 +8179,17 @@ function woCompleteSet() {
         const di = woState._todayDayIdx;
         if (di !== undefined && di !== null && APP.chipStates[wIdx] && APP.chipStates[wIdx][di] !== 'done') {
             APP.chipStates[wIdx][di] = 'done';
+            APP.totalWorkouts = APP.chipStates.flat().filter(s => s === 'done').length;
             saveState();
-            const chipEl = document.querySelector(`[data-week="${wIdx}"][data-day="${di}"]`);
-            if (chipEl) { chipEl.className = 'chip done'; chipEl.textContent = '✓'; }
+            // Refresh completo di tutte le viste che mostrano lo stato dei workout:
+            // - chip della Home (pagina results) + donut + motivazione
+            // - chip della pagina Plans (se renderizzata)
+            // - pagina Progressi (volumi/streak/badges)
+            // L'aggiornamento manuale di un singolo chipEl non bastava: lasciava
+            // home e donut non aggiornati finché non cambiavi tab/categoria.
+            if (typeof restoreChipStates === 'function') restoreChipStates();
+            if (typeof renderPlanPage === 'function') renderPlanPage(wIdx);
+            if (typeof updateStats === 'function') updateStats();
             checkChapterCompletion(wIdx);
             updateProgressPage();
         }
@@ -8482,7 +8492,7 @@ function performLogout() {
     APP.selectedViewWeek = 0; APP.completedWeeks = [false,false,false,false,false]; APP.availableWeeks = [0];
     APP.chipStates = [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']];
     APP.exerciseTracking = []; APP.currentExerciseIndex = 0; APP.activeProtocolId = null;
-    APP.savedProtocols = []; APP.dayAssignments = [[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null]];
+    APP.savedProtocols = []; APP.dayAssignments = [[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null]];
     APP.motivationalQuotes = ['','','',''];
     // 1. Rimuovi nav-mode e nascondi tutte le pagine
     document.body.classList.remove('nav-mode');
@@ -11689,19 +11699,25 @@ async function performFullReset() {
     localStorage.removeItem('aw_height_cm');
 
     // Cancella protocolli da Supabase e azzera colonne extra
+    // Wrap in try/catch: il reset locale deve completarsi anche se Supabase fallisce
+    // (es. offline, sessione scaduta, network lento)
     if (APP.userName) {
-        const { data: { session } } = await sbClient.auth.getSession();
-        if (session) {
-            await sbClient.from('protocols').delete().eq('user_id', session.user.id);
-            await sbClient.from('profiles').update({
-                state_json:    null,
-                weight_log:    [],
-                weight_goal:   null,
-                badges_json:   [],
-                streak_record: 0,
-                contributions: 0,
-                height_cm:     null
-            }).eq('id', session.user.id);
+        try {
+            const { data: { session } } = await sbClient.auth.getSession();
+            if (session) {
+                await sbClient.from('protocols').delete().eq('user_id', session.user.id);
+                await sbClient.from('profiles').update({
+                    state_json:    null,
+                    weight_log:    [],
+                    weight_goal:   null,
+                    badges_json:   [],
+                    streak_record: 0,
+                    contributions: 0,
+                    height_cm:     null
+                }).eq('id', session.user.id);
+            }
+        } catch (e) {
+            console.warn('Reset Supabase fallito (continuo comunque):', e && e.message);
         }
     }
     APP.savedProtocols = [];
@@ -11760,7 +11776,8 @@ async function performFullReset() {
     showToast('Dati resettati con successo', 'success');
 
     // 6. Utente è ancora loggato: avvia subito wizard nuovo protocollo
-    setTimeout(() => startOnboarding(), 300);
+    //    Chiamata sincrona — niente setTimeout: evita la finestra di schermo vuoto
+    startOnboarding();
 }
 
 // ============= STREAK & BADGES =============
@@ -12057,32 +12074,39 @@ function updateBadges() {
 
     if (!hasWorkout && unlocked.length === 0) return;
 
-    // ── PUNTO 2: mostra solo 6 badge, resto con "Mostra tutto" ────────────
-    const VISIBLE_DEFAULT = 6;
-    let showAll = grid.dataset.showAll === '1';
+    // ── Mostra solo i badge sbloccati ─────────────────────────────────────────────
+    var VISIBLE_DEFAULT = 6;
+    var showAll = grid.dataset.showAll === '1';
     grid.innerHTML = '';
-    const toShow = showAll ? BADGES_CONFIG : BADGES_CONFIG.slice(0, VISIBLE_DEFAULT);
-    toShow.forEach(b => {
-        const isUnlocked = unlocked.includes(b.id);
-        const isNew = newlyUnlocked.find(x => x.id === b.id);
-        const card = document.createElement('div');
-        card.className = 'badge-home-card' + (isUnlocked ? ' unlocked' : ' locked') + (isNew ? ' newly-unlocked' : '');
-        card.innerHTML = `
-            ${isUnlocked ? '<div class="badge-home-check">\u2713</div>' : ''}
-            <span class="badge-home-icon">${b.icon}</span>
-            <div class="badge-home-name">${b.name}</div>
-            <div class="badge-home-desc">${b.desc}</div>
-        `;
+
+    // Filtra solo i badge effettivamente sbloccati
+    var unlockedBadges = BADGES_CONFIG.filter(function(b) { return unlocked.indexOf(b.id) !== -1; });
+
+    if (unlockedBadges.length === 0) {
+        section.classList.remove('visible');
+        return;
+    }
+
+    var toShow = showAll ? unlockedBadges : unlockedBadges.slice(0, VISIBLE_DEFAULT);
+    toShow.forEach(function(b) {
+        var isNew = newlyUnlocked.find(function(x) { return x.id === b.id; });
+        var card = document.createElement('div');
+        card.className = 'badge-home-card unlocked' + (isNew ? ' newly-unlocked' : '');
+        card.innerHTML =
+            '<div class="badge-home-check">✓</div>' +
+            '<span class="badge-home-icon">' + b.icon + '</span>' +
+            '<div class="badge-home-name">' + b.name + '</div>' +
+            '<div class="badge-home-desc">' + b.desc + '</div>';
         grid.appendChild(card);
     });
 
-    // Bottone mostra tutto / mostra meno
-    const remaining = BADGES_CONFIG.length - VISIBLE_DEFAULT;
+    // Bottone mostra tutti / mostra meno (solo se ci sono piu' di VISIBLE_DEFAULT badge sbloccati)
+    var remaining = unlockedBadges.length - VISIBLE_DEFAULT;
     if (remaining > 0) {
-        const btn = document.createElement('div');
+        var btn = document.createElement('div');
         btn.style.cssText = 'grid-column:1/-1;text-align:center;padding:4px 0 2px;';
-        btn.innerHTML = `<button onclick="badgesToggleAll(this)" style="background:none;border:none;color:#475569;font-size:0.6rem;cursor:pointer;font-family:inherit;padding:4px 12px;border-radius:6px;">`
-            + (showAll ? '\u2191 Mostra meno' : `+ ${remaining} altri achievements`) + `</button>`;
+        btn.innerHTML = '<button onclick="badgesToggleAll(this)" style="background:none;border:none;color:#475569;font-size:0.6rem;cursor:pointer;font-family:inherit;padding:4px 12px;border-radius:6px;">'
+            + (showAll ? '↑ Mostra meno' : '+ ' + remaining + ' altri achievements') + '</button>';
         grid.appendChild(btn);
     }
 }
