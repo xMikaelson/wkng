@@ -8907,19 +8907,18 @@ function updateStats() {
     } else {
         document.getElementById('days-count').innerText = "0";
     }
-
-    // Recount totalWorkouts from chipStates (source of truth)
     APP.totalWorkouts = APP.chipStates.flat().filter(s => s === 'done').length;
     document.getElementById('workouts-count').innerText = APP.totalWorkouts;
-
-    // Weeks completed — read only from completedWeeks, never modify here
     const weeksOk = APP.completedWeeks.filter(Boolean).length;
     document.getElementById('weeks-count').innerText = weeksOk;
     document.getElementById('cycles-count').innerText = Math.floor(weeksOk / N_WEEKS);
-
+    showToast('US1:navCtrl', 'info');
     updateNavigationControls();
+    showToast('US2:chart', 'info');
     updateChart();
+    showToast('US3:badges', 'info');
     updateBadges();
+    showToast('US4:fine', 'info');
 }
 
 function updateNavigationControls() {
