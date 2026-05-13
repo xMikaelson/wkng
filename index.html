@@ -4600,31 +4600,25 @@ function protoEditorPersist(proto) {
 
 
 function checkChapterCompletion(w) {
-    // Conta solo i giorni che hanno un assignment (dayAssignments non null)
     const assignments = (APP.dayAssignments[w] || []).filter(a => a !== null);
-    if (assignments.length === 0) return; // nessun giorno pianificato
     const done = APP.chipStates[w].filter(s => s === 'done').length;
-    // Completo solo se TUTTI i giorni pianificati sono done
+    showToast('CCC w='+w+' assign='+assignments.length+' done='+done+' celebrated='+APP._weekCelebrated[w], 'info');
+    if (assignments.length === 0) return;
     if (done < assignments.length) return;
-    // Chapter completato!
+    showToast('>>> COMPLETATO! sto sbloccando w='+(w+1), 'success');
     APP.completedWeeks[w] = true;
-    // Mostra notifica solo se non già mostrata in questa sessione
-    if (APP._weekCelebrated[w]) return;
+    if (APP._weekCelebrated[w]) { showToast('STOP: già celebrato', 'error'); return; }
     APP._weekCelebrated[w] = true;
     if (!APP.availableWeeks.includes(w)) APP.availableWeeks.push(w);
-    // Sblocca il chapter successivo
     if (w < 4 && !APP.availableWeeks.includes(w+1)) {
         APP.availableWeeks.push(w+1);
     }
     saveState();
-    // Aggiorna i tab nel pannello piani
     document.querySelectorAll('#plan-tabs .chapter-tab').forEach((t,i) => {
         const unlocked = i===0 || APP.completedWeeks[i-1];
         t.classList.toggle('locked-tab', !unlocked);
     });
-    // Mostra celebration con delay
     setTimeout(() => showWeekComplete(w), 450);
-    // Aggiorna volume
     setTimeout(() => {
         if (document.getElementById('page-progress')?.classList.contains('active')) updateProgressPage();
     }, 600);
