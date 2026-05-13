@@ -3837,15 +3837,13 @@ function renderPlanPage(w) {
                     chip.textContent = '✓';
                     checkNextStepCompletion();
                 }
-                showToast('A: stato='+APP.chipStates[w][di], 'info');
                 saveState();
-                showToast('B: saveState ok', 'info');
                 updateStats();
-                showToast('C: updateStats ok', 'info');
                 renderPlanPage(w);
-                showToast('D: renderPlanPage ok', 'info');
+                if (document.getElementById('page-progress')?.classList.contains('active')) {
+                    updateProgressPage();
+                }
                 checkChapterCompletion(w);
-                showToast('E: CCC chiamata', 'info');
             };
         }
         chipsEl.appendChild(chip);
@@ -4601,13 +4599,11 @@ function protoEditorPersist(proto) {
 
 function checkChapterCompletion(w) {
     const assignments = (APP.dayAssignments[w] || []).filter(a => a !== null);
-    const done = APP.chipStates[w].filter(s => s === 'done').length;
-    showToast('CCC w='+w+' assign='+assignments.length+' done='+done+' celebrated='+APP._weekCelebrated[w], 'info');
     if (assignments.length === 0) return;
+    const done = APP.chipStates[w].filter(s => s === 'done').length;
     if (done < assignments.length) return;
-    showToast('>>> COMPLETATO! sto sbloccando w='+(w+1), 'success');
     APP.completedWeeks[w] = true;
-    if (APP._weekCelebrated[w]) { showToast('STOP: già celebrato', 'error'); return; }
+    if (APP._weekCelebrated[w]) return;
     APP._weekCelebrated[w] = true;
     if (!APP.availableWeeks.includes(w)) APP.availableWeeks.push(w);
     if (w < 4 && !APP.availableWeeks.includes(w+1)) {
@@ -8912,13 +8908,9 @@ function updateStats() {
     const weeksOk = APP.completedWeeks.filter(Boolean).length;
     document.getElementById('weeks-count').innerText = weeksOk;
     document.getElementById('cycles-count').innerText = Math.floor(weeksOk / N_WEEKS);
-    showToast('US1:navCtrl', 'info');
     updateNavigationControls();
-    showToast('US2:chart', 'info');
     updateChart();
-    showToast('US3:badges', 'info');
     updateBadges();
-    showToast('US4:fine', 'info');
 }
 
 function updateNavigationControls() {
@@ -12041,9 +12033,11 @@ function updateBadges() {
     const toCheck = hasWorkout ? BADGES_CONFIG : BADGES_CONFIG.filter(b => alwaysIds.includes(b.id));
 
     toCheck.forEach(b => {
-        if (b.check() && !unlocked.includes(b.id)) {
-            unlocked.push(b.id); newlyUnlocked.push(b);
-        }
+        try {
+            if (b.check() && !unlocked.includes(b.id)) {
+                unlocked.push(b.id); newlyUnlocked.push(b);
+            }
+        } catch(e) {}
     });
 
     if (newlyUnlocked.length > 0) {
