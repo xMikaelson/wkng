@@ -1572,7 +1572,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .plan-chips { display:flex; gap:5px; flex-wrap:wrap; justify-content:center; margin-bottom:14px; }
         .plan-chip { width:40px; height:40px; border-radius:8px; border:1px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.07); display:flex; align-items:center; justify-content:center; font-size:0.55rem; font-weight:700; color:#64748b; transition:all 0.18s cubic-bezier(0.34,1.56,0.64,1); cursor:not-allowed; user-select:none; }
         .plan-chip.assigned { cursor:pointer; border-color:rgba(99,102,241,0.4); background:rgba(99,102,241,0.12); color:#94a3b8; }
-        .plan-chip.done { width:35px; height:35px; background:var(--primary); border-color:var(--primary); color:#000; font-size:0.82rem; font-weight:900; box-shadow:0 0 0 3px rgba(var(--pr,0,255,136),0.2),0 0 14px rgba(var(--pr,0,255,136),0.5); }
+        .plan-chip.done { width:35px; height:35px; background:var(--primary); border-color:var(--primary); color:#000; font-size:0.82rem; font-weight:900; box-shadow:0 0 0 3px rgba(var(--pr,0,255,136),0.2),0 0 14px rgba(var(--pr,0,255,136),0.5); cursor:pointer; }
         .plan-chip.locked { opacity:0.2; }
         .plan-chip.drag-over { border-color:var(--primary)!important; background:rgba(var(--pr,0,255,136),0.2)!important; transform:scale(1.14); }
         .plan-bottom-cols { display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:start; border-top:1px solid #334155; padding-top:12px; margin-top:4px; }
@@ -3824,13 +3824,15 @@ function renderPlanPage(w) {
             chip.onclick = () => {
                 if (!APP.dayAssignments[w][di] && st!=='done') return;
                 if (chip.classList.contains('done')) {
-                    APP.chipStates[w][di] = 'rest';
-                    APP.dayAssignments[w][di] = null;
+                    // done → assigned: mantiene l'allenamento assegnato
+                    APP.chipStates[w][di] = 'assigned';
                     APP.totalWorkouts = Math.max(0, APP.totalWorkouts-1);
+                    APP.completedWeeks[w] = false;
                     APP._weekCelebrated[w] = false;
-                    chip.className = 'plan-chip';
+                    chip.className = 'plan-chip assigned';
                     chip.textContent = d;
                 } else {
+                    // assigned → done
                     APP.chipStates[w][di] = 'done';
                     APP.totalWorkouts++;
                     chip.className = 'plan-chip done';
