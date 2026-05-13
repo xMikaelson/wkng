@@ -3824,7 +3824,6 @@ function renderPlanPage(w) {
             chip.onclick = () => {
                 if (!APP.dayAssignments[w][di] && st!=='done') return;
                 if (chip.classList.contains('done')) {
-                    // done → assigned: mantiene l'allenamento assegnato
                     APP.chipStates[w][di] = 'assigned';
                     APP.totalWorkouts = Math.max(0, APP.totalWorkouts-1);
                     APP.completedWeeks[w] = false;
@@ -3832,20 +3831,21 @@ function renderPlanPage(w) {
                     chip.className = 'plan-chip assigned';
                     chip.textContent = d;
                 } else {
-                    // assigned → done
                     APP.chipStates[w][di] = 'done';
                     APP.totalWorkouts++;
                     chip.className = 'plan-chip done';
                     chip.textContent = '✓';
                     checkNextStepCompletion();
                 }
+                showToast('A: stato='+APP.chipStates[w][di], 'info');
                 saveState();
+                showToast('B: saveState ok', 'info');
                 updateStats();
+                showToast('C: updateStats ok', 'info');
                 renderPlanPage(w);
-                if (document.getElementById('page-progress')?.classList.contains('active')) {
-                    updateProgressPage();
-                }
+                showToast('D: renderPlanPage ok', 'info');
                 checkChapterCompletion(w);
+                showToast('E: CCC chiamata', 'info');
             };
         }
         chipsEl.appendChild(chip);
