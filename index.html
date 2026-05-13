@@ -3789,12 +3789,31 @@ function renderPlanPage(w) {
     if (w === DELOAD_WEEK && isUnlocked) {
         const deloadBanner = document.createElement('div');
         deloadBanner.style.cssText = 'background:rgba(99,102,241,0.09);border:1px solid rgba(99,102,241,0.25);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:0.62rem;line-height:1.5;color:#94a3b8;';
-        // Controlla se esistono già protocolli deload
         var hasDeload = APP.savedProtocols.some(function(p){ return p.name && p.name.toLowerCase().includes('deload'); });
+        var hasSource = APP.savedProtocols.some(function(p){ var n=(p.name||'').toLowerCase(); return n.includes('upper')||n.includes('lower'); });
         deloadBanner.innerHTML = '<div style="font-weight:800;color:#818cf8;margin-bottom:4px;">🔄 Settimana Deload</div>' +
-            'Carico al <strong>50%</strong> del massimale · Serie ridotte a <strong>3</strong> · Volume dimezzato.<br>' +
-            'Questa settimana serve al corpo per recuperare e supercompensare: non saltarla!' +
-            (hasDeload ? '' : '<div style="margin-top:10px;"><button onclick="generateDeloadProtocol()" style="background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:0.72rem;font-weight:700;cursor:pointer;width:100%;">✨ Genera protocollo Deload automatico</button></div>');
+            'Carico al <strong>50%</strong> del massimale · Serie ridotte di 1 · Volume dimezzato.<br>' +
+            'Questa settimana serve al corpo per recuperare e supercompensare: non saltarla!';
+        if (!hasDeload && hasSource) {
+            var btnRow = document.createElement('div');
+            btnRow.style.cssText = 'display:flex;gap:8px;margin-top:10px;';
+            var btnManual = document.createElement('button');
+            btnManual.textContent = '⚙️ Genera Manuale';
+            btnManual.style.cssText = 'flex:1;padding:8px 6px;background:rgba(99,102,241,0.2);color:#818cf8;border:1px solid rgba(99,102,241,0.4);border-radius:8px;font-size:0.68rem;font-weight:700;cursor:pointer;';
+            btnManual.onclick = function(){ generateDeloadProtocol('manual'); };
+            var btnAI = document.createElement('button');
+            btnAI.textContent = '✨ Genera con AI';
+            btnAI.style.cssText = 'flex:1;padding:8px 6px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border:none;border-radius:8px;font-size:0.68rem;font-weight:700;cursor:pointer;';
+            btnAI.onclick = function(){ generateDeloadProtocol('ai'); };
+            btnRow.appendChild(btnManual);
+            btnRow.appendChild(btnAI);
+            deloadBanner.appendChild(btnRow);
+        } else if (hasDeload) {
+            var doneNote = document.createElement('div');
+            doneNote.style.cssText = 'margin-top:8px;color:#4f46e5;font-weight:700;font-size:0.65rem;';
+            doneNote.textContent = '✓ Protocollo deload già creato';
+            deloadBanner.appendChild(doneNote);
+        }
         block.appendChild(deloadBanner);
     }
 
@@ -3878,6 +3897,7 @@ function renderPlanPage(w) {
             if (isUnlocked) planSetupDrag(item, proto.id, proto.name);
             protoCol.appendChild(item);
         });
+        // Bottone genera deload rimosso — appare solo nel banner Ch.5
     } else {
         protoCol.innerHTML += '<div style="font-size:0.62rem;color:#334155;padding:8px 0">Nessun protocollo. Creane uno dal Profilo.</div>';
     }
@@ -4623,7 +4643,7 @@ function checkChapterCompletion(w) {
     }, 600);
 }
 
-function generateDeloadProtocol() {
+function generateDeloadProtocol(mode) {
     var upperProto = null, lowerProto = null;
     APP.savedProtocols.forEach(function(p) {
         var n = (p.name || '').toLowerCase();
@@ -4636,14 +4656,58 @@ function generateDeloadProtocol() {
         return;
     }
 
-    // Mostra loading nel banner
-    var btn = document.querySelector('[onclick="generateDeloadProtocol()"]');
-    if (btn) {
-        btn.disabled = true;
-        btn.textContent = '⏳ AI in elaborazione...';
+    function deloadSr(sr) {
+        if (!sr) return sr;
+        return sr.replace(/^(\d+)(×|\s*x\s*)(\d+.*)$/i, function(_, sets, sep, reps) {
+            return Math.max(3, parseInt(sets) - 1) + '×' + reps;
+        });
     }
 
-    // Costruisce il contesto per l'AI
+    function buildDeloadName() {
+        var parts = [upperProto ? upperProto.name : '', lowerProto ? lowerProto.name : ''].filter(Boolean);
+        var base = parts.join(' + ').replace(/upper|lower/gi, '').replace(/\s{2,}/g, ' ').trim().replace(/[-–—]+$/, '').trim();
+        return (base ? base + ' — ' : '') + 'Full Body Deload';
+    }
+
+    if (mode === 'manual') {
+        // Logica manuale: prende tutti gli esercizi compound (primi 3-4 per protocollo), 50% peso, -1 serie
+        var exercises = [];
+        function addCompound(proto) {
+            if (!proto || !proto.exercises) return;
+            // Prende i primi 4 esercizi (solitamente i compound sono all'inizio)
+            proto.exercises.slice(0, 4).forEach(function(ex) {
+                var base = Math.round((ex.baseWeight || 0) * 0.5 * 2) / 2;
+                exercises.push({
+                    name: ex.name,
+                    sr: deloadSr(ex.sr),
+                    baseWeight: base,
+                    loads: WEEK_LOADS.map(function(p){ return Math.round(base * p * 2) / 2; })
+                });
+            });
+        }
+        addCompound(upperProto);
+        addCompound(lowerProto);
+        // Deduplica per nome
+        var seen = {};
+        exercises = exercises.filter(function(ex) {
+            if (seen[ex.name]) return false;
+            seen[ex.name] = true;
+            return true;
+        });
+        var newProto = { id: 'proto_deload_' + Date.now(), name: buildDeloadName(), exercises: exercises };
+        APP.savedProtocols.push(newProto);
+        saveState();
+        if (typeof saveProtocolToSupabase === 'function') saveProtocolToSupabase(newProto);
+        renderProtocolList();
+        renderPlanPage(DELOAD_WEEK);
+        showToast('⚙️ Deload manuale creato con ' + exercises.length + ' esercizi al 50%', 'success');
+        return;
+    }
+
+    // Modalità AI
+    var btn = document.querySelector('[onclick*="generateDeloadProtocol"]');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ AI in elaborazione...'; }
+
     function fmtExercises(proto) {
         if (!proto || !proto.exercises || !proto.exercises.length) return 'Nessuno';
         return proto.exercises.map(function(ex) {
@@ -4654,27 +4718,22 @@ function generateDeloadProtocol() {
     var upperList = upperProto ? '**' + upperProto.name + '**:\n' + fmtExercises(upperProto) : '';
     var lowerList = lowerProto ? '**' + lowerProto.name + '**:\n' + fmtExercises(lowerProto) : '';
 
-    var prompt = 'Sei un coach di forza esperto. Devo creare un protocollo Full Body Deload per la settimana di scarico.\n\n' +
+    var prompt = 'Sei un coach di forza esperto. Crea un protocollo Full Body Deload ottimizzato.\n\n' +
         'REGOLE DELOAD:\n' +
         '- Carico al 50% del baseWeight originale (arrotonda a 0.5kg)\n' +
-        '- Serie ridotte: sottrai 1 serie dal formato originale (es. 4×8 → 3×8, minimo 3 serie)\n' +
-        '- Seleziona i movimenti fondamentali: 1-2 esercizi Upper per pattern (push/pull), 1-2 esercizi Lower per pattern (quad/hip hinge)\n' +
-        '- Totale esercizi: 5-7 per un Full Body bilanciato\n' +
-        '- Preferisci i compound (squat, press, row, hinge) rispetto agli isolati\n\n' +
+        '- Serie: sottrai 1 dal formato originale (es. 4×8 → 3×8, minimo 3 serie)\n' +
+        '- Seleziona 5-7 esercizi: movimenti fondamentali compound (push/pull/quad/hip hinge)\n' +
+        '- Bilancia Upper e Lower, preferisci multi-articolari, escludi isolati\n\n' +
         'ESERCIZI DISPONIBILI:\n' + [upperList, lowerList].filter(Boolean).join('\n\n') + '\n\n' +
-        'Rispondi SOLO con un array JSON, nessun testo aggiuntivo, nessun markdown:\n' +
-        '[{"name":"Nome Esercizio","sr":"3×8","baseWeight":40},...]';
+        'Rispondi SOLO con array JSON puro, nessun testo, nessun markdown:\n' +
+        '[{"name":"Nome","sr":"3×8","baseWeight":40},...]';
 
     var AI_COACH_URL = 'https://trojbppshlfhrsimyxjl.supabase.co/functions/v1/ai-coach';
     var ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyb2picHBzaGxmaHJzaW15eGpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0MzgzNTgsImV4cCI6MjA4NzAxNDM1OH0.rKKyXa7N5XoBnN2kmVZGS4Lr2kax1NuodbyHD_wGjK8';
 
     fetch(AI_COACH_URL, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + ANON_KEY,
-            'apikey': ANON_KEY
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ANON_KEY, 'apikey': ANON_KEY },
         body: JSON.stringify({ messages: [{ role: 'user', content: prompt }], max_tokens: 800 })
     })
     .then(function(r) { return r.json(); })
@@ -4683,43 +4742,24 @@ function generateDeloadProtocol() {
         if (data && data.content && Array.isArray(data.content)) {
             data.content.forEach(function(block) { if (block.type === 'text') text += block.text; });
         }
-        // Estrae JSON dalla risposta
         var match = text.match(/\[[\s\S]*\]/);
-        if (!match) throw new Error('JSON non trovato nella risposta AI');
+        if (!match) throw new Error('Risposta AI non valida');
         var exercises = JSON.parse(match[0]);
-        if (!Array.isArray(exercises) || exercises.length === 0) throw new Error('Lista esercizi vuota');
-
-        // Normalizza e aggiunge loads
+        if (!Array.isArray(exercises) || !exercises.length) throw new Error('Lista vuota');
         exercises = exercises.map(function(ex) {
             var base = parseFloat(ex.baseWeight) || 0;
-            return {
-                name: ex.name || '',
-                sr: ex.sr || '3×8',
-                baseWeight: base,
-                loads: WEEK_LOADS.map(function(p){ return Math.round(base * p * 2) / 2; })
-            };
+            return { name: ex.name || '', sr: ex.sr || '3×8', baseWeight: base, loads: WEEK_LOADS.map(function(p){ return Math.round(base*p*2)/2; }) };
         });
-
-        // Costruisce nome protocollo
-        var sourceParts = [upperProto ? upperProto.name : '', lowerProto ? lowerProto.name : ''].filter(Boolean);
-        var base = sourceParts.join(' + ').replace(/upper|lower/gi, '').replace(/\s{2,}/g, ' ').trim().replace(/[-–—]+$/, '').trim();
-        var deloadName = (base ? base + ' — ' : '') + 'Full Body Deload';
-
-        var newProto = {
-            id: 'proto_deload_' + Date.now(),
-            name: deloadName,
-            exercises: exercises
-        };
-
+        var newProto = { id: 'proto_deload_' + Date.now(), name: buildDeloadName(), exercises: exercises };
         APP.savedProtocols.push(newProto);
         saveState();
         if (typeof saveProtocolToSupabase === 'function') saveProtocolToSupabase(newProto);
         renderProtocolList();
         renderPlanPage(DELOAD_WEEK);
-        showToast('✨ "' + deloadName + '" creato con ' + exercises.length + ' esercizi!', 'success');
+        showToast('✨ Deload AI creato con ' + exercises.length + ' esercizi!', 'success');
     })
     .catch(function(err) {
-        if (btn) { btn.disabled = false; btn.textContent = '✨ Genera protocollo Deload automatico'; }
+        if (btn) { btn.disabled = false; btn.textContent = '✨ Genera con AI'; }
         showToast('Errore AI: ' + err.message, 'error');
     });
 }
