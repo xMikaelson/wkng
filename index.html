@@ -3748,7 +3748,7 @@ const planDragState = { active:false, protoId:null, protoName:'', ghost:null, st
 
 function selectPlanChapter(w) {
     // Chapter 0 è sempre disponibile; gli altri richiedono il precedente completato
-    const isUnlocked = w === 0 || APP.completedWeeks[w-1];
+    const isUnlocked = w === 0 || APP.completedWeeks[w-1] || APP.availableWeeks.includes(w);
     if (!isUnlocked) {
         // Mostra solo feedback visivo: non cambiare tab
         const tab = document.querySelectorAll('#plan-tabs .chapter-tab')[w];
@@ -3780,7 +3780,7 @@ function renderPlanPage(w) {
         t.classList.toggle('locked-tab', !unlocked);
     });
 
-    const isUnlocked = w === 0 || APP.completedWeeks[w-1];
+    const isUnlocked = w === 0 || APP.completedWeeks[w-1] || APP.availableWeeks.includes(w);
 
     const block = document.createElement('div');
     block.className = 'plan-week-block';
