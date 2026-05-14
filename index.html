@@ -5098,17 +5098,17 @@ function openDeloadManualForm() {
 
     // ── Scrollable content ──
     var content = document.createElement('div');
-    content.style.cssText = 'flex:1;overflow-y:auto;padding:max(env(safe-area-inset-top),60px) 20px 24px;';
+    content.style.cssText = 'flex:1;overflow-y:auto;padding:max(env(safe-area-inset-top),60px) 20px 16px;';
 
     // Header
     var header = document.createElement('div');
     header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;';
     var title = document.createElement('div');
     title.style.cssText = 'font-size:1.05rem;font-weight:800;color:#e2e8f0;';
-    title.textContent = '⚙️ Crea Deload Manuale';
+    title.textContent = '\u2699\ufe0f Crea Deload Manuale';
     var btnClose = document.createElement('button');
-    btnClose.textContent = '✕';
-    btnClose.style.cssText = 'background:rgba(255,255,255,0.08);border:none;border-radius:50%;width:32px;height:32px;color:#94a3b8;font-size:0.9rem;cursor:pointer;flex-shrink:0;';
+    btnClose.textContent = '\u2715';
+    btnClose.style.cssText = 'background:rgba(255,255,255,0.08);border:none;border-radius:50%;width:32px;height:32px;color:#94a3b8;font-size:0.85rem;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1;';
     btnClose.onclick = function(){ overlay.remove(); };
     header.appendChild(title);
     header.appendChild(btnClose);
@@ -5116,9 +5116,9 @@ function openDeloadManualForm() {
 
     // Info box
     var info = document.createElement('div');
-    info.style.cssText = 'background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);border-radius:12px;padding:12px 14px;font-size:0.67rem;color:#94a3b8;line-height:1.7;margin-bottom:24px;';
+    info.style.cssText = 'background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);border-radius:12px;padding:12px 14px;font-size:0.67rem;color:#94a3b8;line-height:1.7;margin-bottom:20px;';
     info.innerHTML = '<div style="font-weight:700;color:#818cf8;margin-bottom:6px;">Regole Deload applicate automaticamente</div>' +
-        '<div style="display:grid;grid-template-columns:auto 1fr;gap:2px 10px;">' +
+        '<div style="display:grid;grid-template-columns:56px 1fr;gap:2px 10px;">' +
         '<span style="color:#64748b;">Serie</span><span>3 (fisse)</span>' +
         '<span style="color:#64748b;">Reps</span><span>8-10 per set</span>' +
         '<span style="color:#64748b;">Carico</span><span>50% del massimale inserito</span>' +
@@ -5128,7 +5128,7 @@ function openDeloadManualForm() {
 
     // Lista esercizi
     var exList = document.createElement('div');
-    exList.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin-bottom:20px;';
+    exList.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
     content.appendChild(exList);
 
     var exercises = [];
@@ -5144,14 +5144,14 @@ function openDeloadManualForm() {
         }
         exercises.forEach(function(ex, i) {
             var row = document.createElement('div');
-            row.style.cssText = 'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 12px;display:flex;align-items:center;';
+            row.style.cssText = 'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;';
             var info2 = document.createElement('div');
-            info2.style.cssText = 'flex:1;min-width:0;margin-right:12px;';
+            info2.style.cssText = 'flex:1;min-width:0;';
             info2.innerHTML = '<div style="font-size:0.75rem;font-weight:700;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + ex.name + '</div>' +
-                '<div style="font-size:0.63rem;color:#64748b;margin-top:2px;">3×8-10 · <strong style="color:#94a3b8;">' + ex.baseWeight + 'kg</strong> <span style="color:#475569;">(50% di ' + ex.max + 'kg)</span></div>';
+                '<div style="font-size:0.63rem;color:#64748b;margin-top:2px;white-space:nowrap;">3\u00d78-10 \u00b7 <strong style="color:#94a3b8;">' + ex.baseWeight + 'kg</strong> <span>(50% di ' + ex.max + 'kg)</span></div>';
             var btnDel = document.createElement('button');
-            btnDel.textContent = '✕';
-            btnDel.style.cssText = 'background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.25);border-radius:6px;padding:5px 9px;color:#f87171;cursor:pointer;font-size:0.7rem;flex-shrink:0;margin-left:auto;';
+            btnDel.innerHTML = '\u2715';
+            btnDel.style.cssText = 'background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.2);border-radius:6px;width:30px;height:30px;color:#f87171;cursor:pointer;font-size:0.75rem;flex-shrink:0;display:flex;align-items:center;justify-content:center;';
             btnDel.onclick = function(){ exercises.splice(i, 1); refreshExList(); };
             row.appendChild(info2);
             row.appendChild(btnDel);
@@ -5159,47 +5159,51 @@ function openDeloadManualForm() {
         });
     }
     refreshExList();
+    overlay.appendChild(content);
 
-    // Form aggiungi
+    // ── Footer: form aggiungi + salva ──
+    var footer = document.createElement('div');
+    footer.style.cssText = 'padding:12px 20px max(env(safe-area-inset-bottom),20px);background:rgba(10,14,26,0.98);border-top:1px solid rgba(255,255,255,0.07);display:flex;flex-direction:column;gap:10px;';
+
+    // Form aggiungi esercizio
     var addBox = document.createElement('div');
-    addBox.style.cssText = 'background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px;';
+    addBox.style.cssText = 'background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px;';
     var addTitle = document.createElement('div');
-    addTitle.style.cssText = 'font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;';
+    addTitle.style.cssText = 'font-size:0.65rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;';
     addTitle.textContent = 'Aggiungi esercizio';
     var inputName = document.createElement('input');
     inputName.type = 'text';
     inputName.placeholder = 'Nome esercizio (es. Panca Piana)';
-    inputName.style.cssText = 'width:100%;box-sizing:border-box;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px 12px;color:#e2e8f0;font-size:0.75rem;margin-bottom:8px;outline:none;';
+    inputName.style.cssText = 'width:100%;box-sizing:border-box;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px 12px;color:#e2e8f0;font-size:0.75rem;margin-bottom:7px;outline:none;';
     var inputWeight = document.createElement('input');
     inputWeight.type = 'number';
     inputWeight.placeholder = 'Massimale attuale (kg)';
-    inputWeight.style.cssText = 'width:100%;box-sizing:border-box;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px 12px;color:#e2e8f0;font-size:0.75rem;margin-bottom:10px;outline:none;';
+    inputWeight.style.cssText = 'width:100%;box-sizing:border-box;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px 12px;color:#e2e8f0;font-size:0.75rem;margin-bottom:8px;outline:none;';
     var btnAdd = document.createElement('button');
     btnAdd.textContent = '+ Aggiungi';
-    btnAdd.style.cssText = 'width:100%;padding:9px;background:rgba(99,102,241,0.2);color:#818cf8;border:1px solid rgba(99,102,241,0.35);border-radius:8px;font-size:0.73rem;font-weight:700;cursor:pointer;';
+    btnAdd.style.cssText = 'width:100%;padding:9px;background:rgba(99,102,241,0.18);color:#818cf8;border:1px solid rgba(99,102,241,0.3);border-radius:8px;font-size:0.73rem;font-weight:700;cursor:pointer;';
     btnAdd.onclick = function() {
         var nome = inputName.value.trim();
         var max = parseFloat(inputWeight.value);
         if (!nome) { showToast('Inserisci il nome esercizio', 'error'); return; }
         if (!max || max <= 0) { showToast('Inserisci il massimale', 'error'); return; }
         var base = Math.round(max * 0.5 * 2) / 2;
-        exercises.push({ name: nome, max: max, baseWeight: base, sr: '3×8-10', loads: WEEK_LOADS.map(function(p){ return Math.round(base*p*2)/2; }) });
+        exercises.push({ name: nome, max: max, baseWeight: base, sr: '3\u00d78-10', loads: WEEK_LOADS.map(function(p){ return Math.round(base*p*2)/2; }) });
         inputName.value = ''; inputWeight.value = '';
         inputName.focus();
         refreshExList();
+        // Scrolla la lista in fondo per mostrare l'ultimo aggiunto
+        content.scrollTop = content.scrollHeight;
     };
     addBox.appendChild(addTitle);
     addBox.appendChild(inputName);
     addBox.appendChild(inputWeight);
     addBox.appendChild(btnAdd);
-    content.appendChild(addBox);
-    overlay.appendChild(content);
+    footer.appendChild(addBox);
 
-    // ── Footer sticky con bottone salva ──
-    var footer = document.createElement('div');
-    footer.style.cssText = 'padding:12px 20px max(env(safe-area-inset-bottom),16px);background:rgba(10,14,26,0.97);border-top:1px solid rgba(255,255,255,0.07);';
+    // Bottone salva
     var btnSave = document.createElement('button');
-    btnSave.textContent = '💾 Salva protocollo Deload';
+    btnSave.textContent = '\ud83d\udcbe Salva protocollo Deload';
     btnSave.style.cssText = 'width:100%;padding:13px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border:none;border-radius:12px;font-size:0.8rem;font-weight:800;cursor:pointer;';
     btnSave.onclick = function() {
         if (exercises.length === 0) { showToast('Aggiungi almeno un esercizio', 'error'); return; }
@@ -5210,7 +5214,7 @@ function openDeloadManualForm() {
         renderProtocolList();
         renderPlanPage(DELOAD_WEEK);
         overlay.remove();
-        showToast('✨ Deload salvato con ' + exercises.length + ' esercizi!', 'success');
+        showToast('\u2728 Deload salvato con ' + exercises.length + ' esercizi!', 'success');
     };
     footer.appendChild(btnSave);
     overlay.appendChild(footer);
