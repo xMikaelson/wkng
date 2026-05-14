@@ -5090,79 +5090,93 @@ function renderProtoManager() {
 }
 
 function openDeloadManualForm() {
-    // Crea overlay form
     var overlay = document.getElementById('deload-manual-overlay');
     if (overlay) { overlay.remove(); return; }
     overlay = document.createElement('div');
     overlay.id = 'deload-manual-overlay';
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9000;display:flex;flex-direction:column;padding:max(env(safe-area-inset-top),44px) 16px 20px;overflow-y:auto;';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(10,14,26,0.97);z-index:9000;display:flex;flex-direction:column;';
 
+    // ── Scrollable content ──
+    var content = document.createElement('div');
+    content.style.cssText = 'flex:1;overflow-y:auto;padding:max(env(safe-area-inset-top),60px) 20px 24px;';
+
+    // Header
     var header = document.createElement('div');
-    header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;';
-    header.innerHTML = '<div style="font-size:1rem;font-weight:800;color:#e2e8f0;">⚙️ Crea Deload Manuale</div>';
+    header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;';
+    var title = document.createElement('div');
+    title.style.cssText = 'font-size:1.05rem;font-weight:800;color:#e2e8f0;';
+    title.textContent = '⚙️ Crea Deload Manuale';
     var btnClose = document.createElement('button');
     btnClose.textContent = '✕';
-    btnClose.style.cssText = 'background:rgba(255,255,255,0.1);border:none;border-radius:50%;width:30px;height:30px;color:#fff;font-size:1rem;cursor:pointer;';
+    btnClose.style.cssText = 'background:rgba(255,255,255,0.08);border:none;border-radius:50%;width:32px;height:32px;color:#94a3b8;font-size:0.9rem;cursor:pointer;flex-shrink:0;';
     btnClose.onclick = function(){ overlay.remove(); };
+    header.appendChild(title);
     header.appendChild(btnClose);
-    overlay.appendChild(header);
+    content.appendChild(header);
 
+    // Info box
     var info = document.createElement('div');
-    info.style.cssText = 'background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:10px;padding:10px 12px;font-size:0.65rem;color:#94a3b8;line-height:1.6;margin-bottom:16px;';
-    info.innerHTML = '<strong style="color:#818cf8">Regole Deload applicate automaticamente:</strong><br>' +
-        '· <strong>Serie:</strong> 3 (fisse)<br>' +
-        '· <strong>Ripetizioni:</strong> 8-10 (range ottimale scarico)<br>' +
-        '· <strong>Carico:</strong> 50% del tuo massimale inserito<br>' +
-        '· <strong>Volume:</strong> ~50% rispetto alla settimana normale';
-    overlay.appendChild(info);
+    info.style.cssText = 'background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);border-radius:12px;padding:12px 14px;font-size:0.67rem;color:#94a3b8;line-height:1.7;margin-bottom:24px;';
+    info.innerHTML = '<div style="font-weight:700;color:#818cf8;margin-bottom:6px;">Regole Deload applicate automaticamente</div>' +
+        '<div style="display:grid;grid-template-columns:auto 1fr;gap:2px 10px;">' +
+        '<span style="color:#64748b;">Serie</span><span>3 (fisse)</span>' +
+        '<span style="color:#64748b;">Reps</span><span>8-10 per set</span>' +
+        '<span style="color:#64748b;">Carico</span><span>50% del massimale inserito</span>' +
+        '<span style="color:#64748b;">Volume</span><span>~50% vs settimana normale</span>' +
+        '</div>';
+    content.appendChild(info);
 
-    // Lista esercizi aggiunti
+    // Lista esercizi
     var exList = document.createElement('div');
-    exList.id = 'deload-ex-list';
-    exList.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin-bottom:16px;';
-    overlay.appendChild(exList);
-
-    // Form aggiungi esercizio
-    var addBox = document.createElement('div');
-    addBox.style.cssText = 'background:rgba(255,255,255,0.04);border-radius:10px;padding:12px;margin-bottom:16px;';
-    addBox.innerHTML = '<div style="font-size:0.7rem;font-weight:700;color:#94a3b8;margin-bottom:8px;">➕ Aggiungi esercizio</div>';
-
-    var inputName = document.createElement('input');
-    inputName.type = 'text'; inputName.placeholder = 'Nome esercizio (es. Panca Piana)';
-    inputName.style.cssText = 'width:100%;box-sizing:border-box;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;color:#e2e8f0;font-size:0.75rem;margin-bottom:8px;';
-
-    var inputWeight = document.createElement('input');
-    inputWeight.type = 'number'; inputWeight.placeholder = 'Il tuo massimale attuale (kg)';
-    inputWeight.style.cssText = 'width:100%;box-sizing:border-box;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;color:#e2e8f0;font-size:0.75rem;margin-bottom:8px;';
-
-    var btnAdd = document.createElement('button');
-    btnAdd.textContent = 'Aggiungi';
-    btnAdd.style.cssText = 'width:100%;padding:8px;background:rgba(99,102,241,0.3);color:#818cf8;border:1px solid rgba(99,102,241,0.4);border-radius:8px;font-size:0.72rem;font-weight:700;cursor:pointer;';
+    exList.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin-bottom:20px;';
+    content.appendChild(exList);
 
     var exercises = [];
+
     function refreshExList() {
         exList.innerHTML = '';
         if (exercises.length === 0) {
-            exList.innerHTML = '<div style="color:#475569;font-size:0.68rem;text-align:center;padding:8px">Nessun esercizio aggiunto</div>';
+            var empty = document.createElement('div');
+            empty.style.cssText = 'color:#334155;font-size:0.7rem;text-align:center;padding:16px 0;';
+            empty.textContent = 'Nessun esercizio aggiunto';
+            exList.appendChild(empty);
             return;
         }
         exercises.forEach(function(ex, i) {
             var row = document.createElement('div');
-            row.style.cssText = 'background:rgba(255,255,255,0.05);border-radius:8px;padding:8px 10px;display:flex;align-items:center;gap:8px;';
+            row.style.cssText = 'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 12px;display:flex;align-items:center;';
             var info2 = document.createElement('div');
-            info2.style.cssText = 'flex:1;';
-            info2.innerHTML = '<div style="font-size:0.73rem;font-weight:700;color:#e2e8f0;">' + ex.name + '</div>' +
-                '<div style="font-size:0.63rem;color:#64748b;">3×8-10 · ' + ex.baseWeight + 'kg (50% di ' + ex.max + 'kg)</div>';
+            info2.style.cssText = 'flex:1;min-width:0;margin-right:12px;';
+            info2.innerHTML = '<div style="font-size:0.75rem;font-weight:700;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + ex.name + '</div>' +
+                '<div style="font-size:0.63rem;color:#64748b;margin-top:2px;">3×8-10 · <strong style="color:#94a3b8;">' + ex.baseWeight + 'kg</strong> <span style="color:#475569;">(50% di ' + ex.max + 'kg)</span></div>';
             var btnDel = document.createElement('button');
             btnDel.textContent = '✕';
-            btnDel.style.cssText = 'background:rgba(239,68,68,0.2);border:none;border-radius:6px;padding:3px 7px;color:#f87171;cursor:pointer;font-size:0.7rem;';
+            btnDel.style.cssText = 'background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.25);border-radius:6px;padding:5px 9px;color:#f87171;cursor:pointer;font-size:0.7rem;flex-shrink:0;margin-left:auto;';
             btnDel.onclick = function(){ exercises.splice(i, 1); refreshExList(); };
-            row.appendChild(info2); row.appendChild(btnDel);
+            row.appendChild(info2);
+            row.appendChild(btnDel);
             exList.appendChild(row);
         });
     }
     refreshExList();
 
+    // Form aggiungi
+    var addBox = document.createElement('div');
+    addBox.style.cssText = 'background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px;';
+    var addTitle = document.createElement('div');
+    addTitle.style.cssText = 'font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;';
+    addTitle.textContent = 'Aggiungi esercizio';
+    var inputName = document.createElement('input');
+    inputName.type = 'text';
+    inputName.placeholder = 'Nome esercizio (es. Panca Piana)';
+    inputName.style.cssText = 'width:100%;box-sizing:border-box;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px 12px;color:#e2e8f0;font-size:0.75rem;margin-bottom:8px;outline:none;';
+    var inputWeight = document.createElement('input');
+    inputWeight.type = 'number';
+    inputWeight.placeholder = 'Massimale attuale (kg)';
+    inputWeight.style.cssText = 'width:100%;box-sizing:border-box;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px 12px;color:#e2e8f0;font-size:0.75rem;margin-bottom:10px;outline:none;';
+    var btnAdd = document.createElement('button');
+    btnAdd.textContent = '+ Aggiungi';
+    btnAdd.style.cssText = 'width:100%;padding:9px;background:rgba(99,102,241,0.2);color:#818cf8;border:1px solid rgba(99,102,241,0.35);border-radius:8px;font-size:0.73rem;font-weight:700;cursor:pointer;';
     btnAdd.onclick = function() {
         var nome = inputName.value.trim();
         var max = parseFloat(inputWeight.value);
@@ -5171,31 +5185,35 @@ function openDeloadManualForm() {
         var base = Math.round(max * 0.5 * 2) / 2;
         exercises.push({ name: nome, max: max, baseWeight: base, sr: '3×8-10', loads: WEEK_LOADS.map(function(p){ return Math.round(base*p*2)/2; }) });
         inputName.value = ''; inputWeight.value = '';
+        inputName.focus();
         refreshExList();
     };
-
+    addBox.appendChild(addTitle);
     addBox.appendChild(inputName);
     addBox.appendChild(inputWeight);
     addBox.appendChild(btnAdd);
-    overlay.appendChild(addBox);
+    content.appendChild(addBox);
+    overlay.appendChild(content);
 
-    // Bottone salva
+    // ── Footer sticky con bottone salva ──
+    var footer = document.createElement('div');
+    footer.style.cssText = 'padding:12px 20px max(env(safe-area-inset-bottom),16px);background:rgba(10,14,26,0.97);border-top:1px solid rgba(255,255,255,0.07);';
     var btnSave = document.createElement('button');
     btnSave.textContent = '💾 Salva protocollo Deload';
-    btnSave.style.cssText = 'width:100%;padding:12px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border:none;border-radius:10px;font-size:0.8rem;font-weight:800;cursor:pointer;';
+    btnSave.style.cssText = 'width:100%;padding:13px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border:none;border-radius:12px;font-size:0.8rem;font-weight:800;cursor:pointer;';
     btnSave.onclick = function() {
         if (exercises.length === 0) { showToast('Aggiungi almeno un esercizio', 'error'); return; }
-        var deloadName = 'Full Body Deload';
-        var newProto = { id: 'proto_deload_' + Date.now(), name: deloadName, exercises: exercises };
+        var newProto = { id: 'proto_deload_' + Date.now(), name: 'Full Body Deload', exercises: exercises };
         APP.savedProtocols.push(newProto);
         saveState();
         if (typeof saveProtocolToSupabase === 'function') saveProtocolToSupabase(newProto);
         renderProtocolList();
         renderPlanPage(DELOAD_WEEK);
         overlay.remove();
-        showToast('✨ "' + deloadName + '" salvato con ' + exercises.length + ' esercizi!', 'success');
+        showToast('✨ Deload salvato con ' + exercises.length + ' esercizi!', 'success');
     };
-    overlay.appendChild(btnSave);
+    footer.appendChild(btnSave);
+    overlay.appendChild(footer);
     document.body.appendChild(overlay);
 }
 
