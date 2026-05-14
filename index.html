@@ -3782,6 +3782,10 @@ function renderPlanPage(w) {
 
     const isUnlocked = w === 0 || APP.completedWeeks[w-1] || APP.availableWeeks.includes(w);
 
+    // Assicura che gli array per questa settimana esistano
+    if (!APP.chipStates[w]) APP.chipStates[w] = [null,null,null,null,null,null,null].map(function(){ return 'rest'; });
+    if (!APP.dayAssignments[w]) APP.dayAssignments[w] = [null,null,null,null,null,null,null];
+
     const block = document.createElement('div');
     block.className = 'plan-week-block';
 
