@@ -5089,6 +5089,26 @@ function renderProtoManager() {
     });
 }
 
+// Database esercizi deload — solo compound fondamentali, 100% italiano
+var DELOAD_EXERCISES_DB = [
+    { pattern: 'Push', nome: 'Panca Piana',           desc: 'Petto, deltoide anteriore, tricipite' },
+    { pattern: 'Push', nome: 'Panca Inclinata',        desc: 'Petto superiore, deltoide anteriore' },
+    { pattern: 'Push', nome: 'Military Press',         desc: 'Deltoide, tricipite, trapezio' },
+    { pattern: 'Push', nome: 'Lento Avanti',           desc: 'Deltoide frontale e laterale, tricipite' },
+    { pattern: 'Push', nome: 'Dip alle Parallele',     desc: 'Petto basso, tricipite, deltoide' },
+    { pattern: 'Pull', nome: 'Trazioni alla Sbarra',   desc: 'Gran dorsale, bicipite, romboidi' },
+    { pattern: 'Pull', nome: 'Rematore con Bilanciere',desc: 'Gran dorsale, romboidi, bicipite' },
+    { pattern: 'Pull', nome: 'Rematore con Manubrio',  desc: 'Gran dorsale unilaterale, romboidi' },
+    { pattern: 'Pull', nome: 'Lat Machine',            desc: 'Gran dorsale, bicipite, romboidi' },
+    { pattern: 'Pull', nome: 'Face Pull',              desc: 'Deltoide posteriore, rotatori, trapezio' },
+    { pattern: 'Lower', nome: 'Squat',                 desc: 'Quadricipite, gluteo, femorali' },
+    { pattern: 'Lower', nome: 'Stacco da Terra',       desc: 'Femorali, gluteo, erettori spinali' },
+    { pattern: 'Lower', nome: 'Stacco Rumeno',         desc: 'Femorali, gluteo, erettori' },
+    { pattern: 'Lower', nome: 'Leg Press',             desc: 'Quadricipite, gluteo, femorali' },
+    { pattern: 'Lower', nome: 'Affondi',               desc: 'Quadricipite, gluteo, femorali — bilaterale' },
+    { pattern: 'Lower', nome: 'Hip Thrust',            desc: 'Gluteo massimo, femorali' }
+];
+
 function openDeloadManualForm() {
     var overlay = document.getElementById('deload-manual-overlay');
     if (overlay) { overlay.remove(); return; }
@@ -5102,7 +5122,7 @@ function openDeloadManualForm() {
 
     // Header
     var header = document.createElement('div');
-    header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;';
+    header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;';
     var title = document.createElement('div');
     title.style.cssText = 'font-size:1.05rem;font-weight:800;color:#e2e8f0;';
     title.textContent = '\u2699\ufe0f Crea Deload Manuale';
@@ -5116,42 +5136,46 @@ function openDeloadManualForm() {
 
     // Info box
     var info = document.createElement('div');
-    info.style.cssText = 'background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);border-radius:12px;padding:12px 14px;font-size:0.67rem;color:#94a3b8;line-height:1.7;margin-bottom:20px;';
-    info.innerHTML = '<div style="font-weight:700;color:#818cf8;margin-bottom:6px;">Regole Deload applicate automaticamente</div>' +
-        '<div style="display:grid;grid-template-columns:56px 1fr;gap:2px 10px;">' +
+    info.style.cssText = 'background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);border-radius:12px;padding:11px 14px;font-size:0.67rem;color:#94a3b8;line-height:1.7;margin-bottom:20px;';
+    info.innerHTML = '<div style="font-weight:700;color:#818cf8;margin-bottom:5px;">Regole applicate automaticamente</div>' +
+        '<div style="display:grid;grid-template-columns:56px 1fr;gap:1px 10px;">' +
         '<span style="color:#64748b;">Serie</span><span>3 (fisse)</span>' +
         '<span style="color:#64748b;">Reps</span><span>8-10 per set</span>' +
         '<span style="color:#64748b;">Carico</span><span>50% del massimale inserito</span>' +
-        '<span style="color:#64748b;">Volume</span><span>~50% vs settimana normale</span>' +
         '</div>';
     content.appendChild(info);
 
-    // Lista esercizi
+    // Lista esercizi selezionati
+    var selectedLabel = document.createElement('div');
+    selectedLabel.style.cssText = 'font-size:0.65rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;';
+    selectedLabel.textContent = 'Esercizi selezionati';
+    content.appendChild(selectedLabel);
+
     var exList = document.createElement('div');
-    exList.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
+    exList.style.cssText = 'display:flex;flex-direction:column;gap:7px;min-height:40px;';
     content.appendChild(exList);
 
-    var exercises = [];
+    var exercises = []; // {name, max, baseWeight, sr, loads}
 
     function refreshExList() {
         exList.innerHTML = '';
         if (exercises.length === 0) {
             var empty = document.createElement('div');
-            empty.style.cssText = 'color:#334155;font-size:0.7rem;text-align:center;padding:16px 0;';
+            empty.style.cssText = 'color:#334155;font-size:0.7rem;text-align:center;padding:12px 0;';
             empty.textContent = 'Nessun esercizio aggiunto';
             exList.appendChild(empty);
             return;
         }
         exercises.forEach(function(ex, i) {
             var row = document.createElement('div');
-            row.style.cssText = 'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;';
+            row.style.cssText = 'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:9px 12px;display:flex;align-items:center;gap:10px;';
             var info2 = document.createElement('div');
             info2.style.cssText = 'flex:1;min-width:0;';
             info2.innerHTML = '<div style="font-size:0.75rem;font-weight:700;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + ex.name + '</div>' +
-                '<div style="font-size:0.63rem;color:#64748b;margin-top:2px;white-space:nowrap;">3\u00d78-10 \u00b7 <strong style="color:#94a3b8;">' + ex.baseWeight + 'kg</strong> <span>(50% di ' + ex.max + 'kg)</span></div>';
+                '<div style="font-size:0.62rem;color:#64748b;margin-top:1px;">3\u00d78-10 \u00b7 <strong style="color:#94a3b8;">' + ex.baseWeight + 'kg</strong> (50% di ' + ex.max + 'kg)</div>';
             var btnDel = document.createElement('button');
-            btnDel.innerHTML = '\u2715';
-            btnDel.style.cssText = 'background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.2);border-radius:6px;width:30px;height:30px;color:#f87171;cursor:pointer;font-size:0.75rem;flex-shrink:0;display:flex;align-items:center;justify-content:center;';
+            btnDel.textContent = '\u2715';
+            btnDel.style.cssText = 'background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.2);border-radius:6px;width:28px;height:28px;color:#f87171;cursor:pointer;font-size:0.72rem;flex-shrink:0;display:flex;align-items:center;justify-content:center;';
             btnDel.onclick = function(){ exercises.splice(i, 1); refreshExList(); };
             row.appendChild(info2);
             row.appendChild(btnDel);
@@ -5159,54 +5183,122 @@ function openDeloadManualForm() {
         });
     }
     refreshExList();
+
+    // Separatore
+    var sep = document.createElement('div');
+    sep.style.cssText = 'height:1px;background:rgba(255,255,255,0.06);margin:16px 0;';
+    content.appendChild(sep);
+
+    // Selezione per pattern
+    var patterns = [
+        { key: 'Push',  label: '🔼 Push',  color: '#f59e0b' },
+        { key: 'Pull',  label: '🔽 Pull',  color: '#06b6d4' },
+        { key: 'Lower', label: '🦵 Lower Body', color: '#10b981' }
+    ];
+
+    patterns.forEach(function(pat) {
+        var patLabel = document.createElement('div');
+        patLabel.style.cssText = 'font-size:0.65rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:' + pat.color + ';margin-bottom:7px;margin-top:14px;';
+        patLabel.textContent = pat.label;
+        content.appendChild(patLabel);
+
+        var grid = document.createElement('div');
+        grid.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
+
+        DELOAD_EXERCISES_DB.filter(function(e){ return e.pattern === pat.key; }).forEach(function(ex) {
+            var card = document.createElement('div');
+            var alreadyAdded = exercises.some(function(e){ return e.name === ex.nome; });
+            card.style.cssText = 'background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,' + (alreadyAdded ? '0.15' : '0.06') + ');border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;cursor:pointer;';
+
+            var cardInfo = document.createElement('div');
+            cardInfo.style.cssText = 'flex:1;min-width:0;';
+            cardInfo.innerHTML = '<div style="font-size:0.75rem;font-weight:700;color:' + (alreadyAdded ? '#64748b' : '#e2e8f0') + ';">' + ex.nome + '</div>' +
+                '<div style="font-size:0.62rem;color:#475569;margin-top:1px;">' + ex.desc + '</div>';
+
+            var inputMax = document.createElement('input');
+            inputMax.type = 'number';
+            inputMax.placeholder = 'Max kg';
+            inputMax.style.cssText = 'width:68px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:7px;padding:5px 8px;color:#e2e8f0;font-size:0.72rem;text-align:center;outline:none;flex-shrink:0;';
+
+            var btnAdd = document.createElement('button');
+            btnAdd.textContent = alreadyAdded ? '\u2713' : '+';
+            btnAdd.style.cssText = 'width:28px;height:28px;border-radius:7px;border:none;font-size:0.8rem;font-weight:700;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:' +
+                (alreadyAdded ? 'rgba(16,185,129,0.2)' : 'rgba(99,102,241,0.25)') + ';color:' + (alreadyAdded ? '#10b981' : '#818cf8') + ';';
+
+            btnAdd.onclick = function() {
+                if (alreadyAdded) return;
+                var max = parseFloat(inputMax.value);
+                if (!max || max <= 0) { showToast('Inserisci il massimale per ' + ex.nome, 'error'); inputMax.focus(); return; }
+                var base = Math.round(max * 0.5 * 2) / 2;
+                exercises.push({ name: ex.nome, max: max, baseWeight: base, sr: '3\u00d78-10', loads: WEEK_LOADS.map(function(p){ return Math.round(base*p*2)/2; }) });
+                refreshExList();
+                // Ricostruisce la griglia aggiornando lo stato
+                renderPatternGrid();
+                content.scrollTop = 0;
+            };
+
+            card.appendChild(cardInfo);
+            card.appendChild(inputMax);
+            card.appendChild(btnAdd);
+            grid.appendChild(card);
+        });
+        content.appendChild(grid);
+    });
+
+    function renderPatternGrid() {
+        // Ricostruisce tutto il content dopo la lista selezionati
+        // più semplice: rimuove e ricrea da sep in poi
+        while (content.lastChild !== sep) content.removeChild(content.lastChild);
+        patterns.forEach(function(pat) {
+            var patLabel = document.createElement('div');
+            patLabel.style.cssText = 'font-size:0.65rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:' + pat.color + ';margin-bottom:7px;margin-top:14px;';
+            patLabel.textContent = pat.label;
+            content.appendChild(patLabel);
+            var grid2 = document.createElement('div');
+            grid2.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
+            DELOAD_EXERCISES_DB.filter(function(e){ return e.pattern === pat.key; }).forEach(function(ex) {
+                var alreadyAdded = exercises.some(function(e){ return e.name === ex.nome; });
+                var card2 = document.createElement('div');
+                card2.style.cssText = 'background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,' + (alreadyAdded ? '0.15' : '0.06') + ');border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;';
+                var ci2 = document.createElement('div');
+                ci2.style.cssText = 'flex:1;min-width:0;';
+                ci2.innerHTML = '<div style="font-size:0.75rem;font-weight:700;color:' + (alreadyAdded ? '#64748b' : '#e2e8f0') + ';">' + ex.nome + '</div>' +
+                    '<div style="font-size:0.62rem;color:#475569;margin-top:1px;">' + ex.desc + '</div>';
+                var inp2 = document.createElement('input');
+                inp2.type = 'number'; inp2.placeholder = 'Max kg';
+                inp2.style.cssText = 'width:68px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:7px;padding:5px 8px;color:#e2e8f0;font-size:0.72rem;text-align:center;outline:none;flex-shrink:0;';
+                var btn2 = document.createElement('button');
+                btn2.textContent = alreadyAdded ? '\u2713' : '+';
+                btn2.style.cssText = 'width:28px;height:28px;border-radius:7px;border:none;font-size:0.8rem;font-weight:700;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:' +
+                    (alreadyAdded ? 'rgba(16,185,129,0.2)' : 'rgba(99,102,241,0.25)') + ';color:' + (alreadyAdded ? '#10b981' : '#818cf8') + ';';
+                if (!alreadyAdded) {
+                    btn2.onclick = function() {
+                        var max2 = parseFloat(inp2.value);
+                        if (!max2 || max2 <= 0) { showToast('Inserisci il massimale per ' + ex.nome, 'error'); inp2.focus(); return; }
+                        var base2 = Math.round(max2 * 0.5 * 2) / 2;
+                        exercises.push({ name: ex.nome, max: max2, baseWeight: base2, sr: '3\u00d78-10', loads: WEEK_LOADS.map(function(p){ return Math.round(base2*p*2)/2; }) });
+                        refreshExList();
+                        renderPatternGrid();
+                        content.scrollTop = 0;
+                    };
+                }
+                card2.appendChild(ci2); card2.appendChild(inp2); card2.appendChild(btn2);
+                grid2.appendChild(card2);
+            });
+            content.appendChild(grid2);
+        });
+    }
+
     overlay.appendChild(content);
 
-    // ── Footer: form aggiungi + salva ──
+    // ── Footer: bottone salva ──
     var footer = document.createElement('div');
-    footer.style.cssText = 'padding:12px 20px max(env(safe-area-inset-bottom),20px);background:rgba(10,14,26,0.98);border-top:1px solid rgba(255,255,255,0.07);display:flex;flex-direction:column;gap:10px;';
-
-    // Form aggiungi esercizio
-    var addBox = document.createElement('div');
-    addBox.style.cssText = 'background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px;';
-    var addTitle = document.createElement('div');
-    addTitle.style.cssText = 'font-size:0.65rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;';
-    addTitle.textContent = 'Aggiungi esercizio';
-    var inputName = document.createElement('input');
-    inputName.type = 'text';
-    inputName.placeholder = 'Nome esercizio (es. Panca Piana)';
-    inputName.style.cssText = 'width:100%;box-sizing:border-box;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px 12px;color:#e2e8f0;font-size:0.75rem;margin-bottom:7px;outline:none;';
-    var inputWeight = document.createElement('input');
-    inputWeight.type = 'number';
-    inputWeight.placeholder = 'Massimale attuale (kg)';
-    inputWeight.style.cssText = 'width:100%;box-sizing:border-box;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px 12px;color:#e2e8f0;font-size:0.75rem;margin-bottom:8px;outline:none;';
-    var btnAdd = document.createElement('button');
-    btnAdd.textContent = '+ Aggiungi';
-    btnAdd.style.cssText = 'width:100%;padding:9px;background:rgba(99,102,241,0.18);color:#818cf8;border:1px solid rgba(99,102,241,0.3);border-radius:8px;font-size:0.73rem;font-weight:700;cursor:pointer;';
-    btnAdd.onclick = function() {
-        var nome = inputName.value.trim();
-        var max = parseFloat(inputWeight.value);
-        if (!nome) { showToast('Inserisci il nome esercizio', 'error'); return; }
-        if (!max || max <= 0) { showToast('Inserisci il massimale', 'error'); return; }
-        var base = Math.round(max * 0.5 * 2) / 2;
-        exercises.push({ name: nome, max: max, baseWeight: base, sr: '3\u00d78-10', loads: WEEK_LOADS.map(function(p){ return Math.round(base*p*2)/2; }) });
-        inputName.value = ''; inputWeight.value = '';
-        inputName.focus();
-        refreshExList();
-        // Scrolla la lista in fondo per mostrare l'ultimo aggiunto
-        content.scrollTop = content.scrollHeight;
-    };
-    addBox.appendChild(addTitle);
-    addBox.appendChild(inputName);
-    addBox.appendChild(inputWeight);
-    addBox.appendChild(btnAdd);
-    footer.appendChild(addBox);
-
-    // Bottone salva
+    footer.style.cssText = 'padding:12px 20px max(env(safe-area-inset-bottom),20px);background:rgba(10,14,26,0.98);border-top:1px solid rgba(255,255,255,0.07);';
     var btnSave = document.createElement('button');
     btnSave.textContent = '\ud83d\udcbe Salva protocollo Deload';
     btnSave.style.cssText = 'width:100%;padding:13px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border:none;border-radius:12px;font-size:0.8rem;font-weight:800;cursor:pointer;';
     btnSave.onclick = function() {
-        if (exercises.length === 0) { showToast('Aggiungi almeno un esercizio', 'error'); return; }
+        if (exercises.length === 0) { showToast('Seleziona almeno un esercizio', 'error'); return; }
         var newProto = { id: 'proto_deload_' + Date.now(), name: 'Full Body Deload', exercises: exercises };
         APP.savedProtocols.push(newProto);
         saveState();
@@ -5220,6 +5312,7 @@ function openDeloadManualForm() {
     overlay.appendChild(footer);
     document.body.appendChild(overlay);
 }
+
 
 function toggleNotifDebug() {
     var panel = document.getElementById('notif-debug-panel');
