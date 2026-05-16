@@ -3354,68 +3354,138 @@ function getMotivationalQuote() {
     return `"${MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)]}"`;
 }
 
+// ============= DATABASE ESERCIZI INTERNO (80 esercizi, 100% italiano) =============
+var ESERCIZI_DB = [
+    // PETTO
+    { nome: 'Panca Piana con Bilanciere',    gruppo: 'Petto' },
+    { nome: 'Panca Piana con Manubri',        gruppo: 'Petto' },
+    { nome: 'Panca Inclinata con Bilanciere', gruppo: 'Petto' },
+    { nome: 'Panca Inclinata con Manubri',    gruppo: 'Petto' },
+    { nome: 'Panca Declinata con Bilanciere', gruppo: 'Petto' },
+    { nome: 'Croci con Manubri',              gruppo: 'Petto' },
+    { nome: 'Croci ai Cavi',                  gruppo: 'Petto' },
+    { nome: 'Dip alle Parallele',             gruppo: 'Petto' },
+    { nome: 'Push Up',                        gruppo: 'Petto' },
+    { nome: 'Pullover con Manubrio',          gruppo: 'Petto' },
+    // SCHIENA
+    { nome: 'Trazioni alla Sbarra',           gruppo: 'Schiena' },
+    { nome: 'Lat Machine Avanti',             gruppo: 'Schiena' },
+    { nome: 'Lat Machine Dietro',             gruppo: 'Schiena' },
+    { nome: 'Rematore con Bilanciere',        gruppo: 'Schiena' },
+    { nome: 'Rematore con Manubrio',          gruppo: 'Schiena' },
+    { nome: 'Rematore ai Cavi Bassi',         gruppo: 'Schiena' },
+    { nome: 'Stacco da Terra',                gruppo: 'Schiena' },
+    { nome: 'Stacco Rumeno',                  gruppo: 'Schiena' },
+    { nome: 'Good Morning',                   gruppo: 'Schiena' },
+    { nome: 'Iperestensioni',                 gruppo: 'Schiena' },
+    // SPALLE
+    { nome: 'Military Press con Bilanciere',  gruppo: 'Spalle' },
+    { nome: 'Lento Avanti con Manubri',       gruppo: 'Spalle' },
+    { nome: 'Alzate Laterali con Manubri',    gruppo: 'Spalle' },
+    { nome: 'Alzate Frontali con Manubri',    gruppo: 'Spalle' },
+    { nome: 'Alzate Laterali ai Cavi',        gruppo: 'Spalle' },
+    { nome: 'Face Pull ai Cavi',              gruppo: 'Spalle' },
+    { nome: 'Scrollate con Bilanciere',       gruppo: 'Spalle' },
+    { nome: 'Scrollate con Manubri',          gruppo: 'Spalle' },
+    { nome: 'Arnold Press',                   gruppo: 'Spalle' },
+    { nome: 'Lento Dietro con Bilanciere',    gruppo: 'Spalle' },
+    // BICIPITI
+    { nome: 'Curl con Bilanciere',            gruppo: 'Bicipiti' },
+    { nome: 'Curl con Manubri',               gruppo: 'Bicipiti' },
+    { nome: 'Curl Alternato con Manubri',     gruppo: 'Bicipiti' },
+    { nome: 'Curl ai Cavi Bassi',             gruppo: 'Bicipiti' },
+    { nome: 'Curl Hammer con Manubri',        gruppo: 'Bicipiti' },
+    { nome: 'Curl Concentrato',               gruppo: 'Bicipiti' },
+    { nome: 'Curl su Panca Scott',            gruppo: 'Bicipiti' },
+    // TRICIPITI
+    { nome: 'French Press con Bilanciere',    gruppo: 'Tricipiti' },
+    { nome: 'French Press con Manubri',       gruppo: 'Tricipiti' },
+    { nome: 'Pushdown ai Cavi',               gruppo: 'Tricipiti' },
+    { nome: 'Estensioni Tricipiti ai Cavi',   gruppo: 'Tricipiti' },
+    { nome: 'Kickback con Manubrio',          gruppo: 'Tricipiti' },
+    { nome: 'Dip alle Panche',                gruppo: 'Tricipiti' },
+    { nome: 'Tricipiti in Presa Stretta',     gruppo: 'Tricipiti' },
+    // QUADRICIPITI
+    { nome: 'Squat con Bilanciere',           gruppo: 'Quadricipiti' },
+    { nome: 'Squat Frontale',                 gruppo: 'Quadricipiti' },
+    { nome: 'Squat Goblet con Manubrio',      gruppo: 'Quadricipiti' },
+    { nome: 'Leg Press',                      gruppo: 'Quadricipiti' },
+    { nome: 'Hack Squat',                     gruppo: 'Quadricipiti' },
+    { nome: 'Affondi con Bilanciere',         gruppo: 'Quadricipiti' },
+    { nome: 'Affondi con Manubri',            gruppo: 'Quadricipiti' },
+    { nome: 'Affondi Bulgari',                gruppo: 'Quadricipiti' },
+    { nome: 'Leg Extension',                  gruppo: 'Quadricipiti' },
+    { nome: 'Step Up con Manubri',            gruppo: 'Quadricipiti' },
+    // FEMORALI & GLUTEI
+    { nome: 'Hip Thrust con Bilanciere',      gruppo: 'Glutei' },
+    { nome: 'Hip Thrust con Manubrio',        gruppo: 'Glutei' },
+    { nome: 'Leg Curl Sdraiato',              gruppo: 'Femorali' },
+    { nome: 'Leg Curl in Piedi',              gruppo: 'Femorali' },
+    { nome: 'Leg Curl ai Cavi',               gruppo: 'Femorali' },
+    { nome: 'Sumo Squat',                     gruppo: 'Glutei' },
+    { nome: 'Abductor Machine',               gruppo: 'Glutei' },
+    // POLPACCI
+    { nome: 'Calf Raise in Piedi',            gruppo: 'Polpacci' },
+    { nome: 'Calf Raise Seduto',              gruppo: 'Polpacci' },
+    { nome: 'Calf Raise al Leg Press',        gruppo: 'Polpacci' },
+    // ADDOMINALI & CORE
+    { nome: 'Crunch',                         gruppo: 'Addominali' },
+    { nome: 'Crunch Inverso',                 gruppo: 'Addominali' },
+    { nome: 'Crunch ai Cavi',                 gruppo: 'Addominali' },
+    { nome: 'Plank',                          gruppo: 'Core' },
+    { nome: 'Plank Laterale',                 gruppo: 'Core' },
+    { nome: 'Russian Twist',                  gruppo: 'Addominali' },
+    { nome: 'Leg Raise',                      gruppo: 'Addominali' },
+    { nome: 'Rollout con Ruota',              gruppo: 'Core' },
+    { nome: 'Mountain Climber',               gruppo: 'Core' },
+    // COMPOUND FULL BODY
+    { nome: 'Clean and Press',                gruppo: 'Full Body' },
+    { nome: 'Kettlebell Swing',               gruppo: 'Full Body' },
+    { nome: 'Stacco Sumo',                    gruppo: 'Full Body' },
+    { nome: 'Thruster con Manubri',           gruppo: 'Full Body' },
+    { nome: 'Burpee',                         gruppo: 'Full Body' }
+];
+
 // ============= DEBOUNCED SEARCH =============
-let searchTimers = new WeakMap();
-let searchAbortControllers = new WeakMap();
+var searchTimers = new WeakMap();
 
 function debouncedSearch(input) {
-    // Clear previous timer for this specific input
     if (searchTimers.has(input)) clearTimeout(searchTimers.get(input));
-
-    searchTimers.set(input, setTimeout(() => {
+    searchTimers.set(input, setTimeout(function() {
         searchExercises(input);
-    }, 300));
+    }, 150));
 }
 
-async function searchExercises(input) {
-    const query = input.value.trim();
-    const sBox = input.nextElementSibling;
+function searchExercises(input) {
+    var query = input.value.trim().toLowerCase();
+    var sBox = input.nextElementSibling;
+    if (query.length < 2) { sBox.style.display = 'none'; return; }
 
-    if (query.length < 3) { sBox.style.display = 'none'; return; }
+    var results = ESERCIZI_DB.filter(function(ex) {
+        return ex.nome.toLowerCase().includes(query);
+    }).slice(0, 8);
 
-    // Abort previous request for this input
-    if (searchAbortControllers.has(input)) {
-        searchAbortControllers.get(input).abort();
-    }
-    const controller = new AbortController();
-    searchAbortControllers.set(input, controller);
+    if (results.length === 0) { sBox.style.display = 'none'; return; }
 
-    try {
-        const res = await fetch(
-            `https://wger.de/api/v2/exercise/search/?term=${encodeURIComponent(query)}`,
-            { signal: controller.signal }
-        );
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-
-        if (data.suggestions && data.suggestions.length > 0) {
-            sBox.innerHTML = '';
-            sBox.style.display = 'block';
-            data.suggestions.forEach(item => {
-                const d = document.createElement('div');
-                d.className = 'suggestion-item';
-                d.textContent = item.value;
-                d.onclick = () => {
-                    input.value = item.value;
-                    sBox.style.display = 'none';
-                    input.setAttribute('data-selected', 'true');
-                };
-                sBox.appendChild(d);
-            });
-        } else {
+    sBox.innerHTML = '';
+    sBox.style.display = 'block';
+    results.forEach(function(ex) {
+        var d = document.createElement('div');
+        d.className = 'suggestion-item';
+        d.innerHTML = '<span>' + ex.nome + '</span><span style="font-size:0.65rem;color:#64748b;margin-left:6px;">' + ex.gruppo + '</span>';
+        d.onclick = function() {
+            input.value = ex.nome;
             sBox.style.display = 'none';
-        }
-    } catch(e) {
-        if (e.name !== 'AbortError') {
-            sBox.style.display = 'none';
-        }
-    }
+            input.setAttribute('data-selected', 'true');
+        };
+        sBox.appendChild(d);
+    });
 }
 
 // Close suggestion dropdowns on outside click
 document.addEventListener('click', function(e) {
     if (!e.target.classList.contains('ex-name')) {
-        document.querySelectorAll('.suggestions').forEach(s => s.style.display = 'none');
+        document.querySelectorAll('.suggestions').forEach(function(s){ s.style.display = 'none'; });
     }
 });
 
