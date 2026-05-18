@@ -4220,6 +4220,27 @@ function buildProtoEditorBox(proto, weekIdx) {
                 draft[idx].name = this.value;
                 onManualEdit();
             });
+            // Fix: quando si seleziona un suggerimento, aggiorna subito il draft
+            var suggestions = row.querySelector('.suggestions');
+            var nameInput = row.querySelector('.pe-name');
+            var origDebouncedSearch = debouncedSearch;
+            nameInput.addEventListener('click', function(){});
+            // Override suggestion click per aggiornare draft prima del re-render
+            var observer = new MutationObserver(function() {
+                suggestions.querySelectorAll('.suggestion-item').forEach(function(item) {
+                    if (!item._patched) {
+                        item._patched = true;
+                        var orig = item.onclick;
+                        item.onclick = function(e) {
+                            draft[idx].name = item.querySelector('span') ? item.querySelector('span').textContent : item.textContent;
+                            nameInput.value = draft[idx].name;
+                            suggestions.style.display = 'none';
+                            nameInput.setAttribute('data-selected', 'true');
+                        };
+                    }
+                });
+            });
+            observer.observe(suggestions, { childList: true });
             row.querySelector('.pe-sr').addEventListener('input', function() {
                 draft[idx].sr = this.value;
                 onManualEdit();
@@ -4268,6 +4289,41 @@ function buildProtoEditorBox(proto, weekIdx) {
 
     var saveRow = document.createElement('div');
     saveRow.className = 'proto-editor-save-row';
+
+    // Bottone Salva diretto
+    var directSaveBtn = document.createElement('button');
+    directSaveBtn.textContent = '💾 Salva';
+    directSaveBtn.style.cssText = 'padding:11px 14px;background:rgba(0,255,136,0.15);color:var(--primary);border:1px solid rgba(0,255,136,0.3);border-radius:10px;font-size:0.75rem;font-weight:800;cursor:pointer;font-family:inherit;flex-shrink:0;';
+    directSaveBtn.onclick = function() {
+        // Sincronizza DOM → draft
+        var rows = box.querySelectorAll('.proto-ex-row');
+        rows.forEach(function(row, idx) {
+            if (!draft[idx]) return;
+            var nameEl = row.querySelector('.pe-name');
+            var srEl   = row.querySelector('.pe-sr');
+            var kgEl   = row.querySelector('.pe-kg');
+            if (nameEl) draft[idx].name = nameEl.value;
+            if (srEl)   draft[idx].sr   = srEl.value;
+            if (kgEl)   { var n = parseFloat(kgEl.value); draft[idx].baseWeight = isNaN(n) ? 0 : n; }
+        });
+        var valid = draft.filter(function(e){ return e.name && e.name.trim().length > 0; });
+        if (valid.length === 0) { showToast('Aggiungi almeno un esercizio.', 'error'); return; }
+        // Salva nel protocollo
+        proto.exercises = JSON.parse(JSON.stringify(draft));
+        proto.exercises.forEach(function(ex) {
+            if (!ex.loads || ex.loads.length === 0) {
+                ex.loads = WEEK_LOADS.map(function(p){ return Math.round((ex.baseWeight||0)*p*2)/2; });
+            }
+        });
+        delete _protoEditorDrafts[proto.id];
+        saveState();
+        saveProtocolToSupabase(proto);
+        planExpandedProto = null;
+        renderProtocolList();
+        renderPlanPage(weekIdx);
+        showToast('Protocollo salvato!', 'success');
+    };
+    saveRow.appendChild(directSaveBtn);
 
     var saveBtn = document.createElement('button');
     saveBtn.className = 'proto-editor-save-btn';
