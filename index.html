@@ -4848,25 +4848,57 @@ function generateDeloadProtocol(mode) {
     var btn = document.querySelector('[onclick*="generateDeloadProtocol"]');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ AI in elaborazione...'; }
 
+    // Filtra: manda all'AI solo gli esercizi compound (quelli presenti in DELOAD_EXERCISES_DB)
+    // Gli isolati (curl, lateral raise, leg curl, ecc.) vengono esclusi prima del prompt
+    var compoundNames = DELOAD_EXERCISES_DB.map(function(e){ return e.nome.toLowerCase(); });
+    function isCompound(exName) {
+        var n = (exName || '').toLowerCase();
+        // Match diretto con il DB
+        if (compoundNames.some(function(c){ return n.includes(c) || c.includes(n); })) return true;
+        // Keyword compound aggiuntivi
+        var compoundKeywords = ['squat','stacco','panca','rematore','press','trazioni','lat machine','dip','lunge','affondo','hip thrust','leg press','hack','clean','thruster'];
+        // Keyword isolati — escludere
+        var isoKeywords = ['curl','lateral','alzata','scrollate','shrug','fly','croci','pullover','kickback','extension','leg curl','calf','polpaccio','addominali','crunch','plank','twist','raise'];
+        if (isoKeywords.some(function(k){ return n.includes(k); })) return false;
+        if (compoundKeywords.some(function(k){ return n.includes(k); })) return true;
+        return false;
+    }
+
     function fmtExercises(proto) {
         if (!proto || !proto.exercises || !proto.exercises.length) return 'Nessuno';
-        return proto.exercises.map(function(ex) {
+        var filtered = proto.exercises.filter(function(ex){ return isCompound(ex.name); });
+        if (filtered.length === 0) return 'Nessuno';
+        return filtered.map(function(ex) {
             return '- ' + ex.name + ' | ' + ex.sr + ' | ' + (ex.baseWeight || 0) + 'kg';
         }).join('\n');
     }
 
-    var upperList = upperProto ? '**' + upperProto.name + '**:\n' + fmtExercises(upperProto) : '';
-    var lowerList = lowerProto ? '**' + lowerProto.name + '**:\n' + fmtExercises(lowerProto) : '';
+    var upperList = upperProto ? '**' + upperProto.name + '** (solo compound):\n' + fmtExercises(upperProto) : '';
+    var lowerList = lowerProto ? '**' + lowerProto.name + '** (solo compound):\n' + fmtExercises(lowerProto) : '';
 
-    var prompt = 'Sei un coach di forza esperto. Crea un protocollo Full Body Deload ottimizzato.\n\n' +
-        'REGOLE DELOAD:\n' +
-        '- Carico al 50% del baseWeight originale (arrotonda a 0.5kg)\n' +
+    if (!upperList.includes('- ') && !lowerList.includes('- ')) {
+        showToast('Nessun esercizio compound trovato nei protocolli', 'error');
+        if (btn) { btn.disabled = false; btn.textContent = '✨ Genera con AI'; }
+        return;
+    }
+
+    var compoundPermessi = DELOAD_EXERCISES_DB.map(function(e){ return e.nome; }).join(', ');
+
+    var prompt = 'Sei un coach di forza esperto. Crea un protocollo Full Body Deload basato sulla letteratura scientifica (Israetel, Krieger, Helms).\n\n' +
+        'REGOLA FONDAMENTALE: 3 esercizi TOTALI, uno per pattern. Non di più, non di meno.\n\n' +
+        'SELEZIONE:\n' +
+        '- 1 PUSH: scegli il movimento di spinta principale (preferisci Panca Piana o Military Press)\n' +
+        '- 1 PULL: scegli il movimento di tirata principale (preferisci Trazioni o Rematore con Bilanciere)\n' +
+        '- 1 LOWER: scegli il movimento di gambe principale (preferisci Squat o Stacco da Terra)\n' +
+        'Se un pattern non è presente negli esercizi disponibili, scegli il più compound tra quelli esistenti.\n\n' +
+        'PARAMETRI DELOAD:\n' +
+        '- Carico: 50% del baseWeight originale (arrotonda a 0.5kg)\n' +
         '- Serie: sottrai 1 dal formato originale (es. 4×8 → 3×8, minimo 3 serie)\n' +
-        '- Seleziona 5-7 esercizi: movimenti fondamentali compound (push/pull/quad/hip hinge)\n' +
-        '- Bilancia Upper e Lower, preferisci multi-articolari, escludi isolati\n\n' +
-        'ESERCIZI DISPONIBILI:\n' + [upperList, lowerList].filter(Boolean).join('\n\n') + '\n\n' +
-        'Rispondi SOLO con array JSON puro, nessun testo, nessun markdown:\n' +
-        '[{"name":"Nome","sr":"3×8","baseWeight":40},...]';
+        '- VIETATO: curl, lateral raise, alzate, leg curl, leg extension, calf raise, croci, fly, face pull, crunch, plank, qualsiasi isolamento\n' +
+        '- Usa SOLO esercizi presenti nella lista ESERCIZI DISPONIBILI\n\n' +
+        'ESERCIZI DISPONIBILI (già filtrati, solo compound):\n' + [upperList, lowerList].filter(function(s){ return s.includes('- '); }).join('\n\n') + '\n\n' +
+        'Rispondi SOLO con array JSON puro, esattamente 3 elementi, nessun testo, nessun markdown:\n' +
+        '[{"name":"Nome","sr":"3×8","baseWeight":40},{"name":"Nome","sr":"3×8","baseWeight":60},{"name":"Nome","sr":"3×8","baseWeight":80}]';
 
     var AI_COACH_URL = 'https://trojbppshlfhrsimyxjl.supabase.co/functions/v1/ai-coach';
     var ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyb2picHBzaGxmaHJzaW15eGpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0MzgzNTgsImV4cCI6MjA4NzAxNDM1OH0.rKKyXa7N5XoBnN2kmVZGS4Lr2kax1NuodbyHD_wGjK8';
@@ -4886,9 +4918,11 @@ function generateDeloadProtocol(mode) {
         if (!match) throw new Error('Risposta AI non valida');
         var exercises = JSON.parse(match[0]);
         if (!Array.isArray(exercises) || !exercises.length) throw new Error('Lista vuota');
+        // Tronca a 4 max per sicurezza (scientificamente 3 è il target)
+        exercises = exercises.slice(0, 4);
         exercises = exercises.map(function(ex) {
             var base = parseFloat(ex.baseWeight) || 0;
-            return { name: ex.name || '', sr: ex.sr || '3×8', baseWeight: base, loads: WEEK_LOADS.map(function(p){ return Math.round(base*p*2)/2; }) };
+            return { name: ex.name || '', sr: ex.sr || '3\u00d78', baseWeight: base, loads: WEEK_LOADS.map(function(p){ return Math.round(base*p*2)/2; }) };
         });
         var newProto = { id: 'proto_deload_' + Date.now(), name: buildDeloadName(), exercises: exercises };
         APP.savedProtocols.push(newProto);
@@ -5266,12 +5300,14 @@ function openDeloadManualForm() {
     // Info box
     var info = document.createElement('div');
     info.style.cssText = 'background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);border-radius:12px;padding:11px 14px;font-size:0.67rem;color:#94a3b8;line-height:1.7;margin-bottom:20px;';
-    info.innerHTML = '<div style="font-weight:700;color:#818cf8;margin-bottom:5px;">Regole applicate automaticamente</div>' +
+    info.innerHTML = '<div style="font-weight:700;color:#818cf8;margin-bottom:5px;">Regole scientifiche del Deload</div>' +
         '<div style="display:grid;grid-template-columns:56px 1fr;gap:1px 10px;">' +
+        '<span style="color:#64748b;">Esercizi</span><span><strong style="color:#e2e8f0;">3 totali</strong> — 1 Push · 1 Pull · 1 Lower</span>' +
         '<span style="color:#64748b;">Serie</span><span>3 (fisse)</span>' +
         '<span style="color:#64748b;">Reps</span><span>8-10 per set</span>' +
-        '<span style="color:#64748b;">Carico</span><span>50% del massimale inserito</span>' +
-        '</div>';
+        '<span style="color:#64748b;">Carico</span><span>50% del massimale</span>' +
+        '</div>' +
+        '<div style="margin-top:8px;font-size:0.62rem;color:#475569;">Seleziona il tuo esercizio principale per ciascun pattern. Non di più.</div>';
     content.appendChild(info);
 
     // Lista esercizi selezionati
@@ -5396,11 +5432,15 @@ function openDeloadManualForm() {
                 var inp2 = document.createElement('input');
                 inp2.type = 'number'; inp2.placeholder = 'Max kg';
                 inp2.style.cssText = 'width:68px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:7px;padding:5px 8px;color:#e2e8f0;font-size:0.72rem;text-align:center;outline:none;flex-shrink:0;';
+                var patternAlreadyCovered = exercises.some(function(e){
+                    return DELOAD_EXERCISES_DB.some(function(db){ return db.nome === e.name && db.pattern === pat.key; });
+                });
                 var btn2 = document.createElement('button');
-                btn2.textContent = alreadyAdded ? '\u2713' : '+';
+                btn2.textContent = alreadyAdded ? '\u2713' : (patternAlreadyCovered ? '\u2022' : '+');
+                btn2.title = patternAlreadyCovered && !alreadyAdded ? 'Hai già selezionato un esercizio ' + pat.key : '';
                 btn2.style.cssText = 'width:28px;height:28px;border-radius:7px;border:none;font-size:0.8rem;font-weight:700;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:' +
-                    (alreadyAdded ? 'rgba(16,185,129,0.2)' : 'rgba(99,102,241,0.25)') + ';color:' + (alreadyAdded ? '#10b981' : '#818cf8') + ';';
-                if (!alreadyAdded) {
+                    (alreadyAdded ? 'rgba(16,185,129,0.2)' : patternAlreadyCovered ? 'rgba(255,255,255,0.05)' : 'rgba(99,102,241,0.25)') + ';color:' + (alreadyAdded ? '#10b981' : patternAlreadyCovered ? '#334155' : '#818cf8') + ';';
+                if (!alreadyAdded && !patternAlreadyCovered) {
                     btn2.onclick = function() {
                         var max2 = parseFloat(inp2.value);
                         if (!max2 || max2 <= 0) { showToast('Inserisci il massimale per ' + ex.nome, 'error'); inp2.focus(); return; }
