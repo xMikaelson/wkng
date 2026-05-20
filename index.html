@@ -1591,8 +1591,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         @keyframes protoEditorIn { 0% { opacity:0; transform:translateY(-8px); } 100% { opacity:1; transform:translateY(0); } }
         .proto-editor-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; gap:8px; }
         .proto-editor-title { font-size:0.62rem; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:0.12em; flex:1; min-width:0; word-break:break-word; }
-        .proto-editor-close { background:rgba(255,255,255,0.06); border:0.5px solid rgba(255,255,255,0.12); color:#94a3b8; width:26px; height:26px; border-radius:7px; font-size:0.75rem; cursor:pointer; font-family:inherit; flex-shrink:0; padding:0; display:flex; align-items:center; justify-content:center; line-height:1; }
-        .proto-editor-close:hover { color:#e2e8f0; background:rgba(255,255,255,0.1); }        .proto-editor-list { display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
+        .proto-editor-close { background:rgba(255,255,255,0.06); border:0.5px solid rgba(255,255,255,0.12); color:#94a3b8; width:26px; height:26px; border-radius:7px; font-size:0.75rem; cursor:pointer; font-family:inherit; flex-shrink:0; padding:0; display:flex; align-items:center; justify-content:center; }
+        .proto-editor-close:hover { color:#e2e8f0; background:rgba(255,255,255,0.1); }
+        .proto-editor-list { display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
         /* Layout esercizi editor — wrap+card+del */
         .proto-ex-wrap { display:flex; align-items:center; gap:4px; margin-bottom:6px; }
         .proto-ex-card { flex:1; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:10px; padding:9px 10px; min-width:0; display:flex; align-items:center; gap:8px; }
@@ -4185,13 +4186,13 @@ function buildProtoEditorBox(proto, weekIdx) {
 
     // ── Header colonne ──
     var colHead = document.createElement('div');
-    colHead.style.cssText = 'display:flex;align-items:center;padding:0 0 4px;';
+    // padding-right = gap(4px) + del(24px) = 28px per allineare con le caselle dentro la card
+    colHead.style.cssText = 'display:flex;align-items:center;padding:0 28px 4px 0;';
     var labelStyle = 'font-size:0.45rem;color:#475569;text-transform:uppercase;letter-spacing:0.08em;';
     colHead.innerHTML =
-        '<span style="' + labelStyle + 'flex:1;">Esercizio</span>' +
+        '<span style="' + labelStyle + 'flex:1;"></span>' +
         '<span style="' + labelStyle + 'width:40px;text-align:center;">Serie×Rip</span>' +
-        '<span style="' + labelStyle + 'width:40px;text-align:center;margin-left:4px;">Kg</span>' +
-        '<span style="width:28px;"></span>';
+        '<span style="' + labelStyle + 'width:40px;text-align:center;margin-left:4px;">Kg</span>';
     box.appendChild(colHead);
 
     // ── Lista esercizi ──
