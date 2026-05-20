@@ -1594,15 +1594,27 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .proto-editor-close { background:rgba(255,255,255,0.06); border:0.5px solid rgba(255,255,255,0.12); color:#94a3b8; width:26px; height:26px; border-radius:7px; font-size:0.9rem; cursor:pointer; font-family:inherit; flex-shrink:0; padding:0; line-height:1; }
         .proto-editor-close:hover { color:#e2e8f0; background:rgba(255,255,255,0.1); }
         .proto-editor-list { display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
-        .proto-ex-row { display:grid; grid-template-columns:1fr 60px 60px 26px; gap:5px; align-items:center; position:relative; }
-        .proto-ex-row input { background:#0f172a; border:1px solid #334155; color:#e2e8f0; padding:7px 8px; border-radius:6px; font-size:0.65rem; width:100%; box-sizing:border-box; font-family:inherit; }
-        .proto-ex-row input:focus { outline:none; border-color:var(--accent); }
+        /* Layout esercizi editor — wrap+card+del */
+        .proto-ex-wrap { display:flex; align-items:center; gap:4px; margin-bottom:6px; }
+        .proto-ex-card { flex:1; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:10px; padding:9px 10px; min-width:0; display:flex; align-items:center; gap:8px; }
+        .proto-ex-left { flex:1; min-width:0; }
+        .proto-ex-name-row { margin-bottom:5px; }
+        .proto-ex-name-row input { background:transparent; border:none; border-bottom:1px solid rgba(255,255,255,0.08); color:#e2e8f0; font-size:0.77rem; font-weight:600; padding:2px 0; width:100%; box-sizing:border-box; outline:none; font-family:inherit; white-space:nowrap; }
+        .proto-ex-name-row input:focus { border-bottom-color:var(--accent); }
+        .proto-ex-sub { display:flex; align-items:center; gap:5px; }
+        .proto-ex-badge { font-size:0.41rem; font-weight:800; text-transform:uppercase; letter-spacing:0.07em; padding:2px 6px; border-radius:20px; background:rgba(16,185,129,0.15); color:#10b981; border:0.5px solid rgba(16,185,129,0.35); flex-shrink:0; }
+        .proto-ex-badge.iso { background:rgba(245,158,11,0.12); color:#f59e0b; border-color:rgba(245,158,11,0.3); }
+        .proto-ex-badge.unknown { background:rgba(255,255,255,0.05); color:#475569; border-color:rgba(255,255,255,0.1); }
+        .proto-ex-muscles { font-size:0.46rem; color:#475569; text-transform:uppercase; letter-spacing:0.04em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .proto-ex-right { display:flex; align-items:center; gap:4px; flex-shrink:0; }
+        .proto-ex-right input { background:#0f172a; border:1px solid #334155; color:#e2e8f0; padding:6px 5px; border-radius:6px; font-size:0.67rem; width:40px; box-sizing:border-box; font-family:inherit; text-align:center; outline:none; }
+        .proto-ex-right input:focus { border-color:var(--accent); }
+        .proto-ex-right .pe-sr { color:var(--accent); font-weight:700; }
+        .proto-ex-right .pe-kg { color:var(--primary); font-weight:700; }
+        .proto-ex-del { background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.2); border-radius:6px; color:#f87171; font-size:0.6rem; cursor:pointer; width:22px; height:22px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-family:inherit; }
+        /* Legacy - mantieni .proto-ex-row per compatibilità suggestions */
+        .proto-ex-row { position:relative; }
         .proto-ex-row .suggestions { top:34px; left:0; width:100%; }
-        .proto-ex-row .pe-name { color:#e2e8f0; }
-        .proto-ex-row .pe-sr { text-align:center; color:var(--accent); font-weight:600; }
-        .proto-ex-row .pe-kg { text-align:center; color:var(--primary); font-weight:600; }
-        .proto-ex-row .pe-del { background:rgba(239,68,68,0.08); border:0.5px solid rgba(239,68,68,0.3); color:#ef4444; width:26px; height:30px; border-radius:6px; font-size:0.85rem; cursor:pointer; font-family:inherit; padding:0; display:flex; align-items:center; justify-content:center; }
-        .proto-ex-row .pe-del:hover { background:rgba(239,68,68,0.18); }
         .proto-editor-add { width:100%; padding:8px; background:none; color:var(--primary); border:1px dashed var(--primary); border-radius:8px; font-size:0.7rem; font-weight:600; cursor:pointer; font-family:inherit; transition:background 0.15s; }
         .proto-editor-add:hover { background:rgba(0,255,136,0.06); }
         .proto-editor-empty { font-size:0.62rem; color:#475569; text-align:center; padding:8px 0; }
@@ -4200,6 +4212,76 @@ function buildProtoEditorBox(proto, weekIdx) {
         return null; // sconosciuto
     }
 
+    // Helper: restituisce i muscoli coinvolti dall'esercizio
+    function getMuscles(name) {
+        if (!name) return '';
+        var n = name.toLowerCase();
+        var muscleMap = {
+            'panca piana': 'petto, tricipiti, deltoide ant.',
+            'panca inclinata': 'petto sup., tricipiti, deltoide ant.',
+            'panca declinata': 'petto inf., tricipiti',
+            'military press': 'deltoidi, trapezio, tricipiti',
+            'lento avanti': 'deltoidi, trapezio, tricipiti',
+            'arnold press': 'deltoidi, trapezio, tricipiti',
+            'lento dietro': 'deltoidi, trapezio',
+            'dip': 'petto, tricipiti, deltoide',
+            'push up': 'petto, tricipiti, deltoide ant.',
+            'pullover': 'petto, gran dorsale, tricipiti',
+            'trazioni': 'gran dorsale, bicipiti, romboidi',
+            'lat machine': 'gran dorsale, bicipiti, romboidi',
+            'rematore con bilanciere': 'gran dorsale, romboidi, bicipiti',
+            'rematore con manubrio': 'gran dorsale, romboidi, bicipiti',
+            'rematore ai cavi': 'gran dorsale, romboidi, bicipiti',
+            'stacco da terra': 'femorali, glutei, erettori spinali',
+            'stacco rumeno': 'femorali, glutei, erettori',
+            'stacco sumo': 'glutei, femorali, quadricipiti',
+            'good morning': 'femorali, glutei, erettori',
+            'iperestensioni': 'erettori spinali, glutei, femorali',
+            'alzate laterali': 'deltoide laterale',
+            'alzate frontali': 'deltoide anteriore',
+            'face pull': 'deltoide post., rotatori, trapezio',
+            'scrollate': 'trapezio superiore',
+            'curl con bilanciere': 'bicipiti',
+            'curl con manubri': 'bicipiti',
+            'curl alternato': 'bicipiti',
+            'curl ai cavi': 'bicipiti',
+            'curl hammer': 'bicipiti, brachiale',
+            'curl concentrato': 'bicipiti',
+            'curl su panca scott': 'bicipiti',
+            'french press': 'tricipiti',
+            'pushdown': 'tricipiti',
+            'estensioni tricipiti': 'tricipiti',
+            'kickback': 'tricipiti',
+            'tricipiti in presa stretta': 'tricipiti, petto',
+            'squat': 'quadricipiti, glutei, femorali',
+            'hack squat': 'quadricipiti, glutei',
+            'goblet': 'quadricipiti, glutei, core',
+            'leg press': 'quadricipiti, glutei, femorali',
+            'affondi': 'quadricipiti, glutei, femorali',
+            'step up': 'quadricipiti, glutei',
+            'leg extension': 'quadricipiti',
+            'hip thrust': 'glutei, femorali',
+            'sumo squat': 'glutei, adduttori, quadricipiti',
+            'abductor': 'glutei, abduttori',
+            'leg curl': 'femorali',
+            'calf raise': 'polpacci (gastrocnemio)',
+            'crunch': 'addominali',
+            'plank': 'core, addominali',
+            'russian twist': 'addominali obliqui',
+            'leg raise': 'addominali inferiori',
+            'rollout': 'core, addominali',
+            'mountain climber': 'core, spalle, quadricipiti',
+            'clean and press': 'full body, deltoidi, glutei',
+            'kettlebell swing': 'glutei, femorali, core',
+            'thruster': 'quadricipiti, deltoidi, tricipiti',
+            'burpee': 'full body'
+        };
+        for (var key in muscleMap) {
+            if (n.includes(key)) return muscleMap[key];
+        }
+        return '';
+    }
+
     // Helper: restituisce sr consigliato in base a compound/isolato e slot protocollo
     function getRecommendedSr(name, slot) {
         var comp = isCompoundEx(name);
@@ -4224,50 +4306,60 @@ function buildProtoEditorBox(proto, weekIdx) {
         var sl = protoResolveSlot(proto);
         draft.forEach(function(ex, idx) {
             var comp = isCompoundEx(ex.name);
-            var tagColor = comp === true ? '#10b981' : comp === false ? '#f59e0b' : '#475569';
-            var tagText  = comp === true ? 'Compound' : comp === false ? 'Isolato' : '—';
-            var tagStyle = 'display:inline-block;font-size:0.48rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;padding:1px 5px;border-radius:4px;background:' + tagColor + '20;color:' + tagColor + ';border:0.5px solid ' + tagColor + '60;margin-bottom:3px;';
+            var badgeClass = comp === true ? 'proto-ex-badge' : comp === false ? 'proto-ex-badge iso' : 'proto-ex-badge unknown';
+            var badgeText  = comp === true ? 'Compound' : comp === false ? 'Isolato' : '—';
+            var muscles    = getMuscles(ex.name);
 
-            var recSr = getRecommendedSr(ex.name, sl);
-            var srHint = recSr ? recSr : (sl === 'upper' || sl === 'lower' ? '5×5 / 3×8' : '4×8 / 3×12');
+            // Wrapper esterno (card + del fuori)
+            var wrap = document.createElement('div');
+            wrap.className = 'proto-ex-wrap';
 
-            var row = document.createElement('div');
-            row.className = 'proto-ex-row';
-            row.style.cssText = 'display:flex;flex-direction:column;gap:4px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);';
+            // Card
+            var card = document.createElement('div');
+            card.className = 'proto-ex-card proto-ex-row';
 
-            // Riga nome + tag
-            var nameWrap = document.createElement('div');
-            nameWrap.style.cssText = 'display:flex;flex-direction:column;gap:2px;position:relative;';
-            var tag = document.createElement('span');
-            tag.style.cssText = tagStyle;
-            tag.textContent = tagText;
-            nameWrap.appendChild(tag);
+            // Colonna sinistra
+            var left = document.createElement('div');
+            left.className = 'proto-ex-left';
 
+            // Riga nome
+            var nameRow = document.createElement('div');
+            nameRow.className = 'proto-ex-name-row';
             var nameInput = document.createElement('input');
             nameInput.type = 'text';
             nameInput.className = 'pe-name';
             nameInput.placeholder = 'Cerca esercizio...';
-            nameInput.value = escapeHTML(ex.name || '');
+            nameInput.value = ex.name || '';
             nameInput.setAttribute('oninput', 'debouncedSearch(this)');
-            nameInput.style.cssText = 'width:100%;box-sizing:border-box;';
-            nameWrap.appendChild(nameInput);
-
             var suggestionsEl = document.createElement('div');
             suggestionsEl.className = 'suggestions';
-            nameWrap.appendChild(suggestionsEl);
-            row.appendChild(nameWrap);
+            nameRow.appendChild(nameInput);
+            nameRow.appendChild(suggestionsEl);
+            left.appendChild(nameRow);
 
-            // Riga sr + kg + del
-            var controlRow = document.createElement('div');
-            controlRow.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 28px;gap:5px;align-items:center;';
+            // Riga badge + muscoli
+            var sub = document.createElement('div');
+            sub.className = 'proto-ex-sub';
+            var badge = document.createElement('span');
+            badge.className = badgeClass;
+            badge.textContent = badgeText;
+            var musclesEl = document.createElement('span');
+            musclesEl.className = 'proto-ex-muscles';
+            musclesEl.textContent = muscles;
+            sub.appendChild(badge);
+            sub.appendChild(musclesEl);
+            left.appendChild(sub);
+            card.appendChild(left);
 
+            // Colonna destra: sr + kg
+            var right = document.createElement('div');
+            right.className = 'proto-ex-right';
+            var recSr = getRecommendedSr(ex.name, sl);
             var srInput = document.createElement('input');
             srInput.type = 'text';
             srInput.className = 'pe-sr';
-            srInput.placeholder = srHint;
+            srInput.placeholder = recSr || 'serie';
             srInput.value = ex.sr || '';
-            srInput.style.cssText = 'text-align:center;';
-
             var kgInput = document.createElement('input');
             kgInput.type = 'number';
             kgInput.className = 'pe-kg';
@@ -4276,19 +4368,19 @@ function buildProtoEditorBox(proto, weekIdx) {
             kgInput.step = '0.5';
             kgInput.value = ex.baseWeight || '';
             kgInput.setAttribute('inputmode', 'decimal');
-            kgInput.style.cssText = 'text-align:center;';
+            right.appendChild(srInput);
+            right.appendChild(kgInput);
+            card.appendChild(right);
+            wrap.appendChild(card);
 
+            // Del fuori dalla card
             var delBtn = document.createElement('button');
-            delBtn.className = 'pe-del';
-            delBtn.title = 'Rimuovi';
+            delBtn.className = 'proto-ex-del pe-del';
             delBtn.textContent = '✕';
+            wrap.appendChild(delBtn);
+            list.appendChild(wrap);
 
-            controlRow.appendChild(srInput);
-            controlRow.appendChild(kgInput);
-            controlRow.appendChild(delBtn);
-            row.appendChild(controlRow);
-
-            // Listener
+            // Listeners
             function onManualEdit() {
                 if (proto._coachOptimizedAt) {
                     proto._coachOptimizedAt = null;
@@ -4311,29 +4403,25 @@ function buildProtoEditorBox(proto, weekIdx) {
                 onManualEdit();
             });
 
-            // Observer suggestion: aggiorna tag e sr automatico quando si seleziona
+            // Aggiorna badge, muscoli e sr quando si seleziona dal dropdown
             var observer = new MutationObserver(function() {
                 suggestionsEl.querySelectorAll('.suggestion-item').forEach(function(item) {
                     if (!item._patched) {
                         item._patched = true;
                         item.onclick = function() {
-                            var selectedName = item.querySelector('span') ? item.querySelector('span').textContent : item.textContent;
-                            draft[idx].name = selectedName;
-                            nameInput.value = selectedName;
+                            var sel = item.querySelector('span') ? item.querySelector('span').textContent : item.textContent;
+                            draft[idx].name = sel;
+                            nameInput.value = sel;
                             suggestionsEl.style.display = 'none';
                             nameInput.setAttribute('data-selected', 'true');
-                            // Aggiorna tag
-                            var c = isCompoundEx(selectedName);
-                            tag.textContent = c === true ? 'Compound' : c === false ? 'Isolato' : '—';
-                            var tc = c === true ? '#10b981' : c === false ? '#f59e0b' : '#475569';
-                            tag.style.cssText = 'display:inline-block;font-size:0.48rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;padding:1px 5px;border-radius:4px;background:' + tc + '20;color:' + tc + ';border:0.5px solid ' + tc + '60;margin-bottom:3px;';
-                            // Imposta sr automatico
-                            var rec = getRecommendedSr(selectedName, sl);
-                            if (rec) {
-                                srInput.value = rec;
-                                draft[idx].sr = rec;
-                                srInput.placeholder = rec;
-                            }
+                            // Aggiorna badge
+                            var c = isCompoundEx(sel);
+                            badge.className = c === true ? 'proto-ex-badge' : c === false ? 'proto-ex-badge iso' : 'proto-ex-badge unknown';
+                            badge.textContent = c === true ? 'Compound' : c === false ? 'Isolato' : '—';
+                            musclesEl.textContent = getMuscles(sel);
+                            // Sr automatico
+                            var rec = getRecommendedSr(sel, sl);
+                            if (rec) { srInput.value = rec; draft[idx].sr = rec; srInput.placeholder = rec; }
                         };
                     }
                 });
@@ -4343,13 +4431,9 @@ function buildProtoEditorBox(proto, weekIdx) {
             srInput.addEventListener('input', function() { draft[idx].sr = this.value; onManualEdit(); });
             kgInput.addEventListener('input', function() { var n = parseFloat(this.value); draft[idx].baseWeight = isNaN(n) ? 0 : n; onManualEdit(); });
             delBtn.onclick = function() { draft.splice(idx, 1); onManualEdit(); rerenderList(); };
-
-            list.appendChild(row);
         });
     }
     rerenderList();
-
-    list.addEventListener('coach-applied', function() { rerenderList(); });
 
     // ── Riga Aggiungi + Salva affiancati ──
     var topBtnRow = document.createElement('div');
