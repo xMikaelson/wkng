@@ -1592,8 +1592,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .proto-editor-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; gap:8px; }
         .proto-editor-title { font-size:0.62rem; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:0.12em; flex:1; min-width:0; word-break:break-word; }
         .proto-editor-close { background:rgba(255,255,255,0.06); border:0.5px solid rgba(255,255,255,0.12); color:#94a3b8; width:26px; height:26px; border-radius:7px; font-size:0.75rem; cursor:pointer; font-family:inherit; flex-shrink:0; padding:0; display:flex; align-items:center; justify-content:center; line-height:1; }
-        .proto-editor-close:hover { color:#e2e8f0; background:rgba(255,255,255,0.1); }
-        .proto-editor-list { display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
+        .proto-editor-close:hover { color:#e2e8f0; background:rgba(255,255,255,0.1); }        .proto-editor-list { display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
         /* Layout esercizi editor — wrap+card+del */
         .proto-ex-wrap { display:flex; align-items:center; gap:4px; margin-bottom:6px; }
         .proto-ex-card { flex:1; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:10px; padding:9px 10px; min-width:0; display:flex; align-items:center; gap:8px; }
@@ -4190,9 +4189,9 @@ function buildProtoEditorBox(proto, weekIdx) {
     var labelStyle = 'font-size:0.45rem;color:#475569;text-transform:uppercase;letter-spacing:0.08em;';
     colHead.innerHTML =
         '<span style="' + labelStyle + 'flex:1;">Esercizio</span>' +
-        '<span style="' + labelStyle + 'width:40px;text-align:center;">Serie</span>' +
+        '<span style="' + labelStyle + 'width:40px;text-align:center;">Serie×Rip</span>' +
         '<span style="' + labelStyle + 'width:40px;text-align:center;margin-left:4px;">Kg</span>' +
-        '<span style="width:28px;"></span>'; /* spazio per la X del del */
+        '<span style="width:28px;"></span>';
     box.appendChild(colHead);
 
     // ── Lista esercizi ──
@@ -4204,17 +4203,21 @@ function buildProtoEditorBox(proto, weekIdx) {
     // Helper: determina se un esercizio è compound o isolato
     function isCompoundEx(name) {
         var n = (name || '').toLowerCase();
-        var isoKw = ['curl','lateral','alzata','alzate','scrollate','shrug','fly','croci','pullover','kickback','extension','leg curl','calf','polpaccio','crunch','plank','twist','face pull','abductor','adductor'];
+        var isoKw = ['curl','lateral','alzata','alzate','scrollate','shrug','fly','croci','pullover',
+                     'kickback','leg curl','calf','polpaccio','crunch','plank','twist','face pull',
+                     'abductor','adductor','french press','pushdown','estensioni tricipiti',
+                     'tricipiti in presa','leg extension','hip abduction','hip adduction'];
         if (isoKw.some(function(k){ return n.includes(k); })) return false;
-        var compKw = ['squat','stacco','panca','rematore','press','trazioni','lat machine','dip','lunge','affondo','hip thrust','leg press','hack','clean','thruster','push up'];
+        var compKw = ['squat','stacco','panca','rematore','press','trazioni','lat machine','dip',
+                      'lunge','affondo','hip thrust','leg press','hack','clean','thruster','push up',
+                      'good morning','iperestensioni'];
         if (compKw.some(function(k){ return n.includes(k); })) return true;
-        // Cerca nel database
         var inDB = ESERCIZI_DB.find(function(e){ return e.nome.toLowerCase() === n; });
         if (inDB) {
-            var compGroups = ['Petto','Schiena','Spalle','Quadricipiti','Glutei','Femorali','Full Body'];
+            var compGroups = ['Petto','Schiena','Quadricipiti','Glutei','Femorali','Full Body'];
             return compGroups.includes(inDB.gruppo);
         }
-        return null; // sconosciuto
+        return null;
     }
 
     // Helper: restituisce i muscoli coinvolti dall'esercizio
@@ -4253,10 +4256,10 @@ function buildProtoEditorBox(proto, weekIdx) {
             'curl hammer': 'bicipiti, brachiale',
             'curl concentrato': 'bicipiti',
             'curl su panca scott': 'bicipiti',
-            'french press': 'tricipiti',
-            'pushdown': 'tricipiti',
-            'estensioni tricipiti': 'tricipiti',
-            'kickback': 'tricipiti',
+            'french press': 'tricipiti — isolato',
+            'pushdown': 'tricipiti — isolato',
+            'estensioni tricipiti': 'tricipiti — isolato',
+            'kickback': 'tricipiti — isolato',
             'tricipiti in presa stretta': 'tricipiti, petto',
             'squat': 'quadricipiti, glutei, femorali',
             'hack squat': 'quadricipiti, glutei',
