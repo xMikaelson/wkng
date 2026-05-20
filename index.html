@@ -4184,6 +4184,34 @@ function buildProtoEditorBox(proto, weekIdx) {
     list.id = 'proto-editor-list';
     box.appendChild(list);
 
+    // Helper: determina se un esercizio è compound o isolato
+    function isCompoundEx(name) {
+        var n = (name || '').toLowerCase();
+        var isoKw = ['curl','lateral','alzata','alzate','scrollate','shrug','fly','croci','pullover','kickback','extension','leg curl','calf','polpaccio','crunch','plank','twist','face pull','abductor','adductor'];
+        if (isoKw.some(function(k){ return n.includes(k); })) return false;
+        var compKw = ['squat','stacco','panca','rematore','press','trazioni','lat machine','dip','lunge','affondo','hip thrust','leg press','hack','clean','thruster','push up'];
+        if (compKw.some(function(k){ return n.includes(k); })) return true;
+        // Cerca nel database
+        var inDB = ESERCIZI_DB.find(function(e){ return e.nome.toLowerCase() === n; });
+        if (inDB) {
+            var compGroups = ['Petto','Schiena','Spalle','Quadricipiti','Glutei','Femorali','Full Body'];
+            return compGroups.includes(inDB.gruppo);
+        }
+        return null; // sconosciuto
+    }
+
+    // Helper: restituisce sr consigliato in base a compound/isolato e slot protocollo
+    function getRecommendedSr(name, slot) {
+        var comp = isCompoundEx(name);
+        if (comp === null) return null;
+        var isForza = slot === 'upper' || slot === 'lower' || proto.goal === 'forza';
+        if (isForza) {
+            return comp ? '5×5' : '3×8';
+        } else {
+            return comp ? '4×8' : '3×12';
+        }
+    }
+
     function rerenderList() {
         list.innerHTML = '';
         if (!draft || draft.length === 0) {
@@ -4193,21 +4221,77 @@ function buildProtoEditorBox(proto, weekIdx) {
             list.appendChild(empty);
             return;
         }
+        var sl = protoResolveSlot(proto);
         draft.forEach(function(ex, idx) {
+            var comp = isCompoundEx(ex.name);
+            var tagColor = comp === true ? '#10b981' : comp === false ? '#f59e0b' : '#475569';
+            var tagText  = comp === true ? 'Compound' : comp === false ? 'Isolato' : '—';
+            var tagStyle = 'display:inline-block;font-size:0.48rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;padding:1px 5px;border-radius:4px;background:' + tagColor + '20;color:' + tagColor + ';border:0.5px solid ' + tagColor + '60;margin-bottom:3px;';
+
+            var recSr = getRecommendedSr(ex.name, sl);
+            var srHint = recSr ? recSr : (sl === 'upper' || sl === 'lower' ? '5×5 / 3×8' : '4×8 / 3×12');
+
             var row = document.createElement('div');
             row.className = 'proto-ex-row';
-            row.innerHTML = '<input type="text" class="pe-name" placeholder="Cerca esercizio..." value="' + escapeHTML(ex.name || '') + '" oninput="debouncedSearch(this)">' +
-                '<div class="suggestions"></div>' +
-                '<input type="text" class="pe-sr" placeholder="5x5" value="' + escapeHTML(ex.sr || '') + '">' +
-                '<input type="number" class="pe-kg" placeholder="kg" min="0" step="0.5" value="' + (ex.baseWeight || '') + '" inputmode="decimal">' +
-                '<button class="pe-del" title="Rimuovi">✕</button>';
+            row.style.cssText = 'display:flex;flex-direction:column;gap:4px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);';
 
-            // Aggiornamento in tempo reale del draft (solo in memoria)
-            // + reset del flag Coach se l'utente modifica manualmente dopo accettazione
+            // Riga nome + tag
+            var nameWrap = document.createElement('div');
+            nameWrap.style.cssText = 'display:flex;flex-direction:column;gap:2px;position:relative;';
+            var tag = document.createElement('span');
+            tag.style.cssText = tagStyle;
+            tag.textContent = tagText;
+            nameWrap.appendChild(tag);
+
+            var nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.className = 'pe-name';
+            nameInput.placeholder = 'Cerca esercizio...';
+            nameInput.value = escapeHTML(ex.name || '');
+            nameInput.setAttribute('oninput', 'debouncedSearch(this)');
+            nameInput.style.cssText = 'width:100%;box-sizing:border-box;';
+            nameWrap.appendChild(nameInput);
+
+            var suggestionsEl = document.createElement('div');
+            suggestionsEl.className = 'suggestions';
+            nameWrap.appendChild(suggestionsEl);
+            row.appendChild(nameWrap);
+
+            // Riga sr + kg + del
+            var controlRow = document.createElement('div');
+            controlRow.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 28px;gap:5px;align-items:center;';
+
+            var srInput = document.createElement('input');
+            srInput.type = 'text';
+            srInput.className = 'pe-sr';
+            srInput.placeholder = srHint;
+            srInput.value = ex.sr || '';
+            srInput.style.cssText = 'text-align:center;';
+
+            var kgInput = document.createElement('input');
+            kgInput.type = 'number';
+            kgInput.className = 'pe-kg';
+            kgInput.placeholder = 'kg';
+            kgInput.min = '0';
+            kgInput.step = '0.5';
+            kgInput.value = ex.baseWeight || '';
+            kgInput.setAttribute('inputmode', 'decimal');
+            kgInput.style.cssText = 'text-align:center;';
+
+            var delBtn = document.createElement('button');
+            delBtn.className = 'pe-del';
+            delBtn.title = 'Rimuovi';
+            delBtn.textContent = '✕';
+
+            controlRow.appendChild(srInput);
+            controlRow.appendChild(kgInput);
+            controlRow.appendChild(delBtn);
+            row.appendChild(controlRow);
+
+            // Listener
             function onManualEdit() {
                 if (proto._coachOptimizedAt) {
                     proto._coachOptimizedAt = null;
-                    // Sblocca il bottone Analisi in-place senza re-render
                     var sb = box.querySelector('.proto-editor-save-btn');
                     if (sb && sb.disabled) {
                         sb.textContent = '🤖 Analisi Coach AI';
@@ -4221,63 +4305,63 @@ function buildProtoEditorBox(proto, weekIdx) {
                     }
                 }
             }
-            row.querySelector('.pe-name').addEventListener('input', function() {
+
+            nameInput.addEventListener('input', function() {
                 draft[idx].name = this.value;
                 onManualEdit();
             });
-            // Fix: quando si seleziona un suggerimento, aggiorna subito il draft
-            var suggestions = row.querySelector('.suggestions');
-            var nameInput = row.querySelector('.pe-name');
-            var origDebouncedSearch = debouncedSearch;
-            nameInput.addEventListener('click', function(){});
-            // Override suggestion click per aggiornare draft prima del re-render
+
+            // Observer suggestion: aggiorna tag e sr automatico quando si seleziona
             var observer = new MutationObserver(function() {
-                suggestions.querySelectorAll('.suggestion-item').forEach(function(item) {
+                suggestionsEl.querySelectorAll('.suggestion-item').forEach(function(item) {
                     if (!item._patched) {
                         item._patched = true;
-                        var orig = item.onclick;
-                        item.onclick = function(e) {
-                            draft[idx].name = item.querySelector('span') ? item.querySelector('span').textContent : item.textContent;
-                            nameInput.value = draft[idx].name;
-                            suggestions.style.display = 'none';
+                        item.onclick = function() {
+                            var selectedName = item.querySelector('span') ? item.querySelector('span').textContent : item.textContent;
+                            draft[idx].name = selectedName;
+                            nameInput.value = selectedName;
+                            suggestionsEl.style.display = 'none';
                             nameInput.setAttribute('data-selected', 'true');
+                            // Aggiorna tag
+                            var c = isCompoundEx(selectedName);
+                            tag.textContent = c === true ? 'Compound' : c === false ? 'Isolato' : '—';
+                            var tc = c === true ? '#10b981' : c === false ? '#f59e0b' : '#475569';
+                            tag.style.cssText = 'display:inline-block;font-size:0.48rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;padding:1px 5px;border-radius:4px;background:' + tc + '20;color:' + tc + ';border:0.5px solid ' + tc + '60;margin-bottom:3px;';
+                            // Imposta sr automatico
+                            var rec = getRecommendedSr(selectedName, sl);
+                            if (rec) {
+                                srInput.value = rec;
+                                draft[idx].sr = rec;
+                                srInput.placeholder = rec;
+                            }
                         };
                     }
                 });
             });
-            observer.observe(suggestions, { childList: true });
-            row.querySelector('.pe-sr').addEventListener('input', function() {
-                draft[idx].sr = this.value;
-                onManualEdit();
-            });
-            row.querySelector('.pe-kg').addEventListener('input', function() {
-                var n = parseFloat(this.value);
-                draft[idx].baseWeight = isNaN(n) ? 0 : n;
-                onManualEdit();
-            });
-            row.querySelector('.pe-del').onclick = function() {
-                draft.splice(idx, 1);
-                onManualEdit();
-                rerenderList();
-            };
+            observer.observe(suggestionsEl, { childList: true });
+
+            srInput.addEventListener('input', function() { draft[idx].sr = this.value; onManualEdit(); });
+            kgInput.addEventListener('input', function() { var n = parseFloat(this.value); draft[idx].baseWeight = isNaN(n) ? 0 : n; onManualEdit(); });
+            delBtn.onclick = function() { draft.splice(idx, 1); onManualEdit(); rerenderList(); };
+
             list.appendChild(row);
         });
     }
     rerenderList();
 
-    // Quando il Coach applica la sua lista, aggiorna il DOM via rerenderList
-    // (il draft è già stato sincronizzato in-place da protoEditorCommit)
     list.addEventListener('coach-applied', function() { rerenderList(); });
 
-    // ── Bottone + Aggiungi esercizio ──
+    // ── Riga Aggiungi + Salva affiancati ──
+    var topBtnRow = document.createElement('div');
+    topBtnRow.style.cssText = 'display:flex;gap:8px;margin-top:10px;';
+
     var addBtn = document.createElement('button');
     addBtn.className = 'proto-editor-add';
-    addBtn.textContent = '+ Aggiungi esercizio';
+    addBtn.style.cssText = 'flex:1;';
+    addBtn.textContent = '+ Aggiungi';
     addBtn.onclick = function() {
         var sl = protoResolveSlot(proto);
-        var isForza = sl === 'upper' || sl === 'lower' || proto.goal === 'forza';
-        var defaultSr = isForza ? '5 x 5' : '4 x 10';
-        draft.push({ name: '', sr: defaultSr, baseWeight: 0 });
+        draft.push({ name: '', sr: '', baseWeight: 0 });
         rerenderList();
         setTimeout(function() {
             var rows = list.querySelectorAll('.proto-ex-row');
@@ -4285,22 +4369,11 @@ function buildProtoEditorBox(proto, weekIdx) {
             if (last) { var ni = last.querySelector('.pe-name'); if (ni) ni.focus(); }
         }, 50);
     };
-    box.appendChild(addBtn);
 
-    // ── Divisore + bottone Salva ──
-    var divider = document.createElement('div');
-    divider.className = 'proto-editor-divider';
-    box.appendChild(divider);
-
-    var saveRow = document.createElement('div');
-    saveRow.className = 'proto-editor-save-row';
-
-    // Bottone Salva diretto
     var directSaveBtn = document.createElement('button');
     directSaveBtn.textContent = '💾 Salva';
-    directSaveBtn.style.cssText = 'padding:11px 14px;background:rgba(0,255,136,0.15);color:var(--primary);border:1px solid rgba(0,255,136,0.3);border-radius:10px;font-size:0.75rem;font-weight:800;cursor:pointer;font-family:inherit;flex-shrink:0;';
+    directSaveBtn.style.cssText = 'flex:1;padding:11px 14px;background:rgba(0,255,136,0.15);color:var(--primary);border:1px solid rgba(0,255,136,0.3);border-radius:10px;font-size:0.75rem;font-weight:800;cursor:pointer;font-family:inherit;';
     directSaveBtn.onclick = function() {
-        // Sincronizza DOM → draft
         var rows = box.querySelectorAll('.proto-ex-row');
         rows.forEach(function(row, idx) {
             if (!draft[idx]) return;
@@ -4313,7 +4386,6 @@ function buildProtoEditorBox(proto, weekIdx) {
         });
         var valid = draft.filter(function(e){ return e.name && e.name.trim().length > 0; });
         if (valid.length === 0) { showToast('Aggiungi almeno un esercizio.', 'error'); return; }
-        // Salva nel protocollo — ricalcola sempre loads dal baseWeight corrente
         proto.exercises = JSON.parse(JSON.stringify(draft));
         proto.exercises.forEach(function(ex) {
             ex.loads = WEEK_LOADS.map(function(p){ return Math.round((ex.baseWeight||0)*p*2)/2; });
@@ -4326,13 +4398,23 @@ function buildProtoEditorBox(proto, weekIdx) {
         renderPlanPage(weekIdx);
         showToast('Protocollo salvato!', 'success');
     };
-    saveRow.appendChild(directSaveBtn);
+
+    topBtnRow.appendChild(addBtn);
+    topBtnRow.appendChild(directSaveBtn);
+    box.appendChild(topBtnRow);
+
+    // ── Divisore + Coach AI in basso ──
+    var divider = document.createElement('div');
+    divider.className = 'proto-editor-divider';
+    box.appendChild(divider);
+
+    var saveRow = document.createElement('div');
+    saveRow.className = 'proto-editor-save-row';
 
     var saveBtn = document.createElement('button');
     saveBtn.className = 'proto-editor-save-btn';
+    saveBtn.style.cssText = 'width:100%;';
 
-    // Se il protocollo è stato ottimizzato dal Coach in questa sessione (< 10 min),
-    // mostra il bottone come già completato
     var justOptimized = proto._coachOptimizedAt && (Date.now() - proto._coachOptimizedAt) < 600000;
     if (justOptimized) {
         saveBtn.textContent = '✅ Lista ottimizzata dal Coach';
@@ -4340,7 +4422,6 @@ function buildProtoEditorBox(proto, weekIdx) {
         saveBtn.style.background = 'rgba(0,255,136,0.12)';
         saveBtn.style.color = 'var(--primary)';
         saveBtn.style.border = '1px solid rgba(0,255,136,0.3)';
-        // Piccolo hint sotto
         var optimizedHint = document.createElement('div');
         optimizedHint.style.cssText = 'font-size:0.5rem;color:#475569;text-align:center;margin-top:6px;';
         optimizedHint.textContent = 'Modifica la lista per sbloccare una nuova analisi';
