@@ -1591,9 +1591,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         @keyframes protoEditorIn { 0% { opacity:0; transform:translateY(-8px); } 100% { opacity:1; transform:translateY(0); } }
         .proto-editor-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; gap:8px; }
         .proto-editor-title { font-size:0.62rem; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:0.12em; flex:1; min-width:0; word-break:break-word; }
-        .proto-editor-close { background:rgba(255,255,255,0.06); border:0.5px solid rgba(255,255,255,0.12); color:#94a3b8; width:26px; height:26px; border-radius:7px; font-size:0.75rem; cursor:pointer; font-family:inherit; flex-shrink:0; padding:0; display:flex; align-items:center; justify-content:center; }
-        .proto-editor-close:hover { color:#e2e8f0; background:rgba(255,255,255,0.1); }
-        .proto-editor-list { display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
+        .proto-editor-close { background:rgba(255,255,255,0.06); border:0.5px solid rgba(255,255,255,0.12); color:#94a3b8; width:26px; height:26px; border-radius:7px; font-size:0.75rem; cursor:pointer; font-family:inherit; flex-shrink:0; padding:0; display:flex; align-items:center; justify-content:center; line-height:1; }
+        .proto-editor-close:hover { color:#e2e8f0; background:rgba(255,255,255,0.1); }        .proto-editor-list { display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
         /* Layout esercizi editor — wrap+card+del */
         .proto-ex-wrap { display:flex; align-items:center; gap:4px; margin-bottom:6px; }
         .proto-ex-card { flex:1; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:10px; padding:9px 10px; min-width:0; display:flex; align-items:center; gap:8px; }
@@ -1612,6 +1611,24 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .proto-ex-right .pe-sr { background:rgba(99,102,241,0.18); border-color:rgba(99,102,241,0.35); color:#818cf8; font-weight:700; }
         .proto-ex-right .pe-kg { background:rgba(0,255,136,0.1); border-color:rgba(0,255,136,0.3); color:var(--primary); font-weight:700; }
         .proto-ex-del { background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.2); border-radius:6px; color:#f87171; font-size:0.6rem; cursor:pointer; width:24px; height:24px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-family:inherit; padding:0; }
+        .pe-mtr-btn { background:rgba(0,255,136,0.08); border:1px solid rgba(0,255,136,0.2); border-radius:6px; color:var(--primary); font-size:0.55rem; cursor:pointer; width:20px; height:20px; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:0; font-family:inherit; line-height:1; }
+        /* Overlay popup MTR */
+        #mtr-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:9500; display:none; align-items:center; justify-content:center; padding:20px; }
+        #mtr-overlay.active { display:flex; }
+        #mtr-card { background:#0f172a; border:1px solid rgba(0,255,136,0.25); border-radius:16px; padding:20px; width:100%; max-width:340px; }
+        #mtr-card h3 { font-size:0.85rem; font-weight:800; color:#e2e8f0; margin-bottom:4px; }
+        #mtr-card .mtr-exname { font-size:0.7rem; color:var(--primary); font-weight:700; margin-bottom:14px; }
+        #mtr-card .mtr-desc { font-size:0.62rem; color:#64748b; line-height:1.6; margin-bottom:14px; }
+        #mtr-input-wrap { display:flex; align-items:center; gap:8px; margin-bottom:16px; }
+        #mtr-input { flex:1; background:rgba(255,255,255,0.06); border:1px solid rgba(0,255,136,0.3); border-radius:10px; padding:10px 14px; color:#e2e8f0; font-size:1rem; font-weight:700; text-align:center; outline:none; font-family:inherit; }
+        #mtr-input:focus { border-color:var(--primary); }
+        .mtr-kg-label { font-size:0.7rem; color:#64748b; }
+        #mtr-preview { display:grid; grid-template-columns:1fr auto; gap:4px 12px; margin-bottom:16px; background:rgba(255,255,255,0.03); border-radius:10px; padding:10px 12px; }
+        .mtr-prev-ch { font-size:0.62rem; color:#64748b; }
+        .mtr-prev-kg { font-size:0.62rem; color:#e2e8f0; font-weight:700; text-align:right; }
+        .mtr-prev-kg.active-ch { color:var(--primary); }
+        #mtr-apply { width:100%; padding:11px; background:linear-gradient(135deg,#00ff88,#00cc88); color:#000; border:none; border-radius:10px; font-size:0.8rem; font-weight:800; cursor:pointer; font-family:inherit; }
+        #mtr-cancel { width:100%; padding:8px; background:transparent; color:#475569; border:none; font-size:0.7rem; cursor:pointer; font-family:inherit; margin-top:6px; }
         /* Legacy - mantieni .proto-ex-row per compatibilità suggestions */
         .proto-ex-row { position:relative; }
         .proto-ex-row .suggestions { top:34px; left:0; width:100%; }
@@ -4186,13 +4203,13 @@ function buildProtoEditorBox(proto, weekIdx) {
 
     // ── Header colonne ──
     var colHead = document.createElement('div');
-    // padding-right = gap(4px) + del(24px) = 28px per allineare con le caselle dentro la card
-    colHead.style.cssText = 'display:flex;align-items:center;padding:0 28px 4px 0;';
+    colHead.style.cssText = 'display:flex;align-items:center;padding:0 0 4px;';
     var labelStyle = 'font-size:0.45rem;color:#475569;text-transform:uppercase;letter-spacing:0.08em;';
     colHead.innerHTML =
-        '<span style="' + labelStyle + 'flex:1;"></span>' +
+        '<span style="' + labelStyle + 'flex:1;">Esercizio</span>' +
         '<span style="' + labelStyle + 'width:40px;text-align:center;">Serie×Rip</span>' +
-        '<span style="' + labelStyle + 'width:40px;text-align:center;margin-left:4px;">Kg</span>';
+        '<span style="' + labelStyle + 'width:40px;text-align:center;margin-left:4px;">Kg</span>' +
+        '<span style="width:28px;"></span>';
     box.appendChild(colHead);
 
     // ── Lista esercizi ──
@@ -4377,8 +4394,23 @@ function buildProtoEditorBox(proto, weekIdx) {
             kgInput.step = '0.5';
             kgInput.value = ex.baseWeight || '';
             kgInput.setAttribute('inputmode', 'decimal');
+            // Bottone MTR
+            var mtrBtn = document.createElement('button');
+            mtrBtn.className = 'pe-mtr-btn';
+            mtrBtn.title = 'Imposta Massimo Tecnico';
+            mtrBtn.textContent = '🎯';
+            mtrBtn.onclick = function() {
+                mtrOpen(ex.name || 'Esercizio', weekIdx, function(loads, baseWeight) {
+                    draft[idx].baseWeight = baseWeight;
+                    draft[idx].loads = loads;
+                    kgInput.value = baseWeight;
+                    onManualEdit();
+                    showToast('Carichi MTR applicati a ' + (ex.name || 'esercizio'), 'success');
+                });
+            };
             right.appendChild(srInput);
             right.appendChild(kgInput);
+            right.appendChild(mtrBtn);
             card.appendChild(right);
             wrap.appendChild(card);
 
@@ -4955,6 +4987,67 @@ function checkChapterCompletion(w) {
     setTimeout(() => {
         if (document.getElementById('page-progress')?.classList.contains('active')) updateProgressPage();
     }, 600);
+}
+
+// ════════════════════════════════════════════════
+// MTR — Massimo Tecnico di Ripetizione
+// Basato su: Israetel et al. (RP Strength), Helms et al. (2016)
+// Il Technical Max corrisponde ~85-90% dell'1RM assoluto
+// e viene usato come base per la progressione percentuale
+// ════════════════════════════════════════════════
+var _mtrCallback = null;
+var _mtrWeekIdx  = 0;
+
+function mtrOpen(exName, weekIdx, callback) {
+    _mtrCallback = callback;
+    _mtrWeekIdx  = weekIdx || 0;
+    var overlay = document.getElementById('mtr-overlay');
+    var nameEl  = document.getElementById('mtr-exname');
+    var input   = document.getElementById('mtr-input');
+    if (!overlay) return;
+    if (nameEl) nameEl.textContent = exName;
+    if (input)  { input.value = ''; input.focus(); }
+    // Reset preview
+    WEEK_LOADS.forEach(function(_, i) {
+        var el = document.getElementById('mtr-p' + i);
+        if (el) { el.textContent = '—'; el.classList.remove('active-ch'); }
+    });
+    overlay.classList.add('active');
+    // Aggiorna preview in tempo reale
+    if (input) {
+        input.oninput = mtrUpdatePreview;
+    }
+    // Evidenzia il chapter attivo
+    var activeEl = document.getElementById('mtr-p' + _mtrWeekIdx);
+    if (activeEl) activeEl.classList.add('active-ch');
+}
+
+function mtrUpdatePreview() {
+    var val = parseFloat(document.getElementById('mtr-input').value);
+    WEEK_LOADS.forEach(function(pct, i) {
+        var el = document.getElementById('mtr-p' + i);
+        if (!el) return;
+        if (!val || val <= 0) { el.textContent = '—'; return; }
+        var kg = Math.round(val * pct * 2) / 2;
+        el.textContent = kg + ' kg';
+    });
+}
+
+function mtrApply() {
+    var val = parseFloat(document.getElementById('mtr-input').value);
+    if (!val || val <= 0) { showToast('Inserisci il massimo tecnico', 'error'); return; }
+    var loads = WEEK_LOADS.map(function(pct) {
+        return Math.round(val * pct * 2) / 2;
+    });
+    var baseWeight = loads[_mtrWeekIdx] || loads[0];
+    mtrClose();
+    if (_mtrCallback) _mtrCallback(loads, baseWeight);
+}
+
+function mtrClose() {
+    var overlay = document.getElementById('mtr-overlay');
+    if (overlay) overlay.classList.remove('active');
+    _mtrCallback = null;
 }
 
 function generateDeloadProtocol(mode) {
@@ -13403,6 +13496,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 </script>
     <!-- WEEK COMPLETE OVERLAY -->
+    <!-- Overlay MTR (Massimo Tecnico di Ripetizione) -->
+    <div id="mtr-overlay">
+        <div id="mtr-card">
+            <h3>🎯 Massimo Tecnico</h3>
+            <div class="mtr-exname" id="mtr-exname">—</div>
+            <div class="mtr-desc">Il massimo che riesci a sollevare mantenendo una tecnica <strong>impeccabile</strong> per tutte le ripetizioni. Non è l'1RM assoluto — è il carico con cui non scendi mai a compromessi sulla forma.<br><br>L'app calcolerà automaticamente i carichi per ogni chapter.</div>
+            <div id="mtr-input-wrap">
+                <input id="mtr-input" type="number" placeholder="es. 80" min="1" max="500" step="0.5" inputmode="decimal">
+                <span class="mtr-kg-label">kg</span>
+            </div>
+            <div id="mtr-preview">
+                <span class="mtr-prev-ch">Ch.1 Activation (65%)</span><span class="mtr-prev-kg" id="mtr-p0">—</span>
+                <span class="mtr-prev-ch">Ch.2 Momentum (75%)</span><span class="mtr-prev-kg" id="mtr-p1">—</span>
+                <span class="mtr-prev-ch">Ch.3 The Peak (85%)</span><span class="mtr-prev-kg" id="mtr-p2">—</span>
+                <span class="mtr-prev-ch">Ch.4 Overload (90%)</span><span class="mtr-prev-kg" id="mtr-p3">—</span>
+                <span class="mtr-prev-ch">Ch.5 Deload (50%)</span><span class="mtr-prev-kg" id="mtr-p4">—</span>
+            </div>
+            <button id="mtr-apply" onclick="mtrApply()">Applica ai carichi</button>
+            <button id="mtr-cancel" onclick="mtrClose()">Annulla</button>
+        </div>
+    </div>
+
     <div id="week-complete-overlay">
         <div class="wc-card">
             <span class="wc-emoji" id="wc-emoji">🔥</span>
