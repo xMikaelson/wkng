@@ -20,7 +20,7 @@
   .header .emoji { font-size: 1.4rem; margin-bottom: 4px; }
   .header .title { color: #00ff88; font-weight: 800; font-size: 0.75rem; letter-spacing: 0.1em; }
   .header .sub { color: #475569; font-size: 0.65rem; margin-top: 2px; }
-  label {
+  label.field-label {
     display: block; color: #64748b; font-size: 0.6rem;
     text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;
   }
@@ -35,54 +35,18 @@
   .remember { display: flex; align-items: center; gap: 6px; margin-top: 6px; cursor: pointer; }
   .remember input { accent-color: #00ff88; }
   .remember span { font-size: 0.6rem; color: #64748b; }
-  .folder-btn {
-    width: 100%; padding: 14px;
+  .file-btn {
+    width: 100%; padding: 12px 14px;
     background: #0f172a; border: 1px solid #334155;
     border-radius: 10px; color: #64748b;
-    font-size: 0.85rem; cursor: pointer; font-family: inherit;
+    font-size: 0.8rem; cursor: pointer; font-family: inherit;
     display: flex; align-items: center; justify-content: space-between;
-    transition: all 0.2s; margin-bottom: 12px;
+    transition: all 0.2s; margin-bottom: 8px;
   }
-  .folder-btn.loaded { background: rgba(0,255,136,0.08); border-color: #00ff88; color: #00ff88; }
-  .file-info { background: #0f172a; border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; display: none; }
-  .file-info.visible { display: block; }
-  .file-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.7rem; padding: 4px 0; border-bottom: 1px solid #1e293b; }
-  .file-row:last-child { border-bottom: none; }
-  .file-row .name { color: #94a3b8; }
-  .file-row .meta { text-align: right; }
-  .file-row .version { color: #00ff88; font-weight: 700; font-size: 0.7rem; }
-  .file-row .size { color: #475569; font-size: 0.6rem; }
-
-  /* Confirm overlay */
-  .overlay {
-    display: none; position: fixed; inset: 0;
-    background: rgba(0,0,0,0.7); z-index: 100;
-    align-items: center; justify-content: center; padding: 20px;
-  }
-  .overlay.visible { display: flex; }
-  .confirm-card {
-    background: #1e293b; border-radius: 20px; padding: 24px;
-    width: 100%; max-width: 360px; border: 1px solid #334155;
-  }
-  .confirm-title { color: #00ff88; font-weight: 800; font-size: 0.8rem; letter-spacing: 0.08em; margin-bottom: 16px; }
-  .confirm-row { display: flex; justify-content: space-between; font-size: 0.72rem; padding: 6px 0; border-bottom: 1px solid #0f172a; }
-  .confirm-row:last-of-type { border-bottom: none; margin-bottom: 16px; }
-  .confirm-row .label { color: #64748b; }
-  .confirm-row .value { color: #e2e8f0; font-weight: 600; }
-  .confirm-row .value.green { color: #00ff88; }
-  .confirm-btns { display: flex; gap: 10px; margin-top: 16px; }
-  .btn-cancel {
-    flex: 1; padding: 12px; border-radius: 10px;
-    background: #0f172a; border: 1px solid #334155;
-    color: #64748b; font-size: 0.85rem; cursor: pointer; font-family: inherit;
-  }
-  .btn-confirm {
-    flex: 2; padding: 12px; border-radius: 10px; border: none;
-    background: linear-gradient(135deg, #00ff88, #00c4ff);
-    color: #000; font-weight: 800; font-size: 0.85rem;
-    cursor: pointer; font-family: inherit;
-  }
-
+  .file-btn.loaded { background: rgba(0,255,136,0.08); border-color: #00ff88; color: #00ff88; }
+  .file-btn .meta { text-align: right; }
+  .file-btn .version { font-size: 0.72rem; font-weight: 700; }
+  .file-btn .kb { font-size: 0.6rem; color: #475569; }
   .deploy-btn {
     width: 100%; padding: 14px; border: none; border-radius: 12px;
     background: linear-gradient(135deg, #00ff88, #00c4ff);
@@ -92,15 +56,30 @@
   }
   .deploy-btn:disabled { background: #1e293b; border: 1px solid #334155; color: #475569; cursor: not-allowed; }
   .deploy-btn.done { background: #00ff88; }
+  .overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.75); z-index: 100;
+    align-items: center; justify-content: center; padding: 20px;
+  }
+  .overlay.visible { display: flex; }
+  .confirm-card {
+    background: #1e293b; border-radius: 20px; padding: 24px;
+    width: 100%; max-width: 360px; border: 1px solid #334155;
+  }
+  .confirm-title { color: #00ff88; font-weight: 800; font-size: 0.8rem; letter-spacing: 0.08em; margin-bottom: 16px; }
+  .confirm-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; padding: 7px 0; border-bottom: 1px solid #0f172a; }
+  .confirm-row:last-of-type { border-bottom: none; }
+  .confirm-row .label { color: #64748b; }
+  .confirm-row .value { color: #e2e8f0; font-weight: 600; }
+  .confirm-row .value.green { color: #00ff88; }
+  .confirm-btns { display: flex; gap: 10px; margin-top: 16px; }
+  .btn-cancel { flex: 1; padding: 12px; border-radius: 10px; background: #0f172a; border: 1px solid #334155; color: #64748b; font-size: 0.85rem; cursor: pointer; font-family: inherit; }
+  .btn-confirm { flex: 2; padding: 12px; border-radius: 10px; border: none; background: linear-gradient(135deg, #00ff88, #00c4ff); color: #000; font-weight: 800; font-size: 0.85rem; cursor: pointer; font-family: inherit; }
   .log { margin-top: 14px; background: #0f172a; border-radius: 10px; padding: 12px; max-height: 160px; overflow-y: auto; display: none; }
   .log.visible { display: block; }
   .log-line { font-size: 0.68rem; margin-bottom: 4px; display: flex; gap: 8px; }
   .log-time { color: #334155; flex-shrink: 0; }
   .open-link { display: block; margin-top: 10px; text-align: center; color: #00ff88; font-size: 0.7rem; text-decoration: none; padding: 8px; }
-  .old-files { margin-top: 12px; background: #0f172a; border-radius: 10px; padding: 12px; display: none; }
-  .old-files.visible { display: block; }
-  .old-files-title { color: #f87171; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
-  .old-file-item { color: #64748b; font-size: 0.68rem; padding: 2px 0; }
 </style>
 </head>
 <body>
@@ -112,7 +91,7 @@
   </div>
 
   <div class="field">
-    <label>GitHub Token</label>
+    <label class="field-label">GitHub Token</label>
     <input type="password" id="token" placeholder="ghp_xxxxxxxxxxxx">
     <label class="remember">
       <input type="checkbox" id="save-token">
@@ -121,49 +100,39 @@
   </div>
 
   <div class="field">
-    <label>Commit message</label>
+    <label class="field-label">Commit message</label>
     <input type="text" id="commit-msg" value="Update app">
   </div>
 
-  <button class="folder-btn" id="folder-btn" onclick="selectFolder()">
-    <span>📁 Seleziona cartella</span>
-    <span id="folder-name">Nessuna cartella →</span>
+  <input type="file" id="input-index" accept=".html,text/html" style="display:none">
+  <input type="file" id="input-sw" accept=".js,text/javascript" style="display:none">
+
+  <button class="file-btn" id="btn-index" onclick="document.getElementById('input-index').click()">
+    <span>📄 index.html</span>
+    <div class="meta">
+      <div class="version" id="ver-index">Scegli file →</div>
+      <div class="kb" id="kb-index"></div>
+    </div>
   </button>
 
-  <div class="file-info" id="file-info">
-    <div class="file-row">
-      <span class="name">📄 index.html</span>
-      <div class="meta">
-        <div class="version" id="ver-index">—</div>
-        <div class="size" id="size-index">—</div>
-      </div>
+  <button class="file-btn" id="btn-sw" onclick="document.getElementById('input-sw').click()">
+    <span>⚙️ sw.js</span>
+    <div class="meta">
+      <div class="version" id="ver-sw">Scegli file →</div>
+      <div class="kb" id="kb-sw"></div>
     </div>
-    <div class="file-row">
-      <span class="name">⚙️ sw.js</span>
-      <div class="meta">
-        <div class="version" id="ver-sw">—</div>
-        <div class="size" id="size-sw">—</div>
-      </div>
-    </div>
-  </div>
+  </button>
 
   <button class="deploy-btn" id="deploy-btn" onclick="askConfirm()" disabled>
-    Seleziona la cartella prima
+    Seleziona i file prima
   </button>
 
   <div class="log" id="log"></div>
-
   <a class="open-link" id="open-link" href="https://xMikaelson.github.io/wkng" target="_blank" style="display:none">
     🌐 Apri l'app pubblicata →
   </a>
-
-  <div class="old-files" id="old-files">
-    <div class="old-files-title">🗑 File vecchi da eliminare manualmente</div>
-    <div id="old-files-list"></div>
-  </div>
 </div>
 
-<!-- Confirm overlay -->
 <div class="overlay" id="overlay">
   <div class="confirm-card">
     <div class="confirm-title">📋 CONFERMA DEPLOY</div>
@@ -178,9 +147,7 @@
 <script>
 var REPO = "xMikaelson/wkng";
 var BRANCH = "main";
-var folderHandle = null;
 var loadedFiles = {};
-var oldFiles = [];
 
 window.addEventListener("DOMContentLoaded", function() {
   var t = localStorage.getItem("gh_token_wkng");
@@ -188,72 +155,27 @@ window.addEventListener("DOMContentLoaded", function() {
     document.getElementById("token").value = t;
     document.getElementById("save-token").checked = true;
   }
+  document.getElementById("input-index").addEventListener("change", function(e) { handleFile(e, "index.html", "btn-index", "ver-index", "kb-index"); });
+  document.getElementById("input-sw").addEventListener("change", function(e) { handleFile(e, "sw.js", "btn-sw", "ver-sw", "kb-sw"); });
 });
 
 function extractVersion(filename) {
-  var m = filename.match(/v[._]?(\d+)/i);
+  var m = filename.match(/v[._]?\s*(\d+)/i);
   return m ? "v." + m[1] : filename;
 }
 
-async function selectFolder() {
-  if (!window.showDirectoryPicker) {
-    addLog("⚠️ Browser non supportato", "#f87171");
-    return;
-  }
-  try {
-    folderHandle = await window.showDirectoryPicker({ mode: "read" });
-    document.getElementById("folder-btn").classList.add("loaded");
-    document.getElementById("folder-name").textContent = folderHandle.name;
-    await scanFolder();
-  } catch(e) {
-    if (e.name !== "AbortError") addLog("❌ " + e.message, "#f87171");
-  }
-}
-
-async function scanFolder() {
-  loadedFiles = {};
-  oldFiles = [];
-  var candidates = { index: [], sw: [] };
-
-  for await (var entry of folderHandle.values()) {
-    if (entry.kind !== "file") continue;
-    var name = entry.name.toLowerCase();
-    var file = await entry.getFile();
-    if (name.startsWith("index") && name.endsWith(".html")) candidates.index.push({ file: file, name: entry.name });
-    if (name.startsWith("sw") && name.endsWith(".js")) candidates.sw.push({ file: file, name: entry.name });
-  }
-
-  // Ordina per data modifica decrescente
-  candidates.index.sort(function(a,b){ return b.file.lastModified - a.file.lastModified; });
-  candidates.sw.sort(function(a,b){ return b.file.lastModified - a.file.lastModified; });
-
-  if (candidates.index.length > 0) {
-    var newest = candidates.index[0];
-    var buf = await newest.file.arrayBuffer();
-    loadedFiles["index.html"] = { buffer: buf, size: newest.file.size, filename: newest.name };
-    document.getElementById("ver-index").textContent = extractVersion(newest.name);
-    document.getElementById("size-index").textContent = (newest.file.size/1024).toFixed(0) + "KB";
-    // File vecchi
-    for (var i = 1; i < candidates.index.length; i++) oldFiles.push(candidates.index[i].name);
-  } else {
-    document.getElementById("ver-index").textContent = "❌ non trovato";
-    document.getElementById("size-index").textContent = "";
-  }
-
-  if (candidates.sw.length > 0) {
-    var newestSw = candidates.sw[0];
-    var buf2 = await newestSw.file.arrayBuffer();
-    loadedFiles["sw.js"] = { buffer: buf2, size: newestSw.file.size, filename: newestSw.name };
-    document.getElementById("ver-sw").textContent = extractVersion(newestSw.name);
-    document.getElementById("size-sw").textContent = (newestSw.file.size/1024).toFixed(0) + "KB";
-    for (var j = 1; j < candidates.sw.length; j++) oldFiles.push(candidates.sw[j].name);
-  } else {
-    document.getElementById("ver-sw").textContent = "❌ non trovato";
-    document.getElementById("size-sw").textContent = "";
-  }
-
-  document.getElementById("file-info").classList.add("visible");
-  updateDeployBtn();
+function handleFile(e, name, btnId, verId, kbId) {
+  var file = e.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    loadedFiles[name] = { buffer: ev.target.result, size: file.size, filename: file.name };
+    document.getElementById(btnId).classList.add("loaded");
+    document.getElementById(verId).textContent = extractVersion(file.name);
+    document.getElementById(kbId).textContent = (file.size / 1024).toFixed(0) + "KB";
+    updateDeployBtn();
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 function updateDeployBtn() {
@@ -261,7 +183,7 @@ function updateDeployBtn() {
   var count = Object.keys(loadedFiles).length;
   if (count === 0) {
     btn.disabled = true;
-    btn.textContent = "File non trovati nella cartella";
+    btn.textContent = "Seleziona i file prima";
   } else {
     btn.disabled = false;
     btn.textContent = "🚀 DEPLOY (" + count + " file)";
@@ -285,9 +207,9 @@ function closeConfirm() {
   document.getElementById("overlay").classList.remove("visible");
 }
 
-async function confirmDeploy() {
+function confirmDeploy() {
   closeConfirm();
-  await deploy();
+  deploy();
 }
 
 function arrayBufferToBase64(buffer) {
@@ -338,7 +260,7 @@ async function deploy() {
   var btn = document.getElementById("deploy-btn");
 
   if (!token) { addLog("⚠️ Inserisci il token", "#f87171"); return; }
-  if (Object.keys(loadedFiles).length === 0) { addLog("⚠️ Nessun file trovato", "#f87171"); return; }
+  if (Object.keys(loadedFiles).length === 0) { addLog("⚠️ Nessun file caricato", "#f87171"); return; }
 
   if (document.getElementById("save-token").checked) localStorage.setItem("gh_token_wkng", token);
   else localStorage.removeItem("gh_token_wkng");
@@ -346,12 +268,10 @@ async function deploy() {
   btn.disabled = true;
   btn.textContent = "⏳ Deploying...";
   document.getElementById("open-link").style.display = "none";
-  document.getElementById("old-files").classList.remove("visible");
   document.getElementById("log").innerHTML = "";
   document.getElementById("log").classList.remove("visible");
 
   try {
-    await scanFolder();
     for (var filename in loadedFiles) {
       await deployFile(filename, loadedFiles[filename], token, commitMsg);
     }
@@ -360,13 +280,17 @@ async function deploy() {
     btn.textContent = "✅ DEPLOYATO!";
     btn.disabled = false;
     document.getElementById("open-link").style.display = "block";
-
-    // Mostra file vecchi da eliminare
-    if (oldFiles.length > 0) {
-      var list = document.getElementById("old-files-list");
-      list.innerHTML = oldFiles.map(function(f){ return "<div class=\"old-file-item\">• " + f + "</div>"; }).join("");
-      document.getElementById("old-files").classList.add("visible");
-    }
+    // Reset file dopo deploy
+    loadedFiles = {};
+    document.getElementById("btn-index").classList.remove("loaded");
+    document.getElementById("ver-index").textContent = "Scegli file →";
+    document.getElementById("kb-index").textContent = "";
+    document.getElementById("input-index").value = "";
+    document.getElementById("btn-sw").classList.remove("loaded");
+    document.getElementById("ver-sw").textContent = "Scegli file →";
+    document.getElementById("kb-sw").textContent = "";
+    document.getElementById("input-sw").value = "";
+    updateDeployBtn();
   } catch(err) {
     addLog("❌ Errore: " + err.message, "#f87171");
     btn.disabled = false;
