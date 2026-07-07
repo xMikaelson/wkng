@@ -1609,9 +1609,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .proto-ex-right input { border:1px solid #334155; color:#e2e8f0; padding:6px 5px; border-radius:6px; font-size:0.67rem; width:40px; box-sizing:border-box; font-family:inherit; text-align:center; outline:none; }
         .proto-ex-right input:focus { border-color:var(--accent); }
         .proto-ex-right .pe-sr { background:rgba(99,102,241,0.18); border-color:rgba(99,102,241,0.35); color:#818cf8; font-weight:700; }
-        .proto-ex-right .pe-kg { background:rgba(0,255,136,0.1); border-color:rgba(0,255,136,0.3); color:var(--primary); font-weight:700; }
+        .proto-ex-right .pe-kg { background:rgba(0,255,136,0.06); border-color:rgba(0,255,136,0.2); color:var(--primary); font-weight:700; cursor:default; pointer-events:none; opacity:0.85; }
         .proto-ex-del { background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.2); border-radius:6px; color:#f87171; font-size:0.6rem; cursor:pointer; width:24px; height:24px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-family:inherit; padding:0; }
-        .pe-mtr-btn { background:rgba(0,255,136,0.08); border:1px solid rgba(0,255,136,0.2); border-radius:6px; color:var(--primary); font-size:0.55rem; cursor:pointer; width:20px; height:20px; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:0; font-family:inherit; line-height:1; }
+        .pe-mtr-btn { background:rgba(0,255,136,0.08); border:1px solid rgba(0,255,136,0.2); border-radius:6px; color:var(--primary); font-size:0.55rem; cursor:pointer; width:22px; height:22px; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:0; font-family:inherit; line-height:1; }
         /* Overlay popup MTR */
         #mtr-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:9500; display:none; align-items:center; justify-content:center; padding:20px; }
         #mtr-overlay.active { display:flex; }
@@ -4203,13 +4203,13 @@ function buildProtoEditorBox(proto, weekIdx) {
 
     // ── Header colonne ──
     var colHead = document.createElement('div');
-    colHead.style.cssText = 'display:flex;align-items:center;padding:0 0 4px;';
+    colHead.style.cssText = 'display:flex;align-items:center;padding:0 28px 6px 0;';
     var labelStyle = 'font-size:0.45rem;color:#475569;text-transform:uppercase;letter-spacing:0.08em;';
     colHead.innerHTML =
-        '<span style="' + labelStyle + 'flex:1;">Esercizio</span>' +
+        '<span style="' + labelStyle + 'flex:1;"></span>' +
         '<span style="' + labelStyle + 'width:40px;text-align:center;">Serie×Rip</span>' +
-        '<span style="' + labelStyle + 'width:40px;text-align:center;margin-left:4px;">Kg</span>' +
-        '<span style="width:28px;"></span>';
+        '<span style="width:26px;flex-shrink:0;"></span>' +
+        '<span style="' + labelStyle + 'width:40px;text-align:center;">Kg Ch.' + (weekIdx+1) + '</span>';
     box.appendChild(colHead);
 
     // ── Lista esercizi ──
@@ -4389,11 +4389,12 @@ function buildProtoEditorBox(proto, weekIdx) {
             var kgInput = document.createElement('input');
             kgInput.type = 'number';
             kgInput.className = 'pe-kg';
-            kgInput.placeholder = 'kg';
-            kgInput.min = '0';
-            kgInput.step = '0.5';
-            kgInput.value = ex.baseWeight || '';
-            kgInput.setAttribute('inputmode', 'decimal');
+            kgInput.placeholder = '🎯';
+            kgInput.readOnly = true;
+            kgInput.setAttribute('tabindex', '-1');
+            // Mostra il carico del chapter corrente (loads[weekIdx]) non il baseWeight grezzo
+            var currentLoad = (ex.loads && ex.loads[weekIdx] != null) ? ex.loads[weekIdx] : (ex.baseWeight || '');
+            kgInput.value = currentLoad || '';
             // Bottone MTR
             var mtrBtn = document.createElement('button');
             mtrBtn.className = 'pe-mtr-btn';
@@ -4404,7 +4405,8 @@ function buildProtoEditorBox(proto, weekIdx) {
                     // Aggiorna draft in memoria
                     draft[idx].baseWeight = baseWeight;
                     draft[idx].loads = loads;
-                    kgInput.value = baseWeight;
+                    // Mostra il carico del chapter corrente (non baseWeight)
+                    kgInput.value = loads[weekIdx] != null ? loads[weekIdx] : baseWeight;
                     onManualEdit();
                     // Salva immediatamente su APP.savedProtocols e Supabase
                     // così la sezione allenamento vede subito i nuovi carichi
@@ -4481,7 +4483,7 @@ function buildProtoEditorBox(proto, weekIdx) {
             observer.observe(suggestionsEl, { childList: true });
 
             srInput.addEventListener('input', function() { draft[idx].sr = this.value; onManualEdit(); });
-            kgInput.addEventListener('input', function() { var n = parseFloat(this.value); draft[idx].baseWeight = isNaN(n) ? 0 : n; onManualEdit(); });
+            // kg è readonly — modificabile solo via 🎯 MTR
             delBtn.onclick = function() { draft.splice(idx, 1); onManualEdit(); rerenderList(); };
         });
     }
