@@ -4401,11 +4401,22 @@ function buildProtoEditorBox(proto, weekIdx) {
             mtrBtn.textContent = '🎯';
             mtrBtn.onclick = function() {
                 mtrOpen(ex.name || 'Esercizio', weekIdx, function(loads, baseWeight) {
+                    // Aggiorna draft in memoria
                     draft[idx].baseWeight = baseWeight;
                     draft[idx].loads = loads;
                     kgInput.value = baseWeight;
                     onManualEdit();
-                    showToast('Carichi MTR applicati a ' + (ex.name || 'esercizio'), 'success');
+                    // Salva immediatamente su APP.savedProtocols e Supabase
+                    // così la sezione allenamento vede subito i nuovi carichi
+                    var protoIdx = APP.savedProtocols.findIndex(function(p){ return p.id === proto.id; });
+                    if (protoIdx !== -1) {
+                        if (!APP.savedProtocols[protoIdx].exercises[idx]) return;
+                        APP.savedProtocols[protoIdx].exercises[idx].baseWeight = baseWeight;
+                        APP.savedProtocols[protoIdx].exercises[idx].loads = loads;
+                        saveState();
+                        saveProtocolToSupabase(APP.savedProtocols[protoIdx]);
+                    }
+                    showToast('🎯 Carichi MTR salvati — visibili subito nell\'allenamento', 'success');
                 });
             };
             right.appendChild(srInput);
