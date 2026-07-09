@@ -1608,8 +1608,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .proto-ex-right { display:flex; align-items:center; gap:4px; flex-shrink:0; }
         .proto-ex-right input { border:1px solid #334155; color:#e2e8f0; padding:6px 5px; border-radius:6px; font-size:0.67rem; width:40px; box-sizing:border-box; font-family:inherit; text-align:center; outline:none; }
         .proto-ex-right input:focus { border-color:var(--accent); }
-        .proto-ex-right .pe-sr { background:rgba(99,102,241,0.18); border-color:rgba(99,102,241,0.35); color:#818cf8; font-weight:700; }
-        .proto-ex-right .pe-kg { background:rgba(0,255,136,0.06); border-color:rgba(0,255,136,0.2); color:var(--primary); font-weight:700; cursor:default; pointer-events:none; opacity:0.85; }
+        .proto-ex-right .pe-sr { background:rgba(99,102,241,0.18); border-color:rgba(99,102,241,0.35); color:#818cf8; font-weight:700; width:52px; }
+        .proto-ex-right .pe-kg { background:rgba(0,255,136,0.06); border-color:rgba(0,255,136,0.2); color:var(--primary); font-weight:700; cursor:default; pointer-events:none; opacity:0.85; width:40px; }
         .proto-ex-del { background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.2); border-radius:6px; color:#f87171; font-size:0.6rem; cursor:pointer; width:24px; height:24px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-family:inherit; padding:0; }
         .pe-mtr-btn { background:rgba(0,255,136,0.08); border:1px solid rgba(0,255,136,0.2); border-radius:6px; color:var(--primary); font-size:0.55rem; cursor:pointer; width:22px; height:22px; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:0; font-family:inherit; line-height:1; }
         /* Overlay popup MTR — Variante 5 */
@@ -3776,8 +3776,15 @@ async function onLoginSuccess(user, usernameOverride = null) {
     document.getElementById('dash-username').innerText = username;
     if (APP.startDate) document.getElementById('start-date-small').innerText = APP.startDate.toLocaleDateString('it-IT');
     if (APP.savedProtocols.length > 0) {
-        // Attiva l'ultimo protocollo usato (o il primo disponibile)
-        const protoToActivate = APP.savedProtocols.find(p => p.id === APP.activeProtocolId) || APP.savedProtocols[0];
+        // Attiva il protocollo assegnato al giorno corrente (se esiste), altrimenti l'ultimo usato
+        var todayDow = new Date().getDay(); // 0=dom, 1=lun, ..., 6=sab
+        var todayIdx = todayDow === 0 ? 6 : todayDow - 1; // converti a lun=0..dom=6
+        var w = APP.selectedViewWeek || 0;
+        var todayAssignment = APP.dayAssignments && APP.dayAssignments[w] && APP.dayAssignments[w][todayIdx];
+        var todayProto = todayAssignment && APP.savedProtocols.find(p => p.id === todayAssignment.protoId || p.name === todayAssignment.protoName);
+        const protoToActivate = todayProto
+            || APP.savedProtocols.find(p => p.id === APP.activeProtocolId)
+            || APP.savedProtocols[0];
         if (protoToActivate) {
             APP.activeProtocolId = protoToActivate.id;
             APP.exerciseData = protoToActivate.exercises.map(ex => {
@@ -4242,12 +4249,12 @@ function buildProtoEditorBox(proto, weekIdx) {
 
     // ── Header colonne ──
     var colHead = document.createElement('div');
-    // padding-right = padding card(10px) + gap(4px) + del(24px) = 38px
+    // padding-right = card-padding(10px) + gap(4px) + del(24px) = 38px
     colHead.style.cssText = 'display:flex;align-items:center;padding:0 38px 6px 0;';
     var labelStyle = 'font-size:0.45rem;color:#475569;text-transform:uppercase;letter-spacing:0.08em;';
     colHead.innerHTML =
         '<span style="' + labelStyle + 'flex:1;"></span>' +
-        '<span style="' + labelStyle + 'width:40px;text-align:center;">Serie×Rip</span>' +
+        '<span style="' + labelStyle + 'width:52px;text-align:center;">Serie×Rip</span>' +
         '<span style="width:26px;flex-shrink:0;"></span>' +
         '<span style="' + labelStyle + 'width:40px;text-align:center;">Kg</span>';
     box.appendChild(colHead);
