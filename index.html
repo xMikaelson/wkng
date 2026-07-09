@@ -3754,7 +3754,9 @@ async function onLoginSuccess(user, usernameOverride = null) {
         if (protoToActivate) {
             APP.activeProtocolId = protoToActivate.id;
             APP.exerciseData = protoToActivate.exercises.map(ex => {
-                const loads = WEEK_LOADS.map(function(p){return ex.baseWeight*p;});
+                const loads = (ex.loads && ex.loads.length === WEEK_LOADS.length)
+                    ? ex.loads
+                    : WEEK_LOADS.map(function(p){ return Math.round((ex.baseWeight||0)*p*2)/2; });
                 return { name: ex.name, sr: ex.sr, loads, baseWeight: ex.baseWeight };
             });
             // Ricostruisce i campi input
@@ -4538,7 +4540,11 @@ function buildProtoEditorBox(proto, weekIdx) {
         if (valid.length === 0) { showToast('Aggiungi almeno un esercizio.', 'error'); return; }
         proto.exercises = JSON.parse(JSON.stringify(draft));
         proto.exercises.forEach(function(ex) {
-            ex.loads = WEEK_LOADS.map(function(p){ return Math.round((ex.baseWeight||0)*p*2)/2; });
+            // Preserva loads MTR se esistono e il baseWeight non è cambiato manualmente
+            // (baseWeight in readonly = loads[weekIdx], quindi se loads esistono sono validi)
+            if (!ex.loads || ex.loads.length !== WEEK_LOADS.length) {
+                ex.loads = WEEK_LOADS.map(function(p){ return Math.round((ex.baseWeight||0)*p*2)/2; });
+            }
         });
         delete _protoEditorDrafts[proto.id];
         saveState();
