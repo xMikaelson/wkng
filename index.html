@@ -3195,6 +3195,33 @@ function loadState() {
     } catch(e) { return false; }
 }
 
+// ── Migrazione loads MTR: ricalcola i loads dai mtrValue salvati ──
+// Garantisce coerenza dopo update dell'app o fix di bug precedenti
+function migrateMtrLoads() {
+    if (!APP.savedProtocols) return;
+    var changed = false;
+    APP.savedProtocols.forEach(function(proto) {
+        if (!proto.exercises) return;
+        var slot = (proto._splitSlot || '').toLowerCase();
+        var isMassa = slot === 'push' || slot === 'pull' || slot === 'legs';
+        proto.exercises.forEach(function(ex) {
+            if (!ex.mtrValue) return; // nessun MTR impostato, skip
+            var mtr = parseFloat(ex.mtrValue);
+            if (!mtr || mtr <= 0) return;
+            // Ricalcola i loads corretti dal mtrValue
+            var newLoads = isMassa
+                ? MTR_MASSA_LOADS.map(function(p){ return Math.round(mtr*p*2)/2; })
+                : WEEK_LOADS.map(function(p){ return Math.round(mtr*p*2)/2; });
+            ex.loads = newLoads;
+            // baseWeight = carico del chapter attivo
+            var wi = APP.selectedViewWeek || 0;
+            ex.baseWeight = newLoads[wi] || newLoads[0];
+            changed = true;
+        });
+    });
+    if (changed) saveState();
+}
+
 function restoreUI() {
     // Restore login state
     if (APP.userName) {
@@ -3809,6 +3836,7 @@ async function onLoginSuccess(user, usernameOverride = null) {
     // Da ora solo badge guadagnati in questa sessione mostreranno notifica
     _loginBadgeSnapshot = null;
 
+    migrateMtrLoads(); // Ricalcola loads MTR dai mtrValue salvati
     updateStats();
     renderProtocolList();
     updateChapterBannerSilent();
@@ -4981,7 +5009,10 @@ function protoEditorPersist(proto) {
     if (proto.id === APP.activeProtocolId) {
         APP.exerciseData = proto.exercises.map(function(ex) {
             var base = parseFloat(ex.baseWeight) || 0;
-            return { name: ex.name, sr: ex.sr, loads: WEEK_LOADS.map(function(p){return base*p;}), baseWeight: base };
+            var loads = (ex.loads && ex.loads.length === WEEK_LOADS.length)
+                ? ex.loads
+                : WEEK_LOADS.map(function(p){ return Math.round(base*p*2)/2; });
+            return { name: ex.name, sr: ex.sr, loads: loads, baseWeight: base };
         });
         var inputList = document.getElementById('input-list');
         if (inputList) {
@@ -12061,7 +12092,9 @@ function activateProtocol(protoId, preserveCurrentWeek = false) {
 
     // Load protocol exercise data into APP state
     APP.exerciseData = proto.exercises.map(ex => {
-        const loads = WEEK_LOADS.map(function(p){return ex.baseWeight*p;});
+        const loads = (ex.loads && ex.loads.length === WEEK_LOADS.length)
+            ? ex.loads
+            : WEEK_LOADS.map(function(p){ return Math.round((ex.baseWeight||0)*p*2)/2; });
         return { name: ex.name, sr: ex.sr, loads, baseWeight: ex.baseWeight };
     });
     // NOTE: chipStates and dayAssignments are GLOBAL (shared across protocols), NOT overwritten here
@@ -13155,6 +13188,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Non loggato: ripristina solo stato UI
         const hasState = loadState();
         if (hasState) {
+            migrateMtrLoads();
             restoreUI();
             if (shouldShowNav()) {
                 showResultsFromHero();
@@ -13168,6 +13202,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.warn('Supabase non disponibile:', e.message);
         const hasState = loadState();
         if (hasState) {
+            migrateMtrLoads();
             restoreUI();
             if (shouldShowNav()) {
                 showResultsFromHero();
