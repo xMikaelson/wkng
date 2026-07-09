@@ -5108,15 +5108,15 @@ function mtrUpdatePreview() {
 function mtrApply() {
     var val = parseFloat(document.getElementById('mtr-input').value);
     if (!val || val <= 0) { showToast('Inserisci il massimo tecnico', 'error'); return; }
-    // Calcola entrambi i set di loads
     var forzaLoads = WEEK_LOADS.map(function(p){ return Math.round(val * p * 2) / 2; });
     var massaLoads = MTR_MASSA_LOADS.map(function(p){ return Math.round(val * p * 2) / 2; });
-    // Il baseWeight è il carico del chapter corrente per il protocollo corrente
     var isForza = _mtrSlot === 'forza' || _mtrSlot === 'upper' || _mtrSlot === 'lower';
     var loads = isForza ? forzaLoads : massaLoads;
     var baseWeight = loads[_mtrWeekIdx] != null ? loads[_mtrWeekIdx] : loads[0];
+    // IMPORTANTE: salva callback PRIMA di mtrClose (che lo azzera)
+    var cb = _mtrCallback;
     mtrClose();
-    if (_mtrCallback) _mtrCallback(loads, baseWeight, forzaLoads, massaLoads, val);
+    if (cb) cb(loads, baseWeight, forzaLoads, massaLoads, val);
 }
 
 function mtrClose() {
