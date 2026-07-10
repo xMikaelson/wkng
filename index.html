@@ -4361,9 +4361,9 @@ function buildProtoEditorBox(proto, weekIdx) {
         if (comp === null) return null;
         var isForza = slot === 'upper' || slot === 'lower' || proto.goal === 'forza';
         if (isForza) {
-            return comp ? '5×5' : '3×8';
+            return comp ? '5×5' : '3×8';   // Zatsiorsky/Rippetoe: forza neurale compound, accessory isolati
         } else {
-            return comp ? '4×8' : '3×12';
+            return comp ? '4×10' : '4×12';  // Schoenfeld 2010: ipertrofia compound 6-12, isolati 10-15
         }
     }
 
