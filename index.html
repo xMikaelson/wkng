@@ -6563,6 +6563,14 @@ function initWorkoutPage() {
                     </div>
                 </div>`;
             }).join('')}`;
+
+        // Blocco riscaldamento specifico sotto la lista esercizi
+        if (!isDeload && exData.length > 0) {
+            var warmupContainer = document.createElement('div');
+            warmupContainer.style.cssText = 'margin-top:14px;background:#0f172a;border:1px solid rgba(255,255,255,0.07);border-radius:14px;overflow:hidden;';
+            renderWarmupBlock(exData[0].name, exData, warmupContainer);
+            prevList.appendChild(warmupContainer);
+        }
     }
 
     // Store today's assignment for woStartWorkout
@@ -9190,12 +9198,6 @@ function woRenderEx() {
 
     // Ex list
     woRenderExList();
-
-    // Riscaldamento specifico (accordion)
-    var activeState = document.getElementById('wo-active-state');
-    if (activeState && ex && exData.length > 0) {
-        renderWarmupBlock(ex.name, exData, activeState);
-    }
 
     // Timer — non resettare se stiamo solo aggiornando after rest
     if (!woState.restRunning) {
