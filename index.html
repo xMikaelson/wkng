@@ -2958,6 +2958,7 @@ const APP = {
     selectedViewWeek: 0,
     completedWeeks: [false, false, false, false, false],
     availableWeeks: [0],
+    mtrValues: {}, // dizionario globale MTR: { "Nome Esercizio": 35 }
     // Chip states per week: array of 7 values each ('rest', 'selected', 'done')
     chipStates: [
         ['rest','rest','rest','rest','rest','rest','rest'],
@@ -3020,6 +3021,7 @@ function saveState() {
             motivationalQuotes: APP.motivationalQuotes,
             personalRecords: APP.personalRecords || {},
             savedProtocols: APP.savedProtocols || [],
+            mtrValues: APP.mtrValues || {},
             nutritionLogs: nutGetAllLogs()
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
@@ -3190,6 +3192,7 @@ function loadState() {
 
         if (saved.goal) document.getElementById('goal').value = saved.goal;
         APP.personalRecords = saved.personalRecords || {};
+        APP.mtrValues = saved.mtrValues || {};
 
         return true;
     } catch(e) { return false; }
@@ -3220,6 +3223,209 @@ function migrateMtrLoads() {
         });
     });
     if (changed) saveState();
+}
+
+// ════════════════════════════════════════════════
+// WARMUP — Riscaldamento specifico per esercizio
+// Basato su: NSCA Essentials (Baechle & Earle 2008), Rippetoe Starting Strength
+// Regole:
+//   - Solo esercizi compound
+//   - Riscalda il primo compound per ogni pattern di movimento distinto
+//   - 3 set: 40%×5, 60%×4, 80%×2
+//   - Recupero: 60s tra W1-W2-W3, 2min prima del lavoro
+// ════════════════════════════════════════════════
+
+// Mappa pattern di movimento per ogni esercizio
+var MOVEMENT_PATTERNS = {
+    // Push orizzontale
+    'panca piana': 'push-h', 'panca inclinata': 'push-h', 'panca declinata': 'push-h',
+    'push up': 'push-h', 'dip': 'push-h',
+    // Push verticale
+    'military press': 'push-v', 'lento avanti': 'push-v', 'lento dietro': 'push-v',
+    'arnold press': 'push-v', 'shoulder press': 'push-v',
+    // Pull orizzontale
+    'rematore con bilanciere': 'pull-h', 'rematore con manubrio': 'pull-h',
+    'rematore ai cavi': 'pull-h',
+    // Pull verticale
+    'trazioni': 'pull-v', 'lat machine': 'pull-v', 'pulldown': 'pull-v',
+    // Quad dominant
+    'squat': 'quad', 'leg press': 'quad', 'hack squat': 'quad', 'affondi': 'quad',
+    'goblet': 'quad', 'step up': 'quad',
+    // Hip hinge
+    'stacco da terra': 'hinge', 'stacco rumeno': 'hinge', 'stacco sumo': 'hinge',
+    'good morning': 'hinge', 'hip thrust': 'hinge', 'iperestensioni': 'hinge'
+};
+
+function getMovementPattern(name) {
+    var n = (name || '').toLowerCase();
+    for (var key in MOVEMENT_PATTERNS) {
+        if (n.includes(key)) return MOVEMENT_PATTERNS[key];
+    }
+    return null;
+}
+
+// Identifica quali compound necessitano di riscaldamento (primo per pattern)
+function identifyWarmupExercises(exercises) {
+    var seen = {};
+    var result = [];
+    (exercises || []).forEach(function(ex) {
+        var comp = isCompoundEx(ex.name);
+        if (!comp) {
+            result.push({ name: ex.name, needsWarmup: false, reason: 'isolato' });
+            return;
+        }
+        var pattern = getMovementPattern(ex.name);
+        if (!pattern) {
+            result.push({ name: ex.name, needsWarmup: false, reason: 'pattern non riconosciuto' });
+            return;
+        }
+        if (seen[pattern]) {
+            result.push({ name: ex.name, needsWarmup: false, reason: 'già caldo (' + seen[pattern] + ')' });
+        } else {
+            seen[pattern] = ex.name;
+            result.push({ name: ex.name, needsWarmup: true, reason: '1° compound ' + pattern });
+        }
+    });
+    return result;
+}
+
+// Calcola i 3 set di riscaldamento dall'MTR
+function getWarmupSets(mtrValue) {
+    var mtr = parseFloat(mtrValue) || 0;
+    if (mtr <= 0) return null;
+    return [
+        { pct: 40, kg: Math.round(mtr * 0.40 * 2) / 2, reps: 5, rec: '60s' },
+        { pct: 60, kg: Math.round(mtr * 0.60 * 2) / 2, reps: 4, rec: '60s' },
+        { pct: 80, kg: Math.round(mtr * 0.80 * 2) / 2, reps: 2, rec: '2 min → poi lavoro' }
+    ];
+}
+
+// Renderizza il blocco riscaldamento nella card esercizio (accordion)
+function renderWarmupBlock(exName, exercises, container) {
+    // Rimuovi eventuale blocco precedente
+    var existing = container.querySelector('.wo-warmup-block');
+    if (existing) existing.remove();
+
+    var mtr = APP.mtrValues[exName];
+    var warmupInfo = identifyWarmupExercises(exercises);
+    var thisExInfo = warmupInfo.find(function(e){ return e.name === exName; });
+    if (!thisExInfo) return;
+
+    var block = document.createElement('div');
+    block.className = 'wo-warmup-block';
+
+    // Analisi esercizi del protocollo
+    var analysisEl = document.createElement('div');
+    analysisEl.style.cssText = 'border-top:1px solid rgba(255,255,255,0.05);padding:10px 16px;background:rgba(99,102,241,0.03);';
+    var analysisTitle = document.createElement('div');
+    analysisTitle.style.cssText = 'font-size:0.48rem;color:#818cf8;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-bottom:8px;';
+    analysisTitle.textContent = '📋 Analisi protocollo odierno';
+    analysisEl.appendChild(analysisTitle);
+    warmupInfo.forEach(function(info) {
+        var row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:3px 0;';
+        var dot = document.createElement('div');
+        dot.style.cssText = 'width:6px;height:6px;border-radius:50%;flex-shrink:0;background:' + (info.needsWarmup ? '#818cf8' : '#1e293b') + ';';
+        var nameEl = document.createElement('div');
+        nameEl.style.cssText = 'font-size:0.58rem;flex:1;color:' + (info.needsWarmup ? '#e2e8f0' : '#334155') + ';' + (info.needsWarmup ? 'font-weight:600;' : '');
+        nameEl.textContent = info.name;
+        var why = document.createElement('div');
+        why.style.cssText = 'font-size:0.46rem;color:' + (info.needsWarmup ? '#818cf8' : '#475569') + ';';
+        why.textContent = info.needsWarmup ? '→ riscalda (' + info.reason + ')' : info.reason;
+        row.appendChild(dot); row.appendChild(nameEl); row.appendChild(why);
+        analysisEl.appendChild(row);
+    });
+    block.appendChild(analysisEl);
+
+    // Se questo esercizio non necessita di riscaldamento, stop
+    if (!thisExInfo.needsWarmup) {
+        container.appendChild(block);
+        return;
+    }
+
+    // Toggle accordion
+    var toggle = document.createElement('div');
+    toggle.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:10px 16px;cursor:pointer;border-top:1px solid rgba(255,255,255,0.06);';
+    var toggleLbl = document.createElement('div');
+    toggleLbl.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:0.6rem;font-weight:700;color:#818cf8;';
+    toggleLbl.innerHTML = '🔥 Riscaldamento specifico <span style="display:inline-block;font-size:0.42rem;color:#334155;border:0.5px solid #1e293b;border-radius:4px;padding:1px 5px;margin-left:4px;">NSCA 2008</span>';
+    var arrow = document.createElement('span');
+    arrow.style.cssText = 'color:#475569;font-size:0.7rem;transition:transform 0.2s;';
+    arrow.textContent = '›';
+    toggle.appendChild(toggleLbl);
+    toggle.appendChild(arrow);
+    block.appendChild(toggle);
+
+    // Corpo accordion
+    var body = document.createElement('div');
+    body.style.cssText = 'display:none;padding:0 16px 14px;';
+
+    var desc = document.createElement('div');
+    desc.style.cssText = 'font-size:0.54rem;color:#475569;line-height:1.5;margin-bottom:12px;';
+
+    if (!mtr) {
+        desc.innerHTML = 'Imposta il <strong>Massimo Tecnico</strong> (🎯) nell\'editor protocollo per calcolare il riscaldamento automatico.';
+        body.appendChild(desc);
+        block.appendChild(body);
+    } else {
+        desc.textContent = 'Solo per ' + exName + ' (primo compound di questo pattern). Gli altri esercizi non necessitano di riscaldamento separato.';
+        body.appendChild(desc);
+
+        var sets = getWarmupSets(mtr);
+        sets.forEach(function(s, i) {
+            var row = document.createElement('div');
+            row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.04);';
+            var num = document.createElement('div');
+            num.style.cssText = 'width:28px;height:28px;border-radius:8px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.18);font-size:0.58rem;font-weight:800;color:#818cf8;display:flex;align-items:center;justify-content:center;flex-shrink:0;';
+            num.textContent = 'W' + (i+1);
+            var info = document.createElement('div');
+            info.style.cssText = 'flex:1;';
+            info.innerHTML = '<div><span style="font-size:0.8rem;font-weight:800;color:#e2e8f0;">' + s.kg + ' kg</span><span style="font-size:0.48rem;color:#475569;margin-left:4px;">' + s.pct + '% MTR</span></div>' +
+                '<div style="font-size:0.5rem;color:#64748b;margin-top:2px;">' + s.reps + ' ripetizioni<span style="color:#334155;margin-left:6px;">· rec. ' + s.rec + '</span></div>';
+            var done = document.createElement('div');
+            done.style.cssText = 'width:30px;height:30px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;color:#334155;font-size:0.75rem;cursor:pointer;flex-shrink:0;';
+            done.textContent = '○';
+            done.onclick = function() {
+                if (done.textContent === '○') {
+                    done.textContent = '✓';
+                    done.style.background = 'rgba(99,102,241,0.2)';
+                    done.style.borderColor = 'rgba(99,102,241,0.4)';
+                    done.style.color = '#818cf8';
+                } else {
+                    done.textContent = '○';
+                    done.style.background = 'rgba(255,255,255,0.03)';
+                    done.style.borderColor = 'rgba(255,255,255,0.08)';
+                    done.style.color = '#334155';
+                }
+            };
+            row.appendChild(num); row.appendChild(info); row.appendChild(done);
+            body.appendChild(row);
+        });
+
+        // Bottoni
+        var footer = document.createElement('div');
+        footer.style.cssText = 'display:flex;gap:8px;margin-top:12px;';
+        var btnSkip = document.createElement('button');
+        btnSkip.style.cssText = 'flex:1;padding:9px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;font-size:0.68rem;color:#475569;cursor:pointer;font-family:inherit;';
+        btnSkip.textContent = 'Salta';
+        btnSkip.onclick = function() { body.style.display = 'none'; arrow.textContent = '›'; };
+        var btnStart = document.createElement('button');
+        btnStart.style.cssText = 'flex:2;padding:9px;background:linear-gradient(135deg,#4f46e5,#7c3aed);border:none;border-radius:10px;font-size:0.72rem;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;';
+        btnStart.textContent = '▶ Inizia esercizio';
+        btnStart.onclick = function() { body.style.display = 'none'; arrow.textContent = '›'; };
+        footer.appendChild(btnSkip); footer.appendChild(btnStart);
+        body.appendChild(footer);
+        block.appendChild(body);
+    }
+
+    // Toggle onclick
+    toggle.onclick = function() {
+        var open = body.style.display === 'block';
+        body.style.display = open ? 'none' : 'block';
+        arrow.textContent = open ? '›' : '‹';
+    };
+
+    container.appendChild(block);
 }
 
 function restoreUI() {
@@ -4450,24 +4656,34 @@ function buildProtoEditorBox(proto, weekIdx) {
             mtrBtn.onclick = function() {
                 var slot = protoResolveSlot(proto);
                 mtrOpen(ex.name || 'Esercizio', weekIdx, slot, function(loads, baseWeight, forzaLoads, massaLoads, mtrValue) {
-                    // Aggiorna draft in memoria
+                    // 1. Salva in dizionario globale MTR
+                    APP.mtrValues[ex.name] = mtrValue;
+                    // 2. Aggiorna draft in memoria
                     draft[idx].baseWeight = baseWeight;
                     draft[idx].loads = loads;
                     draft[idx].mtrValue = mtrValue;
                     kgInput.value = loads[weekIdx] != null ? loads[weekIdx] : baseWeight;
                     onManualEdit();
-                    // Salva immediatamente su APP.savedProtocols e Supabase
-                    var protoIdx = APP.savedProtocols.findIndex(function(p){ return p.id === proto.id; });
-                    if (protoIdx !== -1 && APP.savedProtocols[protoIdx].exercises[idx]) {
-                        APP.savedProtocols[protoIdx].exercises[idx].baseWeight = baseWeight;
-                        APP.savedProtocols[protoIdx].exercises[idx].loads = loads;
-                        APP.savedProtocols[protoIdx].exercises[idx].mtrValue = mtrValue;
-                        APP.savedProtocols[protoIdx].exercises[idx].forzaLoads = forzaLoads;
-                        APP.savedProtocols[protoIdx].exercises[idx].massaLoads = massaLoads;
-                        saveState();
-                        saveProtocolToSupabase(APP.savedProtocols[protoIdx]);
-                    }
-                    showToast('🎯 Carichi MTR salvati!', 'success');
+                    // 3. Aggiorna TUTTI i protocolli che contengono questo esercizio
+                    APP.savedProtocols.forEach(function(p) {
+                        if (!p.exercises) return;
+                        var pSlot = (protoResolveSlot(p) || '').toLowerCase();
+                        var pIsMassa = pSlot === 'push' || pSlot === 'pull' || pSlot === 'legs';
+                        var pLoads = pIsMassa ? massaLoads : forzaLoads;
+                        p.exercises.forEach(function(pEx) {
+                            if ((pEx.name || '').toLowerCase() === (ex.name || '').toLowerCase()) {
+                                pEx.mtrValue = mtrValue;
+                                pEx.loads = pLoads;
+                                pEx.forzaLoads = forzaLoads;
+                                pEx.massaLoads = massaLoads;
+                                pEx.baseWeight = pLoads[weekIdx] || pLoads[0];
+                            }
+                        });
+                    });
+                    // 4. Salva
+                    saveState();
+                    APP.savedProtocols.forEach(function(p) { saveProtocolToSupabase(p); });
+                    showToast('🎯 MTR salvato su tutti i protocolli!', 'success');
                 });
             };
             right.appendChild(srInput);
@@ -8974,6 +9190,12 @@ function woRenderEx() {
 
     // Ex list
     woRenderExList();
+
+    // Riscaldamento specifico (accordion)
+    var activeState = document.getElementById('wo-active-state');
+    if (activeState && ex && exData.length > 0) {
+        renderWarmupBlock(ex.name, exData, activeState);
+    }
 
     // Timer — non resettare se stiamo solo aggiornando after rest
     if (!woState.restRunning) {
