@@ -3357,62 +3357,54 @@ function renderWarmupBlock(exName, exercises, container) {
     var existing = container.querySelector('.wo-warmup-block');
     if (existing) existing.remove();
 
-    var mtr = APP.mtrValues[exName];
     var warmupInfo = identifyWarmupExercises(exercises);
-
-    // Conta totale set da completare
-    var setsToComplete = warmupInfo.filter(function(e){ return e.needsWarmup; }).length * 3;
+    var warmExercises = warmupInfo.filter(function(e){ return e.needsWarmup; });
+    var setsToComplete = 0;
     var completedSets = 0;
     var startBtn = document.getElementById('wo-start-btn');
 
-    // Blocca subito il bottone INIZIA
-    if (startBtn && setsToComplete > 0) {
-        startBtn.className = startBtn.className.replace('warmup-unlocked','') + ' warmup-locked';
-        startBtn.textContent = '';
-        var icon = document.createElement('span');
-        icon.className = 'wo-start-icon';
-        icon.textContent = '▶';
-        startBtn.appendChild(icon);
-        startBtn.appendChild(document.createTextNode('INIZIA ALLENAMENTO'));
+    // Conta set totali (solo esercizi con MTR impostato)
+    warmExercises.forEach(function(e) {
+        if (APP.mtrValues[e.name]) setsToComplete += 3;
+    });
+
+    // Blocca bottone INIZIA
+    if (startBtn) {
+        startBtn.className = (startBtn.className || '').replace('warmup-unlocked','').replace('warmup-locked','').trim() + ' warmup-locked';
     }
 
     function updateStartBtn() {
         if (!startBtn) return;
         var fill = container.querySelector('.wo-warmup-fill');
-        var lbl = container.querySelector('.wo-warmup-prog-lbl');
-        var pct = setsToComplete > 0 ? Math.round(completedSets / setsToComplete * 100) : 100;
-        if (fill) { fill.style.width = pct + '%'; fill.className = 'wo-warmup-fill' + (completedSets >= setsToComplete ? ' complete' : ''); }
-        if (lbl) { lbl.textContent = completedSets + ' / ' + setsToComplete + ' set completati'; lbl.style.color = completedSets >= setsToComplete ? '#00ff88' : '#64748b'; }
-        if (completedSets >= setsToComplete) {
-            startBtn.className = startBtn.className.replace('warmup-locked','warmup-unlocked');
+        var lbl  = container.querySelector('.wo-warmup-prog-lbl');
+        var allDone = setsToComplete > 0 && completedSets >= setsToComplete;
+        var pct = setsToComplete > 0 ? Math.round(completedSets / setsToComplete * 100) : 0;
+        if (fill) { fill.style.width = pct + '%'; fill.className = 'wo-warmup-fill' + (allDone ? ' complete' : ''); }
+        if (lbl)  { lbl.textContent = completedSets + ' / ' + setsToComplete + ' set'; lbl.style.color = allDone ? '#00ff88' : '#64748b'; }
+        if (allDone) {
+            startBtn.className = (startBtn.className || '').replace('warmup-locked','').trim() + ' warmup-unlocked';
+        } else {
+            startBtn.className = (startBtn.className || '').replace('warmup-unlocked','').trim() + ' warmup-locked';
         }
     }
 
     var block = document.createElement('div');
     block.className = 'wo-warmup-block';
 
-    // Card principale
     var card = document.createElement('div');
     card.className = 'wo-warmup-card';
 
-    // Header: primo esercizio da riscaldare
-    var firstWarm = warmupInfo.find(function(e){ return e.needsWarmup; });
-    if (firstWarm) {
-        var hdr = document.createElement('div');
-        hdr.className = 'wc-ex-header';
-        hdr.innerHTML = '<div class="wc-ex-num">' + (exName || '') + '</div>' +
-            '<div class="wc-ex-name">Riscaldamento specifico</div>' +
-            '<div class="wc-ex-meta">Prima di iniziare l\'allenamento</div>';
-        card.appendChild(hdr);
-    }
+    // ── Header ──
+    var hdr = document.createElement('div');
+    hdr.className = 'wc-ex-header';
+    hdr.innerHTML = '<div class="wc-ex-num">🔥 Riscaldamento specifico <span class="wc-sci-badge">NSCA 2008 · Rippetoe</span></div>' +
+        '<div class="wc-ex-name">Prima di iniziare l\'allenamento</div>';
+    card.appendChild(hdr);
 
-    // Analisi protocollo
+    // ── Analisi protocollo ──
     var analysisEl = document.createElement('div');
     analysisEl.className = 'wc-analysis';
-    var aTitle = document.createElement('div');
-    aTitle.className = 'wc-analysis-title';
-    aTitle.textContent = '📋 Analisi protocollo odierno';
-    analysisEl.appendChild(aTitle);
+    analysisEl.innerHTML = '<div class="wc-analysis-title">📋 Analisi protocollo odierno</div>';
     warmupInfo.forEach(function(info) {
         var row = document.createElement('div');
         row.className = 'wc-a-row';
@@ -3424,38 +3416,76 @@ function renderWarmupBlock(exName, exercises, container) {
     });
     card.appendChild(analysisEl);
 
-    // Toggle accordion
-    var toggle = document.createElement('div');
-    toggle.className = 'wc-toggle';
-    toggle.innerHTML = '<div class="wc-toggle-lbl">🔥 Riscaldamento specifico<span class="wc-sci-badge">NSCA 2008 · Rippetoe</span></div><span id="wc-arrow">‹</span>';
-    card.appendChild(toggle);
+    // ── Set per ogni esercizio da riscaldare ──
+    var bodyEl = document.createElement('div');
+    bodyEl.className = 'wc-body';
 
-    // Corpo
-    var body = document.createElement('div');
-    body.className = 'wc-body';
-
-    var desc = document.createElement('div');
-    desc.className = 'wc-desc';
-
-    if (!mtr && warmupInfo.some(function(e){ return e.needsWarmup; })) {
-        desc.innerHTML = 'Imposta il <strong>Massimo Tecnico</strong> (🎯) nell\'editor protocollo per calcolare il riscaldamento automatico.';
-        body.appendChild(desc);
-        setsToComplete = 0;
-        if (startBtn) startBtn.className = startBtn.className.replace('warmup-locked','warmup-unlocked');
+    if (warmExercises.length === 0) {
+        bodyEl.innerHTML = '<div class="wc-desc">Nessun esercizio compound trovato nel protocollo.</div>';
+        if (startBtn) startBtn.className = (startBtn.className||'').replace('warmup-locked','warmup-unlocked');
     } else {
-        var warmExercises = warmupInfo.filter(function(e){ return e.needsWarmup; });
-        desc.textContent = warmExercises.map(function(e){ return e.name; }).join(' + ') + ' — pattern distinti da riscaldare.';
-        body.appendChild(desc);
-
         warmExercises.forEach(function(warmEx, exIdx) {
             var exMtr = APP.mtrValues[warmEx.name];
-            if (!exMtr) return;
-            var sets = getWarmupSets(exMtr);
 
             var secLbl = document.createElement('div');
             secLbl.className = 'wc-section-lbl' + (exIdx > 0 ? ' second' : '');
-            secLbl.textContent = warmEx.name + ' · MTR ' + exMtr + 'kg';
-            body.appendChild(secLbl);
+            secLbl.textContent = warmEx.name;
+            bodyEl.appendChild(secLbl);
+
+            if (!exMtr) {
+                // MTR non impostato — chiede inline
+                var mtrBox = document.createElement('div');
+                mtrBox.style.cssText = 'background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:10px;padding:12px;margin-bottom:8px;';
+                mtrBox.innerHTML = '<div style="font-size:0.55rem;color:#818cf8;font-weight:700;margin-bottom:8px;">🎯 Imposta il Massimo Tecnico</div>' +
+                    '<div style="font-size:0.52rem;color:#64748b;margin-bottom:10px;line-height:1.5;">Il massimo che riesci a sollevare con tecnica perfetta. Serve per calcolare i carichi di riscaldamento.</div>' +
+                    '<div style="display:flex;gap:8px;align-items:center;">' +
+                    '<input type="number" placeholder="es. 80" min="1" max="500" step="0.5" inputmode="decimal" style="flex:1;background:rgba(255,255,255,0.06);border:1.5px solid rgba(99,102,241,0.3);border-radius:8px;padding:9px 12px;color:#e2e8f0;font-size:1rem;font-weight:800;text-align:center;outline:none;font-family:inherit;" id="mtr-inline-' + exIdx + '">' +
+                    '<span style="font-size:0.7rem;color:#475569;">kg</span>' +
+                    '<button style="background:rgba(0,255,136,0.15);border:1px solid rgba(0,255,136,0.3);border-radius:8px;padding:9px 14px;color:#00ff88;font-size:0.7rem;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap;" id="mtr-inline-btn-' + exIdx + '">Conferma</button>' +
+                    '</div>';
+
+                var capturedEx = warmEx;
+                var capturedIdx = exIdx;
+                bodyEl.appendChild(mtrBox);
+
+                // Dopo append, aggiungi listener al bottone
+                setTimeout(function() {
+                    var inp = document.getElementById('mtr-inline-' + capturedIdx);
+                    var btn = document.getElementById('mtr-inline-btn-' + capturedIdx);
+                    if (btn && inp) {
+                        btn.onclick = function() {
+                            var val = parseFloat(inp.value);
+                            if (!val || val <= 0) { showToast('Inserisci un valore valido', 'error'); return; }
+                            APP.mtrValues[capturedEx.name] = val;
+                            // Aggiorna anche i protocolli
+                            var slot = protoResolveSlot(APP.savedProtocols && APP.savedProtocols[0]) || 'forza';
+                            var isMassa = slot === 'push' || slot === 'pull' || slot === 'legs';
+                            APP.savedProtocols && APP.savedProtocols.forEach(function(p) {
+                                if (!p.exercises) return;
+                                p.exercises.forEach(function(ex) {
+                                    if ((ex.name||'').toLowerCase() === capturedEx.name.toLowerCase()) {
+                                        ex.mtrValue = val;
+                                        var pSlot = (protoResolveSlot(p)||'').toLowerCase();
+                                        var pMassa = pSlot==='push'||pSlot==='pull'||pSlot==='legs';
+                                        ex.loads = (pMassa ? MTR_MASSA_LOADS : WEEK_LOADS).map(function(p){ return Math.round(val*p*2)/2; });
+                                    }
+                                });
+                            });
+                            saveState();
+                            // Ri-renderizza il warmup block
+                            renderWarmupBlock(exName, exercises, container.parentElement || container);
+                        };
+                    }
+                }, 50);
+                return;
+            }
+
+            // MTR impostato — mostra i 3 set
+            var sets = getWarmupSets(exMtr);
+            var mtrLbl = document.createElement('div');
+            mtrLbl.style.cssText = 'font-size:0.42rem;color:#475569;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;';
+            mtrLbl.textContent = 'MTR ' + exMtr + 'kg';
+            bodyEl.appendChild(mtrLbl);
 
             sets.forEach(function(s, i) {
                 var row = document.createElement('div');
@@ -3482,49 +3512,36 @@ function renderWarmupBlock(exName, exercises, container) {
                 btn.onclick = function() {
                     var done = btn.classList.contains('done');
                     if (!done) {
-                        btn.classList.add('done');
-                        btn.textContent = '✓';
-                        lbl.className = 'wc-set-lbl active';
-                        lbl.textContent = '1/1';
+                        btn.classList.add('done'); btn.textContent = '✓';
+                        lbl.className = 'wc-set-lbl active'; lbl.textContent = '1/1';
                         completedSets++;
                     } else {
-                        btn.classList.remove('done');
-                        btn.textContent = '○';
-                        lbl.className = 'wc-set-lbl';
-                        lbl.textContent = '0/1';
+                        btn.classList.remove('done'); btn.textContent = '○';
+                        lbl.className = 'wc-set-lbl'; lbl.textContent = '0/1';
                         completedSets--;
                     }
                     updateStartBtn();
                 };
 
-                btnWrap.appendChild(btn);
-                btnWrap.appendChild(lbl);
+                btnWrap.appendChild(btn); btnWrap.appendChild(lbl);
                 row.appendChild(num); row.appendChild(info); row.appendChild(btnWrap);
-                body.appendChild(row);
+                bodyEl.appendChild(row);
             });
         });
     }
 
-    // Footer con barra progresso
+    card.appendChild(bodyEl);
+    block.appendChild(card);
+
+    // ── Footer progresso ──
     var footer = document.createElement('div');
     footer.className = 'wo-warmup-footer';
     footer.innerHTML = '<div class="wo-warmup-progress">' +
         '<div class="wo-warmup-bar"><div class="wo-warmup-fill" style="width:0%"></div></div>' +
         '<div class="wo-warmup-prog-lbl">0 / ' + setsToComplete + ' set</div>' +
         '</div>';
-
-    card.appendChild(body);
-    block.appendChild(card);
     block.appendChild(footer);
     container.appendChild(block);
-
-    // Toggle
-    toggle.onclick = function() {
-        var open = body.style.display !== 'none';
-        body.style.display = open ? 'none' : 'block';
-        toggle.querySelector('#wc-arrow').textContent = open ? '›' : '‹';
-    };
-
     updateStartBtn();
 }
 
@@ -6641,15 +6658,21 @@ function initWorkoutPage() {
         woState._chapterSub = `Chapter ${w+1} · ${chapterNames[w]}`;
         woState._day = `OGGI · ${DAYS_IT[rawDay].toUpperCase()}`;
 
-        // Pagina 1: solo warmup block + lista esercizi sotto
+        // Pagina 1: solo warmup block, niente lista esercizi
         if (prevList) {
-            const kgW = w;
-            const isDeload = kgW === DELOAD_WEEK;
-            prevList.innerHTML = (isDeload ? `<div style="background:rgba(99,102,241,0.09);border:1px solid rgba(99,102,241,0.22);border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:0.6rem;color:#818cf8;font-weight:700;">🔄 Deload Week — carico 50% · 3 serie</div>` : '') +
-                `<div style="font-size:0.55rem;color:#475569;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;font-weight:700;">Programma · ${protoName}</div>
+            prevList.innerHTML = '';
+            if (!isDeload && exData.length > 0) {
+                var warmupContainer = document.createElement('div');
+                warmupContainer.style.cssText = 'margin-bottom:14px;';
+                renderWarmupBlock(exData[0].name, exData, warmupContainer);
+                prevList.appendChild(warmupContainer);
+            } else if (isDeload) {
+                // Deload: niente warmup, mostra lista e bottone
+                if (startBtn) startBtn.style.display = 'block';
+                prevList.innerHTML = `<div style="background:rgba(99,102,241,0.09);border:1px solid rgba(99,102,241,0.22);border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:0.6rem;color:#818cf8;font-weight:700;">🔄 Deload Week — carico 50% · 3 serie</div>
+                <div style="font-size:0.55rem;color:#475569;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;font-weight:700;">Programma · ${protoName}</div>
                 ${exData.map((ex,i) => {
                     const kg = ex.loads ? ex.loads[kgW].toFixed(1) : (ex.baseWeight||0);
-                    const srDisplay = isDeload ? woDeloadSr(ex.sr) : ex.sr;
                     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
                         <div style="display:flex;gap:8px;align-items:center;">
                             <div style="width:20px;height:20px;border-radius:6px;background:rgba(var(--pr,52,211,153),0.12);border:1px solid rgba(var(--pr,52,211,153),0.25);display:flex;align-items:center;justify-content:center;font-size:0.55rem;font-weight:800;color:var(--primary);">${i+1}</div>
@@ -6657,22 +6680,28 @@ function initWorkoutPage() {
                         </div>
                         <div style="text-align:right;">
                             <div style="font-size:0.65rem;color:var(--primary);font-weight:700;">${kg} kg</div>
-                            <div style="font-size:0.55rem;color:#475569;">${escapeHTML(srDisplay)}</div>
+                            <div style="font-size:0.55rem;color:#475569;">${escapeHTML(woDeloadSr(ex.sr))}</div>
                         </div>
                     </div>`;
                 }).join('')}`;
-
-            // Warmup block prima della lista
-            if (!isDeload && exData.length > 0) {
-                var warmupContainer = document.createElement('div');
-                warmupContainer.style.cssText = 'margin-bottom:14px;';
-                renderWarmupBlock(exData[0].name, exData, warmupContainer);
-                prevList.insertBefore(warmupContainer, prevList.firstChild);
-            } else if (isDeload) {
-                // Deload: mostra direttamente il bottone originale
-                if (startBtn) startBtn.style.display = 'block';
             }
         }
+        // Salva lista esercizi per pagina 2
+        woState._exListHtml = `<div style="font-size:0.55rem;color:#475569;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;font-weight:700;">Programma · ${protoName}</div>
+        ${exData.map((ex,i) => {
+            const kg = ex.loads ? ex.loads[kgW].toFixed(1) : (ex.baseWeight||0);
+            const srDisplay = isDeload ? woDeloadSr(ex.sr) : ex.sr;
+            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div style="width:20px;height:20px;border-radius:6px;background:rgba(var(--pr,52,211,153),0.12);border:1px solid rgba(var(--pr,52,211,153),0.25);display:flex;align-items:center;justify-content:center;font-size:0.55rem;font-weight:800;color:var(--primary);">${i+1}</div>
+                    <span style="font-size:0.72rem;font-weight:600;">${escapeHTML(exItalian(ex.name))}</span>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:0.65rem;color:var(--primary);font-weight:700;">${kg} kg</div>
+                    <div style="font-size:0.55rem;color:#475569;">${escapeHTML(srDisplay)}</div>
+                </div>
+            </div>`;
+        }).join('')}`;
     }
 
     // Store today's assignment for woStartWorkout
@@ -9165,7 +9194,7 @@ function woStartWorkout() {
     const exData = APP.exerciseData || [];
     if (exData.length === 0) return;
 
-    // ── Mostra banner + stat (pagina 2) ──
+    // ── Mostra banner + stat + lista esercizi (pagina 2) ──
     const bannerEl = document.getElementById('wo-today-banner');
     const statBoxes = document.getElementById('wo-stat-boxes');
     const statTotal = document.getElementById('wo-stat-total');
@@ -9184,11 +9213,10 @@ function woStartWorkout() {
         statRest.textContent  = woState._statRest  || '—';
         statBoxes.style.display = 'flex';
     }
-    // Nasconde il warmup block
+    // Mostra lista esercizi nella pagina 2 e nascondi warmup
     var prevList = document.getElementById('wo-preview-list');
     if (prevList) {
-        var warmupBlock = prevList.querySelector('.wo-warmup-block');
-        if (warmupBlock) warmupBlock.style.display = 'none';
+        prevList.innerHTML = woState._exListHtml || '';
     }
 
     // Disable start button during countdown
