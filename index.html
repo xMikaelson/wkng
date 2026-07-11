@@ -6659,6 +6659,8 @@ function initWorkoutPage() {
         woState._day = `OGGI · ${DAYS_IT[rawDay].toUpperCase()}`;
 
         // Pagina 1: solo warmup block, niente lista esercizi
+        const kgW = w;
+        const isDeload = kgW === DELOAD_WEEK;
         if (prevList) {
             prevList.innerHTML = '';
             if (!isDeload && exData.length > 0) {
