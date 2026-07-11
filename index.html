@@ -1765,6 +1765,59 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         }
         .wo-start-btn:active { transform: scale(0.97); }
         .wo-start-btn .wo-start-icon { font-size:1.3rem; display:block; margin-bottom:4px; }
+        /* Warmup block styles */
+        .wo-warmup-card { background:#0f172a; border:1px solid rgba(255,255,255,0.07); border-radius:14px; overflow:hidden; margin:0 16px 14px; }
+        .wo-warmup-card .wc-ex-header { padding:12px 16px 10px; }
+        .wo-warmup-card .wc-ex-num { font-size:0.46rem; color:#475569; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:2px; }
+        .wo-warmup-card .wc-ex-name { font-size:0.88rem; font-weight:800; }
+        .wo-warmup-card .wc-ex-meta { font-size:0.52rem; color:#64748b; margin-top:2px; }
+        .wc-work-row { padding:9px 16px; background:rgba(0,255,136,0.05); border-top:1px solid rgba(0,255,136,0.1); display:flex; justify-content:space-between; align-items:center; }
+        .wc-work-lbl { font-size:0.43rem; color:#00ff88; text-transform:uppercase; letter-spacing:0.1em; }
+        .wc-work-val { font-size:0.95rem; font-weight:900; color:#00ff88; }
+        .wc-work-sub { font-size:0.5rem; color:#475569; }
+        .wc-mtr-lbl { font-size:0.43rem; color:#475569; text-transform:uppercase; }
+        .wc-mtr-val { font-size:0.7rem; font-weight:700; color:#64748b; }
+        .wc-analysis { border-top:1px solid rgba(255,255,255,0.05); padding:9px 16px; background:rgba(99,102,241,0.03); }
+        .wc-analysis-title { font-size:0.44rem; color:#818cf8; text-transform:uppercase; letter-spacing:0.1em; font-weight:700; margin-bottom:7px; }
+        .wc-a-row { display:flex; align-items:center; gap:7px; padding:2px 0; }
+        .wc-a-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+        .wc-a-dot.warm { background:#818cf8; }
+        .wc-a-dot.skip { background:#1e293b; }
+        .wc-a-name { font-size:0.56rem; flex:1; }
+        .wc-a-name.warm { color:#e2e8f0; font-weight:600; }
+        .wc-a-name.skip { color:#334155; }
+        .wc-a-why { font-size:0.43rem; }
+        .wc-a-why.warm { color:#818cf8; }
+        .wc-a-why.skip { color:#475569; }
+        .wc-toggle { display:flex; align-items:center; justify-content:space-between; padding:10px 16px; cursor:pointer; border-top:1px solid rgba(255,255,255,0.06); }
+        .wc-toggle-lbl { display:flex; align-items:center; gap:5px; font-size:0.6rem; font-weight:700; color:#818cf8; }
+        .wc-sci-badge { font-size:0.4rem; color:#334155; border:0.5px solid #1e293b; border-radius:4px; padding:1px 5px; margin-left:4px; }
+        .wc-body { padding:0 16px 14px; }
+        .wc-desc { font-size:0.52rem; color:#64748b; line-height:1.5; margin-bottom:10px; }
+        .wc-section-lbl { font-size:0.44rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px; padding-top:4px; font-weight:600; }
+        .wc-section-lbl.second { margin-top:10px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.05); }
+        .wc-set-row { display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
+        .wc-set-row:last-of-type { border:none; }
+        .wc-set-num { width:27px; height:27px; border-radius:7px; background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.18); font-size:0.55rem; font-weight:800; color:#818cf8; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+        .wc-set-info { flex:1; }
+        .wc-set-kg { font-size:0.8rem; font-weight:800; color:#e2e8f0; }
+        .wc-set-pct { font-size:0.46rem; color:#64748b; margin-left:4px; }
+        .wc-set-detail { font-size:0.5rem; color:#94a3b8; margin-top:2px; display:flex; align-items:center; gap:5px; }
+        .wc-set-rec { color:#64748b; font-weight:600; }
+        .wc-set-rec::before { content:'·'; margin-right:3px; color:#475569; }
+        .wc-set-btn { width:32px; height:32px; border-radius:9px; border:1.5px solid rgba(99,102,241,0.5); background:rgba(99,102,241,0.12); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; transition:all 0.2s; font-size:0.8rem; color:#818cf8; font-family:inherit; }
+        .wc-set-btn.done { background:rgba(0,255,136,0.15); border-color:rgba(0,255,136,0.5); color:#00ff88; }
+        .wc-set-lbl { font-size:0.42rem; color:#475569; text-align:center; margin-top:1px; }
+        .wc-set-lbl.active { color:#00ff88; }
+        /* Footer warmup */
+        .wo-warmup-footer { position:sticky; bottom:0; background:rgba(10,14,26,0.97); border-top:1px solid rgba(255,255,255,0.06); padding:10px 16px max(env(safe-area-inset-bottom),16px); }
+        .wo-warmup-progress { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+        .wo-warmup-bar { flex:1; height:4px; background:rgba(255,255,255,0.06); border-radius:2px; overflow:hidden; }
+        .wo-warmup-fill { height:100%; background:#818cf8; border-radius:2px; transition:width 0.3s, background 0.4s; width:0%; }
+        .wo-warmup-fill.complete { background:#00ff88; }
+        .wo-warmup-prog-lbl { font-size:0.46rem; color:#64748b; white-space:nowrap; }
+        .wo-start-btn.warmup-locked { background:rgba(255,255,255,0.05) !important; color:#334155 !important; cursor:not-allowed !important; pointer-events:none; }
+        .wo-start-btn.warmup-unlocked { background:linear-gradient(135deg,#00ff88,#00cc88) !important; color:#000 !important; pointer-events:auto; }
 
         .wo-idle-state  { display: block; }
         .wo-active-state { display: none; }
@@ -3300,132 +3353,179 @@ function getWarmupSets(mtrValue) {
     ];
 }
 
-// Renderizza il blocco riscaldamento nella card esercizio (accordion)
 function renderWarmupBlock(exName, exercises, container) {
-    // Rimuovi eventuale blocco precedente
     var existing = container.querySelector('.wo-warmup-block');
     if (existing) existing.remove();
 
     var mtr = APP.mtrValues[exName];
     var warmupInfo = identifyWarmupExercises(exercises);
-    var thisExInfo = warmupInfo.find(function(e){ return e.name === exName; });
-    if (!thisExInfo) return;
+
+    // Conta totale set da completare
+    var setsToComplete = warmupInfo.filter(function(e){ return e.needsWarmup; }).length * 3;
+    var completedSets = 0;
+    var startBtn = document.getElementById('wo-start-btn');
+
+    // Blocca subito il bottone INIZIA
+    if (startBtn && setsToComplete > 0) {
+        startBtn.className = startBtn.className.replace('warmup-unlocked','') + ' warmup-locked';
+        startBtn.textContent = '';
+        var icon = document.createElement('span');
+        icon.className = 'wo-start-icon';
+        icon.textContent = '▶';
+        startBtn.appendChild(icon);
+        startBtn.appendChild(document.createTextNode('INIZIA ALLENAMENTO'));
+    }
+
+    function updateStartBtn() {
+        if (!startBtn) return;
+        var fill = container.querySelector('.wo-warmup-fill');
+        var lbl = container.querySelector('.wo-warmup-prog-lbl');
+        var pct = setsToComplete > 0 ? Math.round(completedSets / setsToComplete * 100) : 100;
+        if (fill) { fill.style.width = pct + '%'; fill.className = 'wo-warmup-fill' + (completedSets >= setsToComplete ? ' complete' : ''); }
+        if (lbl) { lbl.textContent = completedSets + ' / ' + setsToComplete + ' set completati'; lbl.style.color = completedSets >= setsToComplete ? '#00ff88' : '#64748b'; }
+        if (completedSets >= setsToComplete) {
+            startBtn.className = startBtn.className.replace('warmup-locked','warmup-unlocked');
+        }
+    }
 
     var block = document.createElement('div');
     block.className = 'wo-warmup-block';
 
-    // Analisi esercizi del protocollo
+    // Card principale
+    var card = document.createElement('div');
+    card.className = 'wo-warmup-card';
+
+    // Header: primo esercizio da riscaldare
+    var firstWarm = warmupInfo.find(function(e){ return e.needsWarmup; });
+    if (firstWarm) {
+        var hdr = document.createElement('div');
+        hdr.className = 'wc-ex-header';
+        hdr.innerHTML = '<div class="wc-ex-num">' + (exName || '') + '</div>' +
+            '<div class="wc-ex-name">Riscaldamento specifico</div>' +
+            '<div class="wc-ex-meta">Prima di iniziare l\'allenamento</div>';
+        card.appendChild(hdr);
+    }
+
+    // Analisi protocollo
     var analysisEl = document.createElement('div');
-    analysisEl.style.cssText = 'border-top:1px solid rgba(255,255,255,0.05);padding:10px 16px;background:rgba(99,102,241,0.03);';
-    var analysisTitle = document.createElement('div');
-    analysisTitle.style.cssText = 'font-size:0.48rem;color:#818cf8;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-bottom:8px;';
-    analysisTitle.textContent = '📋 Analisi protocollo odierno';
-    analysisEl.appendChild(analysisTitle);
+    analysisEl.className = 'wc-analysis';
+    var aTitle = document.createElement('div');
+    aTitle.className = 'wc-analysis-title';
+    aTitle.textContent = '📋 Analisi protocollo odierno';
+    analysisEl.appendChild(aTitle);
     warmupInfo.forEach(function(info) {
         var row = document.createElement('div');
-        row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:3px 0;';
-        var dot = document.createElement('div');
-        dot.style.cssText = 'width:6px;height:6px;border-radius:50%;flex-shrink:0;background:' + (info.needsWarmup ? '#818cf8' : '#1e293b') + ';';
-        var nameEl = document.createElement('div');
-        nameEl.style.cssText = 'font-size:0.58rem;flex:1;color:' + (info.needsWarmup ? '#e2e8f0' : '#334155') + ';' + (info.needsWarmup ? 'font-weight:600;' : '');
-        nameEl.textContent = info.name;
-        var why = document.createElement('div');
-        why.style.cssText = 'font-size:0.46rem;color:' + (info.needsWarmup ? '#818cf8' : '#475569') + ';';
-        why.textContent = info.needsWarmup ? '→ riscalda (' + info.reason + ')' : info.reason;
-        row.appendChild(dot); row.appendChild(nameEl); row.appendChild(why);
+        row.className = 'wc-a-row';
+        row.innerHTML = '<div class="wc-a-dot ' + (info.needsWarmup ? 'warm' : 'skip') + '"></div>' +
+            '<div class="wc-a-name ' + (info.needsWarmup ? 'warm' : 'skip') + '">' + info.name + '</div>' +
+            '<div class="wc-a-why ' + (info.needsWarmup ? 'warm' : 'skip') + '">' +
+            (info.needsWarmup ? '→ riscalda (' + info.reason + ')' : info.reason) + '</div>';
         analysisEl.appendChild(row);
     });
-    block.appendChild(analysisEl);
-
-    // Se questo esercizio non necessita di riscaldamento, stop
-    if (!thisExInfo.needsWarmup) {
-        container.appendChild(block);
-        return;
-    }
+    card.appendChild(analysisEl);
 
     // Toggle accordion
     var toggle = document.createElement('div');
-    toggle.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:10px 16px;cursor:pointer;border-top:1px solid rgba(255,255,255,0.06);';
-    var toggleLbl = document.createElement('div');
-    toggleLbl.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:0.6rem;font-weight:700;color:#818cf8;';
-    toggleLbl.innerHTML = '🔥 Riscaldamento specifico <span style="display:inline-block;font-size:0.42rem;color:#334155;border:0.5px solid #1e293b;border-radius:4px;padding:1px 5px;margin-left:4px;">NSCA 2008</span>';
-    var arrow = document.createElement('span');
-    arrow.style.cssText = 'color:#475569;font-size:0.7rem;transition:transform 0.2s;';
-    arrow.textContent = '›';
-    toggle.appendChild(toggleLbl);
-    toggle.appendChild(arrow);
-    block.appendChild(toggle);
+    toggle.className = 'wc-toggle';
+    toggle.innerHTML = '<div class="wc-toggle-lbl">🔥 Riscaldamento specifico<span class="wc-sci-badge">NSCA 2008 · Rippetoe</span></div><span id="wc-arrow">‹</span>';
+    card.appendChild(toggle);
 
-    // Corpo accordion
+    // Corpo
     var body = document.createElement('div');
-    body.style.cssText = 'display:none;padding:0 16px 14px;';
+    body.className = 'wc-body';
 
     var desc = document.createElement('div');
-    desc.style.cssText = 'font-size:0.54rem;color:#475569;line-height:1.5;margin-bottom:12px;';
+    desc.className = 'wc-desc';
 
-    if (!mtr) {
+    if (!mtr && warmupInfo.some(function(e){ return e.needsWarmup; })) {
         desc.innerHTML = 'Imposta il <strong>Massimo Tecnico</strong> (🎯) nell\'editor protocollo per calcolare il riscaldamento automatico.';
         body.appendChild(desc);
-        block.appendChild(body);
+        setsToComplete = 0;
+        if (startBtn) startBtn.className = startBtn.className.replace('warmup-locked','warmup-unlocked');
     } else {
-        desc.textContent = 'Solo per ' + exName + ' (primo compound di questo pattern). Gli altri esercizi non necessitano di riscaldamento separato.';
+        var warmExercises = warmupInfo.filter(function(e){ return e.needsWarmup; });
+        desc.textContent = warmExercises.map(function(e){ return e.name; }).join(' + ') + ' — pattern distinti da riscaldare.';
         body.appendChild(desc);
 
-        var sets = getWarmupSets(mtr);
-        sets.forEach(function(s, i) {
-            var row = document.createElement('div');
-            row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.04);';
-            var num = document.createElement('div');
-            num.style.cssText = 'width:28px;height:28px;border-radius:8px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.18);font-size:0.58rem;font-weight:800;color:#818cf8;display:flex;align-items:center;justify-content:center;flex-shrink:0;';
-            num.textContent = 'W' + (i+1);
-            var info = document.createElement('div');
-            info.style.cssText = 'flex:1;';
-            info.innerHTML = '<div><span style="font-size:0.8rem;font-weight:800;color:#e2e8f0;">' + s.kg + ' kg</span><span style="font-size:0.48rem;color:#475569;margin-left:4px;">' + s.pct + '% MTR</span></div>' +
-                '<div style="font-size:0.5rem;color:#64748b;margin-top:2px;">' + s.reps + ' ripetizioni<span style="color:#334155;margin-left:6px;">· rec. ' + s.rec + '</span></div>';
-            var done = document.createElement('div');
-            done.style.cssText = 'width:30px;height:30px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;color:#334155;font-size:0.75rem;cursor:pointer;flex-shrink:0;';
-            done.textContent = '○';
-            done.onclick = function() {
-                if (done.textContent === '○') {
-                    done.textContent = '✓';
-                    done.style.background = 'rgba(99,102,241,0.2)';
-                    done.style.borderColor = 'rgba(99,102,241,0.4)';
-                    done.style.color = '#818cf8';
-                } else {
-                    done.textContent = '○';
-                    done.style.background = 'rgba(255,255,255,0.03)';
-                    done.style.borderColor = 'rgba(255,255,255,0.08)';
-                    done.style.color = '#334155';
-                }
-            };
-            row.appendChild(num); row.appendChild(info); row.appendChild(done);
-            body.appendChild(row);
-        });
+        warmExercises.forEach(function(warmEx, exIdx) {
+            var exMtr = APP.mtrValues[warmEx.name];
+            if (!exMtr) return;
+            var sets = getWarmupSets(exMtr);
 
-        // Bottoni
-        var footer = document.createElement('div');
-        footer.style.cssText = 'display:flex;gap:8px;margin-top:12px;';
-        var btnSkip = document.createElement('button');
-        btnSkip.style.cssText = 'flex:1;padding:9px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;font-size:0.68rem;color:#475569;cursor:pointer;font-family:inherit;';
-        btnSkip.textContent = 'Salta';
-        btnSkip.onclick = function() { body.style.display = 'none'; arrow.textContent = '›'; };
-        var btnStart = document.createElement('button');
-        btnStart.style.cssText = 'flex:2;padding:9px;background:linear-gradient(135deg,#4f46e5,#7c3aed);border:none;border-radius:10px;font-size:0.72rem;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;';
-        btnStart.textContent = '▶ Inizia esercizio';
-        btnStart.onclick = function() { body.style.display = 'none'; arrow.textContent = '›'; };
-        footer.appendChild(btnSkip); footer.appendChild(btnStart);
-        body.appendChild(footer);
-        block.appendChild(body);
+            var secLbl = document.createElement('div');
+            secLbl.className = 'wc-section-lbl' + (exIdx > 0 ? ' second' : '');
+            secLbl.textContent = warmEx.name + ' · MTR ' + exMtr + 'kg';
+            body.appendChild(secLbl);
+
+            sets.forEach(function(s, i) {
+                var row = document.createElement('div');
+                row.className = 'wc-set-row';
+
+                var num = document.createElement('div');
+                num.className = 'wc-set-num';
+                num.textContent = 'W' + (i+1);
+
+                var info = document.createElement('div');
+                info.className = 'wc-set-info';
+                info.innerHTML = '<div><span class="wc-set-kg">' + s.kg + ' kg</span><span class="wc-set-pct">' + s.pct + '% MTR</span></div>' +
+                    '<div class="wc-set-detail">' + s.reps + ' rip<span class="wc-set-rec">rec. ' + s.rec + '</span></div>';
+
+                var btnWrap = document.createElement('div');
+                btnWrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:2px;';
+                var btn = document.createElement('button');
+                btn.className = 'wc-set-btn';
+                btn.textContent = '○';
+                var lbl = document.createElement('div');
+                lbl.className = 'wc-set-lbl';
+                lbl.textContent = '0/1';
+
+                btn.onclick = function() {
+                    var done = btn.classList.contains('done');
+                    if (!done) {
+                        btn.classList.add('done');
+                        btn.textContent = '✓';
+                        lbl.className = 'wc-set-lbl active';
+                        lbl.textContent = '1/1';
+                        completedSets++;
+                    } else {
+                        btn.classList.remove('done');
+                        btn.textContent = '○';
+                        lbl.className = 'wc-set-lbl';
+                        lbl.textContent = '0/1';
+                        completedSets--;
+                    }
+                    updateStartBtn();
+                };
+
+                btnWrap.appendChild(btn);
+                btnWrap.appendChild(lbl);
+                row.appendChild(num); row.appendChild(info); row.appendChild(btnWrap);
+                body.appendChild(row);
+            });
+        });
     }
 
-    // Toggle onclick
+    // Footer con barra progresso
+    var footer = document.createElement('div');
+    footer.className = 'wo-warmup-footer';
+    footer.innerHTML = '<div class="wo-warmup-progress">' +
+        '<div class="wo-warmup-bar"><div class="wo-warmup-fill" style="width:0%"></div></div>' +
+        '<div class="wo-warmup-prog-lbl">0 / ' + setsToComplete + ' set</div>' +
+        '</div>';
+
+    card.appendChild(body);
+    block.appendChild(card);
+    block.appendChild(footer);
+    container.appendChild(block);
+
+    // Toggle
     toggle.onclick = function() {
-        var open = body.style.display === 'block';
+        var open = body.style.display !== 'none';
         body.style.display = open ? 'none' : 'block';
-        arrow.textContent = open ? '›' : '‹';
+        toggle.querySelector('#wc-arrow').textContent = open ? '›' : '‹';
     };
 
-    container.appendChild(block);
+    updateStartBtn();
 }
 
 function restoreUI() {
@@ -4385,6 +4485,26 @@ function protoResolveSlot(proto) {
     return '';
 }
 
+// isCompoundEx — globale, usata sia dall'editor che dal warmup
+function isCompoundEx(name) {
+    var n = (name || '').toLowerCase();
+    var isoKw = ['curl','lateral','alzata','alzate','scrollate','shrug','fly','croci','pullover',
+                 'kickback','leg curl','calf','polpaccio','crunch','plank','twist','face pull',
+                 'abductor','adductor','french press','pushdown','estensioni tricipiti',
+                 'tricipiti in presa','leg extension','hip abduction','hip adduction'];
+    if (isoKw.some(function(k){ return n.includes(k); })) return false;
+    var compKw = ['squat','stacco','panca','rematore','press','trazioni','lat machine','dip',
+                  'lunge','affondo','hip thrust','leg press','hack','clean','thruster','push up',
+                  'good morning','iperestensioni'];
+    if (compKw.some(function(k){ return n.includes(k); })) return true;
+    var inDB = ESERCIZI_DB.find(function(e){ return e.nome.toLowerCase() === n; });
+    if (inDB) {
+        var compGroups = ['Petto','Schiena','Quadricipiti','Glutei','Femorali','Full Body'];
+        return compGroups.includes(inDB.gruppo);
+    }
+    return null;
+}
+
 function buildProtoEditorBox(proto, weekIdx) {
     var box = document.createElement('div');
     box.className = 'proto-editor-box';
@@ -4472,24 +4592,7 @@ function buildProtoEditorBox(proto, weekIdx) {
     box.appendChild(list);
 
     // Helper: determina se un esercizio è compound o isolato
-    function isCompoundEx(name) {
-        var n = (name || '').toLowerCase();
-        var isoKw = ['curl','lateral','alzata','alzate','scrollate','shrug','fly','croci','pullover',
-                     'kickback','leg curl','calf','polpaccio','crunch','plank','twist','face pull',
-                     'abductor','adductor','french press','pushdown','estensioni tricipiti',
-                     'tricipiti in presa','leg extension','hip abduction','hip adduction'];
-        if (isoKw.some(function(k){ return n.includes(k); })) return false;
-        var compKw = ['squat','stacco','panca','rematore','press','trazioni','lat machine','dip',
-                      'lunge','affondo','hip thrust','leg press','hack','clean','thruster','push up',
-                      'good morning','iperestensioni'];
-        if (compKw.some(function(k){ return n.includes(k); })) return true;
-        var inDB = ESERCIZI_DB.find(function(e){ return e.nome.toLowerCase() === n; });
-        if (inDB) {
-            var compGroups = ['Petto','Schiena','Quadricipiti','Glutei','Femorali','Full Body'];
-            return compGroups.includes(inDB.gruppo);
-        }
-        return null;
-    }
+    // isCompoundEx è definita globalmente sopra — usata anche dal warmup
 
     // Helper: restituisce i muscoli coinvolti dall'esercizio
     function getMuscles(name) {
@@ -6564,12 +6667,12 @@ function initWorkoutPage() {
                 </div>`;
             }).join('')}`;
 
-        // Blocco riscaldamento specifico sotto la lista esercizi
+        // Warmup block: prima della lista, solo se non deload
         if (!isDeload && exData.length > 0) {
             var warmupContainer = document.createElement('div');
-            warmupContainer.style.cssText = 'margin-top:14px;background:#0f172a;border:1px solid rgba(255,255,255,0.07);border-radius:14px;overflow:hidden;';
+            warmupContainer.style.cssText = 'margin-bottom:14px;';
             renderWarmupBlock(exData[0].name, exData, warmupContainer);
-            prevList.appendChild(warmupContainer);
+            prevList.insertBefore(warmupContainer, prevList.firstChild);
         }
     }
 
