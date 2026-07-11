@@ -6588,20 +6588,19 @@ function initWorkoutPage() {
     const chapterNames = CHAPTER_NAMES;
     if (protoNameEl) protoNameEl.textContent = protoName;
 
-    if (bannerEl) {
-        bannerEl.style.display = 'flex';
-        document.getElementById('wo-today-day').textContent  = `OGGI · ${DAYS_IT[rawDay].toUpperCase()}`;
-        document.getElementById('wo-today-name').textContent = protoName;
-        document.getElementById('wo-today-sub').textContent  = `Chapter ${w+1} · ${chapterNames[w]}`;
-    }
-    if (noProtoEl) noProtoEl.style.display = 'none';
-
     // Controlla se oggi è già stato completato
     const todayIsDone = APP.chipStates[w] && APP.chipStates[w][todayMon] === 'done';
     const doneBanner = document.getElementById('wo-done-banner');
 
+    // PAGINA 1 = solo warmup: nascondi banner, stat, startBtn originali
+    if (bannerEl) bannerEl.style.display = 'none';
+    if (noProtoEl) noProtoEl.style.display = 'none';
+    const statBoxes = document.getElementById('wo-stat-boxes');
+    if (statBoxes) statBoxes.style.display = 'none';
+
     if (todayIsDone) {
-        if (startBtn)  startBtn.style.display  = 'none';
+        // Allenamento già fatto oggi: mostra done banner, niente warmup
+        if (startBtn) startBtn.style.display = 'none';
         if (doneBanner) {
             doneBanner.classList.add('visible');
             const doneSub = document.getElementById('wo-done-sub');
@@ -6611,68 +6610,68 @@ function initWorkoutPage() {
                 doneSub.innerHTML = `<strong>${escapeHTML(nome)}</strong><br>Ottimo lavoro per oggi! Riposa e torna domani più forte. 💪`;
             }
         }
+        if (prevList) prevList.innerHTML = '';
     } else {
-        if (startBtn)  startBtn.style.display  = 'block';
         if (doneBanner) doneBanner.classList.remove('visible');
-    }
+        // Nasconde il bottone originale — il warmup block ha il proprio bottone
+        if (startBtn) startBtn.style.display = 'none';
 
-    // ── Calcola e mostra le stat boxes ──
-    const statBoxes = document.getElementById('wo-stat-boxes');
-    const statTotal = document.getElementById('wo-stat-total');
-    const statRest  = document.getElementById('wo-stat-rest');
-    if (statBoxes && statTotal && statRest && exData.length > 0) {
+        // Calcola stat per dopo (usate in woStartWorkout)
         let totalWorkSecs = 0;
         let totalRestSecs = 0;
         exData.forEach(ex => {
             const srM = (ex.sr||'').match(/(\d+)\s*[xX×]\s*(\d+)/);
             const sets = srM ? parseInt(srM[1]) : 3;
             const reps = srM ? parseInt(srM[2]) : 10;
-            // Forza (rip≤6): ~45s/set + 3min recupero; Iper: ~35s/set + 2min
             const isForza = reps <= 6;
-            const setTime  = isForza ? 45 : 35;  // secondi per set
-            const restTime = isForza ? 180 : 120; // secondi di recupero
+            const setTime  = isForza ? 45 : 35;
+            const restTime = isForza ? 180 : 120;
             totalWorkSecs += sets * setTime;
-            totalRestSecs += (sets - 1) * restTime; // recupero tra le serie (non dopo l'ultimo set)
+            totalRestSecs += (sets - 1) * restTime;
         });
-        const totalSecs = totalWorkSecs + totalRestSecs;
-        // Formatta come "42 min" o "1h 05"
         const fmtTime = secs => {
             const m = Math.floor(secs / 60);
             if (m < 60) return m + ' min';
             return Math.floor(m/60) + 'h ' + String(m%60).padStart(2,'0');
         };
-        statTotal.textContent = fmtTime(totalSecs);
-        statRest.textContent  = fmtTime(totalRestSecs);
-        statBoxes.style.display = 'flex';
-    }
+        // Salva stat per woStartWorkout
+        woState._statTotal = fmtTime(totalWorkSecs + totalRestSecs);
+        woState._statRest  = fmtTime(totalRestSecs);
+        woState._protoName = protoName;
+        woState._chapterSub = `Chapter ${w+1} · ${chapterNames[w]}`;
+        woState._day = `OGGI · ${DAYS_IT[rawDay].toUpperCase()}`;
 
-    // Preview exercise list
-    if (prevList) {
-        const kgW = w;
-        const isDeload = kgW === DELOAD_WEEK;
-        prevList.innerHTML = (isDeload ? `<div style="background:rgba(99,102,241,0.09);border:1px solid rgba(99,102,241,0.22);border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:0.6rem;color:#818cf8;font-weight:700;">🔄 Deload Week — carico 50% · 3 serie</div>` : '') +
-            `<div style="font-size:0.55rem;color:#475569;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;font-weight:700;">Programma · ${protoName}</div>
-            ${exData.map((ex,i) => {
-                const kg = ex.loads ? ex.loads[kgW].toFixed(1) : (ex.baseWeight||0);
-                const srDisplay = isDeload ? woDeloadSr(ex.sr) : ex.sr;
-                return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
-                    <div style="display:flex;gap:8px;align-items:center;">
-                        <div style="width:20px;height:20px;border-radius:6px;background:rgba(var(--pr,52,211,153),0.12);border:1px solid rgba(var(--pr,52,211,153),0.25);display:flex;align-items:center;justify-content:center;font-size:0.55rem;font-weight:800;color:var(--primary);">${i+1}</div>
-                        <span style="font-size:0.72rem;font-weight:600;">${escapeHTML(exItalian(ex.name))}</span>
-                    </div>
-                    <div style="text-align:right;">
-                        <div style="font-size:0.65rem;color:var(--primary);font-weight:700;">${kg} kg</div>
-                        <div style="font-size:0.55rem;color:#475569;">${escapeHTML(srDisplay)}</div>
-                    </div>
-                </div>`;
-            }).join('')}`;
+        // Pagina 1: solo warmup block + lista esercizi sotto
+        if (prevList) {
+            const kgW = w;
+            const isDeload = kgW === DELOAD_WEEK;
+            prevList.innerHTML = (isDeload ? `<div style="background:rgba(99,102,241,0.09);border:1px solid rgba(99,102,241,0.22);border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:0.6rem;color:#818cf8;font-weight:700;">🔄 Deload Week — carico 50% · 3 serie</div>` : '') +
+                `<div style="font-size:0.55rem;color:#475569;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;font-weight:700;">Programma · ${protoName}</div>
+                ${exData.map((ex,i) => {
+                    const kg = ex.loads ? ex.loads[kgW].toFixed(1) : (ex.baseWeight||0);
+                    const srDisplay = isDeload ? woDeloadSr(ex.sr) : ex.sr;
+                    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <div style="width:20px;height:20px;border-radius:6px;background:rgba(var(--pr,52,211,153),0.12);border:1px solid rgba(var(--pr,52,211,153),0.25);display:flex;align-items:center;justify-content:center;font-size:0.55rem;font-weight:800;color:var(--primary);">${i+1}</div>
+                            <span style="font-size:0.72rem;font-weight:600;">${escapeHTML(exItalian(ex.name))}</span>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:0.65rem;color:var(--primary);font-weight:700;">${kg} kg</div>
+                            <div style="font-size:0.55rem;color:#475569;">${escapeHTML(srDisplay)}</div>
+                        </div>
+                    </div>`;
+                }).join('')}`;
 
-        // Warmup block: prima della lista, solo se non deload
-        if (!isDeload && exData.length > 0) {
-            var warmupContainer = document.createElement('div');
-            warmupContainer.style.cssText = 'margin-bottom:14px;';
-            renderWarmupBlock(exData[0].name, exData, warmupContainer);
-            prevList.insertBefore(warmupContainer, prevList.firstChild);
+            // Warmup block prima della lista
+            if (!isDeload && exData.length > 0) {
+                var warmupContainer = document.createElement('div');
+                warmupContainer.style.cssText = 'margin-bottom:14px;';
+                renderWarmupBlock(exData[0].name, exData, warmupContainer);
+                prevList.insertBefore(warmupContainer, prevList.firstChild);
+            } else if (isDeload) {
+                // Deload: mostra direttamente il bottone originale
+                if (startBtn) startBtn.style.display = 'block';
+            }
         }
     }
 
@@ -9165,6 +9164,33 @@ function _woBeep(freq, duration, type) {
 function woStartWorkout() {
     const exData = APP.exerciseData || [];
     if (exData.length === 0) return;
+
+    // ── Mostra banner + stat (pagina 2) ──
+    const bannerEl = document.getElementById('wo-today-banner');
+    const statBoxes = document.getElementById('wo-stat-boxes');
+    const statTotal = document.getElementById('wo-stat-total');
+    const statRest  = document.getElementById('wo-stat-rest');
+    if (bannerEl) {
+        bannerEl.style.display = 'flex';
+        const dayEl  = document.getElementById('wo-today-day');
+        const nameEl = document.getElementById('wo-today-name');
+        const subEl  = document.getElementById('wo-today-sub');
+        if (dayEl)  dayEl.textContent  = woState._day  || '';
+        if (nameEl) nameEl.textContent = woState._protoName  || '';
+        if (subEl)  subEl.textContent  = woState._chapterSub || '';
+    }
+    if (statBoxes && statTotal && statRest) {
+        statTotal.textContent = woState._statTotal || '—';
+        statRest.textContent  = woState._statRest  || '—';
+        statBoxes.style.display = 'flex';
+    }
+    // Nasconde il warmup block
+    var prevList = document.getElementById('wo-preview-list');
+    if (prevList) {
+        var warmupBlock = prevList.querySelector('.wo-warmup-block');
+        if (warmupBlock) warmupBlock.style.display = 'none';
+    }
+
     // Disable start button during countdown
     const startBtn = document.getElementById('wo-start-btn');
     if (startBtn) startBtn.disabled = true;
