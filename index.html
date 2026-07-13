@@ -1809,7 +1809,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wc-set-lbl { font-size:0.44rem; color:#475569; text-align:center; margin-top:1px; }
         .wc-set-lbl.active { color:#00ff88; }
         /* Footer warmup */
-        .wo-warmup-footer { position:sticky; bottom:0; background:rgba(10,14,26,0.97); border-top:1px solid rgba(255,255,255,0.06); padding:10px 16px max(env(safe-area-inset-bottom),16px); }
+        .wo-warmup-footer { position:sticky; bottom:0; background:rgba(10,14,26,0.97); border-top:1px solid rgba(255,255,255,0.06); padding:10px 16px max(env(safe-area-inset-bottom),80px); }
         .wo-warmup-progress { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
         .wo-warmup-bar { flex:1; height:4px; background:rgba(255,255,255,0.06); border-radius:2px; overflow:hidden; }
         .wo-warmup-fill { height:100%; background:#818cf8; border-radius:2px; transition:width 0.3s, background 0.4s; width:0%; }
@@ -2297,10 +2297,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
           <div class="wo-stat-box-lbl">Recupero totale</div>
         </div>
       </div>
-      <button class="wo-start-btn" id="wo-start-btn" onclick="woStartWorkout()" style="display:none;">
-        <span class="wo-start-icon">▶</span>
-        INIZIA ALLENAMENTO
-      </button>
       <!-- Schermata "allenamento terminato oggi" -->
       <div class="wo-done-banner" id="wo-done-banner">
         <div class="wo-done-icon">🏆</div>
@@ -2309,6 +2305,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <button class="wo-done-redo" onclick="woRedoWorkout()">↺ Rifai allenamento</button>
       </div>
       <div id="wo-preview-list" style="padding:0 16px 20px;"></div>
+      <button class="wo-start-btn" id="wo-start-btn" onclick="woStartWorkout()" style="display:none;margin-bottom:max(env(safe-area-inset-bottom),90px);">
+        <span class="wo-start-icon">▶</span>
+        INIZIA ALLENAMENTO
+      </button>
     </div>
 
     <!-- TAB: NUTRIZIONE -->
@@ -3369,6 +3369,7 @@ function renderWarmupBlock(exName, exercises, container) {
 
     // Blocca bottone INIZIA
     if (startBtn) {
+        startBtn.style.display = 'block';
         startBtn.className = (startBtn.className || '').replace('warmup-unlocked','').replace('warmup-locked','').trim() + ' warmup-locked';
     }
 
