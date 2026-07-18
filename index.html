@@ -3528,12 +3528,12 @@ function renderWarmupBlock(exName, exercises, container) {
                             lbl.className = 'wc-set-lbl active'; lbl.textContent = '1/1';
                             completedSets++;
                             var restSecs = capturedRec.indexOf('2 min') !== -1 ? 120 : 60;
-                            startRestTimer(capturedTimer, restSecs);
+                            startWarmupRestTimer(capturedTimer, restSecs);
                         } else {
                             btn.classList.remove('done'); btn.textContent = '\u25cb';
                             lbl.className = 'wc-set-lbl'; lbl.textContent = '0/1';
                             completedSets--;
-                            stopRestTimer(capturedTimer);
+                            stopWarmupRestTimer(capturedTimer);
                         }
                         updateStartBtn();
                     };
@@ -3572,54 +3572,56 @@ function renderWarmupBlock(exName, exercises, container) {
 }
 
 // ── Timer di recupero post-set warmup ──
-var _restTimerIntervals = new WeakMap();
+var _warmupRestTimerIntervals = new WeakMap();
 
-function startRestTimer(el, totalSecs) {
+function startWarmupRestTimer(el, totalSecs) {
     if (!el) return;
-    stopRestTimer(el);
+    stopWarmupRestTimer(el);
     el.classList.add('active');
     var fill = el.querySelector('.wc-rest-bar-fill');
     var lbl  = el.querySelector('.wc-rest-bar-lbl');
     if (!fill || !lbl) return;
+    // Reset barra piena
     fill.style.transition = 'none';
     fill.style.width = '100%';
+    fill.style.background = 'var(--accent)';
+    lbl.textContent = totalSecs + 's';
+    lbl.style.color = '#64748b';
     var remaining = totalSecs;
-    lbl.textContent = remaining + 's';
-    // Forza reflow prima di avviare la transizione
-    void fill.offsetWidth;
+    // Avvia countdown
     var interval = setInterval(function() {
         remaining--;
         if (remaining <= 0) {
             fill.style.transition = 'width 1s linear';
             fill.style.width = '0%';
-            lbl.textContent = 'Pronto!';
+            fill.style.background = 'var(--primary)';
+            lbl.textContent = 'Vai!';
             lbl.style.color = '#00ff88';
             clearInterval(interval);
-            _restTimerIntervals.delete(el);
+            _warmupRestTimerIntervals.delete(el);
         } else {
             var pct = Math.round(remaining / totalSecs * 100);
             fill.style.transition = 'width 1s linear';
             fill.style.width = pct + '%';
             lbl.textContent = remaining + 's';
-            // Colore che vira da viola a verde
             if (remaining <= totalSecs * 0.3) {
                 fill.style.background = 'var(--primary)';
             }
         }
     }, 1000);
-    _restTimerIntervals.set(el, interval);
+    _warmupRestTimerIntervals.set(el, interval);
 }
 
-function stopRestTimer(el) {
+function stopWarmupRestTimer(el) {
     if (!el) return;
-    if (_restTimerIntervals.has(el)) {
-        clearInterval(_restTimerIntervals.get(el));
-        _restTimerIntervals.delete(el);
+    if (_warmupRestTimerIntervals.has(el)) {
+        clearInterval(_warmupRestTimerIntervals.get(el));
+        _warmupRestTimerIntervals.delete(el);
     }
     el.classList.remove('active');
     var fill = el.querySelector('.wc-rest-bar-fill');
     var lbl  = el.querySelector('.wc-rest-bar-lbl');
-    if (fill) { fill.style.width = '100%'; fill.style.background = 'var(--accent)'; }
+    if (fill) { fill.style.width = '100%'; fill.style.background = 'var(--accent)'; fill.style.transition = 'none'; }
     if (lbl)  { lbl.style.color = '#64748b'; }
 }
 
