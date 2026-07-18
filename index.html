@@ -1824,7 +1824,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wc-rest-bar-wrap { display:flex; align-items:center; gap:8px; padding:6px 0 2px; }
         .wc-rest-bar-track { flex:1; height:3px; background:rgba(255,255,255,0.06); border-radius:2px; overflow:hidden; }
         .wc-rest-bar-fill { height:100%; border-radius:2px; background:var(--accent); transition:width 1s linear; width:100%; }
-        .wc-rest-bar-lbl { font-size:0.48rem; color:#64748b; white-space:nowrap; min-width:32px; text-align:right; }
+        .wc-rest-bar-lbl { font-size:0.48rem; color:#818cf8; white-space:nowrap; min-width:32px; text-align:right; font-weight:600; }
+        /* Pulse sul toggle successivo dopo rest completato */
+        @keyframes wc-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(99,102,241,0.6);} 50%{box-shadow:0 0 0 6px rgba(99,102,241,0);} }
+        .wc-set-btn.pulse { animation:wc-pulse 1.2s infinite; border-color:rgba(99,102,241,0.9); background:rgba(99,102,241,0.25); }
 
         .wo-idle-state  { display: block; }
         .wo-active-state { display: none; }
@@ -3490,6 +3493,9 @@ function renderWarmupBlock(exName, exercises, container) {
             mtrSub.textContent = 'MTR ' + exMtr + ' kg';
             bodyEl.appendChild(mtrSub);
 
+            // Array dei riferimenti {btn, capturedRef} per collegare next dopo la creazione
+            var setRefs = [];
+
             sets.forEach(function(s, i) {
                 var row = document.createElement('div');
                 row.className = 'wc-set-row';
@@ -3520,24 +3526,29 @@ function renderWarmupBlock(exName, exercises, container) {
                 lbl.className = 'wc-set-lbl';
                 lbl.textContent = '0/1';
 
-                (function(capturedTimer, capturedRec) {
+                var capturedRef = {next: null};
+
+                (function(capturedTimer, capturedRec, capturedBtn) {
                     btn.onclick = function() {
                         var done = btn.classList.contains('done');
                         if (!done) {
-                            btn.classList.add('done'); btn.textContent = '\u2713';
+                            btn.classList.add('done'); btn.classList.remove('pulse'); btn.textContent = '\u2713';
                             lbl.className = 'wc-set-lbl active'; lbl.textContent = '1/1';
                             completedSets++;
                             var restSecs = capturedRec.indexOf('2 min') !== -1 ? 120 : 60;
-                            startWarmupRestTimer(capturedTimer, restSecs);
+                            startWarmupRestTimer(capturedTimer, restSecs, capturedBtn.next);
                         } else {
-                            btn.classList.remove('done'); btn.textContent = '\u25cb';
+                            btn.classList.remove('done'); btn.classList.remove('pulse'); btn.textContent = '\u25cb';
                             lbl.className = 'wc-set-lbl'; lbl.textContent = '0/1';
                             completedSets--;
                             stopWarmupRestTimer(capturedTimer);
+                            if (capturedBtn.next) { capturedBtn.next.classList.remove('pulse'); }
                         }
                         updateStartBtn();
                     };
-                })(restTimerEl, s.rec);
+                })(restTimerEl, s.rec, capturedRef);
+
+                setRefs.push({btn: btn, ref: capturedRef});
 
                 btnWrap.appendChild(btn); btnWrap.appendChild(lbl);
                 row.appendChild(num); row.appendChild(info); row.appendChild(btnWrap);
@@ -3548,6 +3559,13 @@ function renderWarmupBlock(exName, exercises, container) {
                 rowWrap.appendChild(row);
                 rowWrap.appendChild(restTimerEl);
                 bodyEl.appendChild(rowWrap);
+            });
+
+            // Collega next: ogni btn punta al bottone del set successivo
+            setRefs.forEach(function(item, idx) {
+                if (idx + 1 < setRefs.length) {
+                    item.ref.next = setRefs[idx + 1].btn;
+                }
             });
         });
     }
@@ -3574,38 +3592,50 @@ function renderWarmupBlock(exName, exercises, container) {
 // ── Timer di recupero post-set warmup ──
 var _warmupRestTimerIntervals = new WeakMap();
 
-function startWarmupRestTimer(el, totalSecs) {
+function startWarmupRestTimer(el, totalSecs, nextBtn) {
     if (!el) return;
     stopWarmupRestTimer(el);
     el.classList.add('active');
     var fill = el.querySelector('.wc-rest-bar-fill');
     var lbl  = el.querySelector('.wc-rest-bar-lbl');
     if (!fill || !lbl) return;
-    // Reset barra piena
+    // Colore viola, barra piena
     fill.style.transition = 'none';
     fill.style.width = '100%';
-    fill.style.background = 'var(--accent)';
+    fill.style.background = '#818cf8';
     lbl.textContent = totalSecs + 's';
-    lbl.style.color = '#64748b';
+    lbl.style.color = '#818cf8';
+    // Blocca il toggle successivo durante il rest
+    if (nextBtn) {
+        nextBtn.disabled = true;
+        nextBtn.style.opacity = '0.35';
+        nextBtn.style.cursor = 'not-allowed';
+    }
     var remaining = totalSecs;
-    // Avvia countdown
     var interval = setInterval(function() {
         remaining--;
         if (remaining <= 0) {
-            fill.style.transition = 'width 1s linear';
+            fill.style.transition = 'width 0.5s linear';
             fill.style.width = '0%';
-            fill.style.background = 'var(--primary)';
             lbl.textContent = 'Vai!';
             lbl.style.color = '#00ff88';
             clearInterval(interval);
             _warmupRestTimerIntervals.delete(el);
+            // Sblocca e fa pulsare il toggle successivo
+            if (nextBtn) {
+                nextBtn.disabled = false;
+                nextBtn.style.opacity = '';
+                nextBtn.style.cursor = '';
+                nextBtn.classList.add('pulse');
+            }
         } else {
             var pct = Math.round(remaining / totalSecs * 100);
             fill.style.transition = 'width 1s linear';
             fill.style.width = pct + '%';
             lbl.textContent = remaining + 's';
-            if (remaining <= totalSecs * 0.3) {
-                fill.style.background = 'var(--primary)';
+            // Vira verso verde negli ultimi 30%
+            if (remaining <= Math.round(totalSecs * 0.3)) {
+                fill.style.background = 'linear-gradient(90deg,#818cf8,#00ff88)';
             }
         }
     }, 1000);
@@ -3621,8 +3651,8 @@ function stopWarmupRestTimer(el) {
     el.classList.remove('active');
     var fill = el.querySelector('.wc-rest-bar-fill');
     var lbl  = el.querySelector('.wc-rest-bar-lbl');
-    if (fill) { fill.style.width = '100%'; fill.style.background = 'var(--accent)'; fill.style.transition = 'none'; }
-    if (lbl)  { lbl.style.color = '#64748b'; }
+    if (fill) { fill.style.width = '100%'; fill.style.background = '#818cf8'; fill.style.transition = 'none'; }
+    if (lbl)  { lbl.textContent = ''; lbl.style.color = '#818cf8'; }
 }
 
 function restoreUI() {
