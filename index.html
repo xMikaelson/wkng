@@ -1795,7 +1795,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wc-mtr-box-unit { font-size:0.6rem; color:#475569; margin-bottom:14px; }
         .wc-mtr-box-btn { width:100%; padding:12px; background:linear-gradient(135deg,#00ff88,#00cc88); border:none; border-radius:10px; color:#000; font-size:0.8rem; font-weight:900; cursor:pointer; font-family:inherit; }
         /* Set rows */
-        .wc-set-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
+        .wc-set-row { display:flex; align-items:center; gap:10px; padding:10px 0; }
         .wc-set-row:last-of-type { border:none; }
         .wc-set-num { width:28px; height:28px; border-radius:8px; background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.2); font-size:0.58rem; font-weight:800; color:#818cf8; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
         .wc-set-info { flex:1; }
@@ -1809,8 +1809,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wc-set-lbl { font-size:0.44rem; color:#475569; text-align:center; margin-top:1px; }
         .wc-set-lbl.active { color:#00ff88; }
         /* Footer warmup */
-        .wo-warmup-footer { position:fixed; bottom:0; left:0; right:0; z-index:200; background:rgba(10,14,26,0.98); border-top:1px solid rgba(255,255,255,0.07); padding:10px 16px max(env(safe-area-inset-bottom),16px); }
-        .wo-warmup-progress { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+        .wo-warmup-footer { background:rgba(10,14,26,0.6); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:12px 16px; margin:8px 16px 0; }
+        .wo-warmup-progress { display:flex; align-items:center; gap:8px; margin-bottom:0; }
         .wo-warmup-bar { flex:1; height:4px; background:rgba(255,255,255,0.06); border-radius:2px; overflow:hidden; }
         .wo-warmup-fill { height:100%; background:#818cf8; border-radius:2px; transition:width 0.3s, background 0.4s; width:0%; }
         .wo-warmup-fill.complete { background:#00ff88; }
@@ -2311,7 +2311,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <div class="wo-done-sub" id="wo-done-sub">Ottimo lavoro per oggi.<br>Riposa e torna domani più forte.</div>
         <button class="wo-done-redo" onclick="woRedoWorkout()">↺ Rifai allenamento</button>
       </div>
-      <div id="wo-preview-list" style="padding:0 16px 200px;"></div>
+      <div id="wo-preview-list" style="padding:0 16px 20px;"></div>
       <button class="wo-start-btn" id="wo-start-btn" onclick="woStartWorkout()" style="display:none;">
         <span class="wo-start-icon">▶</span>
         INIZIA ALLENAMENTO
@@ -3531,16 +3531,22 @@ function renderWarmupBlock(exName, exercises, container) {
 
                 btnWrap.appendChild(btn); btnWrap.appendChild(lbl);
                 row.appendChild(num); row.appendChild(info); row.appendChild(btnWrap);
-                bodyEl.appendChild(row);
 
-                // Timer rest — barra sottile sotto la riga, visibile solo dopo spunta
+                // Timer rest — occupa riga intera sotto il contenuto del set
                 var restTimerEl = document.createElement('div');
                 restTimerEl.className = 'wc-rest-timer';
+                restTimerEl.style.cssText = 'grid-column:1/-1;'; // span full width
                 restTimerEl.innerHTML = '<div class="wc-rest-bar-wrap">' +
                     '<div class="wc-rest-bar-track"><div class="wc-rest-bar-fill"></div></div>' +
                     '<div class="wc-rest-bar-lbl">' + s.rec + '</div>' +
                     '</div>';
-                bodyEl.appendChild(restTimerEl);
+
+                // Wrapper che contiene sia la riga che il timer
+                var rowWrap = document.createElement('div');
+                rowWrap.style.cssText = 'border-bottom:1px solid rgba(255,255,255,0.05);';
+                rowWrap.appendChild(row);
+                rowWrap.appendChild(restTimerEl);
+                bodyEl.appendChild(rowWrap);
             });
         });
     }
@@ -3549,18 +3555,18 @@ function renderWarmupBlock(exName, exercises, container) {
     block.appendChild(card);
     container.appendChild(block);
 
-    // ── Footer FISSO (fuori dal container scrollabile) ──
-    // Rimuovi eventuale footer precedente
+    // ── Footer progresso — inline dopo la card, dentro il container warmup ──
     var existingFooter = document.getElementById('wo-warmup-fixed-footer');
     if (existingFooter) existingFooter.remove();
     var fixedFooter = document.createElement('div');
     fixedFooter.id = 'wo-warmup-fixed-footer';
     fixedFooter.className = 'wo-warmup-footer';
-    fixedFooter.innerHTML = '<div class="wo-warmup-progress">' +
+    fixedFooter.innerHTML =
+        '<div class="wo-warmup-progress">' +
         '<div class="wo-warmup-bar"><div class="wo-warmup-fill" id="ww-fill" style="width:0%"></div></div>' +
         '<div class="wo-warmup-prog-lbl" id="ww-lbl">0 / ' + setsToComplete + ' set</div>' +
         '</div>';
-    document.body.appendChild(fixedFooter);
+    container.appendChild(fixedFooter);
     updateStartBtn();
 }
 
