@@ -1809,7 +1809,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wc-set-lbl { font-size:0.44rem; color:#475569; text-align:center; margin-top:1px; }
         .wc-set-lbl.active { color:#00ff88; }
         /* Footer warmup */
-        .wo-warmup-footer { position:sticky; bottom:0; background:rgba(10,14,26,0.97); border-top:1px solid rgba(255,255,255,0.06); padding:10px 16px max(env(safe-area-inset-bottom),80px); }
+        .wo-warmup-footer { position:fixed; bottom:0; left:0; right:0; z-index:200; background:rgba(10,14,26,0.98); border-top:1px solid rgba(255,255,255,0.07); padding:10px 16px max(env(safe-area-inset-bottom),16px); }
         .wo-warmup-progress { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
         .wo-warmup-bar { flex:1; height:4px; background:rgba(255,255,255,0.06); border-radius:2px; overflow:hidden; }
         .wo-warmup-fill { height:100%; background:#818cf8; border-radius:2px; transition:width 0.3s, background 0.4s; width:0%; }
@@ -1817,6 +1817,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wo-warmup-prog-lbl { font-size:0.5rem; color:#64748b; white-space:nowrap; }
         .wo-start-btn.warmup-locked { background:rgba(255,255,255,0.05) !important; color:#334155 !important; cursor:not-allowed !important; pointer-events:none; }
         .wo-start-btn.warmup-unlocked { background:linear-gradient(135deg,#00ff88,#00cc88) !important; color:#000 !important; pointer-events:auto; }
+        /* Timer rest dopo spunta */
+        .wc-rest-timer { overflow:hidden; max-height:0; transition:max-height 0.3s ease; }
+        .wc-rest-timer.active { max-height:40px; }
+        .wc-rest-bar-wrap { display:flex; align-items:center; gap:8px; padding:6px 0 2px; }
+        .wc-rest-bar-track { flex:1; height:3px; background:rgba(255,255,255,0.06); border-radius:2px; overflow:hidden; }
+        .wc-rest-bar-fill { height:100%; border-radius:2px; background:var(--accent); transition:width 1s linear; width:100%; }
+        .wc-rest-bar-lbl { font-size:0.48rem; color:#64748b; white-space:nowrap; min-width:32px; text-align:right; }
 
         .wo-idle-state  { display: block; }
         .wo-active-state { display: none; }
@@ -2304,8 +2311,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <div class="wo-done-sub" id="wo-done-sub">Ottimo lavoro per oggi.<br>Riposa e torna domani più forte.</div>
         <button class="wo-done-redo" onclick="woRedoWorkout()">↺ Rifai allenamento</button>
       </div>
-      <div id="wo-preview-list" style="padding:0 16px 20px;"></div>
-      <button class="wo-start-btn" id="wo-start-btn" onclick="woStartWorkout()" style="display:none;margin-bottom:max(env(safe-area-inset-bottom),90px);">
+      <div id="wo-preview-list" style="padding:0 16px 200px;"></div>
+      <button class="wo-start-btn" id="wo-start-btn" onclick="woStartWorkout()" style="display:none;">
         <span class="wo-start-icon">▶</span>
         INIZIA ALLENAMENTO
       </button>
@@ -3375,16 +3382,17 @@ function renderWarmupBlock(exName, exercises, container) {
 
     function updateStartBtn() {
         if (!startBtn) return;
-        var fill = container.querySelector('.wo-warmup-fill');
-        var lbl  = container.querySelector('.wo-warmup-prog-lbl');
+        var fill = document.getElementById('ww-fill');
+        var lbl  = document.getElementById('ww-lbl');
         var allDone = setsToComplete > 0 && completedSets >= setsToComplete;
         var pct = setsToComplete > 0 ? Math.round(completedSets / setsToComplete * 100) : 0;
         if (fill) { fill.style.width = pct + '%'; fill.className = 'wo-warmup-fill' + (allDone ? ' complete' : ''); }
         if (lbl)  { lbl.textContent = completedSets + ' / ' + setsToComplete + ' set'; lbl.style.color = allDone ? '#00ff88' : '#64748b'; }
+        startBtn.style.display = 'block';
         if (allDone) {
-            startBtn.className = (startBtn.className || '').replace('warmup-locked','').trim() + ' warmup-unlocked';
+            startBtn.className = (startBtn.className || '').replace(/warmup-locked/g,'').trim() + ' warmup-unlocked';
         } else {
-            startBtn.className = (startBtn.className || '').replace('warmup-unlocked','').trim() + ' warmup-locked';
+            startBtn.className = (startBtn.className || '').replace(/warmup-unlocked/g,'').trim() + ' warmup-locked';
         }
     }
 
@@ -3506,13 +3514,17 @@ function renderWarmupBlock(exName, exercises, container) {
                 btn.onclick = function() {
                     var done = btn.classList.contains('done');
                     if (!done) {
-                        btn.classList.add('done'); btn.textContent = '✓';
+                        btn.classList.add('done'); btn.textContent = '\u2713';
                         lbl.className = 'wc-set-lbl active'; lbl.textContent = '1/1';
                         completedSets++;
+                        // Avvia timer rest
+                        var restSecs = s.rec.indexOf('2 min') !== -1 ? 120 : 60;
+                        startRestTimer(restTimerEl, restSecs);
                     } else {
-                        btn.classList.remove('done'); btn.textContent = '○';
+                        btn.classList.remove('done'); btn.textContent = '\u25cb';
                         lbl.className = 'wc-set-lbl'; lbl.textContent = '0/1';
                         completedSets--;
+                        stopRestTimer(restTimerEl);
                     }
                     updateStartBtn();
                 };
@@ -3520,23 +3532,88 @@ function renderWarmupBlock(exName, exercises, container) {
                 btnWrap.appendChild(btn); btnWrap.appendChild(lbl);
                 row.appendChild(num); row.appendChild(info); row.appendChild(btnWrap);
                 bodyEl.appendChild(row);
+
+                // Timer rest — barra sottile sotto la riga, visibile solo dopo spunta
+                var restTimerEl = document.createElement('div');
+                restTimerEl.className = 'wc-rest-timer';
+                restTimerEl.innerHTML = '<div class="wc-rest-bar-wrap">' +
+                    '<div class="wc-rest-bar-track"><div class="wc-rest-bar-fill"></div></div>' +
+                    '<div class="wc-rest-bar-lbl">' + s.rec + '</div>' +
+                    '</div>';
+                bodyEl.appendChild(restTimerEl);
             });
         });
     }
 
     card.appendChild(bodyEl);
     block.appendChild(card);
-
-    // ── Footer progresso ──
-    var footer = document.createElement('div');
-    footer.className = 'wo-warmup-footer';
-    footer.innerHTML = '<div class="wo-warmup-progress">' +
-        '<div class="wo-warmup-bar"><div class="wo-warmup-fill" style="width:0%"></div></div>' +
-        '<div class="wo-warmup-prog-lbl">0 / ' + setsToComplete + ' set</div>' +
-        '</div>';
-    block.appendChild(footer);
     container.appendChild(block);
+
+    // ── Footer FISSO (fuori dal container scrollabile) ──
+    // Rimuovi eventuale footer precedente
+    var existingFooter = document.getElementById('wo-warmup-fixed-footer');
+    if (existingFooter) existingFooter.remove();
+    var fixedFooter = document.createElement('div');
+    fixedFooter.id = 'wo-warmup-fixed-footer';
+    fixedFooter.className = 'wo-warmup-footer';
+    fixedFooter.innerHTML = '<div class="wo-warmup-progress">' +
+        '<div class="wo-warmup-bar"><div class="wo-warmup-fill" id="ww-fill" style="width:0%"></div></div>' +
+        '<div class="wo-warmup-prog-lbl" id="ww-lbl">0 / ' + setsToComplete + ' set</div>' +
+        '</div>';
+    document.body.appendChild(fixedFooter);
     updateStartBtn();
+}
+
+// ── Timer di recupero post-set warmup ──
+var _restTimerIntervals = new WeakMap();
+
+function startRestTimer(el, totalSecs) {
+    if (!el) return;
+    stopRestTimer(el);
+    el.classList.add('active');
+    var fill = el.querySelector('.wc-rest-bar-fill');
+    var lbl  = el.querySelector('.wc-rest-bar-lbl');
+    if (!fill || !lbl) return;
+    fill.style.transition = 'none';
+    fill.style.width = '100%';
+    var remaining = totalSecs;
+    lbl.textContent = remaining + 's';
+    // Forza reflow prima di avviare la transizione
+    void fill.offsetWidth;
+    var interval = setInterval(function() {
+        remaining--;
+        if (remaining <= 0) {
+            fill.style.transition = 'width 1s linear';
+            fill.style.width = '0%';
+            lbl.textContent = 'Pronto!';
+            lbl.style.color = '#00ff88';
+            clearInterval(interval);
+            _restTimerIntervals.delete(el);
+        } else {
+            var pct = Math.round(remaining / totalSecs * 100);
+            fill.style.transition = 'width 1s linear';
+            fill.style.width = pct + '%';
+            lbl.textContent = remaining + 's';
+            // Colore che vira da viola a verde
+            if (remaining <= totalSecs * 0.3) {
+                fill.style.background = 'var(--primary)';
+            }
+        }
+    }, 1000);
+    _restTimerIntervals.set(el, interval);
+}
+
+function stopRestTimer(el) {
+    if (!el) return;
+    if (_restTimerIntervals.has(el)) {
+        clearInterval(_restTimerIntervals.get(el));
+        _restTimerIntervals.delete(el);
+    }
+    el.classList.remove('active');
+    var fill = el.querySelector('.wc-rest-bar-fill');
+    var lbl  = el.querySelector('.wc-rest-bar-lbl');
+    if (fill) { fill.style.width = '100%'; fill.style.background = 'var(--accent)'; }
+    if (lbl)  { lbl.style.color = '#64748b'; }
 }
 
 function restoreUI() {
@@ -9189,6 +9266,10 @@ function _woBeep(freq, duration, type) {
 function woStartWorkout() {
     const exData = APP.exerciseData || [];
     if (exData.length === 0) return;
+
+    // Rimuovi footer fisso warmup
+    var wf = document.getElementById('wo-warmup-fixed-footer');
+    if (wf) wf.remove();
 
     // ── Mostra banner + stat + lista esercizi (pagina 2) ──
     const bannerEl = document.getElementById('wo-today-banner');
