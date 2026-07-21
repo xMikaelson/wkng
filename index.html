@@ -3526,7 +3526,7 @@ function renderWarmupBlock(exName, exercises, container) {
                 lbl.className = 'wc-set-lbl';
                 lbl.textContent = '0/1';
 
-                var capturedRef = {next: null};
+                var capturedRef = {next: null, allNext: []};
 
                 (function(capturedTimer, capturedRec, capturedBtn) {
                     btn.onclick = function() {
@@ -3536,13 +3536,16 @@ function renderWarmupBlock(exName, exercises, container) {
                             lbl.className = 'wc-set-lbl active'; lbl.textContent = '1/1';
                             completedSets++;
                             var restSecs = capturedRec.indexOf('2 min') !== -1 ? 120 : 60;
-                            startWarmupRestTimer(capturedTimer, restSecs, capturedBtn.next);
+                            startWarmupRestTimer(capturedTimer, restSecs, capturedBtn.next, capturedBtn.allNext);
                         } else {
                             btn.classList.remove('done'); btn.classList.remove('pulse'); btn.textContent = '\u25cb';
                             lbl.className = 'wc-set-lbl'; lbl.textContent = '0/1';
                             completedSets--;
                             stopWarmupRestTimer(capturedTimer);
-                            if (capturedBtn.next) { capturedBtn.next.classList.remove('pulse'); }
+                            // Rimuovi pulse e ri-blocca tutti i successivi
+                            capturedBtn.allNext.forEach(function(b) {
+                                if (b) { b.classList.remove('pulse'); b.disabled = true; b.style.opacity = '0.35'; b.style.cursor = 'not-allowed'; }
+                            });
                         }
                         updateStartBtn();
                     };
@@ -3561,10 +3564,19 @@ function renderWarmupBlock(exName, exercises, container) {
                 bodyEl.appendChild(rowWrap);
             });
 
-            // Collega next: ogni btn punta al bottone del set successivo
+            // Collega next e allNext dopo aver creato tutti i bottoni
             setRefs.forEach(function(item, idx) {
+                // next = solo il diretto successivo (sblocca dopo rest)
                 if (idx + 1 < setRefs.length) {
                     item.ref.next = setRefs[idx + 1].btn;
+                }
+                // allNext = tutti i successivi (bloccati durante rest)
+                item.ref.allNext = setRefs.slice(idx + 1).map(function(r){ return r.btn; });
+                // Blocca tutti i successivi al primo caricamento (solo W2 e W3 per W1, solo W3 per W2)
+                if (idx > 0) {
+                    item.btn.disabled = true;
+                    item.btn.style.opacity = '0.35';
+                    item.btn.style.cursor = 'not-allowed';
                 }
             });
         });
@@ -3592,24 +3604,23 @@ function renderWarmupBlock(exName, exercises, container) {
 // ── Timer di recupero post-set warmup ──
 var _warmupRestTimerIntervals = new WeakMap();
 
-function startWarmupRestTimer(el, totalSecs, nextBtn) {
+function startWarmupRestTimer(el, totalSecs, nextBtn, allNextBtns) {
     if (!el) return;
     stopWarmupRestTimer(el);
     el.classList.add('active');
     var fill = el.querySelector('.wc-rest-bar-fill');
     var lbl  = el.querySelector('.wc-rest-bar-lbl');
     if (!fill || !lbl) return;
-    // Colore viola, barra piena
     fill.style.transition = 'none';
     fill.style.width = '100%';
     fill.style.background = '#818cf8';
     lbl.textContent = totalSecs + 's';
     lbl.style.color = '#818cf8';
-    // Blocca il toggle successivo durante il rest
-    if (nextBtn) {
-        nextBtn.disabled = true;
-        nextBtn.style.opacity = '0.35';
-        nextBtn.style.cursor = 'not-allowed';
+    // Blocca TUTTI i successivi durante il rest
+    if (allNextBtns) {
+        allNextBtns.forEach(function(b) {
+            if (b) { b.disabled = true; b.style.opacity = '0.35'; b.style.cursor = 'not-allowed'; b.classList.remove('pulse'); }
+        });
     }
     var remaining = totalSecs;
     var interval = setInterval(function() {
@@ -3617,11 +3628,12 @@ function startWarmupRestTimer(el, totalSecs, nextBtn) {
         if (remaining <= 0) {
             fill.style.transition = 'width 0.5s linear';
             fill.style.width = '0%';
-            lbl.textContent = 'Vai!';
-            lbl.style.color = '#00ff88';
+            fill.style.background = '#00ff88';
+            // Rimuovi testo, lascia solo la pulsazione del next
+            lbl.textContent = '';
             clearInterval(interval);
             _warmupRestTimerIntervals.delete(el);
-            // Sblocca e fa pulsare il toggle successivo
+            // Sblocca e fa pulsare SOLO il diretto successivo
             if (nextBtn) {
                 nextBtn.disabled = false;
                 nextBtn.style.opacity = '';
@@ -3633,7 +3645,6 @@ function startWarmupRestTimer(el, totalSecs, nextBtn) {
             fill.style.transition = 'width 1s linear';
             fill.style.width = pct + '%';
             lbl.textContent = remaining + 's';
-            // Vira verso verde negli ultimi 30%
             if (remaining <= Math.round(totalSecs * 0.3)) {
                 fill.style.background = 'linear-gradient(90deg,#818cf8,#00ff88)';
             }
