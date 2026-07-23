@@ -2316,6 +2316,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <button class="wo-done-redo" onclick="woRedoWorkout()">↺ Rifai allenamento</button>
       </div>
       <div id="wo-preview-list" style="padding:0 16px 20px;"></div>
+      <div id="wo-skip-warmup" onclick="woSkipWarmup()" style="display:none;text-align:center;color:#00ff88;text-decoration:underline;font-size:0.72rem;font-weight:600;cursor:pointer;padding:8px 16px 2px;">Salta riscaldamento</div>
       <button class="wo-start-btn" id="wo-start-btn" onclick="woStartWorkout()" style="display:none;">
         <span class="wo-start-icon">▶</span>
         INIZIA ALLENAMENTO
@@ -2661,6 +2662,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     </div>
     <div id="proto-manager-panel" style="display:none; background:rgba(255,255,255,0.03); border-radius:10px; padding:10px 14px; margin-bottom:4px;">
       <div id="proto-manager-list"></div>
+    </div>
+    <div class="settings-row" style="margin-top:4px" onclick="toggleMtrManager()">
+      <div class="settings-row-left"><span class="settings-row-icon">🎯</span><span class="settings-row-label">Massimi Tecnici (MTR)</span></div>
+      <span class="settings-row-arrow" id="mtr-manager-arrow">›</span>
+    </div>
+    <div id="mtr-manager-panel" style="display:none; background:rgba(255,255,255,0.03); border-radius:10px; padding:10px 14px; margin-bottom:4px;">
+      <div id="mtr-manager-list"></div>
     </div>
     <div class="settings-row" style="margin-top:12px" onclick="closeSettingsAndReset()">
       <div class="settings-row-left"><span class="settings-row-icon">🔄</span><span class="settings-row-label">Reset Dati</span></div>
@@ -3265,6 +3273,7 @@ function loadState() {
 // Garantisce coerenza dopo update dell'app o fix di bug precedenti
 function migrateMtrLoads() {
     if (!APP.savedProtocols) return;
+    if (!APP.mtrValues) APP.mtrValues = {};
     var changed = false;
     APP.savedProtocols.forEach(function(proto) {
         if (!proto.exercises) return;
@@ -3274,6 +3283,11 @@ function migrateMtrLoads() {
             if (!ex.mtrValue) return; // nessun MTR impostato, skip
             var mtr = parseFloat(ex.mtrValue);
             if (!mtr || mtr <= 0) return;
+            // Ricostruisci il dizionario globale dai protocolli (persistiti su Supabase)
+            if (!APP.mtrValues[ex.name]) {
+                APP.mtrValues[ex.name] = mtr;
+                changed = true;
+            }
             // Ricalcola i loads corretti dal mtrValue
             var newLoads = isMassa
                 ? MTR_MASSA_LOADS.map(function(p){ return Math.round(mtr*p*2)/2; })
@@ -3471,12 +3485,16 @@ function renderWarmupBlock(exName, exercises, container) {
                                 if (!p.exercises) return;
                                 var pSlot = (protoResolveSlot(p)||'').toLowerCase();
                                 var pMassa = pSlot==='push'||pSlot==='pull'||pSlot==='legs';
+                                var touched = false;
                                 p.exercises.forEach(function(ex) {
                                     if ((ex.name||'').toLowerCase() === capturedEx.name.toLowerCase()) {
                                         ex.mtrValue = val;
                                         ex.loads = (pMassa ? MTR_MASSA_LOADS : WEEK_LOADS).map(function(p2){ return Math.round(val*p2*2)/2; });
+                                        touched = true;
                                     }
                                 });
+                                // Persisti su Supabase così l'MTR sopravvive ai login
+                                if (touched) { try { saveProtocolToSupabase(p); } catch(e) {} }
                             });
                             saveState();
                             renderWarmupBlock(exName, exercises, container.parentElement || container);
@@ -3598,6 +3616,9 @@ function renderWarmupBlock(exName, exercises, container) {
         '<div class="wo-warmup-prog-lbl" id="ww-lbl">0 / ' + setsToComplete + ' set</div>' +
         '</div>';
     container.appendChild(fixedFooter);
+    // Mostra il link "Salta riscaldamento"
+    var skipLink = document.getElementById('wo-skip-warmup');
+    if (skipLink) skipLink.style.display = 'block';
     updateStartBtn();
 }
 
@@ -3664,6 +3685,17 @@ function stopWarmupRestTimer(el) {
     var lbl  = el.querySelector('.wc-rest-bar-lbl');
     if (fill) { fill.style.width = '100%'; fill.style.background = '#818cf8'; fill.style.transition = 'none'; }
     if (lbl)  { lbl.textContent = ''; lbl.style.color = '#818cf8'; }
+}
+
+// Salta il riscaldamento e vai direttamente all'allenamento
+function woSkipWarmup() {
+    var skipLink = document.getElementById('wo-skip-warmup');
+    if (skipLink) skipLink.style.display = 'none';
+    var startBtn = document.getElementById('wo-start-btn');
+    if (startBtn) {
+        startBtn.className = (startBtn.className || '').replace(/warmup-locked/g,'').trim() + ' warmup-unlocked';
+    }
+    woStartWorkout();
 }
 
 function restoreUI() {
@@ -5994,6 +6026,70 @@ async function testPushNotification() {
 }
 
 // ── DEBUG ORARI NOTIFICHE ───────────────────────────────
+// ── Gestione MTR nel profilo ──
+function toggleMtrManager() {
+    var panel = document.getElementById('mtr-manager-panel');
+    var arrow = document.getElementById('mtr-manager-arrow');
+    if (!panel) return;
+    var open = panel.style.display === 'block';
+    panel.style.display = open ? 'none' : 'block';
+    if (arrow) arrow.textContent = open ? '›' : '‹';
+    if (!open) renderMtrManager();
+}
+
+function renderMtrManager() {
+    var list = document.getElementById('mtr-manager-list');
+    if (!list) return;
+    list.innerHTML = '';
+    var names = Object.keys(APP.mtrValues || {}).sort();
+    if (names.length === 0) {
+        list.innerHTML = '<div style="color:#64748b;font-size:0.72rem;text-align:center;padding:8px">Nessun MTR registrato.<br>Vengono salvati durante il riscaldamento o dall\'editor protocollo (🎯).</div>';
+        return;
+    }
+    names.forEach(function(name) {
+        var row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);';
+        var nameEl = document.createElement('div');
+        nameEl.style.cssText = 'flex:1;font-size:0.68rem;color:#e2e8f0;font-weight:600;';
+        nameEl.textContent = name;
+        var kgInput = document.createElement('input');
+        kgInput.type = 'number';
+        kgInput.value = APP.mtrValues[name];
+        kgInput.min = '1'; kgInput.max = '500'; kgInput.step = '0.5';
+        kgInput.setAttribute('inputmode', 'decimal');
+        kgInput.style.cssText = 'width:56px;background:rgba(0,255,136,0.08);border:1px solid rgba(0,255,136,0.25);border-radius:8px;padding:6px;color:#00ff88;font-size:0.72rem;font-weight:800;text-align:center;outline:none;font-family:inherit;';
+        var unit = document.createElement('span');
+        unit.style.cssText = 'font-size:0.6rem;color:#64748b;';
+        unit.textContent = 'kg';
+        (function(capturedName, capturedInput) {
+            capturedInput.onchange = function() {
+                var val = parseFloat(capturedInput.value);
+                if (!val || val <= 0) { capturedInput.value = APP.mtrValues[capturedName]; return; }
+                APP.mtrValues[capturedName] = val;
+                // Propaga a tutti i protocolli con questo esercizio
+                APP.savedProtocols && APP.savedProtocols.forEach(function(p) {
+                    if (!p.exercises) return;
+                    var pSlot = (protoResolveSlot(p)||'').toLowerCase();
+                    var pMassa = pSlot==='push'||pSlot==='pull'||pSlot==='legs';
+                    var touched = false;
+                    p.exercises.forEach(function(ex) {
+                        if ((ex.name||'').toLowerCase() === capturedName.toLowerCase()) {
+                            ex.mtrValue = val;
+                            ex.loads = (pMassa ? MTR_MASSA_LOADS : WEEK_LOADS).map(function(p2){ return Math.round(val*p2*2)/2; });
+                            touched = true;
+                        }
+                    });
+                    if (touched) { try { saveProtocolToSupabase(p); } catch(e) {} }
+                });
+                saveState();
+                showToast('🎯 MTR aggiornato: ' + capturedName + ' → ' + val + ' kg', 'success');
+            };
+        })(name, kgInput);
+        row.appendChild(nameEl); row.appendChild(kgInput); row.appendChild(unit);
+        list.appendChild(row);
+    });
+}
+
 function toggleProtoManager() {
     var panel = document.getElementById('proto-manager-panel');
     var arrow = document.getElementById('proto-manager-arrow');
@@ -9320,6 +9416,8 @@ function woStartWorkout() {
     // Rimuovi footer fisso warmup
     var wf = document.getElementById('wo-warmup-fixed-footer');
     if (wf) wf.remove();
+    var skipL = document.getElementById('wo-skip-warmup');
+    if (skipL) skipL.style.display = 'none';
 
     // ── Mostra banner + stat + lista esercizi (pagina 2) ──
     const bannerEl = document.getElementById('wo-today-banner');
@@ -9713,11 +9811,10 @@ function woRedoWorkout() {
             chipEl.textContent = DAYS[di];
         }
     }
-    // Nascondi banner done, mostra bottone start
+    // Ri-renderizza la pagina allenamento da zero (con warmup)
     const doneBanner = document.getElementById('wo-done-banner');
     if (doneBanner) doneBanner.classList.remove('visible');
-    const startBtn = document.getElementById('wo-start-btn');
-    if (startBtn) startBtn.style.display = 'block';
+    initWorkoutPage();
 }
 
 function woSkipEx() {
