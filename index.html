@@ -3450,6 +3450,10 @@ function renderWarmupBlock(exName, exercises, container) {
         bodyEl.innerHTML = '<div class="wc-desc">Nessun esercizio compound trovato nel protocollo.</div>';
         if (startBtn) startBtn.className = (startBtn.className||'').replace('warmup-locked','warmup-unlocked');
     } else {
+        // Sequenza UNICA su tutti i set di TUTTI gli esercizi da riscaldare:
+        // solo il primo toggle assoluto è attivabile all'inizio, gli altri si sbloccano in cascata
+        var setRefs = [];
+
         warmExercises.forEach(function(warmEx, exIdx) {
             var exMtr = APP.mtrValues[warmEx.name];
 
@@ -3510,9 +3514,6 @@ function renderWarmupBlock(exName, exercises, container) {
             mtrSub.className = 'wc-mtr-sub';
             mtrSub.textContent = 'MTR ' + exMtr + ' kg';
             bodyEl.appendChild(mtrSub);
-
-            // Array dei riferimenti {btn, capturedRef} per collegare next dopo la creazione
-            var setRefs = [];
 
             sets.forEach(function(s, i) {
                 var row = document.createElement('div');
@@ -3581,22 +3582,22 @@ function renderWarmupBlock(exName, exercises, container) {
                 rowWrap.appendChild(restTimerEl);
                 bodyEl.appendChild(rowWrap);
             });
+        });
 
-            // Collega next e allNext dopo aver creato tutti i bottoni
-            setRefs.forEach(function(item, idx) {
-                // next = solo il diretto successivo (sblocca dopo rest)
-                if (idx + 1 < setRefs.length) {
-                    item.ref.next = setRefs[idx + 1].btn;
-                }
-                // allNext = tutti i successivi (bloccati durante rest)
-                item.ref.allNext = setRefs.slice(idx + 1).map(function(r){ return r.btn; });
-                // Blocca tutti i successivi al primo caricamento (solo W2 e W3 per W1, solo W3 per W2)
-                if (idx > 0) {
-                    item.btn.disabled = true;
-                    item.btn.style.opacity = '0.35';
-                    item.btn.style.cursor = 'not-allowed';
-                }
-            });
+        // Collega next e allNext su TUTTA la sequenza (cross-esercizio)
+        setRefs.forEach(function(item, idx) {
+            // next = solo il diretto successivo nell'intera sequenza (sblocca dopo rest)
+            if (idx + 1 < setRefs.length) {
+                item.ref.next = setRefs[idx + 1].btn;
+            }
+            // allNext = tutti i successivi nell'intera sequenza (bloccati durante rest)
+            item.ref.allNext = setRefs.slice(idx + 1).map(function(r){ return r.btn; });
+            // Blocca tutti tranne il primissimo toggle assoluto al caricamento
+            if (idx > 0) {
+                item.btn.disabled = true;
+                item.btn.style.opacity = '0.35';
+                item.btn.style.cursor = 'not-allowed';
+            }
         });
     }
 
