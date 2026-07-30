@@ -2706,7 +2706,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 <!-- ══ AI FOOD PHOTO OVERLAY ══ -->
 <!-- ══ QUICK FOOD OVERLAY ══ -->
-<div id="quick-food-overlay" style="display:none;pointer-events:none;position:fixed;inset:0;background:rgba(6,13,26,0.97);z-index:5050;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch;">
+<div id="quick-food-overlay" style="display:none;pointer-events:none;position:fixed;inset:0;background:rgba(6,13,26,0.97);z-index:5050;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);box-sizing:border-box;">
   <!-- Header -->
   <div style="display:flex;justify-content:space-between;align-items:center;padding:20px 18px 12px;flex-shrink:0;">
     <div>
@@ -2726,7 +2726,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <div style="height:0.5px;background:#1e293b;margin:0 18px 14px;flex-shrink:0;"></div>
   <!-- Recenti -->
   <div id="qf-recent-section" style="flex-shrink:0;">
-    <div style="font-size:0.5rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;padding:0 18px;margin-bottom:8px;">⚡ Recenti</div>
+    <div style="font-size:0.5rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;padding:0 18px;margin-bottom:8px;">⚡ Recenti e preferiti</div>
     <div id="qf-recent-scroll" style="display:flex;gap:8px;padding:0 18px 14px;overflow-x:auto;-webkit-overflow-scrolling:touch;"></div>
   </div>
   <!-- Divider -->
@@ -2742,7 +2742,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
 </div>
 
-<div id="ai-food-overlay" style="display:none;pointer-events:none;position:fixed;inset:0;background:rgba(15,23,42,0.96);z-index:5200;flex-direction:column;align-items:center;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 16px 40px;">
+<div id="ai-food-overlay" style="display:none;pointer-events:none;position:fixed;inset:0;background:rgba(15,23,42,0.96);z-index:5200;flex-direction:column;align-items:center;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:calc(20px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) calc(40px + env(safe-area-inset-bottom,0px)) calc(16px + env(safe-area-inset-left,0px));box-sizing:border-box;">
   <div style="width:100%;max-width:420px;">
     <!-- Header -->
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
@@ -6001,6 +6001,7 @@ function gramsConfirm() {
 
 // ══ QUICK FOOD ══
 var _qfMeal = null;
+var _qfRecentCache = [];
 
 function quickFoodOpen(meal) {
     _qfMeal = meal;
@@ -6020,48 +6021,127 @@ function quickFoodClose() {
 }
 
 function quickFoodGetRecent() {
-    // Raccoglie tutti gli alimenti dai pasti degli ultimi 7 giorni, deduplicati per nome
+    // Legge i pasti dagli ultimi 7 giorni dalle chiavi localStorage 'nut_meals_<dateString>'
+    var entries = [];
+    for (var i = 0; i < localStorage.length; i++) {
+        var key = localStorage.key(i);
+        if (!key || key.indexOf('nut_meals_') !== 0) continue;
+        var dateStr = key.slice(10);
+        var d = new Date(dateStr);
+        if (isNaN(d.getTime())) continue;
+        entries.push({ date: d, key: key });
+    }
+    // Più recenti prima, max 7 giorni
+    entries.sort(function(a, b) { return b.date - a.date; });
+    entries = entries.slice(0, 7);
+
     var seen = {};
     var recent = [];
-    var state = APP.nutState || {};
-    var days = Object.keys(state).sort().reverse().slice(0, 7);
-    days.forEach(function(day) {
-        var meals = state[day] || {};
-        ['colazione','pranzo','snack','cena'].forEach(function(m) {
+    entries.forEach(function(e) {
+        var meals;
+        try { meals = JSON.parse(localStorage.getItem(e.key) || '{}'); } catch(err) { return; }
+        MEALS.forEach(function(m) {
             (meals[m] || []).forEach(function(f) {
-                if (!seen[f.name]) {
-                    seen[f.name] = true;
-                    recent.push({ food: f, meal: m, day: day });
-                }
+                if (!f || !f.name) return;
+                var k = f.name.toLowerCase();
+                if (seen[k]) return;
+                seen[k] = true;
+                recent.push({ food: f, meal: m, date: e.date });
             });
         });
     });
     return recent.slice(0, 12);
 }
 
+function quickFoodFavs() {
+    if (!APP.nutFavorites) APP.nutFavorites = [];
+    return APP.nutFavorites;
+}
+
+function quickFoodFavIndex(name) {
+    var favs = quickFoodFavs();
+    var n = (name || '').toLowerCase();
+    for (var i = 0; i < favs.length; i++) {
+        if ((favs[i].name || '').toLowerCase() === n) return i;
+    }
+    return -1;
+}
+
+function quickFoodToggleFav(idx) {
+    var item = _qfRecentCache[idx];
+    if (!item) return;
+    var favs = quickFoodFavs();
+    var fi = quickFoodFavIndex(item.food.name);
+    if (fi >= 0) {
+        favs.splice(fi, 1);
+        showToast('Rimosso dai preferiti', 'success');
+    } else {
+        favs.push(JSON.parse(JSON.stringify(item.food)));
+        showToast('★ Aggiunto ai preferiti', 'success');
+    }
+    saveState();
+    quickFoodRenderRecent();
+}
+
+function quickFoodBuildList() {
+    var list = [];
+    var seen = {};
+    // Preferiti sempre in testa
+    quickFoodFavs().forEach(function(f) {
+        if (!f || !f.name) return;
+        var k = f.name.toLowerCase();
+        if (seen[k]) return;
+        seen[k] = true;
+        list.push({ food: f, meal: null, date: null, fav: true });
+    });
+    // Poi i recenti non già presenti
+    quickFoodGetRecent().forEach(function(item) {
+        var k = (item.food.name || '').toLowerCase();
+        if (seen[k]) return;
+        seen[k] = true;
+        list.push({ food: item.food, meal: item.meal, date: item.date, fav: false });
+    });
+    return list;
+}
+
 function quickFoodRenderRecent() {
     var scroll = document.getElementById('qf-recent-scroll');
     scroll.innerHTML = '';
-    var items = quickFoodGetRecent();
+    _qfRecentCache = quickFoodBuildList();
     var section = document.getElementById('qf-recent-section');
-    if (!items.length) { section.style.display = 'none'; return; }
     section.style.display = 'block';
-    items.forEach(function(item) {
+    if (!_qfRecentCache.length) {
+        scroll.innerHTML = '<div style="font-size:0.62rem;color:#334155;font-style:italic;padding:4px 2px;">Nessun alimento recente</div>';
+        return;
+    }
+    _qfRecentCache.forEach(function(item, idx) {
         var f = item.food;
+        var isFav = item.fav || quickFoodFavIndex(f.name) >= 0;
         var chip = document.createElement('div');
-        chip.style.cssText = 'flex-shrink:0;background:#0f1f35;border-radius:12px;padding:10px 12px;min-width:115px;max-width:140px;cursor:pointer;border:1px solid #1e293b;';
-        var daysAgo = Math.round((Date.now() - new Date(item.day).getTime()) / 86400000);
-        var when = daysAgo === 0 ? 'oggi' : daysAgo === 1 ? 'ieri' : daysAgo + 'gg fa';
+        chip.style.cssText = 'position:relative;flex-shrink:0;background:#0f1f35;border-radius:12px;padding:10px 12px;min-width:115px;max-width:140px;cursor:pointer;border:1px solid ' + (isFav ? 'rgba(99,102,241,0.4)' : '#1e293b') + ';';
+        chip.setAttribute('onclick', 'quickFoodAddRecent(' + idx + ')');
+        var when;
+        if (item.fav) {
+            when = '📌 Preferito';
+        } else {
+            var today = new Date(); today.setHours(0,0,0,0);
+            var itemDay = new Date(item.date); itemDay.setHours(0,0,0,0);
+            var daysAgo = Math.round((today - itemDay) / 86400000);
+            when = (daysAgo <= 0 ? 'oggi' : daysAgo === 1 ? 'ieri' : daysAgo + 'gg fa') + ' · ' + item.meal;
+        }
         chip.innerHTML =
-            '<div style="font-size:0.42rem;color:#475569;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px;">' + when + ' · ' + item.meal + '</div>' +
-            '<div style="font-size:0.7rem;font-weight:700;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px;">' + f.name + '</div>' +
-            '<div style="font-size:0.6rem;color:#EF9F27;font-weight:800;">' + (f.kcal || 0) + ' kcal</div>' +
-            '<div style="font-size:0.46rem;color:#475569;margin-top:2px;">P' + (f.p||0) + ' · C' + (f.c||0) + ' · G' + (f.f||0) + ' · ' + (f.note||'') + '</div>';
-        chip.addEventListener('click', function() {
-            quickFoodAddItem(f);
-        });
+            '<button onclick="event.stopPropagation();quickFoodToggleFav(' + idx + ')" style="position:absolute;top:5px;right:6px;pointer-events:auto;background:none;border:none;padding:2px;font-size:0.72rem;line-height:1;cursor:pointer;color:' + (isFav ? '#6366f1' : '#334155') + ';">' + (isFav ? '★' : '☆') + '</button>' +
+            '<div style="font-size:0.42rem;color:' + (item.fav ? '#6366f1' : '#475569') + ';text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px;padding-right:16px;pointer-events:none;">' + when + '</div>' +
+            '<div style="font-size:0.7rem;font-weight:700;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px;pointer-events:none;">' + f.name + '</div>' +
+            '<div style="font-size:0.6rem;color:#EF9F27;font-weight:800;pointer-events:none;">' + (f.kcal || 0) + ' kcal</div>' +
+            '<div style="font-size:0.46rem;color:#475569;margin-top:2px;pointer-events:none;">P' + (f.p||0) + ' · C' + (f.c||0) + ' · G' + (f.f||0) + ' · ' + (f.note||'') + '</div>';
         scroll.appendChild(chip);
     });
+}
+
+function quickFoodAddRecent(idx) {
+    var item = _qfRecentCache[idx];
+    if (item) quickFoodAddItem(item.food);
 }
 
 function quickFoodRenderTemplates() {
