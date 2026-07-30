@@ -2487,7 +2487,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 
 <!-- ══ GRAMS SELECTOR OVERLAY ══ -->
-<div id="grams-overlay" style="display:none;pointer-events:none;position:fixed;inset:0;background:rgba(15,23,42,0.92);z-index:5100;align-items:flex-end;justify-content:center;flex-direction:column;">
+<div id="grams-overlay" style="display:none;pointer-events:none;position:fixed;inset:0;width:100vw;max-width:100vw;align-self:stretch;margin:0;background:rgba(15,23,42,0.92);z-index:5100;align-items:flex-end;justify-content:center;flex-direction:column;">
   <div style="background:#1e293b;border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:480px;box-sizing:border-box;position:relative;">
     <!-- HEADER -->
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;margin-right:-20px;padding-right:16px;">
@@ -2608,7 +2608,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 </div>
 
 <!-- ══ MANUAL FOOD OVERLAY ══ -->
-<div id="manual-food-overlay" style="display:none;pointer-events:none;position:fixed;inset:0;background:rgba(15,23,42,0.92);z-index:5000;align-items:flex-end;justify-content:center;">
+<div id="manual-food-overlay" style="display:none;pointer-events:none;position:fixed;inset:0;width:100vw;max-width:100vw;align-self:stretch;margin:0;background:rgba(15,23,42,0.92);z-index:5000;align-items:flex-end;justify-content:center;">
   <div style="background:#1e293b;border-radius:20px 20px 0 0;padding:18px 16px 32px;width:100%;max-width:480px;box-sizing:border-box;max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch;">
 
     <!-- Header — stessa struttura del grams-overlay -->
@@ -2706,7 +2706,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 <!-- ══ AI FOOD PHOTO OVERLAY ══ -->
 <!-- ══ QUICK FOOD OVERLAY ══ -->
-<div id="quick-food-overlay" style="display:none;pointer-events:none;position:fixed;inset:0;background:rgba(6,13,26,0.97);z-index:5050;flex-direction:column;align-items:stretch;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-top:max(env(safe-area-inset-top),44px);padding-bottom:max(env(safe-area-inset-bottom),16px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);box-sizing:border-box;">
+<div id="quick-food-overlay" style="display:none;pointer-events:none;position:fixed;inset:0;width:100vw;max-width:100vw;align-self:stretch;margin:0;background:rgba(6,13,26,0.97);z-index:5050;flex-direction:column;align-items:stretch;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-top:max(env(safe-area-inset-top),44px);padding-bottom:max(env(safe-area-inset-bottom),16px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);box-sizing:border-box;">
   <!-- Header -->
   <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 18px 12px;flex-shrink:0;width:100%;box-sizing:border-box;">
     <div style="flex:1;min-width:0;">
@@ -2742,7 +2742,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
 </div>
 
-<div id="ai-food-overlay" style="display:none;pointer-events:none;position:fixed;inset:0;background:rgba(15,23,42,0.96);z-index:5200;flex-direction:column;align-items:center;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:max(env(safe-area-inset-top),44px) calc(16px + env(safe-area-inset-right,0px)) calc(40px + env(safe-area-inset-bottom,0px)) calc(16px + env(safe-area-inset-left,0px));box-sizing:border-box;">
+<div id="ai-food-overlay" style="display:none;pointer-events:none;position:fixed;inset:0;width:100vw;max-width:100vw;align-self:stretch;margin:0;background:rgba(15,23,42,0.96);z-index:5200;flex-direction:column;align-items:center;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:max(env(safe-area-inset-top),44px) calc(16px + env(safe-area-inset-right,0px)) calc(40px + env(safe-area-inset-bottom,0px)) calc(16px + env(safe-area-inset-left,0px));box-sizing:border-box;">
   <div style="width:100%;max-width:420px;">
     <!-- Header -->
     <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;width:100%;box-sizing:border-box;">
@@ -6130,8 +6130,10 @@ function quickFoodRenderRecent() {
             when = (daysAgo <= 0 ? 'oggi' : daysAgo === 1 ? 'ieri' : daysAgo + 'gg fa') + ' · ' + item.meal;
         }
         chip.innerHTML =
-            '<button onclick="event.stopPropagation();quickFoodToggleFav(' + idx + ')" style="position:absolute;top:5px;right:6px;pointer-events:auto;background:none;border:none;padding:2px;font-size:0.72rem;line-height:1;cursor:pointer;color:' + (isFav ? '#6366f1' : '#334155') + ';">' + (isFav ? '★' : '☆') + '</button>' +
-            '<div style="font-size:0.42rem;color:' + (item.fav ? '#6366f1' : '#475569') + ';text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px;padding-right:16px;pointer-events:none;">' + when + '</div>' +
+            '<div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:3px;">' +
+                '<div style="flex:1;min-width:0;font-size:0.42rem;color:' + (item.fav ? '#6366f1' : '#475569') + ';text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;line-height:1.4;">' + when + '</div>' +
+                '<button onclick="event.stopPropagation();quickFoodToggleFav(' + idx + ')" style="flex-shrink:0;background:none;border:none;padding:0;margin:0;font-size:0.72rem;line-height:1;cursor:pointer;color:' + (isFav ? '#6366f1' : '#334155') + ';">' + (isFav ? '★' : '☆') + '</button>' +
+            '</div>' +
             '<div style="font-size:0.7rem;font-weight:700;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px;pointer-events:none;">' + f.name + '</div>' +
             '<div style="font-size:0.6rem;color:#EF9F27;font-weight:800;pointer-events:none;">' + (f.kcal || 0) + ' kcal</div>' +
             '<div style="font-size:0.46rem;color:#475569;margin-top:2px;pointer-events:none;">P' + (f.p||0) + ' · C' + (f.c||0) + ' · G' + (f.f||0) + ' · ' + (f.note||'') + '</div>';
