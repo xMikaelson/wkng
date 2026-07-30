@@ -2713,7 +2713,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <div style="font-size:1rem;font-weight:800;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">＋ Aggiungi alimento</div>
       <div id="qf-meal-label" style="font-size:0.58rem;color:#64748b;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
     </div>
-    <button onclick="quickFoodClose()" style="flex-shrink:0;background:none;border:none;color:#475569;font-size:1.2rem;cursor:pointer;padding:4px;">✕</button>
+    <button onclick="quickFoodClose()" style="width:auto;flex-shrink:0;background:none;border:none;color:#475569;font-size:1.2rem;cursor:pointer;padding:4px;">✕</button>
   </div>
   <!-- Scan / AI -->
   <div style="display:flex;gap:8px;padding:0 18px 16px;flex-shrink:0;width:100%;box-sizing:border-box;">
@@ -2735,7 +2735,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <div style="flex-shrink:0;width:100%;box-sizing:border-box;">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:0 18px;margin-bottom:10px;width:100%;box-sizing:border-box;">
       <div style="font-size:0.5rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;white-space:nowrap;">📋 Template</div>
-      <button onclick="quickFoodNewTemplate()" style="flex-shrink:0;white-space:nowrap;font-size:0.55rem;color:#6366f1;font-weight:700;background:none;border:none;cursor:pointer;font-family:inherit;">＋ Nuovo</button>
+      <button onclick="quickFoodNewTemplate()" style="width:auto;padding:4px 2px;flex-shrink:0;white-space:nowrap;font-size:0.55rem;color:#6366f1;font-weight:700;background:none;border:none;cursor:pointer;font-family:inherit;">＋ Nuovo</button>
     </div>
     <div id="qf-templates-list" style="padding:0 18px;display:flex;flex-direction:column;gap:8px;width:100%;box-sizing:border-box;"></div>
     <div style="height:32px;"></div>
@@ -2750,7 +2750,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <div style="font-size:1.1rem;font-weight:800;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">✨ Analisi AI</div>
         <div style="font-size:0.58rem;color:#64748b;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Scatta una foto al tuo piatto</div>
       </div>
-      <button onclick="aiFoodClose()" style="flex-shrink:0;background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:4px;">✕</button>
+      <button onclick="aiFoodClose()" style="width:auto;flex-shrink:0;background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:4px;">✕</button>
     </div>
 
     <!-- Photo preview -->
@@ -6132,7 +6132,7 @@ function quickFoodRenderRecent() {
         chip.innerHTML =
             '<div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:3px;">' +
                 '<div style="flex:1;min-width:0;font-size:0.42rem;color:' + (item.fav ? '#6366f1' : '#475569') + ';text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;line-height:1.4;">' + when + '</div>' +
-                '<button onclick="event.stopPropagation();quickFoodToggleFav(' + idx + ')" style="flex-shrink:0;background:none;border:none;padding:0;margin:0;font-size:0.72rem;line-height:1;cursor:pointer;color:' + (isFav ? '#6366f1' : '#334155') + ';">' + (isFav ? '★' : '☆') + '</button>' +
+                '<button onclick="event.stopPropagation();quickFoodToggleFav(' + idx + ')" style="width:auto;flex-shrink:0;background:none;border:none;padding:0;margin:0;font-size:0.72rem;line-height:1;cursor:pointer;color:' + (isFav ? '#6366f1' : '#334155') + ';">' + (isFav ? '★' : '☆') + '</button>' +
             '</div>' +
             '<div style="font-size:0.7rem;font-weight:700;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px;pointer-events:none;">' + f.name + '</div>' +
             '<div style="font-size:0.6rem;color:#EF9F27;font-weight:800;pointer-events:none;">' + (f.kcal || 0) + ' kcal</div>' +
@@ -6179,7 +6179,7 @@ function quickFoodRenderTemplates() {
                 '</div>' +
                 '<div style="display:flex;gap:7px;padding:9px 13px;border-top:0.5px solid #1a2e4a;">' +
                     '<button onclick="quickFoodAddTemplate(' + i + ')" style="flex:1;padding:8px;background:linear-gradient(135deg,var(--primary),var(--accent));border:none;border-radius:8px;color:#000;font-size:0.68rem;font-weight:800;cursor:pointer;font-family:inherit;">Aggiungi tutto al pasto</button>' +
-                    '<button onclick="quickFoodDeleteTemplate(' + i + ')" style="padding:8px 10px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:8px;color:#f87171;font-size:0.68rem;cursor:pointer;font-family:inherit;">🗑️</button>' +
+                    '<button onclick="quickFoodDeleteTemplate(' + i + ')" style="width:auto;flex-shrink:0;padding:8px 10px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:8px;color:#f87171;font-size:0.68rem;cursor:pointer;font-family:inherit;">🗑️</button>' +
                 '</div>' +
             '</div>';
         list.appendChild(card);
@@ -6591,7 +6591,7 @@ function aiFoodSearchManual(input, idx) {
                 newRow.dataset.product = prodJson;
                 const serving = aiFoodParseServing(p);
                 newRow.innerHTML = '<div style="flex:1;min-width:0;"><div style="font-size:0.7rem;font-weight:600;color:#e2e8f0;">' + p.name + '</div><div style="font-size:0.55rem;color:#475569;">' + p._source + (serving?' · '+serving+'g':'') + '</div></div>' +
-                    '<button onclick="aiFoodSelectForComponent('+idx+',999,this.closest(\'[data-product]\').dataset.product)" style="margin-left:8px;background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);color:#34d399;border-radius:6px;padding:4px 8px;font-size:0.6rem;cursor:pointer;font-family:inherit;flex-shrink:0;">Usa</button>';
+                    '<button onclick="aiFoodSelectForComponent('+idx+',999,this.closest(\'[data-product]\').dataset.product)" style="width:auto;margin-left:8px;background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);color:#34d399;border-radius:6px;padding:4px 8px;font-size:0.6rem;cursor:pointer;font-family:inherit;flex-shrink:0;">Usa</button>';
                 el.appendChild(newRow);
                 resultsEl.style.display = 'none';
                 input.value = '';
