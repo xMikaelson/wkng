@@ -2706,7 +2706,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 <!-- ══ AI FOOD PHOTO OVERLAY ══ -->
 <!-- ══ QUICK FOOD OVERLAY ══ -->
-<div id="quick-food-overlay" style="display:none;position:fixed;inset:0;background:rgba(6,13,26,0.97);z-index:5100;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch;">
+<div id="quick-food-overlay" style="display:none;pointer-events:none;position:fixed;inset:0;background:rgba(6,13,26,0.97);z-index:5050;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch;">
   <!-- Header -->
   <div style="display:flex;justify-content:space-between;align-items:center;padding:20px 18px 12px;flex-shrink:0;">
     <div>
@@ -6002,11 +6002,15 @@ function quickFoodOpen(meal) {
     document.getElementById('qf-meal-label').textContent = 'Aggiungendo a: ' + meal.charAt(0).toUpperCase() + meal.slice(1);
     quickFoodRenderRecent();
     quickFoodRenderTemplates();
-    document.getElementById('quick-food-overlay').style.display = 'flex';
+    var el = document.getElementById('quick-food-overlay');
+    el.style.display = 'flex';
+    el.style.pointerEvents = 'auto';
 }
 
 function quickFoodClose() {
-    document.getElementById('quick-food-overlay').style.display = 'none';
+    var el = document.getElementById('quick-food-overlay');
+    el.style.display = 'none';
+    el.style.pointerEvents = 'none';
     _qfMeal = null;
 }
 
