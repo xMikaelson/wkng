@@ -10262,6 +10262,19 @@ function navSwitch(tab) {
         const woPage = document.getElementById('page-workout');
         if (woPage) woPage.classList.add('active');
         initWorkoutPage();
+        // Fix bug iOS PWA: al primo ingresso nella pagina lo scroll layer
+        // resta "congelato" perché l'elemento passa da display:none a
+        // display:block insieme all'animazione pageIn. Forziamo un reflow
+        // dello scroll layer così il gesto di scroll viene riconosciuto subito.
+        if (woPage) {
+            requestAnimationFrame(function() {
+                woPage.style.webkitOverflowScrolling = 'auto';
+                void woPage.offsetHeight; // forza il reflow
+                woPage.style.webkitOverflowScrolling = 'touch';
+                woPage.scrollTop = 1;
+                requestAnimationFrame(function() { woPage.scrollTop = 0; });
+            });
+        }
     }
 
     // Aggiorna indicatori nav
