@@ -3006,6 +3006,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       </div>
     </div>
 
+    <!-- Descrizione facoltativa -->
+    <div id="ai-food-hint-wrap" style="display:none;margin-bottom:10px;">
+      <input type="text" id="ai-food-hint" autocomplete="off" maxlength="120"
+        placeholder="Es. 2 pancake con miele (facoltativo)"
+        style="width:100%;padding:11px 12px;background:#0f172a;border:1px solid #334155;border-radius:11px;color:#e2e8f0;font-size:0.78rem;font-family:inherit;box-sizing:border-box;">
+      <div style="font-size:0.52rem;color:#475569;margin-top:5px;padding-left:2px;">Descrivere il piatto aiuta l'AI a essere più precisa</div>
+    </div>
+
     <!-- Bottoni -->
     <div id="ai-food-btn-analyze" style="display:none;margin-bottom:8px;">
       <button onclick="aiFoodAnalyze()" style="width:100%;padding:14px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;border-radius:12px;color:#fff;font-size:0.9rem;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0.04em;">✨ Analizza</button>
@@ -8920,6 +8928,8 @@ function aiFoodOpen(meal) {
     document.getElementById('ai-food-components').innerHTML = '';
     document.getElementById('ai-food-total').style.display = 'none';
     document.getElementById('ai-food-btn-analyze').style.display = 'none';
+    document.getElementById('ai-food-hint-wrap').style.display = 'none';
+    document.getElementById('ai-food-hint').value = '';
     document.getElementById('ai-food-btn-confirm').style.display = 'none';
     document.getElementById('ai-food-loading').style.display = 'none';
     document.getElementById('ai-food-input').value = '';
@@ -8943,6 +8953,7 @@ function aiFoodPreview(event) {
         document.getElementById('ai-food-components').style.display = 'none';
         document.getElementById('ai-food-total').style.display = 'none';
         document.getElementById('ai-food-btn-confirm').style.display = 'none';
+        document.getElementById('ai-food-hint-wrap').style.display = 'block';
         document.getElementById('ai-food-btn-analyze').style.display = 'block';
     };
     reader.readAsDataURL(file);
@@ -8952,6 +8963,7 @@ async function aiFoodAnalyze() {
     const file = document.getElementById('ai-food-input').files[0];
     if (!file) return;
     document.getElementById('ai-food-btn-analyze').style.display = 'none';
+    document.getElementById('ai-food-hint-wrap').style.display = 'none';
     document.getElementById('ai-food-loading').style.display = 'block';
     document.getElementById('ai-food-loading-msg').textContent = 'Analisi in corso...';
     try {
@@ -8962,7 +8974,12 @@ async function aiFoodAnalyze() {
             r.readAsDataURL(file);
         });
         const mediaType = file.type || 'image/jpeg';
-        const prompt = 'Analizza questa immagine di cibo. Identifica OGNI componente separato nel piatto. Rispondi SOLO con JSON valido:\n{"components":[{"name":"nome componente in italiano","keywords":["parola1","parola2"],"grams":grammi stimati,"kcal":kcal stimate,"protein":proteine g,"carbs":carboidrati g,"fat":grassi g}]}\nEsempio per piatto con pesce e riso: components con due oggetti separati. Ogni name deve essere 1-2 parole.';
+        const hintEl = document.getElementById('ai-food-hint');
+        const userHint = hintEl ? hintEl.value.trim() : '';
+        const hintBlock = userHint
+            ? '\n\nL\'utente descrive il piatto come: "' + userHint + '". Considera questa descrizione come informazione affidabile: usala per identificare i componenti, il loro numero e le quantità. Se la descrizione indica quantità o porzioni, rispettale.'
+            : '';
+        const prompt = 'Analizza questa immagine di cibo. Identifica OGNI componente separato nel piatto. Rispondi SOLO con JSON valido:\n{"components":[{"name":"nome componente in italiano","keywords":["parola1","parola2"],"grams":grammi stimati,"kcal":kcal stimate,"protein":proteine g,"carbs":carboidrati g,"fat":grassi g}]}\nEsempio per piatto con pesce e riso: components con due oggetti separati. Ogni name deve essere 1-2 parole.' + hintBlock;
 
         const res = await fetch(SUPABASE_FUNCTION_URL, {
             method: 'POST',
@@ -9014,10 +9031,18 @@ async function aiFoodAnalyze() {
         aiFoodUpdateTotal();
 
     } catch(e) {
-        const msg = e.message && e.message.toLowerCase().includes('parse')
-            ? '🍽️ Nessun alimento riconosciuto — riprova con una foto del piatto'
+        const isFoodNotFound = e.message && (
+            e.message.toLowerCase().includes('parse') ||
+            e.message.toLowerCase().includes('nessun componente')
+        );
+        const hintFilled = (document.getElementById('ai-food-hint')?.value || '').trim().length > 0;
+        const msg = isFoodNotFound
+            ? (hintFilled
+                ? '🍽️ Nessun alimento riconosciuto — prova con una foto più nitida'
+                : '🍽️ Nessun alimento riconosciuto — descrivi il piatto nel campo qui sotto e riprova')
             : 'Errore analisi: ' + e.message;
         showToast(msg, 'error');
+        document.getElementById('ai-food-hint-wrap').style.display = 'block';
         document.getElementById('ai-food-btn-analyze').style.display = 'block';
     } finally {
         document.getElementById('ai-food-loading').style.display = 'none';
