@@ -1829,16 +1829,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             box-sizing: border-box;
             z-index: 5;
         }
-        /* Attaccato alla card riscaldamento: bordo continuo, angoli superiori squadrati */
+        /* Unito: il footer è dentro la card, quindi niente bordi o margini propri.
+           Resta solo la linea divisoria orizzontale. */
         .wo-action-footer.joined {
-            border-top-left-radius: 0; border-top-right-radius: 0;
-            border-top-color: rgba(255,255,255,0.06);
-        }
-        #wo-panel-train.joined-card #wo-preview-list { padding-bottom: 0; }
-        #wo-panel-train.joined-card .wo-warmup-card {
-            margin-bottom: 0;
-            border-bottom: none;
-            border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+            margin: 0;
+            border: none;
+            border-top: 1px solid rgba(255,255,255,0.07);
+            border-radius: 0;
+            background: transparent;
+            padding: 12px 16px 14px;
         }
         .wo-warmup-prog-wrap { margin-bottom: 11px; }
         .wo-action-row { display: flex; gap: 10px; align-items: stretch; }
@@ -3469,6 +3468,15 @@ function getWarmupSets(mtrValue) {
 }
 
 function renderWarmupBlock(exName, exercises, container) {
+    // Usa sempre il contenitore stabile: evita che i re-render risalgano il DOM
+    container = document.getElementById('wo-warmup-container') || container;
+
+    // Il footer vive dentro la card quando è unito: riportalo fuori prima di
+    // distruggere la card vecchia, altrimenti verrebbe rimosso col blocco.
+    var _ftr = document.getElementById('wo-action-footer');
+    var _pnl = document.getElementById('wo-panel-train');
+    if (_ftr && _pnl && _ftr.parentElement !== _pnl) _pnl.appendChild(_ftr);
+
     var existing = container.querySelector('.wo-warmup-block');
     if (existing) existing.remove();
 
@@ -3592,7 +3600,8 @@ function renderWarmupBlock(exName, exercises, container) {
                                 if (touched) { try { saveProtocolToSupabase(p); } catch(e) {} }
                             });
                             saveState();
-                            renderWarmupBlock(exName, exercises, container.parentElement || container);
+                            renderWarmupBlock(exName, exercises, container);
+                            woRefreshScroll();
                         };
                     }
                 }, 50);
@@ -3706,26 +3715,46 @@ function renderWarmupBlock(exName, exercises, container) {
     // Mostra il bottone "Salta"
     var skipLink = document.getElementById('wo-skip-warmup');
     if (skipLink) skipLink.style.display = 'block';
-    woShowActionFooter(true, true);
+    woShowActionFooter(true, true, card);
     updateStartBtn();
 }
 
-// ── Mostra/nasconde il footer azioni ancorato (Variante A) ──
-// joined = true quando c'è la card riscaldamento sopra, così i due box si fondono
-function woShowActionFooter(show, joined) {
+// ── Mostra/nasconde il footer azioni ──
+// joined = true + hostEl: il footer viene spostato DENTRO la card riscaldamento,
+// così i bordi laterali sono per forza continui (nessun disallineamento possibile).
+function woShowActionFooter(show, joined, hostEl) {
     var footer = document.getElementById('wo-action-footer');
     var panel  = document.getElementById('wo-panel-train');
     if (footer) {
         footer.style.display = show ? 'block' : 'none';
-        if (show && joined) footer.classList.add('joined');
-        else footer.classList.remove('joined');
+        if (show && joined && hostEl) {
+            hostEl.appendChild(footer);
+            footer.classList.add('joined');
+        } else {
+            if (panel && footer.parentElement !== panel) panel.appendChild(footer);
+            footer.classList.remove('joined');
+        }
     }
     if (panel) {
         if (show) panel.classList.add('has-footer');
         else panel.classList.remove('has-footer');
-        if (show && joined) panel.classList.add('joined-card');
-        else panel.classList.remove('joined-card');
     }
+}
+
+// ── Risveglia il layer di scroll della pagina allenamento ──
+// Serve dopo i cambi di altezza importanti del contenuto (es. conferma MTR):
+// in PWA iOS lo scroll resta congelato finché non si forza un reflow.
+function woRefreshScroll() {
+    var pg = document.getElementById('page-workout');
+    if (!pg) return;
+    requestAnimationFrame(function() {
+        var prev = pg.scrollTop;
+        pg.style.webkitOverflowScrolling = 'auto';
+        void pg.offsetHeight;
+        pg.style.webkitOverflowScrolling = 'touch';
+        pg.scrollTop = prev + 1;
+        requestAnimationFrame(function() { pg.scrollTop = prev; });
+    });
 }
 
 // ── Timer di recupero post-set warmup ──
@@ -6908,6 +6937,12 @@ function initWorkoutPage() {
     const prevList  = document.getElementById('wo-preview-list');
     const protoNameEl = document.getElementById('wo-proto-name');
 
+    // Il footer azioni può trovarsi dentro la card riscaldamento (quindi dentro
+    // prevList): riportalo nel pannello prima di svuotare, o verrebbe distrutto.
+    var _ftrSafe = document.getElementById('wo-action-footer');
+    var _pnlSafe = document.getElementById('wo-panel-train');
+    if (_ftrSafe && _pnlSafe && _ftrSafe.parentElement !== _pnlSafe) _pnlSafe.appendChild(_ftrSafe);
+
     const nutWoWrap = document.getElementById('nut-wo-wrap');
     if (!assignment || exData.length === 0) {
         // No workout assigned for today
@@ -6990,9 +7025,10 @@ function initWorkoutPage() {
             prevList.innerHTML = '';
             if (!isDeload && exData.length > 0) {
                 var warmupContainer = document.createElement('div');
+                warmupContainer.id = 'wo-warmup-container';
                 warmupContainer.style.cssText = 'margin-bottom:0;';
-                renderWarmupBlock(exData[0].name, exData, warmupContainer);
                 prevList.appendChild(warmupContainer);
+                renderWarmupBlock(exData[0].name, exData, warmupContainer);
             } else if (isDeload) {
                 // Deload: niente warmup, mostra lista e bottone
                 if (startBtn) {
@@ -10338,19 +10374,10 @@ function navSwitch(tab) {
         const woPage = document.getElementById('page-workout');
         if (woPage) woPage.classList.add('active');
         initWorkoutPage();
-        // Fix bug iOS PWA: al primo ingresso nella pagina lo scroll layer
-        // resta "congelato" perché l'elemento passa da display:none a
-        // display:block insieme all'animazione pageIn. Forziamo un reflow
-        // dello scroll layer così il gesto di scroll viene riconosciuto subito.
-        if (woPage) {
-            requestAnimationFrame(function() {
-                woPage.style.webkitOverflowScrolling = 'auto';
-                void woPage.offsetHeight; // forza il reflow
-                woPage.style.webkitOverflowScrolling = 'touch';
-                woPage.scrollTop = 1;
-                requestAnimationFrame(function() { woPage.scrollTop = 0; });
-            });
-        }
+        // Fix bug iOS PWA: al primo ingresso lo scroll layer resta "congelato"
+        // perché l'elemento passa da display:none a display:block insieme
+        // all'animazione pageIn. Forziamo un reflow del layer di scroll.
+        woRefreshScroll();
     }
 
     // Aggiorna indicatori nav
