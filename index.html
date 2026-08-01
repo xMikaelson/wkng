@@ -1817,7 +1817,40 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wo-warmup-prog-lbl { font-size:0.5rem; color:#64748b; white-space:nowrap; }
         .wo-start-btn.warmup-locked { background:rgba(255,255,255,0.05) !important; color:#334155 !important; cursor:not-allowed !important; pointer-events:none; }
         .wo-start-btn.warmup-unlocked { background:linear-gradient(135deg,#00ff88,#00cc88) !important; color:#000 !important; pointer-events:auto; }
-        #wo-start-btn { margin:6px 16px max(env(safe-area-inset-bottom),80px); width:calc(100% - 32px); }
+
+        /* ═══ FOOTER AZIONI ANCORATO (Variante A) ═══ */
+        .wo-action-footer {
+            position: fixed;
+            bottom: calc(var(--nav-h) + var(--sab));
+            left: 0; right: 0;
+            width: 100%; max-width: 480px;
+            margin-left: auto; margin-right: auto;
+            background: rgba(10,14,26,0.96);
+            -webkit-backdrop-filter: blur(14px);
+            backdrop-filter: blur(14px);
+            border-top: 1px solid rgba(255,255,255,0.09);
+            padding: 12px 16px 14px;
+            box-sizing: border-box;
+            z-index: 150;
+        }
+        .wo-warmup-prog-wrap { margin-bottom: 11px; }
+        .wo-action-row { display: flex; gap: 10px; align-items: stretch; }
+        .wo-skip-btn {
+            width: auto; flex: 0 0 34%; padding: 0 10px; margin: 0;
+            background: transparent; border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 12px; color: #94a3b8;
+            font-family: inherit; font-size: 0.58rem; font-weight: 700;
+            letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
+        }
+        .wo-skip-btn:active { background: rgba(255,255,255,0.07); color: #e2e8f0; border-color: rgba(255,255,255,0.22); }
+        #wo-start-btn {
+            flex: 1; width: auto; margin: 0;
+            padding: 14px; font-size: 0.82rem; border-radius: 12px;
+        }
+        #wo-start-btn .wo-start-icon { display: none; }
+        /* Spazio in fondo al contenuto per non finire sotto al footer */
+        #wo-panel-train.has-footer { padding-bottom: 122px; }
         /* Timer rest dopo spunta */
         .wc-rest-timer { overflow:hidden; max-height:0; transition:max-height 0.3s ease; }
         .wc-rest-timer.active { max-height:40px; }
@@ -2315,12 +2348,24 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <div class="wo-done-sub" id="wo-done-sub">Ottimo lavoro per oggi.<br>Riposa e torna domani più forte.</div>
         <button class="wo-done-redo" onclick="woRedoWorkout()">↺ Rifai allenamento</button>
       </div>
-      <div id="wo-preview-list" style="padding:0 16px 20px;"></div>
-      <div id="wo-skip-warmup" onclick="woSkipWarmup()" style="display:none;text-align:center;color:#00ff88;text-decoration:underline;font-size:0.72rem;font-weight:600;cursor:pointer;padding:8px 16px 2px;">Salta riscaldamento</div>
-      <button class="wo-start-btn" id="wo-start-btn" onclick="woStartWorkout()" style="display:none;">
-        <span class="wo-start-icon">▶</span>
-        INIZIA ALLENAMENTO
-      </button>
+      <div id="wo-preview-list" style="padding:18px 16px 20px;"></div>
+
+      <!-- FOOTER AZIONI ANCORATO (Variante A) -->
+      <div id="wo-action-footer" class="wo-action-footer" style="display:none;">
+        <div id="wo-warmup-fixed-footer" class="wo-warmup-prog-wrap" style="display:none;">
+          <div class="wo-warmup-progress">
+            <div class="wo-warmup-bar"><div class="wo-warmup-fill" id="ww-fill" style="width:0%"></div></div>
+            <div class="wo-warmup-prog-lbl" id="ww-lbl">0 / 0 set</div>
+          </div>
+        </div>
+        <div class="wo-action-row">
+          <button class="wo-skip-btn" id="wo-skip-warmup" onclick="woSkipWarmup()" style="display:none;">Salta</button>
+          <button class="wo-start-btn" id="wo-start-btn" onclick="woStartWorkout()" style="display:none;">
+            <span class="wo-start-icon">▶</span>
+            INIZIA ALLENAMENTO
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- TAB: NUTRIZIONE -->
@@ -3644,22 +3689,29 @@ function renderWarmupBlock(exName, exercises, container) {
     block.appendChild(card);
     container.appendChild(block);
 
-    // ── Footer progresso — inline dopo la card, dentro il container warmup ──
-    var existingFooter = document.getElementById('wo-warmup-fixed-footer');
-    if (existingFooter) existingFooter.remove();
-    var fixedFooter = document.createElement('div');
-    fixedFooter.id = 'wo-warmup-fixed-footer';
-    fixedFooter.className = 'wo-warmup-footer';
-    fixedFooter.innerHTML =
-        '<div class="wo-warmup-progress">' +
-        '<div class="wo-warmup-bar"><div class="wo-warmup-fill" id="ww-fill" style="width:0%"></div></div>' +
-        '<div class="wo-warmup-prog-lbl" id="ww-lbl">0 / ' + setsToComplete + ' set</div>' +
-        '</div>';
-    container.appendChild(fixedFooter);
-    // Mostra il link "Salta riscaldamento"
+    // ── Footer ancorato: mostra barra progresso + skip + start ──
+    var progWrap = document.getElementById('wo-warmup-fixed-footer');
+    if (progWrap) progWrap.style.display = 'block';
+    var lblEl = document.getElementById('ww-lbl');
+    if (lblEl) lblEl.textContent = '0 / ' + setsToComplete + ' set';
+    var fillEl = document.getElementById('ww-fill');
+    if (fillEl) { fillEl.style.width = '0%'; fillEl.className = 'wo-warmup-fill'; }
+    // Mostra il bottone "Salta"
     var skipLink = document.getElementById('wo-skip-warmup');
     if (skipLink) skipLink.style.display = 'block';
+    woShowActionFooter(true);
     updateStartBtn();
+}
+
+// ── Mostra/nasconde il footer azioni ancorato (Variante A) ──
+function woShowActionFooter(show) {
+    var footer = document.getElementById('wo-action-footer');
+    var panel  = document.getElementById('wo-panel-train');
+    if (footer) footer.style.display = show ? 'block' : 'none';
+    if (panel) {
+        if (show) panel.classList.add('has-footer');
+        else panel.classList.remove('has-footer');
+    }
 }
 
 // ── Timer di recupero post-set warmup ──
@@ -6852,6 +6904,7 @@ function initWorkoutPage() {
         if (prevList) prevList.innerHTML = '';
         const sb = document.getElementById('wo-stat-boxes');
         if (sb) sb.style.display = 'none';
+        woShowActionFooter(false);
         // tab bar always visible
         return;
     }
@@ -6875,6 +6928,7 @@ function initWorkoutPage() {
     if (todayIsDone) {
         // Allenamento già fatto oggi: mostra done banner, niente warmup
         if (startBtn) startBtn.style.display = 'none';
+        woShowActionFooter(false);
         if (doneBanner) {
             doneBanner.classList.add('visible');
             const doneSub = document.getElementById('wo-done-sub');
@@ -6927,7 +6981,15 @@ function initWorkoutPage() {
                 prevList.appendChild(warmupContainer);
             } else if (isDeload) {
                 // Deload: niente warmup, mostra lista e bottone
-                if (startBtn) startBtn.style.display = 'block';
+                if (startBtn) {
+                    startBtn.style.display = 'block';
+                    startBtn.className = (startBtn.className || '').replace(/warmup-locked|warmup-unlocked/g,'').trim();
+                }
+                var _dSkip = document.getElementById('wo-skip-warmup');
+                if (_dSkip) _dSkip.style.display = 'none';
+                var _dProg = document.getElementById('wo-warmup-fixed-footer');
+                if (_dProg) _dProg.style.display = 'none';
+                woShowActionFooter(true);
                 prevList.innerHTML = `<div style="background:rgba(99,102,241,0.09);border:1px solid rgba(99,102,241,0.22);border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:0.6rem;color:#818cf8;font-weight:700;">🔄 Deload Week — carico 50% · 3 serie</div>
                 <div style="font-size:0.55rem;color:#475569;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;font-weight:700;">Programma · ${protoName}</div>
                 ${exData.map((ex,i) => {
