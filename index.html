@@ -1880,8 +1880,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             padding: 14px; font-size: 0.82rem; border-radius: 12px;
         }
         #wo-start-btn .wo-start-icon { display: none; }
-        /* Spazio finale sotto al footer */
-        #wo-panel-train.has-footer { padding-bottom: 22px; }
+        /* Fondo pagina compatto: sotto al footer si accumulavano il margine
+           della card, il padding di #wo-preview-list e quello del pannello.
+           Con il footer visibile li azzeriamo tutti e tre. */
+        #wo-panel-train.has-footer { padding-bottom: 0; }
+        #wo-panel-train.has-footer #wo-preview-list { padding-bottom: 0; }
+        #wo-panel-train.has-footer .wo-warmup-card { margin-bottom: 0; }
+        /* .page somma già var(--sab) nel proprio "bottom": il padding-bottom
+           globale lo conteggerebbe una seconda volta. */
+        #page-workout { padding-bottom: 10px; }
         /* Timer rest dopo spunta */
         .wc-rest-timer { overflow:hidden; max-height:0; transition:max-height 0.3s ease; }
         .wc-rest-timer.active { max-height:40px; }
@@ -10392,6 +10399,18 @@ function navSwitch(tab) {
     if (dash) dash.style.display = 'none';
     document.body.classList.add('nav-mode');
 
+    // Evidenzia l'icona PRIMA di eseguire il ramo della sezione: se una delle
+    // funzioni del ramo lancia un'eccezione (il ramo "progressi" ne chiama
+    // sette), l'icona resterebbe spenta pur essendo la sezione corrente.
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const centerBtn = document.getElementById('nav-center-btn');
+    if (centerBtn) centerBtn.style.boxShadow = '';
+    const navEl = document.getElementById('nav-' + tab);
+    if (navEl) navEl.classList.add('active');
+    if (tab === 'workout' && centerBtn) {
+        centerBtn.style.boxShadow = '0 0 0 3px rgba(var(--pr,0,255,136),0.35), 0 4px 18px rgba(var(--pr,0,255,136),0.4)';
+    }
+
     if (tab === 'home') {
         if (resultsEl) resultsEl.style.display = 'block';
         setTimeout(nutUpdateUI, 80);
@@ -10453,15 +10472,6 @@ function navSwitch(tab) {
     }
 
     // Aggiorna indicatori nav
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    const centerBtn = document.getElementById('nav-center-btn');
-    if (centerBtn) centerBtn.style.boxShadow = '';
-    const navEl = document.getElementById('nav-' + tab);
-    if (navEl) navEl.classList.add('active');
-    if (tab === 'workout' && centerBtn) {
-        centerBtn.style.boxShadow = '0 0 0 3px rgba(var(--pr,0,255,136),0.35), 0 4px 18px rgba(var(--pr,0,255,136),0.4)';
-    }
-
     // Scroll top
     document.querySelectorAll('.page.active').forEach(p => p.scrollTop = 0);
 }
