@@ -7071,6 +7071,13 @@ function initWorkoutPage() {
             if (keepWarm) {
                 // Riaggancia solo il footer, che la guardia iniziale ha spostato fuori
                 woShowActionFooter(true, true, oldCard);
+                // Il ramo else sopra ha nascosto il bottone INIZIA: qui non passa
+                // da renderWarmupBlock/updateStartBtn, quindi va riacceso a mano.
+                // Classe (locked/unlocked) e barra di progresso sono già corrette,
+                // perché il DOM non è stato ricostruito.
+                if (startBtn) startBtn.style.display = 'block';
+                var _kSkip = document.getElementById('wo-skip-warmup');
+                if (_kSkip) _kSkip.style.display = 'block';
             } else {
             prevList.innerHTML = '';
             if (!isDeload && exData.length > 0) {
