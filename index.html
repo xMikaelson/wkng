@@ -1784,9 +1784,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wc-a-why.skip { color:#475569; }
         .wc-sci-badge { font-size:0.42rem; color:#475569; border:0.5px solid #334155; border-radius:4px; padding:1px 6px; margin-left:6px; vertical-align:middle; }
         .wc-body { padding:12px 16px 14px; }
-        .wc-section-lbl { font-size:0.52rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:4px; font-weight:700; }
-        .wc-section-lbl.second { margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.06); }
-        .wc-mtr-sub { font-size:0.48rem; color:#64748b; margin-bottom:10px; }
+        /* Intestazione esercizio (V4): barra laterale accentata, nessuna linea orizzontale */
+        .wc-ex-head { border-left:4px solid #818cf8; padding-left:12px; margin-bottom:10px; }
+        .wc-ex-head.second { margin-top:22px; }
+        .wc-ex-title { font-size:0.86rem; font-weight:800; color:#e2e8f0; line-height:1.3; }
+        .wc-ex-mtr { font-size:0.5rem; color:#818cf8; margin-top:3px; text-transform:uppercase; letter-spacing:0.08em; font-weight:700; }
         /* Box MTR inline — centrato, input grande, bottone sotto */
         .wc-mtr-box { background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.2); border-radius:12px; padding:16px; margin-bottom:12px; text-align:center; }
         .wc-mtr-box-title { font-size:0.6rem; color:#818cf8; font-weight:700; margin-bottom:4px; }
@@ -3557,8 +3559,17 @@ function renderWarmupBlock(exName, exercises, container) {
             var exMtr = APP.mtrValues[warmEx.name];
 
             var secLbl = document.createElement('div');
-            secLbl.className = 'wc-section-lbl' + (exIdx > 0 ? ' second' : '');
-            secLbl.textContent = warmEx.name;
+            secLbl.className = 'wc-ex-head' + (exIdx > 0 ? ' second' : '');
+            var secName = document.createElement('div');
+            secName.className = 'wc-ex-title';
+            secName.textContent = warmEx.name;
+            secLbl.appendChild(secName);
+            if (exMtr) {
+                var secMtr = document.createElement('div');
+                secMtr.className = 'wc-ex-mtr';
+                secMtr.textContent = 'MTR ' + exMtr + ' kg';
+                secLbl.appendChild(secMtr);
+            }
             bodyEl.appendChild(secLbl);
 
             if (!exMtr) {
@@ -3610,10 +3621,6 @@ function renderWarmupBlock(exName, exercises, container) {
 
             // MTR impostato — mostra etichetta MTR e 3 set
             var sets = getWarmupSets(exMtr);
-            var mtrSub = document.createElement('div');
-            mtrSub.className = 'wc-mtr-sub';
-            mtrSub.textContent = 'MTR ' + exMtr + ' kg';
-            bodyEl.appendChild(mtrSub);
 
             sets.forEach(function(s, i) {
                 var row = document.createElement('div');
@@ -3657,7 +3664,8 @@ function renderWarmupBlock(exName, exercises, container) {
                             var restSecs = capturedRec.indexOf('2 min') !== -1 ? 120 : 60;
                             startWarmupRestTimer(capturedTimer, restSecs, capturedBtn.next, capturedBtn.allNext);
                         } else {
-                            btn.classList.remove('done'); btn.classList.remove('pulse'); btn.textContent = '\u25cb';
+                            btn.classList.remove('done'); btn.textContent = '\u25cb';
+                            btn.classList.add('pulse');
                             lbl.className = 'wc-set-lbl'; lbl.textContent = '0/1';
                             completedSets--;
                             stopWarmupRestTimer(capturedTimer);
@@ -3675,9 +3683,13 @@ function renderWarmupBlock(exName, exercises, container) {
                 btnWrap.appendChild(btn); btnWrap.appendChild(lbl);
                 row.appendChild(num); row.appendChild(info); row.appendChild(btnWrap);
 
-                // Wrapper: riga + timer rest sotto
+                // Wrapper: riga + timer rest sotto.
+                // Il divisorio separa i set fra loro, ma non dopo l'ultimo:
+                // altrimenti si sommerebbe allo stacco dell'esercizio seguente.
                 var rowWrap = document.createElement('div');
-                rowWrap.style.cssText = 'border-bottom:1px solid rgba(255,255,255,0.05);';
+                if (i < sets.length - 1) {
+                    rowWrap.style.cssText = 'border-bottom:1px solid rgba(255,255,255,0.05);';
+                }
                 rowWrap.appendChild(row);
                 rowWrap.appendChild(restTimerEl);
                 bodyEl.appendChild(rowWrap);
@@ -3697,6 +3709,9 @@ function renderWarmupBlock(exName, exercises, container) {
                 item.btn.disabled = true;
                 item.btn.style.opacity = '0.35';
                 item.btn.style.cursor = 'not-allowed';
+            } else {
+                // Primo set da fare: pulsa per indicare da dove partire
+                item.btn.classList.add('pulse');
             }
         });
     }
