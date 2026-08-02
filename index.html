@@ -1836,8 +1836,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wo-warmup-fill { height:100%; background:#818cf8; border-radius:2px; transition:width 0.3s, background 0.4s; width:0%; }
         .wo-warmup-fill.complete { background:#00ff88; }
         .wo-warmup-prog-lbl { font-size:0.5rem; color:#64748b; white-space:nowrap; }
-        .wo-start-btn.warmup-locked { background:rgba(255,255,255,0.05) !important; color:#334155 !important; cursor:not-allowed !important; pointer-events:none; }
-        .wo-start-btn.warmup-unlocked { background:linear-gradient(135deg,#00ff88,#00cc88) !important; color:#000 !important; pointer-events:auto; }
+        .wo-start-btn.warmup-locked { background:rgba(255,255,255,0.05) !important; color:#334155 !important; cursor:not-allowed !important; pointer-events:none; box-shadow:none !important; animation:none !important; }
+        .wo-start-btn.warmup-unlocked { background:linear-gradient(135deg,#00ff88,#00cc88) !important; color:#000 !important; pointer-events:auto; animation:woStartPulse 1.8s ease-in-out infinite; }
+        @keyframes woStartPulse {
+            0%, 100% { box-shadow:0 4px 16px rgba(0,255,136,0.28); }
+            50%      { box-shadow:0 6px 26px rgba(0,255,136,0.55); }
+        }
 
         /* ═══ FOOTER AZIONI — in linea, unito alla card riscaldamento ═══ */
         .wo-action-footer {
@@ -3765,6 +3769,12 @@ function woShowActionFooter(show, joined, hostEl) {
     var panel  = document.getElementById('wo-panel-train');
     if (footer) {
         footer.style.display = show ? 'block' : 'none';
+        if (show) {
+            // woStartWorkout lo disabilita durante il countdown: se torniamo
+            // a mostrare il footer va riabilitato, o resterebbe morto.
+            var sb = document.getElementById('wo-start-btn');
+            if (sb) sb.disabled = false;
+        }
         if (show && joined && hostEl) {
             hostEl.appendChild(footer);
             footer.classList.add('joined');
@@ -9881,9 +9891,12 @@ function woStartWorkout() {
     const exData = APP.exerciseData || [];
     if (exData.length === 0) return;
 
-    // Rimuovi footer fisso warmup
+    // Nasconde il footer azioni del riscaldamento SENZA distruggerlo: vive
+    // dentro la card, e fra poco prevList.innerHTML viene riscritto.
+    // woShowActionFooter(false) lo riporta in #wo-panel-train, al sicuro.
+    woShowActionFooter(false);
     var wf = document.getElementById('wo-warmup-fixed-footer');
-    if (wf) wf.remove();
+    if (wf) wf.style.display = 'none';
     var skipL = document.getElementById('wo-skip-warmup');
     if (skipL) skipL.style.display = 'none';
 
