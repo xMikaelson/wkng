@@ -316,7 +316,12 @@
         #page-profile,
         #page-profilo,
         #page-plans { overflow-y: auto; -webkit-overflow-scrolling: touch; }
-        .page.active { display: block; animation: pageIn 0.2s cubic-bezier(0.22,1,0.36,1) both; }
+        /* fill-mode `backwards` e non `both`: con `both` il transform del
+           keyframe finale resta applicato per sempre, e un contenitore con
+           transform + overflow-y:auto + -webkit-overflow-scrolling:touch fa
+           congelare il layer di scroll su WebKit iOS. Con `backwards` l'effetto
+           di entrata è identico ma a fine animazione il transform sparisce. */
+        .page.active { display: block; animation: pageIn 0.2s cubic-bezier(0.22,1,0.36,1) backwards; }
         @keyframes pageIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
         @keyframes contributeShake {
             0%,100% { transform:translateX(0); }
@@ -3802,14 +3807,21 @@ function woShowActionFooter(show, joined, hostEl) {
 function woRefreshScroll() {
     var pg = document.getElementById('page-workout');
     if (!pg) return;
-    requestAnimationFrame(function() {
+    // L'animazione pageIn dura 200ms. Se ricostruiamo il layer di scroll
+    // mentre è ancora in corso, WebKit lo crea dentro un elemento trasformato
+    // ed è lì che ogni tanto resta congelato: da qui l'intermittenza.
+    // Aspettiamo la fine dell'animazione, poi forziamo la ricostruzione
+    // togliendo e rimettendo overflow-y (più affidabile del solo reflow).
+    clearTimeout(woRefreshScroll._t);
+    woRefreshScroll._t = setTimeout(function() {
         var prev = pg.scrollTop;
+        pg.style.overflowY = 'hidden';
         pg.style.webkitOverflowScrolling = 'auto';
-        void pg.offsetHeight;
+        void pg.offsetHeight; // forza il reflow
+        pg.style.overflowY = 'auto';
         pg.style.webkitOverflowScrolling = 'touch';
-        pg.scrollTop = prev + 1;
-        requestAnimationFrame(function() { pg.scrollTop = prev; });
-    });
+        pg.scrollTop = prev;
+    }, 260);
 }
 
 // ── Timer di recupero post-set warmup ──
