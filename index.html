@@ -3317,20 +3317,25 @@ async function saveProtocolToSupabase(proto) {
     try {
         const { data: { user } } = await sbClient.auth.getUser();
         if (!user) { console.warn('saveProtocol: no user'); return; }
-        // Salva esercizi + metadati di stato dentro exercises_json
-        const exercises_json = proto.exercises.map ? proto.exercises.map(e => ({...e})) : proto.exercises;
-        // Aggiungi metadati al json (non nella colonna separata)
-        if (Array.isArray(exercises_json)) {
-            exercises_json.chipStates = proto.chipStates;
-            exercises_json.completedWeeks = proto.completedWeeks;
-            exercises_json.availableWeeks = proto.availableWeeks;
-            exercises_json.selectedViewWeek = proto.selectedViewWeek;
-            exercises_json.exerciseTracking = proto.exerciseTracking;
-            exercises_json.totalWorkouts = proto.totalWorkouts;
-            exercises_json._splitGroup = proto._splitGroup;
-            exercises_json._splitSlot = proto._splitSlot;
-            exercises_json._env = proto._env || null;
-        }
+        // Salva esercizi + metadati di stato dentro exercises_json.
+        // IMPORTANTE: i metadati devono stare in un OGGETTO, non appesi a un array:
+        // JSON.stringify su un array scarta le proprietà nominate, quindi la vecchia
+        // struttura perdeva _splitSlot, _env, chipStates, tracking ecc. ad ogni salvataggio.
+        const exList = Array.isArray(proto.exercises)
+            ? proto.exercises.map(e => ({...e}))
+            : (proto.exercises || []);
+        const exercises_json = {
+            exercises: exList,
+            chipStates: proto.chipStates,
+            completedWeeks: proto.completedWeeks,
+            availableWeeks: proto.availableWeeks,
+            selectedViewWeek: proto.selectedViewWeek,
+            exerciseTracking: proto.exerciseTracking,
+            totalWorkouts: proto.totalWorkouts,
+            _splitGroup: proto._splitGroup,
+            _splitSlot: proto._splitSlot,
+            _env: proto._env || null
+        };
         const payload = { id: proto.id, user_id: user.id, name: proto.name, goal: proto.goal, exercises_json };
         // Try upsert first; if it fails (RLS/constraint), try insert then update
         let { data, error } = await sbClient.from('protocols').upsert(payload, { onConflict: 'id' });
@@ -3342,13 +3347,15 @@ async function saveProtocolToSupabase(proto) {
                 const upd = await sbClient.from('protocols')
                     .update({ name: proto.name, goal: proto.goal, exercises_json })
                     .eq('id', proto.id).eq('user_id', user.id);
-                if (upd.error) console.error('Protocol save failed entirely:', upd.error.message);
-                else console.log('Protocol updated:', proto.name);
-            } else {
-                console.log('Protocol inserted:', proto.name);
+                if (upd.error) { console.error('Protocol save failed entirely:', upd.error.message); return false; }
+                console.log('Protocol updated:', proto.name);
+                return true;
             }
+            console.log('Protocol inserted:', proto.name);
+            return true;
         }
-    } catch(e) { console.error('saveProtocolToSupabase exception:', e.message); }
+        return true;
+    } catch(e) { console.error('saveProtocolToSupabase exception:', e.message); return false; }
 }
 async function deleteProtocolFromSupabase(protoId) {
     try {
@@ -4649,21 +4656,29 @@ async function onLoginSuccess(user, usernameOverride = null) {
         // else: stato già caricato da localStorage via stateSource sopra
     }
     if (protocols && protocols.length > 0) {
-        APP.savedProtocols = protocols.map(p => ({
-            id: p.id, name: p.name, goal: p.goal,
-            exercises: p.exercises_json || [],
-            createdAt: p.created_at,
-            // Preserva stato del protocollo se salvato in exercises_json
-            chipStates: p.exercises_json?.chipStates || [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']],
-            completedWeeks: p.exercises_json?.completedWeeks || [false,false,false,false,false],
-            availableWeeks: p.exercises_json?.availableWeeks || [0],
-            selectedViewWeek: p.exercises_json?.selectedViewWeek || 0,
-            exerciseTracking: p.exercises_json?.exerciseTracking || [],
-            totalWorkouts: p.exercises_json?.totalWorkouts || 0,
-            _splitGroup: p.exercises_json?._splitGroup || null,
-            _splitSlot: p.exercises_json?._splitSlot || null,
-            _env: p.exercises_json?._env || null
-        }));
+        const DEF_CHIPS = () => [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']];
+        APP.savedProtocols = protocols.map(p => {
+            // Retrocompatibilità: il vecchio formato salvava exercises_json come ARRAY
+            // (e i metadati venivano persi). Il nuovo formato è un oggetto.
+            const raw = p.exercises_json;
+            const isLegacy = Array.isArray(raw);
+            const meta = (raw && !isLegacy) ? raw : {};
+            const exList = isLegacy ? raw : (meta.exercises || []);
+            return {
+                id: p.id, name: p.name, goal: p.goal,
+                exercises: exList,
+                createdAt: p.created_at,
+                chipStates: meta.chipStates || DEF_CHIPS(),
+                completedWeeks: meta.completedWeeks || [false,false,false,false,false],
+                availableWeeks: meta.availableWeeks || [0],
+                selectedViewWeek: meta.selectedViewWeek || 0,
+                exerciseTracking: meta.exerciseTracking || [],
+                totalWorkouts: meta.totalWorkouts || 0,
+                _splitGroup: meta._splitGroup || null,
+                _splitSlot: meta._splitSlot || null,
+                _env: meta._env || null
+            };
+        });
     }
     document.getElementById('btn-login-trigger').style.display = 'none';
     document.getElementById('dash-username').innerText = username;
@@ -4900,11 +4915,13 @@ function renderPlanPage(w) {
             chip.onclick = () => {
                 if (!APP.dayAssignments[w][di] && st!=='done') return;
                 if (chip.classList.contains('done')) {
-                    APP.chipStates[w][di] = 'assigned';
+                    // done → rest: libera il giorno, così si può assegnare un nuovo protocollo
+                    APP.chipStates[w][di] = 'rest';
+                    APP.dayAssignments[w][di] = null;
                     APP.totalWorkouts = Math.max(0, APP.totalWorkouts-1);
                     APP.completedWeeks[w] = false;
                     APP._weekCelebrated[w] = false;
-                    chip.className = 'plan-chip assigned';
+                    chip.className = 'plan-chip';
                     chip.textContent = d;
                 } else {
                     APP.chipStates[w][di] = 'done';
@@ -5511,11 +5528,13 @@ function buildProtoEditorBox(proto, weekIdx) {
         });
         delete _protoEditorDrafts[proto.id];
         saveState();
-        saveProtocolToSupabase(proto);
         planExpandedProto = null;
         renderProtocolList();
         renderPlanPage(weekIdx);
-        showToast('Protocollo salvato!', 'success');
+        Promise.resolve(saveProtocolToSupabase(proto)).then(function(ok) {
+            if (ok === false) showToast('Salvato sul dispositivo, ma la sincronizzazione è fallita.', 'error');
+            else showToast('Protocollo salvato!', 'success');
+        });
     };
 
     topBtnRow.appendChild(addBtn);
@@ -10673,16 +10692,14 @@ function woRedoWorkout() {
     const wIdx = APP.selectedViewWeek;
     const di = woState._todayDayIdx;
     if (di !== undefined && di !== null && APP.chipStates[wIdx]) {
-        // Riporta la chip da 'done' ad 'assigned'
-        APP.chipStates[wIdx][di] = 'rest';
-        // Se c'è un assignment, rimetti lo stato a 'assigned' visivamente
-        if (APP.dayAssignments[wIdx] && APP.dayAssignments[wIdx][di]) {
-            APP.chipStates[wIdx][di] = 'rest'; // il chip onClick lo riporterà a assigned
-        }
+        // "Rifai" mantiene il protocollo assegnato: da 'done' si torna ad 'assigned'
+        // (per liberare del tutto il giorno si ripiga la chip completata)
+        var hasAssign = !!(APP.dayAssignments[wIdx] && APP.dayAssignments[wIdx][di]);
+        APP.chipStates[wIdx][di] = hasAssign ? 'assigned' : 'rest';
         saveState();
         const chipEl = document.querySelector(`[data-week="${wIdx}"][data-day="${di}"]`);
         if (chipEl) {
-            chipEl.className = APP.dayAssignments[wIdx][di] ? 'chip assigned' : 'chip locked';
+            chipEl.className = hasAssign ? 'chip assigned' : 'chip locked';
             chipEl.textContent = DAYS[di];
         }
     }
@@ -11223,10 +11240,12 @@ function initDashboard() {
             btn.onclick = () => {
                 if (!APP.dayAssignments[w][dayIndex] && !btn.classList.contains('done')) return;
                 if (btn.classList.contains('done')) {
-                    // done → assigned: mantiene l'allenamento assegnato
-                    btn.className = 'chip assigned';
+                    // done → rest: libera il giorno dall'allenamento assegnato,
+                    // così è possibile assegnare un nuovo protocollo
+                    btn.className = 'chip locked';
                     btn.textContent = DAYS[dayIndex];
-                    APP.chipStates[w][dayIndex] = 'assigned';
+                    APP.chipStates[w][dayIndex] = 'rest';
+                    APP.dayAssignments[w][dayIndex] = null;
                     APP.totalWorkouts = Math.max(0, APP.totalWorkouts - 1);
                     APP.completedWeeks[w] = false;
                     APP._weekCelebrated[w] = false;
