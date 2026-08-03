@@ -3423,7 +3423,7 @@ function loadState() {
 function migrateMtrLoads() {
     if (!APP.savedProtocols) return;
     if (!APP.mtrValues) APP.mtrValues = {};
-    var changed = false;
+    var changed = mtrCanonicalizeDict();
     APP.savedProtocols.forEach(function(proto) {
         if (!proto.exercises) return;
         var slot = (proto._splitSlot || '').toLowerCase();
@@ -3433,8 +3433,8 @@ function migrateMtrLoads() {
             var mtr = parseFloat(ex.mtrValue);
             if (!mtr || mtr <= 0) return;
             // Ricostruisci il dizionario globale dai protocolli (persistiti su Supabase)
-            if (!APP.mtrValues[ex.name]) {
-                APP.mtrValues[ex.name] = mtr;
+            if (mtrGet(ex.name) == null) {
+                mtrSet(ex.name, mtr);
                 changed = true;
             }
             // Ricalcola i loads corretti dal mtrValue
@@ -3547,7 +3547,7 @@ function renderWarmupBlock(exName, exercises, container) {
 
     // Conta set totali (solo esercizi con MTR impostato)
     warmExercises.forEach(function(e) {
-        if (APP.mtrValues[e.name]) setsToComplete += 3;
+        if (mtrGet(e.name) != null) setsToComplete += 3;
     });
 
     // Blocca bottone INIZIA
@@ -3613,7 +3613,7 @@ function renderWarmupBlock(exName, exercises, container) {
         var setRefs = [];
 
         warmExercises.forEach(function(warmEx, exIdx) {
-            var exMtr = APP.mtrValues[warmEx.name];
+            var exMtr = mtrGet(warmEx.name);
 
             var secLbl = document.createElement('div');
             secLbl.className = 'wc-ex-head' + (exIdx > 0 ? ' second' : '') + (exMtr ? '' : ' with-mtr');
@@ -3655,14 +3655,14 @@ function renderWarmupBlock(exName, exercises, container) {
                         btn.onclick = function() {
                             var val = parseFloat(inp.value);
                             if (!val || val <= 0) { showToast('Inserisci un valore valido', 'error'); return; }
-                            APP.mtrValues[capturedEx.name] = val;
+                            mtrSet(capturedEx.name, val);
                             APP.savedProtocols && APP.savedProtocols.forEach(function(p) {
                                 if (!p.exercises) return;
                                 var pSlot = (protoResolveSlot(p)||'').toLowerCase();
                                 var pMassa = pSlot==='push'||pSlot==='pull'||pSlot==='legs';
                                 var touched = false;
                                 p.exercises.forEach(function(ex) {
-                                    if ((ex.name||'').toLowerCase() === capturedEx.name.toLowerCase()) {
+                                    if (exSameExercise(ex.name, capturedEx.name)) {
                                         ex.mtrValue = val;
                                         ex.loads = (pMassa ? MTR_MASSA_LOADS : WEEK_LOADS).map(function(p2){ return Math.round(val*p2*2)/2; });
                                         touched = true;
@@ -4188,11 +4188,11 @@ var ESERCIZI_DB = [
     { nome: 'Squat Goblet con Manubrio',      gruppo: 'Quadricipiti', en: 'Dumbbell Goblet Squat, Goblet Squat' },
     { nome: 'Leg Press',                      gruppo: 'Quadricipiti', en: 'Leg Press' },
     { nome: 'Hack Squat',                     gruppo: 'Quadricipiti', en: 'Hack Squat' },
-    { nome: 'Affondi con Bilanciere',         gruppo: 'Quadricipiti', en: 'Barbell Lunge, Lunges' },
+    { nome: 'Affondi con Bilanciere',         gruppo: 'Quadricipiti', en: 'Barbell Lunge' },
     { nome: 'Affondi con Manubri',            gruppo: 'Quadricipiti', en: 'Dumbbell Lunge, Dumbbell Lunges' },
     { nome: 'Affondi Bulgari',                gruppo: 'Quadricipiti', en: 'Bulgarian Split Squat' },
     { nome: 'Leg Extension',                  gruppo: 'Quadricipiti', en: 'Leg Extension' },
-    { nome: 'Step Up con Manubri',            gruppo: 'Quadricipiti', en: 'Dumbbell Step Up, Step Up' },
+    { nome: 'Step Up con Manubri',            gruppo: 'Quadricipiti', en: 'Dumbbell Step Up' },
     // FEMORALI & GLUTEI
     { nome: 'Hip Thrust con Bilanciere',      gruppo: 'Glutei', en: 'Barbell Hip Thrust' },
     { nome: 'Hip Thrust con Manubrio',        gruppo: 'Glutei', en: 'Dumbbell Hip Thrust' },
@@ -4223,6 +4223,171 @@ var ESERCIZI_DB = [
     { nome: 'Burpee',                         gruppo: 'Full Body', en: 'Burpee' }
 ];
 
+// ============= CANONICALIZZAZIONE NOMI ESERCIZIO (IT/EN → chiave unica) =============
+// Qualunque nome (italiano, inglese, maiuscole/minuscole, trattini) viene risolto
+// in UN SOLO nome canonico italiano. Serve a garantire che "Dumbbell Bench Press"
+// e "Panca Piana con Manubri" siano lo stesso esercizio per compound/isolato e per MTR.
+var _exCanonIndex = null;
+var _exEnSet = {};
+
+// Gruppi muscolari e muscoli: traduzione IT → EN
+var GRUPPO_EN = {
+    'Petto': 'Chest', 'Schiena': 'Back', 'Spalle': 'Shoulders', 'Bicipiti': 'Biceps',
+    'Tricipiti': 'Triceps', 'Quadricipiti': 'Quads', 'Glutei': 'Glutes',
+    'Femorali': 'Hamstrings', 'Polpacci': 'Calves', 'Addominali': 'Abs',
+    'Core': 'Core', 'Full Body': 'Full Body'
+};
+
+var MUSCLE_EN = {
+    'polpacci (gastrocnemio)': 'calves (gastrocnemius)',
+    'addominali inferiori': 'lower abs',
+    'addominali obliqui': 'obliques',
+    'deltoide anteriore': 'front delt',
+    'trapezio superiore': 'upper traps',
+    'erettori spinali': 'spinal erectors',
+    'deltoide laterale': 'side delt',
+    'deltoide ant.': 'front delt',
+    'deltoide post.': 'rear delt',
+    'quadricipiti': 'quads',
+    'gran dorsale': 'lats',
+    'addominali': 'abs',
+    'tricipiti': 'triceps',
+    'adduttori': 'adductors',
+    'abduttori': 'abductors',
+    'deltoidi': 'delts',
+    'deltoide': 'delt',
+    'romboidi': 'rhomboids',
+    'brachiale': 'brachialis',
+    'femorali': 'hamstrings',
+    'erettori': 'erectors',
+    'polpacci': 'calves',
+    'petto sup.': 'upper chest',
+    'petto inf.': 'lower chest',
+    'trapezio': 'traps',
+    'bicipiti': 'biceps',
+    'rotatori': 'rotator cuff',
+    'isolato': 'isolation',
+    'glutei': 'glutes',
+    'spalle': 'shoulders',
+    'petto': 'chest',
+    'core': 'core',
+    'full body': 'full body'
+};
+
+function musclesToEn(s) {
+    if (!s) return s;
+    var out = s;
+    Object.keys(MUSCLE_EN).sort(function(a, b){ return b.length - a.length; })
+        .forEach(function(k) {
+            out = out.split(k).join(MUSCLE_EN[k]);
+        });
+    return out;
+}
+
+function exNormKey(s) {
+    return (s || '').toString().toLowerCase()
+        .replace(/[-_/]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function buildExCanonIndex() {
+    var map = {};
+    _exEnSet = {};
+    // 1. ESERCIZI_DB è la fonte autorevole: nome italiano + sinonimi inglesi
+    ESERCIZI_DB.forEach(function(e) {
+        map[exNormKey(e.nome)] = e.nome;
+        if (e.en) {
+            e.en.split(',').forEach(function(syn) {
+                var k = exNormKey(syn);
+                if (!k) return;
+                _exEnSet[k] = true;
+                if (!map[k]) map[k] = e.nome;
+            });
+        }
+    });
+    // 2. Dizionario EX_IT (inglese → italiano) per i nomi non presenti nel DB
+    Object.keys(EX_IT).forEach(function(en) {
+        var it = EX_IT[en];
+        var enKey = exNormKey(en);
+        var itKey = exNormKey(it);
+        if (enKey) _exEnSet[enKey] = true;
+        // Se l'inglese risolve già via DB, aggancia anche l'italiano a quel canonico
+        var canon = map[enKey] || map[itKey] || it;
+        if (enKey && !map[enKey]) map[enKey] = canon;
+        if (itKey && !map[itKey]) map[itKey] = canon;
+    });
+    return map;
+}
+
+function exCanonical(name) {
+    if (!name) return name;
+    if (!_exCanonIndex) _exCanonIndex = buildExCanonIndex();
+    var k = exNormKey(name);
+    return _exCanonIndex[k] || (name || '').toString().trim();
+}
+
+// True se i due nomi indicano lo stesso esercizio (anche in lingue diverse)
+function exSameExercise(a, b) {
+    if (!a || !b) return false;
+    return exNormKey(exCanonical(a)) === exNormKey(exCanonical(b));
+}
+
+// True se il nome è scritto in inglese. I nomi identici nelle due lingue
+// (es. "Plank", "Leg Press") sono ambigui → trattati come italiano.
+function exIsEnglish(name) {
+    if (!name) return false;
+    if (!_exCanonIndex) _exCanonIndex = buildExCanonIndex();
+    var k = exNormKey(name);
+    if (!_exEnSet[k]) return false;
+    return exNormKey(exCanonical(name)) !== k;
+}
+
+// Etichetta compound/isolato nella lingua del nome esercizio
+function exBadgeLabel(comp, name) {
+    if (comp === true) return 'Compound';
+    if (comp === false) return exIsEnglish(name) ? 'Isolation' : 'Isolato';
+    return '\u2014';
+}
+
+// ============= MTR: accesso sempre tramite chiave canonica =============
+function mtrGet(name) {
+    if (!APP.mtrValues) APP.mtrValues = {};
+    var c = exCanonical(name);
+    if (APP.mtrValues[c] != null) return APP.mtrValues[c];
+    // fallback chiavi legacy salvate prima della canonicalizzazione
+    var keys = Object.keys(APP.mtrValues);
+    for (var i = 0; i < keys.length; i++) {
+        if (exSameExercise(keys[i], name)) return APP.mtrValues[keys[i]];
+    }
+    return undefined;
+}
+
+function mtrSet(name, val) {
+    if (!APP.mtrValues) APP.mtrValues = {};
+    var c = exCanonical(name);
+    // rimuovi eventuali duplicati nell'altra lingua
+    Object.keys(APP.mtrValues).forEach(function(k) {
+        if (k !== c && exSameExercise(k, c)) delete APP.mtrValues[k];
+    });
+    APP.mtrValues[c] = val;
+}
+
+// Unifica le chiavi già presenti nel dizionario (una sola voce per esercizio)
+function mtrCanonicalizeDict() {
+    if (!APP.mtrValues) { APP.mtrValues = {}; return false; }
+    var out = {}, changed = false;
+    Object.keys(APP.mtrValues).forEach(function(k) {
+        var c = exCanonical(k);
+        if (c !== k) changed = true;
+        // in caso di doppioni tiene il valore più alto (MTR più aggiornato)
+        if (out[c] == null || APP.mtrValues[k] > out[c]) out[c] = APP.mtrValues[k];
+    });
+    if (Object.keys(out).length !== Object.keys(APP.mtrValues).length) changed = true;
+    APP.mtrValues = out;
+    return changed;
+}
+
 // ============= DEBOUNCED SEARCH =============
 var searchTimers = new WeakMap();
 
@@ -4238,11 +4403,27 @@ function searchExercises(input) {
     var sBox = input.nextElementSibling;
     if (query.length < 2) { sBox.style.display = 'none'; return; }
 
-    var results = ESERCIZI_DB.filter(function(ex) {
-        if (ex.nome.toLowerCase().includes(query)) return true;
-        if (ex.en && ex.en.toLowerCase().includes(query)) return true;
-        return false;
-    }).slice(0, 8);
+    // Se la ricerca combacia con un sinonimo inglese, la voce viene proposta
+    // in inglese (nome + gruppo muscolare), così tutta la riga resta coerente.
+    var results = [];
+    ESERCIZI_DB.forEach(function(ex) {
+        if (results.length >= 8) return;
+        var itHit = ex.nome.toLowerCase().indexOf(query) !== -1;
+        var enName = '';
+        if (ex.en) {
+            var syns = ex.en.split(',');
+            for (var i = 0; i < syns.length; i++) {
+                var syn = syns[i].trim();
+                if (syn && syn.toLowerCase().indexOf(query) !== -1) { enName = syn; break; }
+            }
+        }
+        if (!itHit && !enName) return;
+        var useEn = !itHit && !!enName;
+        results.push({
+            nome: useEn ? enName : ex.nome,
+            gruppo: useEn ? (GRUPPO_EN[ex.gruppo] || ex.gruppo) : ex.gruppo
+        });
+    });
 
     if (results.length === 0) { sBox.style.display = 'none'; return; }
 
@@ -4892,22 +5073,33 @@ function protoResolveSlot(proto) {
 }
 
 // isCompoundEx — globale, usata sia dall'editor che dal warmup
+// Il nome viene prima risolto in canonico italiano: così "Dumbbell Bench Press"
+// e "Panca Piana con Manubri" danno SEMPRE lo stesso risultato.
 function isCompoundEx(name) {
-    var n = (name || '').toLowerCase();
+    var canon = exCanonical(name);
+    var n = (canon || '').toLowerCase();
+    var raw = (name || '').toLowerCase();
     var isoKw = ['curl','lateral','alzata','alzate','scrollate','shrug','fly','croci','pullover',
                  'kickback','leg curl','calf','polpaccio','crunch','plank','twist','face pull',
                  'abductor','adductor','french press','pushdown','estensioni tricipiti',
-                 'tricipiti in presa','leg extension','hip abduction','hip adduction'];
-    if (isoKw.some(function(k){ return n.includes(k); })) return false;
+                 'estensione tricipiti','tricipiti in presa','leg extension','hip abduction',
+                 'hip adduction','braccia tese','sollevamento gambe',
+                 // varianti inglesi
+                 'front raise','rear delt','leg raise','skull crusher','sit up','ab wheel',
+                 'straight arm','tricep extension','mountain climber'];
     var compKw = ['squat','stacco','panca','rematore','press','trazioni','lat machine','dip',
-                  'lunge','affondo','hip thrust','leg press','hack','clean','thruster','push up',
-                  'good morning','iperestensioni'];
-    if (compKw.some(function(k){ return n.includes(k); })) return true;
-    var inDB = ESERCIZI_DB.find(function(e){
-        if (e.nome.toLowerCase() === n) return true;
-        if (e.en && e.en.toLowerCase().split(', ').indexOf(n) !== -1) return true;
-        return false;
-    });
+                  'lunge','affond','hip thrust','leg press','hack','clean','thruster','push up',
+                  'good morning','iperestensioni','lento avanti','lento dietro','ponte glutei',
+                  // varianti inglesi
+                  'row','deadlift','pull up','chin up','pulldown','step up','goblet',
+                  'glute bridge','swing','burpee','hyperextension','back extension'];
+    // Il controllo gira sia sul nome canonico che su quello grezzo (nomi liberi non in DB)
+    function hit(list) {
+        return list.some(function(k){ return n.indexOf(k) !== -1 || raw.indexOf(k) !== -1; });
+    }
+    if (hit(isoKw)) return false;
+    if (hit(compKw)) return true;
+    var inDB = ESERCIZI_DB.find(function(e){ return exSameExercise(e.nome, canon); });
     if (inDB) {
         var compGroups = ['Petto','Schiena','Quadricipiti','Glutei','Femorali','Full Body'];
         return compGroups.includes(inDB.gruppo);
@@ -5005,9 +5197,11 @@ function buildProtoEditorBox(proto, weekIdx) {
     // isCompoundEx è definita globalmente sopra — usata anche dal warmup
 
     // Helper: restituisce i muscoli coinvolti dall'esercizio
+    // Il nome viene risolto in canonico italiano (così funziona anche in inglese)
+    // e l'elenco viene tradotto se l'esercizio è scritto in inglese.
     function getMuscles(name) {
         if (!name) return '';
-        var n = name.toLowerCase();
+        var n = exCanonical(name).toLowerCase();
         var muscleMap = {
             'panca piana': 'petto, tricipiti, deltoide ant.',
             'panca inclinata': 'petto sup., tricipiti, deltoide ant.',
@@ -5019,6 +5213,9 @@ function buildProtoEditorBox(proto, weekIdx) {
             'dip': 'petto, tricipiti, deltoide',
             'push up': 'petto, tricipiti, deltoide ant.',
             'pullover': 'petto, gran dorsale, tricipiti',
+            'croci inverse': 'deltoide post., romboidi',
+            'croci inclinate': 'petto sup., deltoide ant.',
+            'croci': 'petto, deltoide ant.',
             'trazioni': 'gran dorsale, bicipiti, romboidi',
             'lat machine': 'gran dorsale, bicipiti, romboidi',
             'rematore con bilanciere': 'gran dorsale, romboidi, bicipiti',
@@ -5069,7 +5266,9 @@ function buildProtoEditorBox(proto, weekIdx) {
             'burpee': 'full body'
         };
         for (var key in muscleMap) {
-            if (n.includes(key)) return muscleMap[key];
+            if (n.indexOf(key) !== -1) {
+                return exIsEnglish(name) ? musclesToEn(muscleMap[key]) : muscleMap[key];
+            }
         }
         return '';
     }
@@ -5099,7 +5298,7 @@ function buildProtoEditorBox(proto, weekIdx) {
         draft.forEach(function(ex, idx) {
             var comp = isCompoundEx(ex.name);
             var badgeClass = comp === true ? 'proto-ex-badge' : comp === false ? 'proto-ex-badge iso' : 'proto-ex-badge unknown';
-            var badgeText  = comp === true ? 'Compound' : comp === false ? 'Isolato' : '—';
+            var badgeText  = exBadgeLabel(comp, ex.name);
             var muscles    = getMuscles(ex.name);
 
             // Wrapper esterno (card + del fuori)
@@ -5169,8 +5368,8 @@ function buildProtoEditorBox(proto, weekIdx) {
             mtrBtn.onclick = function() {
                 var slot = protoResolveSlot(proto);
                 mtrOpen(ex.name || 'Esercizio', weekIdx, slot, function(loads, baseWeight, forzaLoads, massaLoads, mtrValue) {
-                    // 1. Salva in dizionario globale MTR
-                    APP.mtrValues[ex.name] = mtrValue;
+                    // 1. Salva in dizionario globale MTR (chiave canonica IT/EN unificata)
+                    mtrSet(ex.name, mtrValue);
                     // 2. Aggiorna draft in memoria
                     draft[idx].baseWeight = baseWeight;
                     draft[idx].loads = loads;
@@ -5184,7 +5383,7 @@ function buildProtoEditorBox(proto, weekIdx) {
                         var pIsMassa = pSlot === 'push' || pSlot === 'pull' || pSlot === 'legs';
                         var pLoads = pIsMassa ? massaLoads : forzaLoads;
                         p.exercises.forEach(function(pEx) {
-                            if ((pEx.name || '').toLowerCase() === (ex.name || '').toLowerCase()) {
+                            if (exSameExercise(pEx.name, ex.name)) {
                                 pEx.mtrValue = mtrValue;
                                 pEx.loads = pLoads;
                                 pEx.forzaLoads = forzaLoads;
@@ -5249,7 +5448,7 @@ function buildProtoEditorBox(proto, weekIdx) {
                             // Aggiorna badge
                             var c = isCompoundEx(sel);
                             badge.className = c === true ? 'proto-ex-badge' : c === false ? 'proto-ex-badge iso' : 'proto-ex-badge unknown';
-                            badge.textContent = c === true ? 'Compound' : c === false ? 'Isolato' : '—';
+                            badge.textContent = exBadgeLabel(c, sel);
                             musclesEl.textContent = getMuscles(sel);
                             // Sr automatico
                             var rec = getRecommendedSr(sel, sl);
@@ -6304,8 +6503,8 @@ function renderMtrManager() {
         (function(capturedName, capturedInput) {
             capturedInput.onchange = function() {
                 var val = parseFloat(capturedInput.value);
-                if (!val || val <= 0) { capturedInput.value = APP.mtrValues[capturedName]; return; }
-                APP.mtrValues[capturedName] = val;
+                if (!val || val <= 0) { capturedInput.value = mtrGet(capturedName); return; }
+                mtrSet(capturedName, val);
                 // Propaga a tutti i protocolli con questo esercizio
                 APP.savedProtocols && APP.savedProtocols.forEach(function(p) {
                     if (!p.exercises) return;
@@ -6313,7 +6512,7 @@ function renderMtrManager() {
                     var pMassa = pSlot==='push'||pSlot==='pull'||pSlot==='legs';
                     var touched = false;
                     p.exercises.forEach(function(ex) {
-                        if ((ex.name||'').toLowerCase() === capturedName.toLowerCase()) {
+                        if (exSameExercise(ex.name, capturedName)) {
                             ex.mtrValue = val;
                             ex.loads = (pMassa ? MTR_MASSA_LOADS : WEEK_LOADS).map(function(p2){ return Math.round(val*p2*2)/2; });
                             touched = true;
