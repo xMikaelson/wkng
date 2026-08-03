@@ -3468,31 +3468,57 @@ function migrateMtrLoads() {
 //   - Recupero: 60s tra W1-W2-W3, 2min prima del lavoro
 // ════════════════════════════════════════════════
 
-// Mappa pattern di movimento per ogni esercizio
+// Mappa pattern di movimento per ogni esercizio.
+// Le chiavi multi-parola vanno PRIMA di quelle generiche: vince il primo match.
 var MOVEMENT_PATTERNS = {
-    // Push orizzontale
+    // ── Push orizzontale ──
     'panca piana': 'push-h', 'panca inclinata': 'push-h', 'panca declinata': 'push-h',
-    'push up': 'push-h', 'dip': 'push-h',
-    // Push verticale
+    'bench press': 'push-h', 'chest press': 'push-h', 'floor press': 'push-h',
+    'incline press': 'push-h', 'decline press': 'push-h',
+    'push up': 'push-h', 'pushup': 'push-h', 'dip': 'push-h',
+    // ── Push verticale ──
     'military press': 'push-v', 'lento avanti': 'push-v', 'lento dietro': 'push-v',
-    'arnold press': 'push-v', 'shoulder press': 'push-v',
-    // Pull orizzontale
+    'arnold press': 'push-v', 'shoulder press': 'push-v', 'overhead press': 'push-v',
+    'landmine press': 'push-v', 'push press': 'push-v', 'ohp': 'push-v',
+    // ── Pull orizzontale ──
     'rematore con bilanciere': 'pull-h', 'rematore con manubrio': 'pull-h',
-    'rematore ai cavi': 'pull-h',
-    // Pull verticale
+    'rematore ai cavi': 'pull-h', 'rematore': 'pull-h',
+    'inverted row': 'pull-h', 'seal row': 'pull-h', 'pendlay row': 'pull-h',
+    'row': 'pull-h',
+    // ── Pull verticale ──
     'trazioni': 'pull-v', 'lat machine': 'pull-v', 'pulldown': 'pull-v',
-    // Quad dominant
-    'squat': 'quad', 'leg press': 'quad', 'hack squat': 'quad', 'affondi': 'quad',
-    'goblet': 'quad', 'step up': 'quad',
-    // Hip hinge
+    'pull down': 'pull-v', 'pull up': 'pull-v', 'pullup': 'pull-v',
+    'chin up': 'pull-v', 'chinup': 'pull-v',
+    // ── Quad dominant ──
+    'leg press': 'quad', 'hack squat': 'quad', 'split squat': 'quad',
+    'front squat': 'quad', 'goblet': 'quad', 'bulgarian': 'quad',
+    'step up': 'quad', 'stepup': 'quad', 'affondi': 'quad', 'affondo': 'quad',
+    'lunge': 'quad', 'squat': 'quad',
+    // ── Hip hinge ──
     'stacco da terra': 'hinge', 'stacco rumeno': 'hinge', 'stacco sumo': 'hinge',
-    'good morning': 'hinge', 'hip thrust': 'hinge', 'iperestensioni': 'hinge'
+    'romanian deadlift': 'hinge', 'sumo deadlift': 'hinge', 'stiff leg': 'hinge',
+    'good morning': 'hinge', 'hip thrust': 'hinge', 'glute bridge': 'hinge',
+    'ponte glutei': 'hinge', 'iperestensioni': 'hinge', 'back extension': 'hinge',
+    'hyperextension': 'hinge', 'kettlebell swing': 'hinge',
+    'deadlift': 'hinge', 'stacco': 'hinge', 'rdl': 'hinge'
 };
 
+// Il match avviene per PAROLE, non per sottostringa contigua: così
+// "Incline Dumbbell Bench Press" trova comunque la chiave "bench press",
+// che una ricerca contigua mancherebbe per via di "Dumbbell" in mezzo.
+// Il confine di parola evita i falsi positivi (es. "row" dentro "narrow").
 function getMovementPattern(name) {
-    var n = (name || '').toLowerCase();
+    var n = (name || '').toLowerCase().replace(/[-_/]+/g, ' ');
     for (var key in MOVEMENT_PATTERNS) {
-        if (n.includes(key)) return MOVEMENT_PATTERNS[key];
+        var words = key.split(' ');
+        var all = true;
+        for (var i = 0; i < words.length; i++) {
+            if (!new RegExp('\\b' + words[i].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).test(n)) {
+                all = false;
+                break;
+            }
+        }
+        if (all) return MOVEMENT_PATTERNS[key];
     }
     return null;
 }
