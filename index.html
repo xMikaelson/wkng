@@ -3238,6 +3238,8 @@ function saveState() {
             personalRecords: APP.personalRecords || {},
             savedProtocols: APP.savedProtocols || [],
             mtrValues: APP.mtrValues || {},
+            nutTemplates: APP.nutTemplates || [],
+            nutFavorites: APP.nutFavorites || [],
             nutritionLogs: nutGetAllLogs()
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
@@ -3409,6 +3411,8 @@ function loadState() {
         if (saved.goal) document.getElementById('goal').value = saved.goal;
         APP.personalRecords = saved.personalRecords || {};
         APP.mtrValues = saved.mtrValues || {};
+        APP.nutTemplates = saved.nutTemplates || [];
+        APP.nutFavorites = saved.nutFavorites || [];
 
         return true;
     } catch(e) { return false; }
@@ -4431,6 +4435,9 @@ async function onLoginSuccess(user, usernameOverride = null) {
         }
         // Restore nutrition logs from Supabase
         if (s.nutritionLogs) nutRestoreLogs(s.nutritionLogs);
+        // Restore quick-food templates and favorites
+        if (s.nutTemplates) APP.nutTemplates = s.nutTemplates;
+        if (s.nutFavorites) APP.nutFavorites = s.nutFavorites;
     }
     const { data: protocols } = await sbClient.from('protocols').select('*').eq('user_id', user.id).order('created_at');
     if (!protocols || protocols.length === 0) {
@@ -9064,13 +9071,19 @@ function quickFoodRenderTemplates() {
     templates.forEach(function(t, i) {
         var card = document.createElement('div');
         card.style.cssText = 'background:#0f1f35;border-radius:12px;overflow:hidden;border:1px solid #1e293b;';
-        var totalKcal = (t.items || []).reduce(function(acc, f) { return acc + (f.kcal || 0); }, 0);
+        var totalKcal = 0, totP = 0, totC = 0, totF = 0;
+        (t.items || []).forEach(function(f) {
+            totalKcal += (f.kcal || 0);
+            totP += (f.p || 0); totC += (f.c || 0); totF += (f.f || 0);
+        });
+        var mac1 = function(n) { return (Math.round(n * 10) / 10); };
         card.innerHTML =
             '<div style="display:flex;align-items:center;gap:10px;padding:11px 13px;cursor:pointer;" onclick="quickFoodToggleTemplate(' + i + ')">' +
                 '<div style="width:32px;height:32px;border-radius:8px;background:rgba(99,102,241,0.1);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;">' + (t.emoji || '🍽️') + '</div>' +
                 '<div style="flex:1;min-width:0;">' +
                     '<div style="font-size:0.75rem;font-weight:700;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHTML(t.name) + '</div>' +
-                    '<div style="font-size:0.52rem;color:#64748b;margin-top:1px;">' + (t.items||[]).length + ' alimenti \u00b7 ' + totalKcal + ' kcal' + (t.meal ? ' \u00b7 ' + t.meal : '') + '</div>' +
+                    '<div style="font-size:0.52rem;color:#64748b;margin-top:1px;">' + (t.items||[]).length + ' alimenti \u00b7 <b style="color:#EF9F27;font-weight:700;">' + totalKcal + ' kcal</b>' + (t.meal ? ' \u00b7 ' + t.meal : '') + '</div>' +
+                    '<div style="font-size:0.52rem;color:#64748b;margin-top:2px;">P <b style="color:#5DCAA5;font-weight:700;">' + mac1(totP) + 'g</b> \u00b7 C <b style="color:#85B7EB;font-weight:700;">' + mac1(totC) + 'g</b> \u00b7 G <b style="color:#EF9F27;font-weight:700;">' + mac1(totF) + 'g</b></div>' +
                 '</div>' +
                 '<div id="qf-tmpl-chevron-' + i + '" style="color:#334155;font-size:0.7rem;flex-shrink:0;">\u25bc</div>' +
             '</div>' +
