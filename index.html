@@ -4090,6 +4090,13 @@ const EX_IT = {
   'Jumping Jack': 'Jumping Jack',
   'Box Jump': 'Box Jump',
   'Kettlebell Swing': 'Swing con Kettlebell',
+  // ── Aggiunte v.93 (mancanti da EXERCISE_PRESETS) ──
+  'Lunges': 'Affondi',
+  'Dumbbell Lunges': 'Affondi con Manubri',
+  'Dumbbell Step Up': 'Step Up con Manubri',
+  'Dumbbell Calf Raise': 'Calf Raise con Manubri',
+  'Dumbbell Incline Fly': 'Croci Inclinate con Manubri',
+  'Weighted Pull Up': 'Trazioni Zavorrate',
 };
 
 function exItalian(name) {
@@ -4127,93 +4134,93 @@ function getMotivationalQuote() {
 // ============= DATABASE ESERCIZI INTERNO (80 esercizi, 100% italiano) =============
 var ESERCIZI_DB = [
     // PETTO
-    { nome: 'Panca Piana con Bilanciere',    gruppo: 'Petto' },
-    { nome: 'Panca Piana con Manubri',        gruppo: 'Petto' },
-    { nome: 'Panca Inclinata con Bilanciere', gruppo: 'Petto' },
-    { nome: 'Panca Inclinata con Manubri',    gruppo: 'Petto' },
-    { nome: 'Panca Declinata con Bilanciere', gruppo: 'Petto' },
-    { nome: 'Croci con Manubri',              gruppo: 'Petto' },
-    { nome: 'Croci ai Cavi',                  gruppo: 'Petto' },
-    { nome: 'Dip alle Parallele',             gruppo: 'Petto' },
-    { nome: 'Push Up',                        gruppo: 'Petto' },
-    { nome: 'Pullover con Manubrio',          gruppo: 'Petto' },
+    { nome: 'Panca Piana con Bilanciere',    gruppo: 'Petto', en: 'Barbell Bench Press' },
+    { nome: 'Panca Piana con Manubri',        gruppo: 'Petto', en: 'Dumbbell Bench Press' },
+    { nome: 'Panca Inclinata con Bilanciere', gruppo: 'Petto', en: 'Incline Bench Press' },
+    { nome: 'Panca Inclinata con Manubri',    gruppo: 'Petto', en: 'Incline Dumbbell Press' },
+    { nome: 'Panca Declinata con Bilanciere', gruppo: 'Petto', en: 'Decline Bench Press' },
+    { nome: 'Croci con Manubri',              gruppo: 'Petto', en: 'Dumbbell Fly' },
+    { nome: 'Croci ai Cavi',                  gruppo: 'Petto', en: 'Cable Fly' },
+    { nome: 'Dip alle Parallele',             gruppo: 'Petto', en: 'Chest Dip' },
+    { nome: 'Push Up',                        gruppo: 'Petto', en: 'Push Up' },
+    { nome: 'Pullover con Manubrio',          gruppo: 'Petto', en: 'Dumbbell Pullover' },
     // SCHIENA
-    { nome: 'Trazioni alla Sbarra',           gruppo: 'Schiena' },
-    { nome: 'Lat Machine Avanti',             gruppo: 'Schiena' },
-    { nome: 'Lat Machine Dietro',             gruppo: 'Schiena' },
-    { nome: 'Rematore con Bilanciere',        gruppo: 'Schiena' },
-    { nome: 'Rematore con Manubrio',          gruppo: 'Schiena' },
-    { nome: 'Rematore ai Cavi Bassi',         gruppo: 'Schiena' },
-    { nome: 'Stacco da Terra',                gruppo: 'Schiena' },
-    { nome: 'Stacco Rumeno',                  gruppo: 'Schiena' },
-    { nome: 'Good Morning',                   gruppo: 'Schiena' },
-    { nome: 'Iperestensioni',                 gruppo: 'Schiena' },
+    { nome: 'Trazioni alla Sbarra',           gruppo: 'Schiena', en: 'Pull Up' },
+    { nome: 'Lat Machine Avanti',             gruppo: 'Schiena', en: 'Lat Pulldown' },
+    { nome: 'Lat Machine Dietro',             gruppo: 'Schiena', en: 'Behind the Neck Lat Pulldown' },
+    { nome: 'Rematore con Bilanciere',        gruppo: 'Schiena', en: 'Barbell Row, Bent Over Row' },
+    { nome: 'Rematore con Manubrio',          gruppo: 'Schiena', en: 'Dumbbell Row, One Arm Dumbbell Row' },
+    { nome: 'Rematore ai Cavi Bassi',         gruppo: 'Schiena', en: 'Seated Cable Row' },
+    { nome: 'Stacco da Terra',                gruppo: 'Schiena', en: 'Deadlift' },
+    { nome: 'Stacco Rumeno',                  gruppo: 'Schiena', en: 'Romanian Deadlift' },
+    { nome: 'Good Morning',                   gruppo: 'Schiena', en: 'Good Morning' },
+    { nome: 'Iperestensioni',                 gruppo: 'Schiena', en: 'Hyperextension, Back Extension' },
     // SPALLE
-    { nome: 'Military Press con Bilanciere',  gruppo: 'Spalle' },
-    { nome: 'Lento Avanti con Manubri',       gruppo: 'Spalle' },
-    { nome: 'Alzate Laterali con Manubri',    gruppo: 'Spalle' },
-    { nome: 'Alzate Frontali con Manubri',    gruppo: 'Spalle' },
-    { nome: 'Alzate Laterali ai Cavi',        gruppo: 'Spalle' },
-    { nome: 'Face Pull ai Cavi',              gruppo: 'Spalle' },
-    { nome: 'Scrollate con Bilanciere',       gruppo: 'Spalle' },
-    { nome: 'Scrollate con Manubri',          gruppo: 'Spalle' },
-    { nome: 'Arnold Press',                   gruppo: 'Spalle' },
-    { nome: 'Lento Dietro con Bilanciere',    gruppo: 'Spalle' },
+    { nome: 'Military Press con Bilanciere',  gruppo: 'Spalle', en: 'Military Press, Barbell Overhead Press' },
+    { nome: 'Lento Avanti con Manubri',       gruppo: 'Spalle', en: 'Dumbbell Shoulder Press, Dumbbell Overhead Press' },
+    { nome: 'Alzate Laterali con Manubri',    gruppo: 'Spalle', en: 'Dumbbell Lateral Raise' },
+    { nome: 'Alzate Frontali con Manubri',    gruppo: 'Spalle', en: 'Dumbbell Front Raise' },
+    { nome: 'Alzate Laterali ai Cavi',        gruppo: 'Spalle', en: 'Cable Lateral Raise' },
+    { nome: 'Face Pull ai Cavi',              gruppo: 'Spalle', en: 'Face Pull' },
+    { nome: 'Scrollate con Bilanciere',       gruppo: 'Spalle', en: 'Barbell Shrug' },
+    { nome: 'Scrollate con Manubri',          gruppo: 'Spalle', en: 'Dumbbell Shrug' },
+    { nome: 'Arnold Press',                   gruppo: 'Spalle', en: 'Arnold Press' },
+    { nome: 'Lento Dietro con Bilanciere',    gruppo: 'Spalle', en: 'Behind the Neck Press' },
     // BICIPITI
-    { nome: 'Curl con Bilanciere',            gruppo: 'Bicipiti' },
-    { nome: 'Curl con Manubri',               gruppo: 'Bicipiti' },
-    { nome: 'Curl Alternato con Manubri',     gruppo: 'Bicipiti' },
-    { nome: 'Curl ai Cavi Bassi',             gruppo: 'Bicipiti' },
-    { nome: 'Curl Hammer con Manubri',        gruppo: 'Bicipiti' },
-    { nome: 'Curl Concentrato',               gruppo: 'Bicipiti' },
-    { nome: 'Curl su Panca Scott',            gruppo: 'Bicipiti' },
+    { nome: 'Curl con Bilanciere',            gruppo: 'Bicipiti', en: 'Barbell Curl' },
+    { nome: 'Curl con Manubri',               gruppo: 'Bicipiti', en: 'Dumbbell Curl' },
+    { nome: 'Curl Alternato con Manubri',     gruppo: 'Bicipiti', en: 'Alternating Dumbbell Curl' },
+    { nome: 'Curl ai Cavi Bassi',             gruppo: 'Bicipiti', en: 'Cable Curl' },
+    { nome: 'Curl Hammer con Manubri',        gruppo: 'Bicipiti', en: 'Hammer Curl' },
+    { nome: 'Curl Concentrato',               gruppo: 'Bicipiti', en: 'Concentration Curl' },
+    { nome: 'Curl su Panca Scott',            gruppo: 'Bicipiti', en: 'Preacher Curl' },
     // TRICIPITI
-    { nome: 'French Press con Bilanciere',    gruppo: 'Tricipiti' },
-    { nome: 'French Press con Manubri',       gruppo: 'Tricipiti' },
-    { nome: 'Pushdown ai Cavi',               gruppo: 'Tricipiti' },
-    { nome: 'Estensioni Tricipiti ai Cavi',   gruppo: 'Tricipiti' },
-    { nome: 'Kickback con Manubrio',          gruppo: 'Tricipiti' },
-    { nome: 'Dip alle Panche',                gruppo: 'Tricipiti' },
-    { nome: 'Tricipiti in Presa Stretta',     gruppo: 'Tricipiti' },
+    { nome: 'French Press con Bilanciere',    gruppo: 'Tricipiti', en: 'Skull Crusher, Lying Tricep Extension' },
+    { nome: 'French Press con Manubri',       gruppo: 'Tricipiti', en: 'Dumbbell Skull Crusher' },
+    { nome: 'Pushdown ai Cavi',               gruppo: 'Tricipiti', en: 'Tricep Pushdown, Cable Pushdown' },
+    { nome: 'Estensioni Tricipiti ai Cavi',   gruppo: 'Tricipiti', en: 'Cable Tricep Extension' },
+    { nome: 'Kickback con Manubrio',          gruppo: 'Tricipiti', en: 'Dumbbell Kickback, Tricep Kickback' },
+    { nome: 'Dip alle Panche',                gruppo: 'Tricipiti', en: 'Bench Dip' },
+    { nome: 'Tricipiti in Presa Stretta',     gruppo: 'Tricipiti', en: 'Close Grip Bench Press' },
     // QUADRICIPITI
-    { nome: 'Squat con Bilanciere',           gruppo: 'Quadricipiti' },
-    { nome: 'Squat Frontale',                 gruppo: 'Quadricipiti' },
-    { nome: 'Squat Goblet con Manubrio',      gruppo: 'Quadricipiti' },
-    { nome: 'Leg Press',                      gruppo: 'Quadricipiti' },
-    { nome: 'Hack Squat',                     gruppo: 'Quadricipiti' },
-    { nome: 'Affondi con Bilanciere',         gruppo: 'Quadricipiti' },
-    { nome: 'Affondi con Manubri',            gruppo: 'Quadricipiti' },
-    { nome: 'Affondi Bulgari',                gruppo: 'Quadricipiti' },
-    { nome: 'Leg Extension',                  gruppo: 'Quadricipiti' },
-    { nome: 'Step Up con Manubri',            gruppo: 'Quadricipiti' },
+    { nome: 'Squat con Bilanciere',           gruppo: 'Quadricipiti', en: 'Barbell Squat' },
+    { nome: 'Squat Frontale',                 gruppo: 'Quadricipiti', en: 'Front Squat' },
+    { nome: 'Squat Goblet con Manubrio',      gruppo: 'Quadricipiti', en: 'Dumbbell Goblet Squat, Goblet Squat' },
+    { nome: 'Leg Press',                      gruppo: 'Quadricipiti', en: 'Leg Press' },
+    { nome: 'Hack Squat',                     gruppo: 'Quadricipiti', en: 'Hack Squat' },
+    { nome: 'Affondi con Bilanciere',         gruppo: 'Quadricipiti', en: 'Barbell Lunge, Lunges' },
+    { nome: 'Affondi con Manubri',            gruppo: 'Quadricipiti', en: 'Dumbbell Lunge, Dumbbell Lunges' },
+    { nome: 'Affondi Bulgari',                gruppo: 'Quadricipiti', en: 'Bulgarian Split Squat' },
+    { nome: 'Leg Extension',                  gruppo: 'Quadricipiti', en: 'Leg Extension' },
+    { nome: 'Step Up con Manubri',            gruppo: 'Quadricipiti', en: 'Dumbbell Step Up, Step Up' },
     // FEMORALI & GLUTEI
-    { nome: 'Hip Thrust con Bilanciere',      gruppo: 'Glutei' },
-    { nome: 'Hip Thrust con Manubrio',        gruppo: 'Glutei' },
-    { nome: 'Leg Curl Sdraiato',              gruppo: 'Femorali' },
-    { nome: 'Leg Curl in Piedi',              gruppo: 'Femorali' },
-    { nome: 'Leg Curl ai Cavi',               gruppo: 'Femorali' },
-    { nome: 'Sumo Squat',                     gruppo: 'Glutei' },
-    { nome: 'Abductor Machine',               gruppo: 'Glutei' },
+    { nome: 'Hip Thrust con Bilanciere',      gruppo: 'Glutei', en: 'Barbell Hip Thrust' },
+    { nome: 'Hip Thrust con Manubrio',        gruppo: 'Glutei', en: 'Dumbbell Hip Thrust' },
+    { nome: 'Leg Curl Sdraiato',              gruppo: 'Femorali', en: 'Lying Leg Curl' },
+    { nome: 'Leg Curl in Piedi',              gruppo: 'Femorali', en: 'Standing Leg Curl' },
+    { nome: 'Leg Curl ai Cavi',               gruppo: 'Femorali', en: 'Cable Leg Curl' },
+    { nome: 'Sumo Squat',                     gruppo: 'Glutei', en: 'Sumo Squat' },
+    { nome: 'Abductor Machine',               gruppo: 'Glutei', en: 'Hip Abductor Machine' },
     // POLPACCI
-    { nome: 'Calf Raise in Piedi',            gruppo: 'Polpacci' },
-    { nome: 'Calf Raise Seduto',              gruppo: 'Polpacci' },
-    { nome: 'Calf Raise al Leg Press',        gruppo: 'Polpacci' },
+    { nome: 'Calf Raise in Piedi',            gruppo: 'Polpacci', en: 'Standing Calf Raise' },
+    { nome: 'Calf Raise Seduto',              gruppo: 'Polpacci', en: 'Seated Calf Raise' },
+    { nome: 'Calf Raise al Leg Press',        gruppo: 'Polpacci', en: 'Leg Press Calf Raise' },
     // ADDOMINALI & CORE
-    { nome: 'Crunch',                         gruppo: 'Addominali' },
-    { nome: 'Crunch Inverso',                 gruppo: 'Addominali' },
-    { nome: 'Crunch ai Cavi',                 gruppo: 'Addominali' },
-    { nome: 'Plank',                          gruppo: 'Core' },
-    { nome: 'Plank Laterale',                 gruppo: 'Core' },
-    { nome: 'Russian Twist',                  gruppo: 'Addominali' },
-    { nome: 'Leg Raise',                      gruppo: 'Addominali' },
-    { nome: 'Rollout con Ruota',              gruppo: 'Core' },
-    { nome: 'Mountain Climber',               gruppo: 'Core' },
+    { nome: 'Crunch',                         gruppo: 'Addominali', en: 'Crunch' },
+    { nome: 'Crunch Inverso',                 gruppo: 'Addominali', en: 'Reverse Crunch' },
+    { nome: 'Crunch ai Cavi',                 gruppo: 'Addominali', en: 'Cable Crunch' },
+    { nome: 'Plank',                          gruppo: 'Core', en: 'Plank' },
+    { nome: 'Plank Laterale',                 gruppo: 'Core', en: 'Side Plank' },
+    { nome: 'Russian Twist',                  gruppo: 'Addominali', en: 'Russian Twist' },
+    { nome: 'Leg Raise',                      gruppo: 'Addominali', en: 'Leg Raise' },
+    { nome: 'Rollout con Ruota',              gruppo: 'Core', en: 'Ab Wheel Rollout, Ab Wheel' },
+    { nome: 'Mountain Climber',               gruppo: 'Core', en: 'Mountain Climber' },
     // COMPOUND FULL BODY
-    { nome: 'Clean and Press',                gruppo: 'Full Body' },
-    { nome: 'Kettlebell Swing',               gruppo: 'Full Body' },
-    { nome: 'Stacco Sumo',                    gruppo: 'Full Body' },
-    { nome: 'Thruster con Manubri',           gruppo: 'Full Body' },
-    { nome: 'Burpee',                         gruppo: 'Full Body' }
+    { nome: 'Clean and Press',                gruppo: 'Full Body', en: 'Clean and Press' },
+    { nome: 'Kettlebell Swing',               gruppo: 'Full Body', en: 'Kettlebell Swing' },
+    { nome: 'Stacco Sumo',                    gruppo: 'Full Body', en: 'Sumo Deadlift' },
+    { nome: 'Thruster con Manubri',           gruppo: 'Full Body', en: 'Dumbbell Thruster' },
+    { nome: 'Burpee',                         gruppo: 'Full Body', en: 'Burpee' }
 ];
 
 // ============= DEBOUNCED SEARCH =============
@@ -4232,7 +4239,9 @@ function searchExercises(input) {
     if (query.length < 2) { sBox.style.display = 'none'; return; }
 
     var results = ESERCIZI_DB.filter(function(ex) {
-        return ex.nome.toLowerCase().includes(query);
+        if (ex.nome.toLowerCase().includes(query)) return true;
+        if (ex.en && ex.en.toLowerCase().includes(query)) return true;
+        return false;
     }).slice(0, 8);
 
     if (results.length === 0) { sBox.style.display = 'none'; return; }
@@ -4894,7 +4903,11 @@ function isCompoundEx(name) {
                   'lunge','affondo','hip thrust','leg press','hack','clean','thruster','push up',
                   'good morning','iperestensioni'];
     if (compKw.some(function(k){ return n.includes(k); })) return true;
-    var inDB = ESERCIZI_DB.find(function(e){ return e.nome.toLowerCase() === n; });
+    var inDB = ESERCIZI_DB.find(function(e){
+        if (e.nome.toLowerCase() === n) return true;
+        if (e.en && e.en.toLowerCase().split(', ').indexOf(n) !== -1) return true;
+        return false;
+    });
     if (inDB) {
         var compGroups = ['Petto','Schiena','Quadricipiti','Glutei','Femorali','Full Body'];
         return compGroups.includes(inDB.gruppo);
