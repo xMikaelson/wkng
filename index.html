@@ -1783,11 +1783,23 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wc-a-dot.skip { background:#334155; }
         .wc-a-name { font-size:0.62rem; flex:1; }
         .wc-a-name.warm { color:#e2e8f0; font-weight:600; }
-        .wc-a-name.skip { color:#475569; }
+        .wc-a-name.skip { color:#94a3b8; }
         .wc-a-why { font-size:0.52rem; }
         .wc-a-why.warm { color:#818cf8; }
-        .wc-a-why.skip { color:#475569; }
-        .wc-sci-badge { font-size:0.42rem; color:#475569; border:0.5px solid #334155; border-radius:4px; padding:1px 6px; margin-left:6px; vertical-align:middle; }
+        .wc-a-why.skip { color:#94a3b8; }
+        .wc-sci-badge { font-size:0.46rem; color:#94a3b8; border:0.5px solid #475569; border-radius:4px; padding:1px 6px; margin-left:6px; vertical-align:middle; }
+        /* width/padding/text-transform espliciti: la regola globale `button`
+           imporrebbe width:100% e maiuscolo, deformando la pastiglia. */
+        .wc-info-btn {
+            width:17px; height:17px; min-width:17px; padding:0; margin:0 0 0 5px;
+            border-radius:50%; border:1px solid rgba(129,140,248,0.55);
+            background:rgba(99,102,241,0.16); color:#a5b4fc;
+            font-family:Georgia,'Times New Roman',serif; font-size:0.62rem; font-weight:700;
+            font-style:italic; text-transform:none; line-height:1; cursor:pointer;
+            display:inline-flex; align-items:center; justify-content:center;
+            vertical-align:middle; transition:background 0.15s;
+        }
+        .wc-info-btn:active { background:rgba(99,102,241,0.32); }
         .wc-body { padding:12px 16px 14px; }
         /* Intestazione esercizio (V3): riquadro interno con bordo e angoli tondi */
         .wc-ex-head {
@@ -1807,7 +1819,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         }
         .wc-ex-eyebrow { font-size:0.48rem; color:#818cf8; text-transform:uppercase; letter-spacing:0.1em; font-weight:700; margin-bottom:3px; }
         .wc-ex-title { font-size:0.82rem; font-weight:800; color:#e2e8f0; line-height:1.3; }
-        .wc-ex-mtr { font-size:0.5rem; color:#64748b; margin-top:4px; }
+        .wc-ex-mtr { font-size:0.54rem; color:#cbd5e1; margin-top:4px; }
         /* Box MTR inline — centrato, input grande, bottone sotto */
         .wc-mtr-box { background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.2); border-radius:12px; padding:16px; margin-bottom:12px; text-align:center; }
         .wc-mtr-box.joined {
@@ -1816,9 +1828,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             border-top-left-radius:0; border-top-right-radius:0;
         }
         .wc-mtr-box-title { font-size:0.6rem; color:#818cf8; font-weight:700; margin-bottom:4px; }
-        .wc-mtr-box-desc { font-size:0.54rem; color:#64748b; line-height:1.5; margin-bottom:14px; }
+        .wc-mtr-box-desc { font-size:0.58rem; color:#cbd5e1; line-height:1.5; margin-bottom:14px; }
         .wc-mtr-box-input { width:100%; background:rgba(255,255,255,0.06); border:1.5px solid rgba(99,102,241,0.4); border-radius:10px; padding:12px; color:#e2e8f0; font-size:1.4rem; font-weight:900; text-align:center; outline:none; font-family:inherit; margin-bottom:6px; letter-spacing:0.05em; box-sizing:border-box; }
-        .wc-mtr-box-unit { font-size:0.6rem; color:#475569; margin-bottom:14px; }
+        .wc-mtr-box-unit { font-size:0.6rem; color:#94a3b8; margin-bottom:14px; }
         .wc-mtr-box-btn { width:100%; padding:12px; background:linear-gradient(135deg,#00ff88,#00cc88); border:none; border-radius:10px; color:#000; font-size:0.8rem; font-weight:900; cursor:pointer; font-family:inherit; }
         /* Set rows */
         .wc-set-row { display:flex; align-items:center; gap:10px; padding:10px 0; }
@@ -1826,13 +1838,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wc-set-num { width:28px; height:28px; border-radius:8px; background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.2); font-size:0.58rem; font-weight:800; color:#818cf8; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
         .wc-set-info { flex:1; }
         .wc-set-kg { font-size:0.85rem; font-weight:800; color:#e2e8f0; }
-        .wc-set-pct { font-size:0.5rem; color:#64748b; margin-left:5px; }
-        .wc-set-detail { font-size:0.55rem; color:#94a3b8; margin-top:3px; display:flex; align-items:center; gap:5px; }
-        .wc-set-rec { color:#64748b; font-weight:600; }
-        .wc-set-rec::before { content:'·'; margin-right:4px; color:#475569; }
+        .wc-set-pct { font-size:0.54rem; color:#94a3b8; margin-left:5px; }
+        .wc-set-detail { font-size:0.58rem; color:#cbd5e1; margin-top:3px; display:flex; align-items:center; gap:5px; }
+        .wc-set-rec { color:#94a3b8; font-weight:600; }
+        .wc-set-rec::before { content:'·'; margin-right:4px; color:#64748b; }
         .wc-set-btn { width:32px; height:32px; border-radius:9px; border:1.5px solid rgba(99,102,241,0.5); background:rgba(99,102,241,0.12); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; transition:all 0.2s; font-size:0.8rem; color:#818cf8; font-family:inherit; }
         .wc-set-btn.done { background:rgba(0,255,136,0.15); border-color:rgba(0,255,136,0.5); color:#00ff88; }
-        .wc-set-lbl { font-size:0.44rem; color:#475569; text-align:center; margin-top:1px; }
+        .wc-set-lbl { font-size:0.48rem; color:#94a3b8; text-align:center; margin-top:1px; }
         .wc-set-lbl.active { color:#00ff88; }
         /* Footer warmup */
         .wo-warmup-footer { background:rgba(10,14,26,0.6); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:10px 16px 6px; margin:6px 16px 0; }
@@ -3583,6 +3595,80 @@ function getWarmupSets(mtrValue) {
     ];
 }
 
+// ── Popup informativo sul riscaldamento specifico ──
+function woWarmupInfo() {
+    var old = document.getElementById('wo-warmup-info-overlay');
+    if (old) old.remove();
+
+    var ov = document.createElement('div');
+    ov.id = 'wo-warmup-info-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(6,13,26,0.94);z-index:9200;' +
+        'display:flex;align-items:center;justify-content:center;' +
+        'padding:max(env(safe-area-inset-top),44px) 18px calc(24px + env(safe-area-inset-bottom,0px));' +
+        'box-sizing:border-box;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);';
+
+    var box = document.createElement('div');
+    box.style.cssText = 'background:#0f172a;border:1px solid rgba(255,255,255,0.09);border-radius:16px;' +
+        'max-width:420px;width:100%;max-height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;' +
+        'padding:20px 18px;box-sizing:border-box;';
+
+    var H = function(t) {
+        return '<div style="font-size:0.56rem;color:#818cf8;text-transform:uppercase;' +
+               'letter-spacing:0.1em;font-weight:700;margin:16px 0 6px;">' + t + '</div>';
+    };
+    var P = function(t) {
+        return '<div style="font-size:0.72rem;color:#cbd5e1;line-height:1.6;">' + t + '</div>';
+    };
+
+    box.innerHTML =
+        '<div style="font-size:0.52rem;color:#818cf8;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">🔥 Riscaldamento specifico</div>' +
+        '<div style="font-size:1rem;font-weight:800;color:#e2e8f0;margin-top:4px;">Come funziona e perché</div>' +
+
+        H('A cosa serve') +
+        P('Alza la temperatura muscolare, prepara il sistema nervoso e ti fa ripassare il gesto con carichi crescenti. ' +
+          'Arrivi alla prima serie di lavoro già dentro il movimento, senza però aver consumato energie.') +
+
+        H('Il protocollo') +
+        P('Tre serie calcolate sul tuo MTR:' +
+          '<div style="margin-top:8px;font-size:0.7rem;">' +
+          '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.06);"><span style="color:#e2e8f0;font-weight:700;">40% × 5 rip</span><span style="color:#94a3b8;">rec. 60s</span></div>' +
+          '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.06);"><span style="color:#e2e8f0;font-weight:700;">60% × 4 rip</span><span style="color:#94a3b8;">rec. 60s</span></div>' +
+          '<div style="display:flex;justify-content:space-between;padding:5px 0;"><span style="color:#e2e8f0;font-weight:700;">80% × 2 rip</span><span style="color:#94a3b8;">rec. 2 min</span></div>' +
+          '</div>' +
+          '<div style="margin-top:8px;">Le ripetizioni calano mentre il carico sale: è quello che permette di avvicinarsi al peso di lavoro senza accumulare fatica.</div>') +
+
+        H('MTR') +
+        P('Massimo Tecnico di Ripetizione: il carico più alto che riesci a sollevare mantenendo una tecnica impeccabile. ' +
+          'Non è il tuo massimale a tutti i costi — è il massimo che controlli davvero. Tutte le percentuali partono da lì.') +
+
+        H('Quali esercizi vengono riscaldati') +
+        P('Solo i compound, e solo il primo di ogni pattern di movimento: spinta orizzontale, spinta verticale, ' +
+          'trazione orizzontale, trazione verticale, dominante di quadricipite, hip hinge.' +
+          '<div style="margin-top:8px;">Gli esercizi di isolamento non ne hanno bisogno. I compound successivi dello stesso pattern ' +
+          'trovano i muscoli già caldi: riscaldarli di nuovo aggiungerebbe solo volume inutile.</div>') +
+
+        H('Fonti') +
+        '<div style="font-size:0.62rem;color:#94a3b8;line-height:1.6;">' +
+        'Baechle T. & Earle R., <i>Essentials of Strength Training and Conditioning</i>, NSCA, 3ª ed., 2008 — struttura delle serie di avvicinamento.<br><br>' +
+        'Rippetoe M., <i>Starting Strength</i> — metodologia delle warm-up sets a carico crescente e ripetizioni decrescenti.' +
+        '</div>';
+
+    var closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.textContent = 'Ho capito';
+    closeBtn.style.cssText = 'width:100%;margin-top:20px;padding:13px;border:none;border-radius:11px;' +
+        'background:linear-gradient(135deg,#00ff88,#00cc88);color:#000;font-family:inherit;' +
+        'font-size:0.78rem;font-weight:900;cursor:pointer;text-transform:none;';
+    closeBtn.onclick = function() { ov.remove(); };
+    box.appendChild(closeBtn);
+
+    // Chiude toccando fuori dal riquadro
+    ov.onclick = function(e) { if (e.target === ov) ov.remove(); };
+    ov.appendChild(box);
+    document.body.appendChild(ov);
+}
+
+// ── Popup informativo sul riscaldamento specifico — fine ──
 function renderWarmupBlock(exName, exercises, container) {
     // Usa sempre il contenitore stabile: evita che i re-render risalgano il DOM
     container = document.getElementById('wo-warmup-container') || container;
@@ -3638,7 +3724,8 @@ function renderWarmupBlock(exName, exercises, container) {
     // ── Header ──
     var hdr = document.createElement('div');
     hdr.className = 'wc-ex-header';
-    hdr.innerHTML = '<div class="wc-ex-num">🔥 Riscaldamento specifico <span class="wc-sci-badge">NSCA 2008 · Rippetoe</span></div>' +
+    hdr.innerHTML = '<div class="wc-ex-num">🔥 Riscaldamento specifico <span class="wc-sci-badge">NSCA 2008 · Rippetoe</span>' +
+        '<button type="button" class="wc-info-btn" onclick="woWarmupInfo()" aria-label="Informazioni sul riscaldamento">i</button></div>' +
         '<div class="wc-ex-name">Prima di iniziare l\'allenamento</div>';
     card.appendChild(hdr);
 
