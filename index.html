@@ -3226,6 +3226,10 @@ const MOTIVATIONAL_QUOTES = [
 function saveState() {
     try {
         syncActiveProtocol();
+        // Allinea il dizionario MTR ai protocolli PRIMA di comporre toSave:
+        // così ogni MTR impostato in "I miei piani" viene persistito nello
+        // stesso salvataggio, senza passare dal riscaldamento.
+        mtrSyncFromProtocols();
         const toSave = {
             isUnlocked: APP.isUnlocked, exerciseData: APP.exerciseData,
             totalWorkouts: APP.totalWorkouts, startDate: APP.startDate ? APP.startDate.toISOString() : null,
@@ -3425,12 +3429,37 @@ function loadState() {
     } catch(e) { return false; }
 }
 
+// ── Sincronizza il dizionario globale MTR dai protocolli salvati ──
+// Ogni MTR impostato in "I miei piani" finisce nel dizionario (e quindi nel
+// profilo e nel riscaldamento) senza doverlo reinserire altrove.
+// NON chiama saveState(): viene invocata anche da dentro saveState().
+function mtrSyncFromProtocols() {
+    if (!APP.mtrValues) APP.mtrValues = {};
+    if (!APP.savedProtocols) return false;
+    var changed = false;
+    APP.savedProtocols.forEach(function(proto) {
+        if (!proto || !proto.exercises) return;
+        proto.exercises.forEach(function(ex) {
+            if (!ex || !ex.name || !ex.mtrValue) return;
+            var mtr = parseFloat(ex.mtrValue);
+            if (!mtr || mtr <= 0) return;
+            // Solo se manca: un MTR già nel dizionario può essere più recente
+            if (mtrGet(ex.name) == null) {
+                mtrSet(ex.name, mtr);
+                changed = true;
+            }
+        });
+    });
+    return changed;
+}
+
 // ── Migrazione loads MTR: ricalcola i loads dai mtrValue salvati ──
 // Garantisce coerenza dopo update dell'app o fix di bug precedenti
 function migrateMtrLoads() {
     if (!APP.savedProtocols) return;
     if (!APP.mtrValues) APP.mtrValues = {};
     var changed = mtrCanonicalizeDict();
+    if (mtrSyncFromProtocols()) changed = true;
     APP.savedProtocols.forEach(function(proto) {
         if (!proto.exercises) return;
         var slot = (proto._splitSlot || '').toLowerCase();
@@ -3439,11 +3468,6 @@ function migrateMtrLoads() {
             if (!ex.mtrValue) return; // nessun MTR impostato, skip
             var mtr = parseFloat(ex.mtrValue);
             if (!mtr || mtr <= 0) return;
-            // Ricostruisci il dizionario globale dai protocolli (persistiti su Supabase)
-            if (mtrGet(ex.name) == null) {
-                mtrSet(ex.name, mtr);
-                changed = true;
-            }
             // Ricalcola i loads corretti dal mtrValue
             var newLoads = isMassa
                 ? MTR_MASSA_LOADS.map(function(p){ return Math.round(mtr*p*2)/2; })
@@ -6556,10 +6580,12 @@ function toggleMtrManager() {
 function renderMtrManager() {
     var list = document.getElementById('mtr-manager-list');
     if (!list) return;
+    // Recupera eventuali MTR presenti solo sui protocolli
+    if (mtrSyncFromProtocols()) saveState();
     list.innerHTML = '';
     var names = Object.keys(APP.mtrValues || {}).sort();
     if (names.length === 0) {
-        list.innerHTML = '<div style="color:#64748b;font-size:0.72rem;text-align:center;padding:8px">Nessun MTR registrato.<br>Vengono salvati durante il riscaldamento o dall\'editor protocollo (🎯).</div>';
+        list.innerHTML = '<div style="color:#64748b;font-size:0.72rem;text-align:center;padding:8px">Nessun MTR registrato.<br>Vengono salvati dall\'editor protocollo (🎯) o durante il riscaldamento.</div>';
         return;
     }
     names.forEach(function(name) {
