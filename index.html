@@ -2839,6 +2839,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     </div>
     <!-- Nutri-Score: full width row, centered -->
     <div id="grams-nutriscore" style="display:none;position:relative;height:34px;margin-bottom:14px;"></div>
+    <div id="grams-nova" style="display:none;margin-bottom:14px;"></div>
 
     <!-- Per 100g reference — visualizzazione / modifica -->
     <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 14px;margin-bottom:16px;">
@@ -7862,6 +7863,8 @@ async function awSaveProduct(food, userId) {
             fiber100:     food.fiber100      || 0,
             salt100:      food.salt100       || 0,
             nutri_score:  food.nutriScore    || null,
+            nova_group:   (food.novaGroup   != null) ? food.novaGroup   : null,
+            additives_n:  (food.additivesN  != null) ? food.additivesN  : null,
             added_by:     userId
         };
         if (food.barcode) newPayload.barcode = food.barcode;
@@ -8160,12 +8163,104 @@ function nutScoreInfoToggle() {
     panel.id = 'ns-info-panel';
     panel.style.cssText = 'background:#0f172a;border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:14px 16px;margin-top:10px;margin-bottom:14px;';
     panel.innerHTML = '<div style="font-size:11px;font-weight:700;color:#e2e8f0;margin-bottom:6px;">Cos\u2019\u00e8 il Nutri-Score?</div>' +
-        '<div style="font-size:10px;color:#cbd5e1;line-height:1.6;margin-bottom:12px;">Sistema europeo che valuta la qualit\u00e0 nutrizionale su scala A\u2192E, basato su calorie, proteine, zuccheri, grassi saturi e fibre per 100g.</div>' +
+        '<div style="font-size:10px;color:#cbd5e1;line-height:1.6;margin-bottom:12px;">Sistema europeo che valuta la qualit\u00e0 nutrizionale su scala A\u2192E, basato su calorie, proteine, zuccheri, grassi saturi e fibre per 100g. <b style="color:#e2e8f0;">Non tiene conto di additivi e conservanti</b>: per quello serve il grado di lavorazione.</div>' +
+        '<div style="font-size:11px;font-weight:700;color:#e2e8f0;margin-bottom:6px;">Grado di lavorazione (NOVA)</div>' +
+        '<div style="font-size:10px;color:#cbd5e1;line-height:1.6;margin-bottom:12px;">Classifica gli alimenti in 4 livelli in base a quanto sono trasformati industrialmente, leggendo la lista ingredienti. \u00c8 indipendente dal Nutri-Score: l\u2019olio d\u2019oliva \u00e8 non processato ma calorico, una bevanda light \u00e8 poco calorica ma ultra-processata.</div>' +
+        '<div style="font-size:11px;font-weight:700;color:#e2e8f0;margin-bottom:6px;">Il consiglio</div>' +
+        '<div style="font-size:10px;color:#cbd5e1;line-height:1.6;margin-bottom:12px;">\u00c8 una sintesi dei due indicatori pi\u00f9 il numero di additivi, non uno standard ufficiale. Serve da orientamento e non sostituisce il parere di un nutrizionista.</div>' +
         '<div style="display:flex;gap:6px;">' + gradesHTML + '</div>';
     const nsEl = document.getElementById('grams-nutriscore');
     if (nsEl && nsEl.parentNode) nsEl.parentNode.insertBefore(panel, nsEl.nextSibling);
 }
 
+
+// ── NOVA + additivi + consiglio ────────────────────────────────
+var NOVA_LABELS = { 1:'Non processato', 2:'Ingrediente culinario', 3:'Trasformato', 4:'Ultra-processato' };
+var NOVA_COLORS = { 1:'#0f8b4c', 2:'#7ac13f', 3:'#e8811c', 4:'#e1341e' };
+
+function novaBarHTML(nova) {
+    if (!nova || nova < 1 || nova > 4) return '';
+    var segs = '';
+    for (var i = 1; i <= 4; i++) {
+        segs += '<div style="flex:1;height:6px;border-radius:99px;background:' +
+                (i === nova ? NOVA_COLORS[nova] : '#0f172a') + ';"></div>';
+    }
+    return '<div style="margin-top:14px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">' +
+            '<span style="font-size:0.5rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.09em;">Grado di lavorazione</span>' +
+            '<span style="font-size:0.58rem;font-weight:700;color:' + NOVA_COLORS[nova] + ';">' + NOVA_LABELS[nova] + '</span>' +
+        '</div>' +
+        '<div style="display:flex;gap:3px;">' + segs + '</div>' +
+        '<div style="display:flex;justify-content:space-between;font-size:0.42rem;color:#94a3b8;margin-top:4px;">' +
+            '<span>Non processato</span><span>Ultra-processato</span>' +
+        '</div>' +
+    '</div>';
+}
+
+function additivesPillHTML(n) {
+    if (n == null) return '';
+    var tone;
+    if (n === 0)      tone = { bg:'rgba(52,211,153,0.1)', bd:'rgba(52,211,153,0.32)', c:'#34d399' };
+    else if (n <= 4)  tone = { bg:'rgba(239,159,39,0.1)', bd:'rgba(239,159,39,0.32)', c:'#EF9F27' };
+    else              tone = { bg:'rgba(239,68,68,0.1)',  bd:'rgba(239,68,68,0.3)',   c:'#f87171' };
+    var txt = n === 0 ? 'Nessun additivo' : (n + ' additiv' + (n === 1 ? 'o' : 'i'));
+    return '<div style="display:flex;justify-content:center;margin-top:11px;">' +
+        '<span style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:99px;font-size:0.55rem;font-weight:700;' +
+        'background:' + tone.bg + ';border:1px solid ' + tone.bd + ';color:' + tone.c + ';">🧪 ' + txt + '</span>' +
+    '</div>';
+}
+
+function nutAdvice(score, nova, additives) {
+    if (!score) return null;
+    var band = (score === 'A' || score === 'B') ? 'good' : (score === 'C' ? 'mid' : 'poor');
+    var n = (nova >= 1 && nova <= 4) ? nova : null;
+    var lvl, title, desc;
+    if (band === 'good') {
+        if (n === null || n <= 2) { lvl = 2; title = 'Va benissimo, \u00e8 sano';
+            desc = 'Ottimo profilo nutrizionale' + (n ? ' e alimento non lavorato' : '') + ': puoi mangiarlo con regolarit\u00e0.'; }
+        else if (n === 3) { lvl = 2; title = 'Buona scelta';
+            desc = 'Profilo nutrizionale valido e lavorazione contenuta: adatto all\u2019uso abituale.'; }
+        else { lvl = 1; title = 'Puoi prenderlo, senza farne un\u2019abitudine';
+            desc = 'Buon equilibrio nutrizionale, per\u00f2 \u00e8 un prodotto ultra-processato: meglio se non \u00e8 la base della tua alimentazione.'; }
+    } else if (band === 'mid') {
+        if (n === null || n <= 2) { lvl = 2; title = 'Va bene';
+            desc = 'Profilo nutrizionale nella media, ma alimento poco lavorato.'; }
+        else { lvl = 1; title = 'Puoi prenderlo, senza farne un\u2019abitudine';
+            desc = 'Profilo nutrizionale nella media e formulazione industriale: alternalo ad alternative meno lavorate.'; }
+    } else {
+        if (n !== null && n <= 2) { lvl = 2; title = 'Va bene, ma \u00e8 molto calorico';
+            desc = 'Alimento non lavorato: la lettera bassa dipende dalla densit\u00e0 calorica, non dalla trasformazione. Dosalo.'; }
+        else if (n === 3) { lvl = 1; title = 'Con moderazione';
+            desc = 'Profilo nutrizionale scarso e prodotto trasformato: tienilo sotto controllo.'; }
+        else { lvl = 0; title = 'Meglio saltuario';
+            desc = 'Profilo nutrizionale scarso' + (n === 4 ? ' e formulazione industriale' : '') + ': tienilo per le occasioni, non per tutti i giorni.'; }
+    }
+    if (additives != null && additives > 5 && lvl > 0) {
+        lvl -= 1;
+        title = (lvl === 1) ? 'Puoi prenderlo, senza farne un\u2019abitudine' : 'Meglio saltuario';
+        desc = desc + ' Contiene inoltre molti additivi.';
+    }
+    return { level: lvl, title: title, desc: desc };
+}
+
+function nutAdviceHTML(score, nova, additives) {
+    var a = nutAdvice(score, nova, additives);
+    if (!a) return '';
+    var tones = [
+        { bg:'rgba(239,68,68,0.06)',  bd:'rgba(239,68,68,0.22)',  c:'#f87171', ic:'\u26A0\uFE0F' },
+        { bg:'rgba(239,159,39,0.06)', bd:'rgba(239,159,39,0.25)', c:'#EF9F27', ic:'👌' },
+        { bg:'rgba(52,211,153,0.06)', bd:'rgba(52,211,153,0.25)', c:'#34d399', ic:'\u2705' }
+    ];
+    var t = tones[a.level];
+    return '<div style="display:flex;gap:10px;align-items:center;border-radius:13px;padding:12px 13px;margin-top:13px;' +
+            'background:' + t.bg + ';border:1px solid ' + t.bd + ';">' +
+        '<div style="font-size:1.05rem;flex-shrink:0;line-height:1;">' + t.ic + '</div>' +
+        '<div style="min-width:0;">' +
+            '<div style="font-size:0.72rem;font-weight:800;margin-bottom:3px;color:' + t.c + ';">' + a.title + '</div>' +
+            '<div style="font-size:0.62rem;line-height:1.55;color:#cbd5e1;">' + a.desc + '</div>' +
+        '</div>' +
+    '</div>';
+}
 
 function nutScoreBadge(score) {
     if (!score) return '';
@@ -8416,6 +8511,8 @@ function nutEditFood(food, meal) {
         salt100:      food.salt100      != null ? food.salt100      : parseFloat(((food.salt      || 0) * factor).toFixed(2)),
         offCategory:  food.offCategory  || null,
         nutriScore:   food.nutriScore   || null,
+        novaGroup:    (food.novaGroup   != null) ? food.novaGroup   : null,
+        additivesN:   (food.additivesN  != null) ? food.additivesN  : null,
         id:           food.id,
         _editId:      food.id,
         _editMeal:    meal
@@ -8865,7 +8962,9 @@ async function cameraFetchProduct(barcode, meal) {
                 c100: awProd.c100||0,        f100: awProd.f100||0,
                 sugars100: awProd.sugars100||0, saturated100: awProd.saturated100||0,
                 fiber100: awProd.fiber100||0,   salt100: awProd.salt100||0,
-                nutriScore: ns, fromAwDB: true, id: Date.now(), incomplete: false
+                nutriScore: ns, fromAwDB: true, id: Date.now(), incomplete: false,
+                novaGroup:  (awProd.nova_group  != null) ? awProd.nova_group  : null,
+                additivesN: (awProd.additives_n != null) ? awProd.additives_n : null
             };
             console.log('Found in Awakening DB:', food.name);
         }
@@ -8876,7 +8975,7 @@ async function cameraFetchProduct(barcode, meal) {
     const endpoints = [
         `https://it.openfoodfacts.org/api/v0/product/${barcode}.json`,
         `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`,
-        `https://it.openfoodfacts.org/api/v2/product/${barcode}`,
+        `https://it.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name,product_name_it,brands,nutriments,nutrition_grades,categories_tags,serving_size,serving_quantity,nova_group,additives_n,additives_tags`,
     ];
 
     for (const url of endpoints) {
@@ -8984,6 +9083,12 @@ async function cameraFetchProduct(barcode, meal) {
 
             // Brand — maiuscolo
             const brand = (p.brands || '').split(',')[0].trim().toUpperCase() || '';
+            // NOVA (grado di lavorazione 1-4) e numero di additivi
+            const novaRaw = p.nova_group != null ? parseInt(p.nova_group, 10) : NaN;
+            const novaGroup = (!isNaN(novaRaw) && novaRaw >= 1 && novaRaw <= 4) ? novaRaw : null;
+            let additivesN = null;
+            if (p.additives_n != null && !isNaN(parseInt(p.additives_n, 10))) additivesN = parseInt(p.additives_n, 10);
+            else if (Array.isArray(p.additives_tags)) additivesN = p.additives_tags.length;
 
             food = {
                 name: productName,
@@ -8995,6 +9100,8 @@ async function cameraFetchProduct(barcode, meal) {
                 nutriScore: nutriScore || nutCalcScoreFull(kcal100, p100, sugars100, saturated100, fiber100, salt100, f100, fvl100, offCategory) || null,
                 barcode,
                 servingG,
+                novaGroup,
+                additivesN,
                 id: Date.now(),
                 incomplete: isIncomplete
             };
@@ -9177,6 +9284,15 @@ function gramsRefUpdate() {
         if (score) { nsEl.style.display = 'flex'; nsEl.innerHTML = nutScoreBar(score); }
         else nsEl.style.display = 'none';
     }
+    // NOVA + additivi + consiglio
+    const novaEl = document.getElementById('grams-nova');
+    if (novaEl) {
+        const nova = (food.novaGroup != null) ? food.novaGroup : null;
+        const adds = (food.additivesN != null) ? food.additivesN : null;
+        const html = novaBarHTML(nova) + additivesPillHTML(adds) + nutAdviceHTML(score, nova, adds);
+        if (html) { novaEl.style.display = 'block'; novaEl.innerHTML = html; }
+        else novaEl.style.display = 'none';
+    }
     gramsUpdatePreview();
 }
 
@@ -9248,6 +9364,8 @@ function gramsConfirm() {
         fiber100: ref.fiber100, salt100: ref.salt100,
         offCategory: cat,
         nutriScore: ns,
+        novaGroup:  (food.novaGroup  != null) ? food.novaGroup  : null,
+        additivesN: (food.additivesN != null) ? food.additivesN : null,
         note: g + 'g'
     };
     const mealData = NUT.meals;
@@ -9276,6 +9394,7 @@ function gramsConfirm() {
                 kcal100: entry.kcal100, p100: entry.p100, c100: entry.c100, f100: entry.f100,
                 sugars100: entry.sugars100, saturated100: entry.saturated100,
                 fiber100: entry.fiber100, salt100: entry.salt100, nutriScore: entry.nutriScore,
+                novaGroup: entry.novaGroup, additivesN: entry.additivesN,
             });
             sbClient.auth.getUser().then(({ data: { user } }) => {
                 if (user) awSaveProduct(foodToSave, user.id);
@@ -9300,6 +9419,7 @@ function gramsConfirm() {
             kcal100: entry.kcal100, p100: entry.p100, c100: entry.c100, f100: entry.f100,
             sugars100: entry.sugars100, saturated100: entry.saturated100,
             fiber100: entry.fiber100, salt100: entry.salt100, nutriScore: entry.nutriScore,
+                novaGroup: entry.novaGroup, additivesN: entry.additivesN,
         });
         sbClient.auth.getUser().then(({ data: { user } }) => {
             if (user) awSaveProduct(foodToSave, user.id);
