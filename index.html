@@ -3644,9 +3644,27 @@ function renderWarmupBlock(exName, exercises, container) {
         // Sequenza UNICA su tutti i set di TUTTI gli esercizi da riscaldare:
         // solo il primo toggle assoluto è attivabile all'inizio, gli altri si sbloccano in cascata
         var setRefs = [];
+        var mtrBackfilled = false;
 
         warmExercises.forEach(function(warmEx, exIdx) {
             var exMtr = mtrGet(warmEx.name);
+            if (exMtr == null || exMtr === '') {
+                // L'MTR può essere già stato inserito in "I miei piani" e vivere
+                // sull'esercizio del protocollo senza essere finito nel dizionario
+                // globale. Lo recuperiamo da lì e lo registriamo, così smette di
+                // essere richiesto e compare anche nell'elenco del profilo.
+                for (var si = 0; si < (exercises || []).length; si++) {
+                    var src = exercises[si];
+                    if (!src || src.name !== warmEx.name) continue;
+                    var raw = parseFloat(src.mtrValue);
+                    if (raw > 0) {
+                        exMtr = raw;
+                        mtrSet(warmEx.name, raw);
+                        mtrBackfilled = true;
+                    }
+                    break;
+                }
+            }
 
             var secLbl = document.createElement('div');
             secLbl.className = 'wc-ex-head' + (exIdx > 0 ? ' second' : '') + (exMtr ? '' : ' with-mtr');
@@ -3808,6 +3826,9 @@ function renderWarmupBlock(exName, exercises, container) {
                 item.btn.classList.add('pulse');
             }
         });
+
+        // Un solo salvataggio a fine render, non uno per esercizio
+        if (mtrBackfilled) saveState();
     }
 
     card.appendChild(bodyEl);
@@ -4661,6 +4682,17 @@ async function onLoginSuccess(user, usernameOverride = null) {
         // Restore quick-food templates and favorites
         if (s.nutTemplates) APP.nutTemplates = s.nutTemplates;
         if (s.nutFavorites) APP.nutFavorites = s.nutFavorites;
+        // Dizionario MTR e record personali: erano salvati su Supabase ma mai
+        // riletti qui, quindi su un dispositivo senza localStorage il
+        // riscaldamento richiedeva di nuovo un MTR già inserito nei piani e il
+        // profilo restava vuoto. Unione con precedenza al valore locale, che è
+        // il più recente se l'utente ha appena modificato qualcosa.
+        if (s.mtrValues) {
+            APP.mtrValues = Object.assign({}, s.mtrValues, APP.mtrValues || {});
+        }
+        if (s.personalRecords) {
+            APP.personalRecords = Object.assign({}, s.personalRecords, APP.personalRecords || {});
+        }
     }
     const { data: protocols } = await sbClient.from('protocols').select('*').eq('user_id', user.id).order('created_at');
     if (!protocols || protocols.length === 0) {
