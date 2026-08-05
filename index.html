@@ -2821,11 +2821,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 <!-- ══ GRAMS SELECTOR OVERLAY ══ -->
 <div id="grams-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.92);z-index:5100;align-items:flex-end;justify-content:center;flex-direction:column;">
-  <div style="background:#1e293b;border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:480px;box-sizing:border-box;position:relative;">
+  <div style="background:#1e293b;border-radius:20px 20px 0 0;padding:24px 20px calc(36px + env(safe-area-inset-bottom,0px));width:100%;max-width:480px;box-sizing:border-box;position:relative;max-height:calc(100vh - max(env(safe-area-inset-top),44px));overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;">
     <!-- HEADER -->
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;margin-right:-20px;padding-right:16px;">
       <span style="font-size:0.52rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.1em;white-space:nowrap;">Prodotto trovato</span>
-      <button onclick="gramsClose()" style="background:none;border:none;color:#cbd5e1;font-size:1.3rem;cursor:pointer;padding:0;line-height:1;flex-shrink:0;">✕</button>
+      <button onclick="gramsClose()" style="width:auto;background:none;border:none;color:#cbd5e1;font-size:1.3rem;cursor:pointer;padding:0 4px;line-height:1;flex-shrink:0;">✕</button>
     </div>
     <!-- NOME + MATITA INLINE -->
     <div style="margin-bottom:14px;">
@@ -8179,7 +8179,12 @@ var NOVA_LABELS = { 1:'Non processato', 2:'Ingrediente culinario', 3:'Trasformat
 var NOVA_COLORS = { 1:'#0f8b4c', 2:'#7ac13f', 3:'#e8811c', 4:'#e1341e' };
 
 function novaBarHTML(nova) {
-    if (!nova || nova < 1 || nova > 4) return '';
+    if (!nova || nova < 1 || nova > 4) {
+        return '<div style="margin-top:14px;display:flex;justify-content:space-between;align-items:baseline;">' +
+            '<span style="font-size:0.5rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.09em;">Grado di lavorazione</span>' +
+            '<span style="font-size:0.55rem;color:#64748b;font-style:italic;">dato non disponibile</span>' +
+        '</div>';
+    }
     var segs = '';
     for (var i = 1; i <= 4; i++) {
         segs += '<div style="flex:1;height:6px;border-radius:99px;background:' +
@@ -8198,14 +8203,20 @@ function novaBarHTML(nova) {
 }
 
 function additivesPillHTML(n) {
-    if (n == null) return '';
+    if (n == null) {
+        return '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;">' +
+            '<span style="font-size:0.5rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.09em;">Additivi</span>' +
+            '<span style="font-size:0.55rem;color:#64748b;font-style:italic;">dato non disponibile</span>' +
+        '</div>';
+    }
     var tone;
     if (n === 0)      tone = { bg:'rgba(52,211,153,0.1)', bd:'rgba(52,211,153,0.32)', c:'#34d399' };
     else if (n <= 4)  tone = { bg:'rgba(239,159,39,0.1)', bd:'rgba(239,159,39,0.32)', c:'#EF9F27' };
     else              tone = { bg:'rgba(239,68,68,0.1)',  bd:'rgba(239,68,68,0.3)',   c:'#f87171' };
-    var txt = n === 0 ? 'Nessun additivo' : (n + ' additiv' + (n === 1 ? 'o' : 'i'));
-    return '<div style="display:flex;justify-content:center;margin-top:11px;">' +
-        '<span style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:99px;font-size:0.55rem;font-weight:700;' +
+    var txt = n === 0 ? 'Nessuno' : (n + ' additiv' + (n === 1 ? 'o' : 'i'));
+    return '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:9px;">' +
+        '<span style="font-size:0.5rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.09em;">Additivi</span>' +
+        '<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:99px;font-size:0.55rem;font-weight:700;' +
         'background:' + tone.bg + ';border:1px solid ' + tone.bd + ';color:' + tone.c + ';">🧪 ' + txt + '</span>' +
     '</div>';
 }
@@ -8975,7 +8986,7 @@ async function cameraFetchProduct(barcode, meal) {
     const endpoints = [
         `https://it.openfoodfacts.org/api/v0/product/${barcode}.json`,
         `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`,
-        `https://it.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name,product_name_it,brands,nutriments,nutrition_grades,categories_tags,serving_size,serving_quantity,nova_group,additives_n,additives_tags`,
+        `https://it.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name,product_name_it,brands,nutriments,nutrition_grades,categories_tags,serving_size,serving_quantity,nova_group,nova_groups,nova_groups_tags,additives_n,additives_tags`,
     ];
 
     for (const url of endpoints) {
@@ -9084,8 +9095,17 @@ async function cameraFetchProduct(barcode, meal) {
             // Brand — maiuscolo
             const brand = (p.brands || '').split(',')[0].trim().toUpperCase() || '';
             // NOVA (grado di lavorazione 1-4) e numero di additivi
-            const novaRaw = p.nova_group != null ? parseInt(p.nova_group, 10) : NaN;
-            const novaGroup = (!isNaN(novaRaw) && novaRaw >= 1 && novaRaw <= 4) ? novaRaw : null;
+            let novaGroup = null;
+            const novaCand = [p.nova_group, p.nova_groups];
+            for (const nc of novaCand) {
+                const v = parseInt(nc, 10);
+                if (!isNaN(v) && v >= 1 && v <= 4) { novaGroup = v; break; }
+            }
+            if (novaGroup === null && Array.isArray(p.nova_groups_tags) && p.nova_groups_tags.length) {
+                // formato "en:4" oppure "4"
+                const m = String(p.nova_groups_tags[0]).match(/([1-4])\s*$/);
+                if (m) novaGroup = parseInt(m[1], 10);
+            }
             let additivesN = null;
             if (p.additives_n != null && !isNaN(parseInt(p.additives_n, 10))) additivesN = parseInt(p.additives_n, 10);
             else if (Array.isArray(p.additives_tags)) additivesN = p.additives_tags.length;
@@ -9289,9 +9309,14 @@ function gramsRefUpdate() {
     if (novaEl) {
         const nova = (food.novaGroup != null) ? food.novaGroup : null;
         const adds = (food.additivesN != null) ? food.additivesN : null;
-        const html = novaBarHTML(nova) + additivesPillHTML(adds) + nutAdviceHTML(score, nova, adds);
-        if (html) { novaEl.style.display = 'block'; novaEl.innerHTML = html; }
-        else novaEl.style.display = 'none';
+        // Mostra il blocco solo se c'e' almeno il Nutri-Score o un dato NOVA
+        if (score || nova != null || adds != null) {
+            novaEl.style.display = 'block';
+            novaEl.innerHTML = novaBarHTML(nova) + additivesPillHTML(adds) + nutAdviceHTML(score, nova, adds);
+        } else {
+            novaEl.style.display = 'none';
+            novaEl.innerHTML = '';
+        }
     }
     gramsUpdatePreview();
 }
