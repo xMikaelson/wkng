@@ -8267,9 +8267,9 @@ function deriveNova(txt, additiveCodes) {
 async function aiEstimateNova(name, ingredients) {
     try {
         const prompt = 'Classifica questo alimento secondo NOVA (1=non processato, 2=ingrediente culinario, ' +
-            '3=trasformato, 4=ultra-processato).\nProdotto: ' + (name || '') +
-            '\nIngredienti: ' + ingredients +
-            '\nRispondi SOLO con un JSON: {"nova":numero}';
+            '3=trasformato, 4=ultra-processato) e stima quanti additivi alimentari contiene.\nProdotto: ' + (name || '') +
+            (ingredients ? '\nIngredienti: ' + ingredients : '\n(lista ingredienti non disponibile: basati sul tipo di prodotto)') +
+            '\nRispondi SOLO con un JSON: {"nova":numero,"additivi":numero}';
         const res = await fetch(SUPABASE_FUNCTION_URL, {
             method: 'POST',
             headers: { 'Content-Type':'application/json', 'Authorization':'Bearer ' + SUPABASE_ANON_KEY, 'apikey': SUPABASE_ANON_KEY },
@@ -8280,8 +8280,13 @@ async function aiEstimateNova(name, ingredients) {
         txt = txt.replace(/```json|```/g, '').replace(/\*+/g, '').trim();
         const st = txt.indexOf('{'), en = txt.lastIndexOf('}');
         if (st >= 0 && en > st) txt = txt.slice(st, en + 1);
-        const v = parseInt(JSON.parse(txt).nova, 10);
-        return (v >= 1 && v <= 4) ? v : null;
+        const o = JSON.parse(txt);
+        const v = parseInt(o.nova, 10);
+        const a = parseInt(o.additivi, 10);
+        return {
+            nova: (v >= 1 && v <= 4) ? v : null,
+            additives: (!isNaN(a) && a >= 0 && a <= 30) ? a : null
+        };
     } catch(e) { return null; }
 }
 
@@ -8319,11 +8324,12 @@ function novaSourceInfoToggle() {
     host.appendChild(d);
 }
 
-function novaBarHTML(nova, src) {
+function novaBarHTML(nova, src, pending) {
     if (!nova || nova < 1 || nova > 4) {
+        var txt = pending ? 'stima in corso\u2026' : 'non determinabile';
         return '<div style="margin-top:14px;display:flex;justify-content:space-between;align-items:baseline;">' +
             '<span style="font-size:0.5rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.09em;">Grado di lavorazione</span>' +
-            '<span style="font-size:0.55rem;color:#64748b;font-style:italic;">dato non disponibile</span>' +
+            '<span style="font-size:0.55rem;color:#64748b;font-style:italic;">' + txt + '</span>' +
         '</div>';
     }
     var segs = '';
@@ -8348,11 +8354,12 @@ function additivesToggle() {
     if (el) el.style.display = (el.style.display === 'none') ? 'block' : 'none';
 }
 
-function additivesPillHTML(n, list) {
+function additivesPillHTML(n, list, src, pending) {
     if (n == null) {
+        var ptxt = pending ? 'stima in corso\u2026' : 'non determinabili';
         return '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;">' +
             '<span style="font-size:0.5rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.09em;">Additivi</span>' +
-            '<span style="font-size:0.55rem;color:#64748b;font-style:italic;">dato non disponibile</span>' +
+            '<span style="font-size:0.55rem;color:#64748b;font-style:italic;">' + ptxt + '</span>' +
         '</div>';
     }
     var tone;
@@ -8365,7 +8372,7 @@ function additivesPillHTML(n, list) {
     var onclick = hasList ? ' onclick="additivesToggle()"' : '';
     var cursor  = hasList ? 'cursor:pointer;' : '';
     return '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:9px;">' +
-        '<span style="font-size:0.5rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.09em;">Additivi</span>' +
+        '<span style="font-size:0.5rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.09em;">Additivi' + novaSourceTag(src) + '</span>' +
         '<span' + onclick + ' style="' + cursor + 'display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:99px;font-size:0.55rem;font-weight:700;' +
         'background:' + tone.bg + ';border:1px solid ' + tone.bd + ';color:' + tone.c + ';">🧪 ' + txt + chevron + '</span>' +
     '</div>' +
@@ -9106,6 +9113,64 @@ function cameraSubmitCode(meal) {
 }
 
 
+// Recupera gli ingredienti da OFF e deduce NOVA/additivi per un prodotto gia' in aw_products
+async function novaEnrichFromOFF(food, barcode) {
+    try {
+        const url = 'https://world.openfoodfacts.org/api/v2/product/' + barcode +
+                    '?fields=ingredients_text,ingredients_text_it,nova_group,nova_groups,nova_groups_tags,additives_n,additives_tags';
+        const r = await fetch(url, { signal: AbortSignal.timeout(6000) });
+        const d = await r.json();
+        const p = d.product || d;
+        if (!p) return;
+
+        // NOVA dichiarato da OFF
+        let nova = null;
+        [p.nova_group, p.nova_groups].forEach(function(c) {
+            if (nova != null) return;
+            const v = parseInt(c, 10);
+            if (!isNaN(v) && v >= 1 && v <= 4) nova = v;
+        });
+        if (nova == null && Array.isArray(p.nova_groups_tags) && p.nova_groups_tags.length) {
+            const m = String(p.nova_groups_tags[0]).match(/([1-4])\s*$/);
+            if (m) nova = parseInt(m[1], 10);
+        }
+        let source = (nova != null) ? 'off' : null;
+
+        // Additivi
+        let addN = null;
+        if (p.additives_n != null && !isNaN(parseInt(p.additives_n, 10))) addN = parseInt(p.additives_n, 10);
+        else if (Array.isArray(p.additives_tags)) addN = p.additives_tags.length;
+
+        // Deduzione dagli ingredienti
+        const ing = p.ingredients_text_it || p.ingredients_text || '';
+        const list = parseAdditives(ing);
+        if (list) {
+            food.additivesList = list;
+            if (addN == null) addN = list.length;
+        }
+        if (nova == null && ing) {
+            const dn = deriveNova(ing, list || []);
+            if (dn != null) { nova = dn; source = 'derived'; }
+        }
+
+        if (nova != null)  { food.novaGroup = nova; food.novaSource = source; }
+        if (addN != null)  food.additivesN = addN;
+        if (ing) food.ingredientsText = ing;
+
+        // Scrive il risultato in aw_products cosi' vale per tutti
+        if (nova != null || addN != null) {
+            try {
+                await sbClient.from('aw_products').update({
+                    nova_group: (nova != null) ? nova : null,
+                    additives_n: (addN != null) ? addN : null,
+                    nova_source: source,
+                    additives_list: Array.isArray(food.additivesList) ? food.additivesList.join(',') : null
+                }).eq('barcode', barcode);
+            } catch(e) { console.warn('nova write-back failed:', e.message); }
+        }
+    } catch(e) { console.warn('novaEnrichFromOFF failed:', e.message); }
+}
+
 async function cameraFetchProduct(barcode, meal) {
     const anim = document.getElementById('meal-anim-' + meal);
     const msg  = document.getElementById('meal-msg-' + meal);
@@ -9143,6 +9208,11 @@ async function cameraFetchProduct(barcode, meal) {
             console.log('Found in Awakening DB:', food.name);
         }
     } catch(e) { console.warn('aw_products lookup error:', e.message); }
+
+    // ── Step 1b: prodotto gia' nel DB ma senza NOVA/additivi -> deduci dagli ingredienti ──
+    if (food && food.novaGroup == null) {
+        await novaEnrichFromOFF(food, barcode);
+    }
 
     // ── Step 2: If not found, try Open Food Facts ──
     if (!food) {
@@ -9494,17 +9564,30 @@ function gramsRefUpdate() {
         const list = Array.isArray(food.additivesList) ? food.additivesList : null;
         if (score || nova != null || adds != null) {
             novaEl.style.display = 'block';
-            novaEl.innerHTML = novaBarHTML(nova, src) + additivesPillHTML(adds, list) + nutAdviceHTML(score, nova, adds);
+            novaEl.innerHTML = novaBarHTML(nova, src, !food._novaAiTried) + additivesPillHTML(adds, list, food.additivesSource || null, !food._novaAiTried) + nutAdviceHTML(score, nova, adds);
             // Se l'euristica non ha deciso ma abbiamo gli ingredienti, chiedi all'AI (non bloccante)
-            if (nova == null && food.ingredientsText && !food._novaAiTried) {
+            if (nova == null && !food._novaAiTried) {
                 food._novaAiTried = true;
-                aiEstimateNova(food.name, food.ingredientsText).then(function(v) {
-                    if (v == null) return;
-                    food.novaGroup = v;
+                aiEstimateNova(food.name, food.ingredientsText || '').then(function(r) {
+                    if (!r || r.nova == null) return;
+                    food.novaGroup  = r.nova;
                     food.novaSource = 'ai';
+                    if (adds == null && r.additives != null) {
+                        food.additivesN = r.additives;
+                        food.additivesSource = 'ai';
+                    }
                     const ov = document.getElementById('grams-overlay');
                     if (ov) { try { ov.dataset.food = JSON.stringify(food); } catch(e) {} }
                     gramsRefUpdate();
+                    // Scrive in aw_products cosi' vale per tutti
+                    if (food.barcode) {
+                        try {
+                            sbClient.from('aw_products').update({
+                                nova_group: r.nova, nova_source: 'ai',
+                                additives_n: (food.additivesN != null) ? food.additivesN : null
+                            }).eq('barcode', food.barcode);
+                        } catch(e) {}
+                    }
                 });
             }
         } else {
