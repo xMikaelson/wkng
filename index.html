@@ -8177,7 +8177,7 @@ function nutScoreInfoToggle() {
 }
 
 
-var E_ADDITIVES = {"E100":["Curcumina","colorante"],"E101":["Riboflavina","colorante"],"E102":["Tartrazina","colorante"],"E104":["Giallo di chinolina","colorante"],"E110":["Giallo tramonto","colorante"],"E120":["Cocciniglia","colorante"],"E122":["Azorubina","colorante"],"E124":["Rosso cocciniglia A","colorante"],"E129":["Rosso allura","colorante"],"E131":["Blu patentato V","colorante"],"E132":["Indigotina","colorante"],"E133":["Blu brillante","colorante"],"E140":["Clorofille","colorante"],"E141":["Complessi rameici di clorofille","colorante"],"E150a":["Caramello semplice","colorante"],"E150b":["Caramello solfito-caustico","colorante"],"E150c":["Caramello ammoniacale","colorante"],"E150d":["Caramello solfito-ammoniacale","colorante"],"E153":["Carbone vegetale","colorante"],"E160a":["Caroteni","colorante"],"E160b":["Annatto","colorante"],"E160c":["Estratto di paprica","colorante"],"E160d":["Licopene","colorante"],"E161b":["Luteina","colorante"],"E162":["Rosso di barbabietola","colorante"],"E163":["Antociani","colorante"],"E170":["Carbonato di calcio","colorante"],"E171":["Biossido di titanio","colorante"],"E172":["Ossidi di ferro","colorante"],"E200":["Acido sorbico","conservante"],"E202":["Sorbato di potassio","conservante"],"E203":["Sorbato di calcio","conservante"],"E210":["Acido benzoico","conservante"],"E211":["Benzoato di sodio","conservante"],"E212":["Benzoato di potassio","conservante"],"E214":["p-idrossibenzoato di etile","conservante"],"E220":["Anidride solforosa","conservante"],"E221":["Solfito di sodio","conservante"],"E222":["Bisolfito di sodio","conservante"],"E223":["Metabisolfito di sodio","conservante"],"E224":["Metabisolfito di potassio","conservante"],"E228":["Bisolfito di potassio","conservante"],"E234":["Nisina","conservante"],"E235":["Natamicina","conservante"],"E239":["Esametilentetrammina","conservante"],"E242":["Dimetildicarbonato","conservante"],"E249":["Nitrito di potassio","conservante"],"E250":["Nitrito di sodio","conservante"],"E251":["Nitrato di sodio","conservante"],"E252":["Nitrato di potassio","conservante"],"E260":["Acido acetico","conservante"],"E261":["Acetato di potassio","conservante"],"E262":["Acetati di sodio","conservante"],"E263":["Acetato di calcio","conservante"],"E270":["Acido lattico","conservante"],"E280":["Acido propionico","conservante"],"E281":["Propionato di sodio","conservante"],"E282":["Propionato di calcio","conservante"],"E284":["Acido borico","conservante"],"E290":["Anidride carbonica","gas"],"E296":["Acido malico","correttore di acidita"],"E297":["Acido fumarico","correttore di acidita"],"E300":["Acido ascorbico","antiossidante"],"E301":["Ascorbato di sodio","antiossidante"],"E302":["Ascorbato di calcio","antiossidante"],"E304":["Palmitato di ascorbile","antiossidante"],"E306":["Tocoferoli","antiossidante"],"E307":["Alfa-tocoferolo","antiossidante"],"E308":["Gamma-tocoferolo","antiossidante"],"E309":["Delta-tocoferolo","antiossidante"],"E310":["Gallato di propile","antiossidante"],"E315":["Acido eritorbico","antiossidante"],"E316":["Eritorbato di sodio","antiossidante"],"E319":["Terbutilidrochinone","antiossidante"],"E320":["Butilidrossianisolo (BHA)","antiossidante"],"E321":["Butilidrossitoluene (BHT)","antiossidante"],"E322":["Lecitine","emulsionante"],"E325":["Lattato di sodio","correttore di acidita"],"E326":["Lattato di potassio","correttore di acidita"],"E327":["Lattato di calcio","correttore di acidita"],"E330":["Acido citrico","correttore di acidita"],"E331":["Citrati di sodio","correttore di acidita"],"E332":["Citrati di potassio","correttore di acidita"],"E333":["Citrati di calcio","correttore di acidita"],"E334":["Acido tartarico","correttore di acidita"],"E335":["Tartrati di sodio","correttore di acidita"],"E336":["Tartrati di potassio","correttore di acidita"],"E338":["Acido fosforico","correttore di acidita"],"E339":["Fosfati di sodio","stabilizzante"],"E340":["Fosfati di potassio","stabilizzante"],"E341":["Fosfati di calcio","stabilizzante"],"E322i":["Lecitina","emulsionante"],"E400":["Acido alginico","addensante"],"E401":["Alginato di sodio","addensante"],"E402":["Alginato di potassio","addensante"],"E406":["Agar agar","addensante"],"E407":["Carragenina","addensante"],"E410":["Farina di semi di carrube","addensante"],"E412":["Gomma di guar","addensante"],"E413":["Gomma adragante","addensante"],"E414":["Gomma arabica","addensante"],"E415":["Gomma di xanthan","addensante"],"E417":["Gomma tara","addensante"],"E418":["Gomma gellano","addensante"],"E420":["Sorbitolo","dolcificante"],"E421":["Mannitolo","dolcificante"],"E422":["Glicerolo","umettante"],"E425":["Konjac","addensante"],"E440":["Pectine","gelificante"],"E441":["Gelatina","gelificante"],"E450":["Difosfati","stabilizzante"],"E451":["Trifosfati","stabilizzante"],"E452":["Polifosfati","stabilizzante"],"E460":["Cellulosa","addensante"],"E461":["Metilcellulosa","addensante"],"E464":["Idrossipropilmetilcellulosa","addensante"],"E466":["Carbossimetilcellulosa","addensante"],"E468":["Carbossimetilcellulosa reticolata","stabilizzante"],"E471":["Mono- e digliceridi degli acidi grassi","emulsionante"],"E472e":["Esteri mono- e diacetiltartarici","emulsionante"],"E473":["Saccarosio esteri","emulsionante"],"E475":["Esteri poliglicerici","emulsionante"],"E476":["Poliricinoleato di poliglicerolo","emulsionante"],"E481":["Stearoil-2-lattilato di sodio","emulsionante"],"E482":["Stearoil-2-lattilato di calcio","emulsionante"],"E491":["Monostearato di sorbitano","emulsionante"],"E500":["Carbonati di sodio","agente lievitante"],"E501":["Carbonati di potassio","agente lievitante"],"E503":["Carbonati di ammonio","agente lievitante"],"E504":["Carbonati di magnesio","antiagglomerante"],"E507":["Acido cloridrico","correttore di acidita"],"E509":["Cloruro di calcio","stabilizzante"],"E516":["Solfato di calcio","stabilizzante"],"E524":["Idrossido di sodio","correttore di acidita"],"E551":["Biossido di silicio","antiagglomerante"],"E552":["Silicato di calcio","antiagglomerante"],"E553b":["Talco","antiagglomerante"],"E555":["Silicato di potassio e alluminio","antiagglomerante"],"E570":["Acidi grassi","antiagglomerante"],"E575":["Glucono-delta-lattone","correttore di acidita"],"E576":["Gluconato di sodio","sequestrante"],"E620":["Acido glutammico","esaltatore di sapidita"],"E621":["Glutammato monosodico","esaltatore di sapidita"],"E622":["Glutammato monopotassico","esaltatore di sapidita"],"E627":["Guanilato disodico","esaltatore di sapidita"],"E631":["Inosinato disodico","esaltatore di sapidita"],"E635":["Ribonucleotidi disodici","esaltatore di sapidita"],"E640":["Glicina","esaltatore di sapidita"],"E900":["Dimetilpolisilossano","antischiumogeno"],"E901":["Cera d api","agente di rivestimento"],"E903":["Cera carnauba","agente di rivestimento"],"E904":["Gommalacca","agente di rivestimento"],"E920":["L-cisteina","agente trattamento farine"],"E927b":["Carbammide","agente trattamento farine"],"E950":["Acesulfame K","dolcificante"],"E951":["Aspartame","dolcificante"],"E952":["Ciclamato","dolcificante"],"E954":["Saccarina","dolcificante"],"E955":["Sucralosio","dolcificante"],"E960":["Glicosidi steviolici","dolcificante"],"E961":["Neotame","dolcificante"],"E962":["Sale di aspartame-acesulfame","dolcificante"],"E965":["Maltitolo","dolcificante"],"E966":["Lattitolo","dolcificante"],"E967":["Xilitolo","dolcificante"],"E968":["Eritritolo","dolcificante"],"E999":["Estratto di quillaia","agente schiumogeno"]};
+var E_ADDITIVES = {"E100":["Curcumina","colorante"],"E101":["Riboflavina","colorante"],"E102":["Tartrazina","colorante"],"E104":["Giallo di chinolina","colorante"],"E110":["Giallo tramonto","colorante"],"E120":["Cocciniglia","colorante"],"E122":["Azorubina","colorante"],"E124":["Rosso cocciniglia A","colorante"],"E129":["Rosso allura","colorante"],"E131":["Blu patentato V","colorante"],"E132":["Indigotina","colorante"],"E133":["Blu brillante","colorante"],"E140":["Clorofille","colorante"],"E141":["Complessi rameici di clorofille","colorante"],"E150a":["Caramello semplice","colorante"],"E150b":["Caramello solfito-caustico","colorante"],"E150c":["Caramello ammoniacale","colorante"],"E150d":["Caramello solfito-ammoniacale","colorante"],"E153":["Carbone vegetale","colorante"],"E160a":["Caroteni","colorante"],"E160b":["Annatto","colorante"],"E160c":["Estratto di paprica","colorante"],"E160d":["Licopene","colorante"],"E161b":["Luteina","colorante"],"E162":["Rosso di barbabietola","colorante"],"E163":["Antociani","colorante"],"E170":["Carbonato di calcio","colorante"],"E171":["Biossido di titanio","colorante"],"E172":["Ossidi di ferro","colorante"],"E200":["Acido sorbico","conservante"],"E202":["Sorbato di potassio","conservante"],"E203":["Sorbato di calcio","conservante"],"E210":["Acido benzoico","conservante"],"E211":["Benzoato di sodio","conservante"],"E212":["Benzoato di potassio","conservante"],"E214":["p-idrossibenzoato di etile","conservante"],"E220":["Anidride solforosa","conservante"],"E221":["Solfito di sodio","conservante"],"E222":["Bisolfito di sodio","conservante"],"E223":["Metabisolfito di sodio","conservante"],"E224":["Metabisolfito di potassio","conservante"],"E228":["Bisolfito di potassio","conservante"],"E234":["Nisina","conservante"],"E235":["Natamicina","conservante"],"E239":["Esametilentetrammina","conservante"],"E242":["Dimetildicarbonato","conservante"],"E249":["Nitrito di potassio","conservante"],"E250":["Nitrito di sodio","conservante"],"E251":["Nitrato di sodio","conservante"],"E252":["Nitrato di potassio","conservante"],"E260":["Acido acetico","conservante"],"E261":["Acetato di potassio","conservante"],"E262":["Acetati di sodio","conservante"],"E263":["Acetato di calcio","conservante"],"E270":["Acido lattico","conservante"],"E280":["Acido propionico","conservante"],"E281":["Propionato di sodio","conservante"],"E282":["Propionato di calcio","conservante"],"E284":["Acido borico","conservante"],"E290":["Anidride carbonica","gas"],"E296":["Acido malico","correttore di acidita"],"E297":["Acido fumarico","correttore di acidita"],"E300":["Acido ascorbico","antiossidante"],"E301":["Ascorbato di sodio","antiossidante"],"E302":["Ascorbato di calcio","antiossidante"],"E304":["Palmitato di ascorbile","antiossidante"],"E306":["Tocoferoli","antiossidante"],"E307":["Alfa-tocoferolo","antiossidante"],"E308":["Gamma-tocoferolo","antiossidante"],"E309":["Delta-tocoferolo","antiossidante"],"E310":["Gallato di propile","antiossidante"],"E315":["Acido eritorbico","antiossidante"],"E316":["Eritorbato di sodio","antiossidante"],"E319":["Terbutilidrochinone","antiossidante"],"E320":["Butilidrossianisolo (BHA)","antiossidante"],"E321":["Butilidrossitoluene (BHT)","antiossidante"],"E322":["Lecitine","emulsionante"],"E325":["Lattato di sodio","correttore di acidita"],"E326":["Lattato di potassio","correttore di acidita"],"E327":["Lattato di calcio","correttore di acidita"],"E330":["Acido citrico","correttore di acidita"],"E331":["Citrati di sodio","correttore di acidita"],"E332":["Citrati di potassio","correttore di acidita"],"E333":["Citrati di calcio","correttore di acidita"],"E334":["Acido tartarico","correttore di acidita"],"E335":["Tartrati di sodio","correttore di acidita"],"E336":["Tartrati di potassio","correttore di acidita"],"E338":["Acido fosforico","correttore di acidita"],"E339":["Fosfati di sodio","stabilizzante"],"E340":["Fosfati di potassio","stabilizzante"],"E341":["Fosfati di calcio","stabilizzante"],"E400":["Acido alginico","addensante"],"E401":["Alginato di sodio","addensante"],"E402":["Alginato di potassio","addensante"],"E406":["Agar agar","addensante"],"E407":["Carragenina","addensante"],"E410":["Farina di semi di carrube","addensante"],"E412":["Gomma di guar","addensante"],"E413":["Gomma adragante","addensante"],"E414":["Gomma arabica","addensante"],"E415":["Gomma di xanthan","addensante"],"E417":["Gomma tara","addensante"],"E418":["Gomma gellano","addensante"],"E420":["Sorbitolo","dolcificante"],"E421":["Mannitolo","dolcificante"],"E422":["Glicerolo","umettante"],"E425":["Konjac","addensante"],"E440":["Pectine","gelificante"],"E441":["Gelatina","gelificante"],"E450":["Difosfati","stabilizzante"],"E451":["Trifosfati","stabilizzante"],"E452":["Polifosfati","stabilizzante"],"E460":["Cellulosa","addensante"],"E461":["Metilcellulosa","addensante"],"E464":["Idrossipropilmetilcellulosa","addensante"],"E466":["Carbossimetilcellulosa","addensante"],"E468":["Carbossimetilcellulosa reticolata","stabilizzante"],"E471":["Mono- e digliceridi degli acidi grassi","emulsionante"],"E472e":["Esteri mono- e diacetiltartarici","emulsionante"],"E473":["Saccarosio esteri","emulsionante"],"E475":["Esteri poliglicerici","emulsionante"],"E476":["Poliricinoleato di poliglicerolo","emulsionante"],"E481":["Stearoil-2-lattilato di sodio","emulsionante"],"E482":["Stearoil-2-lattilato di calcio","emulsionante"],"E491":["Monostearato di sorbitano","emulsionante"],"E500":["Carbonati di sodio","agente lievitante"],"E501":["Carbonati di potassio","agente lievitante"],"E503":["Carbonati di ammonio","agente lievitante"],"E504":["Carbonati di magnesio","antiagglomerante"],"E507":["Acido cloridrico","correttore di acidita"],"E509":["Cloruro di calcio","stabilizzante"],"E516":["Solfato di calcio","stabilizzante"],"E524":["Idrossido di sodio","correttore di acidita"],"E551":["Biossido di silicio","antiagglomerante"],"E552":["Silicato di calcio","antiagglomerante"],"E553b":["Talco","antiagglomerante"],"E555":["Silicato di potassio e alluminio","antiagglomerante"],"E570":["Acidi grassi","antiagglomerante"],"E575":["Glucono-delta-lattone","correttore di acidita"],"E576":["Gluconato di sodio","sequestrante"],"E620":["Acido glutammico","esaltatore di sapidita"],"E621":["Glutammato monosodico","esaltatore di sapidita"],"E622":["Glutammato monopotassico","esaltatore di sapidita"],"E627":["Guanilato disodico","esaltatore di sapidita"],"E631":["Inosinato disodico","esaltatore di sapidita"],"E635":["Ribonucleotidi disodici","esaltatore di sapidita"],"E640":["Glicina","esaltatore di sapidita"],"E900":["Dimetilpolisilossano","antischiumogeno"],"E901":["Cera d api","agente di rivestimento"],"E903":["Cera carnauba","agente di rivestimento"],"E904":["Gommalacca","agente di rivestimento"],"E920":["L-cisteina","agente trattamento farine"],"E927b":["Carbammide","agente trattamento farine"],"E950":["Acesulfame K","dolcificante"],"E951":["Aspartame","dolcificante"],"E952":["Ciclamato","dolcificante"],"E954":["Saccarina","dolcificante"],"E955":["Sucralosio","dolcificante"],"E960":["Glicosidi steviolici","dolcificante"],"E961":["Neotame","dolcificante"],"E962":["Sale di aspartame-acesulfame","dolcificante"],"E965":["Maltitolo","dolcificante"],"E966":["Lattitolo","dolcificante"],"E967":["Xilitolo","dolcificante"],"E968":["Eritritolo","dolcificante"],"E999":["Estratto di quillaia","agente schiumogeno"]};
 
 // Categorie "cosmetiche": la loro presenza indica ultra-lavorazione (NOVA 4)
 var NOVA4_CATEGORIES = ['colorante','dolcificante','esaltatore di sapidita','emulsionante',
@@ -8195,6 +8195,24 @@ var NOVA4_MARKERS = ['sciroppo di glucosio','sciroppo di fruttosio','glucosio-fr
 
 // Ingredienti culinari (NOVA 2) quando sono l'unico ingrediente
 var NOVA2_SINGLE = ['olio','burro','zucchero','sale','aceto','miele','strutto','panna','lardo','sciroppo d\'acero'];
+
+// Normalizza il testo: minuscolo, senza accenti
+function _normTxt(x) {
+    return String(x).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+// Costruisce (e memorizza) una regex che tollera la vocale finale di ogni parola:
+// "Pectine" riconosce anche "pectina", "Lecitine" anche "lecitina"
+var _ADD_RE_CACHE = {};
+function _additiveNameRegex(key, nome) {
+    if (_ADD_RE_CACHE[key] !== undefined) return _ADD_RE_CACHE[key];
+    try {
+        var esc = _normTxt(nome).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        esc = esc.replace(/([a-z]{4,})[aeio](?![a-z])/g, '$1[aeio]?');
+        _ADD_RE_CACHE[key] = new RegExp('\\b' + esc + '\\b');
+    } catch(e) { _ADD_RE_CACHE[key] = null; }
+    return _ADD_RE_CACHE[key];
+}
 
 // Estrae gli additivi dalla lista ingredienti
 function parseAdditives(txt) {
@@ -8214,11 +8232,14 @@ function parseAdditives(txt) {
             if (k2) found[k2] = true;
         }
     }
-    // 2) nomi per esteso
+    // 2) nomi per esteso, tolleranti a singolare/plurale e accenti
+    var tn = _normTxt(t);
     Object.keys(E_ADDITIVES).forEach(function(k) {
         if (found[k]) return;
-        var nome = E_ADDITIVES[k][0].toLowerCase();
-        if (nome.length > 6 && t.indexOf(nome) !== -1) found[k] = true;
+        var nome = E_ADDITIVES[k][0];
+        if (nome.length <= 6) return;
+        var re = _additiveNameRegex(k, nome);
+        if (re && re.test(tn)) found[k] = true;
     });
     var list = Object.keys(found);
     list.sort();
@@ -8267,9 +8288,10 @@ function deriveNova(txt, additiveCodes) {
 async function aiEstimateNova(name, ingredients) {
     try {
         const prompt = 'Classifica questo alimento secondo NOVA (1=non processato, 2=ingrediente culinario, ' +
-            '3=trasformato, 4=ultra-processato) e stima quanti additivi alimentari contiene.\nProdotto: ' + (name || '') +
+            '3=trasformato, 4=ultra-processato).\nProdotto: ' + (name || '') +
             (ingredients ? '\nIngredienti: ' + ingredients : '\n(lista ingredienti non disponibile: basati sul tipo di prodotto)') +
-            '\nRispondi SOLO con un JSON: {"nova":numero,"additivi":numero}';
+            '\nSe non hai elementi sufficienti per decidere, rispondi con nova:null.' +
+            '\nRispondi SOLO con un JSON: {"nova":numero oppure null}';
         const res = await fetch(SUPABASE_FUNCTION_URL, {
             method: 'POST',
             headers: { 'Content-Type':'application/json', 'Authorization':'Bearer ' + SUPABASE_ANON_KEY, 'apikey': SUPABASE_ANON_KEY },
@@ -8282,11 +8304,8 @@ async function aiEstimateNova(name, ingredients) {
         if (st >= 0 && en > st) txt = txt.slice(st, en + 1);
         const o = JSON.parse(txt);
         const v = parseInt(o.nova, 10);
-        const a = parseInt(o.additivi, 10);
-        return {
-            nova: (v >= 1 && v <= 4) ? v : null,
-            additives: (!isNaN(a) && a >= 0 && a <= 30) ? a : null
-        };
+        // Gli additivi NON si stimano: senza etichetta non sono conoscibili
+        return { nova: (v >= 1 && v <= 4) ? v : null };
     } catch(e) { return null; }
 }
 
@@ -8356,7 +8375,7 @@ function additivesToggle() {
 
 function additivesPillHTML(n, list, src, pending) {
     if (n == null) {
-        var ptxt = pending ? 'stima in corso\u2026' : 'non determinabili';
+        var ptxt = 'non determinabili';
         return '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;">' +
             '<span style="font-size:0.5rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.09em;">Additivi</span>' +
             '<span style="font-size:0.55rem;color:#64748b;font-style:italic;">' + ptxt + '</span>' +
@@ -9572,10 +9591,6 @@ function gramsRefUpdate() {
                     if (!r || r.nova == null) return;
                     food.novaGroup  = r.nova;
                     food.novaSource = 'ai';
-                    if (adds == null && r.additives != null) {
-                        food.additivesN = r.additives;
-                        food.additivesSource = 'ai';
-                    }
                     const ov = document.getElementById('grams-overlay');
                     if (ov) { try { ov.dataset.food = JSON.stringify(food); } catch(e) {} }
                     gramsRefUpdate();
@@ -9583,8 +9598,7 @@ function gramsRefUpdate() {
                     if (food.barcode) {
                         try {
                             sbClient.from('aw_products').update({
-                                nova_group: r.nova, nova_source: 'ai',
-                                additives_n: (food.additivesN != null) ? food.additivesN : null
+                                nova_group: r.nova, nova_source: 'ai'
                             }).eq('barcode', food.barcode);
                         } catch(e) {}
                     }
