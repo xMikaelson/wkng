@@ -1,31 +1,38 @@
 {
-  "name": "Awakening – Fitness Coach",
+  "name": "Awakening",
   "short_name": "Awakening",
   "description": "Il tuo protocollo di allenamento personalizzato con AI Coach",
-  "start_url": "./",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
+  "lang": "it",
   "icons": [
+    {
+      "src": "icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
     {
       "src": "icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icon-1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
     }
-  ],
-  "categories": [
-    "fitness",
-    "health",
-    "sports"
-  ],
-  "lang": "it",
-  "scope": "./"
+  ]
 }
