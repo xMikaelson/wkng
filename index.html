@@ -15491,6 +15491,44 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 
+// ══ REFRESH HOMEPAGE ══
+// La homepage puo' essere mostrata da piu' percorsi (login, fine onboarding,
+// chiusura di un overlay, ritorno dal background, fine dello splash iniziale).
+// Solo alcuni chiamavano nutUpdateUI(), quindi kcal e macro restavano ai valori
+// del render precedente finche' non si passava da navSwitch('home').
+// Qui centralizziamo il refresh e lo agganciamo alla comparsa di #results.
+function homeRefreshData() {
+    var res = document.getElementById('results');
+    if (!res || res.style.display === 'none') return;
+    try { nutUpdateUI(); } catch(e) {}
+    try { nutTlUpdateUI(); } catch(e) {}
+    try { tdeeInitEntryBtn(); } catch(e) {}
+    try { updateStreakWidget(); } catch(e) {}
+}
+
+(function watchHomeVisibility() {
+    var res = document.getElementById('results');
+    if (!res || typeof MutationObserver === 'undefined') return;
+    var wasVisible = res.style.display !== 'none';
+    var obs = new MutationObserver(function() {
+        var isVisible = res.style.display !== 'none';
+        if (isVisible && !wasVisible) {
+            requestAnimationFrame(function() { homeRefreshData(); });
+        }
+        wasVisible = isVisible;
+    });
+    obs.observe(res, { attributes: true, attributeFilter: ['style', 'class'] });
+
+    // Ritorno in primo piano della PWA
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') homeRefreshData();
+    });
+
+    // Fine dello splash iniziale (2950ms): i dati possono essere arrivati
+    // da Supabase mentre il logo era ancora a schermo.
+    setTimeout(homeRefreshData, 3050);
+})();
+
 
   // ════════════════════════════════════════
   // AI COACH — long-press + chat + history
