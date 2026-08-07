@@ -8268,24 +8268,26 @@ function deriveNova(txt, additiveCodes) {
         return x.replace(/\([^)]*\)/g, '').replace(/[0-9.,%]+/g, '').trim();
     }).filter(function(x) { return x.length > 1; });
 
-    if (parts.length === 1) {
-        var only = parts[0];
-        for (var k = 0; k < NOVA2_SINGLE.length; k++) {
-            if (only.indexOf(NOVA2_SINGLE[k]) !== -1) return 2;
-        }
-        if (codes.length) return 3;
-        // Un solo ingrediente molto corto e' quasi sempre una scheda incompleta su
-        // Open Food Facts, non un alimento davvero non processato: meglio non decidere.
-        if (only.length < 20) return null;
-        return 1;
-    }
     // Additivi non cosmetici (conservanti, antiossidanti) -> trasformato
     if (codes.length) return 3;
+
+    // Un unico ingrediente che E' un ingrediente culinario (olio, zucchero, sale, burro,
+    // aceto, miele) -> NOVA 2. Qui non stiamo deducendo da un'assenza: lo abbiamo
+    // riconosciuto positivamente.
+    if (parts.length === 1) {
+        for (var k = 0; k < NOVA2_SINGLE.length; k++) {
+            if (parts[0].indexOf(NOVA2_SINGLE[k]) !== -1) return 2;
+        }
+    }
+
     // Sale/zucchero/olio aggiunti a un alimento -> trasformato
     if (/\bsale\b/.test(t) || /\bzucchero\b/.test(t) || /\bolio\b/.test(t)) return 3;
-    // Pochi ingredienti senza indizi: ambiguo
-    if (parts.length <= 4) return null;
-    return 3;
+
+    // Oltre questo punto potremmo solo concludere "poco lavorato", ma quella conclusione
+    // poggia sull'ASSENZA di indizi, non su una prova. Se la scheda di Open Food Facts e'
+    // incompleta l'assenza e' apparente e il risultato sarebbe falsamente rassicurante.
+    // I livelli 1 e 2 quindi si accettano solo se dichiarati dalla fonte, non dedotti.
+    return null;
 }
 
 // ── Riconoscimento integratori e messaggi dedicati ───────────────────────────
@@ -8417,7 +8419,7 @@ function supplementBoxHTML(key) {
 
 // ── NOVA + additivi + consiglio ────────────────────────────────
 // Versione della logica di deduzione: se cambia, i valori in cache vengono ricalcolati
-var DERIVE_VER = 'derived-2';
+var DERIVE_VER = 'derived-3';
 
 var NOVA_LABELS = { 1:'Non processato', 2:'Ingrediente culinario', 3:'Trasformato', 4:'Ultra-processato' };
 var NOVA_COLORS = { 1:'#0f8b4c', 2:'#7ac13f', 3:'#e8811c', 4:'#e1341e' };
@@ -9270,21 +9272,23 @@ async function novaEnrichFromOFF(food, barcode) {
             if (dn != null) { nova = dn; source = DERIVE_VER; }
         }
 
-        if (nova != null)  { food.novaGroup = nova; food.novaSource = source; }
-        if (addN != null)  food.additivesN = addN;
+        // Il ricalcolo sostituisce sempre il valore precedente, anche quando conclude
+        // "non determinabile": lasciare in piedi una vecchia deduzione sbagliata sarebbe peggio.
+        food.novaGroup  = nova;
+        food.novaSource = (nova != null) ? source : null;
+        food.additivesN = addN;
         if (ing) food.ingredientsText = ing;
 
         // Scrive il risultato in aw_products cosi' vale per tutti
-        if (nova != null || addN != null) {
-            try {
-                await sbClient.from('aw_products').update({
-                    nova_group: (nova != null) ? nova : null,
-                    additives_n: (addN != null) ? addN : null,
-                    nova_source: source,
-                    additives_list: Array.isArray(food.additivesList) ? food.additivesList.join(',') : null
-                }).eq('barcode', barcode);
-            } catch(e) { console.warn('nova write-back failed:', e.message); }
-        }
+        try {
+            await sbClient.from('aw_products').update({
+                nova_group: nova,
+                additives_n: addN,
+                nova_source: (nova != null) ? source : DERIVE_VER + '-none',
+                additives_list: Array.isArray(food.additivesList) && food.additivesList.length
+                                ? food.additivesList.join(',') : null
+            }).eq('barcode', barcode);
+        } catch(e) { console.warn('nova write-back failed:', e.message); }
     } catch(e) { console.warn('novaEnrichFromOFF failed:', e.message); }
 }
 
@@ -9327,9 +9331,11 @@ async function cameraFetchProduct(barcode, meal) {
     } catch(e) { console.warn('aw_products lookup error:', e.message); }
 
     // ── Step 1b: prodotto gia' nel DB ma senza NOVA/additivi -> deduci dagli ingredienti ──
-    var _staleDerive = food && food.novaSource &&
-                       food.novaSource.indexOf('derived') === 0 &&
-                       food.novaSource !== DERIVE_VER;
+    // Da ricalcolare: deduzione di una versione precedente, oppure valore presente
+    // senza provenienza nota (scritto prima che la colonna esistesse)
+    var _staleDerive = food && food.novaGroup != null &&
+                       (!food.novaSource ||
+                        (food.novaSource.indexOf('derived') === 0 && food.novaSource.indexOf(DERIVE_VER) !== 0));
     if (food && (food.novaGroup == null || _staleDerive)) {
         await novaEnrichFromOFF(food, barcode);
     }
