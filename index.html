@@ -8273,7 +8273,11 @@ function deriveNova(txt, additiveCodes) {
         for (var k = 0; k < NOVA2_SINGLE.length; k++) {
             if (only.indexOf(NOVA2_SINGLE[k]) !== -1) return 2;
         }
-        return codes.length ? 3 : 1;
+        if (codes.length) return 3;
+        // Un solo ingrediente molto corto e' quasi sempre una scheda incompleta su
+        // Open Food Facts, non un alimento davvero non processato: meglio non decidere.
+        if (only.length < 20) return null;
+        return 1;
     }
     // Additivi non cosmetici (conservanti, antiossidanti) -> trasformato
     if (codes.length) return 3;
@@ -8287,7 +8291,7 @@ function deriveNova(txt, additiveCodes) {
 // ── Riconoscimento integratori e messaggi dedicati ───────────────────────────
 // Le indicazioni seguono le position stand ISSN e le meta-analisi citate nel testo.
 var SUPPLEMENTS = [
-    { key:'protein',   kw:['whey','proteine in polvere','protein powder','isolate','isolato di prote','concentrato di prote','caseina','casein','siero di latte','protein bar','barretta protein','proteine del siero'] },
+    { key:'protein',   kw:['whey','proteine in polvere','protein powder','isolato di prote','concentrato di prote','caseina','casein','siero di latte','proteine del siero'] },
     { key:'creatine',  kw:['creatina','creatine','monoidrato'] },
     { key:'omega3',    kw:['omega 3','omega-3','omega3','olio di pesce','fish oil','krill','epa e dha','epa/dha'] },
     { key:'vitd',      kw:['vitamina d','vitamin d','colecalciferolo','cholecalciferol'] },
@@ -8300,12 +8304,23 @@ var SUPPLEMENTS = [
     { key:'zinc',      kw:['zinco','zinc'] }
 ];
 
-function detectSupplement(name, categories) {
+// Parole generiche: da sole non bastano, servono anche molte proteine per 100g
+var PROTEIN_WEAK_KW = ['protein','proteic','proteine','isolate','iso ','hydro','amino'];
+
+function detectSupplement(name, categories, p100) {
     var hay = _normTxt((name || '') + ' ' + (Array.isArray(categories) ? categories.join(' ') : (categories || '')));
     for (var i = 0; i < SUPPLEMENTS.length; i++) {
         var kws = SUPPLEMENTS[i].kw;
         for (var j = 0; j < kws.length; j++) {
             if (hay.indexOf(_normTxt(kws[j])) !== -1) return SUPPLEMENTS[i].key;
+        }
+    }
+    // Riferimento generico alle proteine: vale solo se il prodotto ne e' davvero ricco,
+    // cosi' uno yogurt proteico resta un alimento e non diventa un integratore
+    var prot = parseFloat(p100);
+    if (!isNaN(prot) && prot >= 30) {
+        for (var w = 0; w < PROTEIN_WEAK_KW.length; w++) {
+            if (hay.indexOf(PROTEIN_WEAK_KW[w]) !== -1) return 'protein';
         }
     }
     return null;
@@ -8401,17 +8416,20 @@ function supplementBoxHTML(key) {
 }
 
 // ── NOVA + additivi + consiglio ────────────────────────────────
+// Versione della logica di deduzione: se cambia, i valori in cache vengono ricalcolati
+var DERIVE_VER = 'derived-2';
+
 var NOVA_LABELS = { 1:'Non processato', 2:'Ingrediente culinario', 3:'Trasformato', 4:'Ultra-processato' };
 var NOVA_COLORS = { 1:'#0f8b4c', 2:'#7ac13f', 3:'#e8811c', 4:'#e1341e' };
 
 function novaSourceTag(src) {
-    if (src === 'derived') return '<span style="display:inline-flex;align-items:center;padding:2px 6px;border-radius:5px;font-size:0.44rem;font-weight:700;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.3);color:#a5b4fc;margin-left:6px;vertical-align:middle;">stimato</span>';
+    if (src && src.indexOf('derived') === 0) return '<span style="display:inline-flex;align-items:center;padding:2px 6px;border-radius:5px;font-size:0.44rem;font-weight:700;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.3);color:#a5b4fc;margin-left:6px;vertical-align:middle;">stimato</span>';
     return '';
 }
 
 // "i" che spiega le diciture stimato / AI
 function novaSourceInfoBtn(src) {
-    if (src !== 'derived') return '';
+    if (!src || src.indexOf('derived') !== 0) return '';
     return '<span onclick="event.stopPropagation();novaSourceInfoToggle()" style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;border:1px solid rgba(255,255,255,0.25);color:#94a3b8;font-size:0.45rem;font-style:italic;font-family:Georgia,serif;margin-left:5px;cursor:pointer;vertical-align:middle;">i</span>';
 }
 
@@ -9249,7 +9267,7 @@ async function novaEnrichFromOFF(food, barcode) {
         }
         if (nova == null && ing) {
             const dn = deriveNova(ing, list || []);
-            if (dn != null) { nova = dn; source = 'derived'; }
+            if (dn != null) { nova = dn; source = DERIVE_VER; }
         }
 
         if (nova != null)  { food.novaGroup = nova; food.novaSource = source; }
@@ -9309,7 +9327,10 @@ async function cameraFetchProduct(barcode, meal) {
     } catch(e) { console.warn('aw_products lookup error:', e.message); }
 
     // ── Step 1b: prodotto gia' nel DB ma senza NOVA/additivi -> deduci dagli ingredienti ──
-    if (food && food.novaGroup == null) {
+    var _staleDerive = food && food.novaSource &&
+                       food.novaSource.indexOf('derived') === 0 &&
+                       food.novaSource !== DERIVE_VER;
+    if (food && (food.novaGroup == null || _staleDerive)) {
         await novaEnrichFromOFF(food, barcode);
     }
 
@@ -9453,7 +9474,7 @@ async function cameraFetchProduct(barcode, meal) {
             }
             if (novaGroup == null && ingText) {
                 const dn = deriveNova(ingText, derivedList || []);
-                if (dn != null) { novaGroup = dn; novaSource = 'derived'; }
+                if (dn != null) { novaGroup = dn; novaSource = DERIVE_VER; }
             }
 
             food = {
@@ -9661,7 +9682,7 @@ function gramsRefUpdate() {
         // Mostra il blocco solo se c'e' almeno il Nutri-Score o un dato NOVA
         const src  = food.novaSource || null;
         const list = Array.isArray(food.additivesList) ? food.additivesList : null;
-        const supp = detectSupplement(food.name, food.offCategory);
+        const supp = detectSupplement(food.name, food.offCategory, ref.p100);
         if (score || nova != null || adds != null || supp) {
             novaEl.style.display = 'block';
             novaEl.innerHTML = novaBarHTML(nova, src) + additivesPillHTML(adds, list) +
