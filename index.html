@@ -8168,7 +8168,7 @@ function nutScoreInfoToggle() {
         '<div style="font-size:10px;color:#cbd5e1;line-height:1.6;margin-bottom:12px;">Sistema europeo che valuta la qualit\u00e0 nutrizionale su scala A\u2192E, basato su calorie, proteine, zuccheri, grassi saturi e fibre per 100g. <b style="color:#e2e8f0;">Non tiene conto di additivi e conservanti</b>: per quello serve il grado di lavorazione.</div>' +
         '<div style="font-size:11px;font-weight:700;color:#e2e8f0;margin-bottom:6px;">Grado di lavorazione (NOVA)</div>' +
         '<div style="font-size:10px;color:#cbd5e1;line-height:1.6;margin-bottom:12px;">Classifica gli alimenti in 4 livelli in base a quanto sono trasformati industrialmente, leggendo la lista ingredienti. \u00c8 indipendente dal Nutri-Score: l\u2019olio d\u2019oliva \u00e8 non processato ma calorico, una bevanda light \u00e8 poco calorica ma ultra-processata.</div>' +
-        '<div style="font-size:10px;color:#cbd5e1;line-height:1.6;margin-bottom:12px;">Quando il produttore non dichiara il dato, l\u2019app lo ricava dalla lista ingredienti (etichetta <b style="color:#a5b4fc;">stimato</b>) o lo fa stimare al modello (etichetta <b style="color:#c4b5fd;">AI</b>).</div>' +
+        '<div style="font-size:10px;color:#cbd5e1;line-height:1.6;margin-bottom:12px;">Quando il produttore non dichiara il dato, l\u2019app lo ricava dalla lista ingredienti (etichetta <b style="color:#a5b4fc;">stimato</b>). Se nemmeno quella \u00e8 disponibile, il grado di lavorazione non viene mostrato.</div>' +
         '<div style="font-size:11px;font-weight:700;color:#e2e8f0;margin-bottom:6px;">Il consiglio</div>' +
         '<div style="font-size:10px;color:#cbd5e1;line-height:1.6;margin-bottom:12px;">\u00c8 una sintesi dei due indicatori pi\u00f9 il numero di additivi, non uno standard ufficiale. Serve da orientamento e non sostituisce il parere di un nutrizionista.</div>' +
         '<div style="display:flex;gap:6px;">' + gradesHTML + '</div>';
@@ -8284,29 +8284,120 @@ function deriveNova(txt, additiveCodes) {
     return 3;
 }
 
-// Stima NOVA con l'AI quando l'euristica non decide
-async function aiEstimateNova(name, ingredients) {
+// ── Riconoscimento integratori e messaggi dedicati ───────────────────────────
+// Le indicazioni seguono le position stand ISSN e le meta-analisi citate nel testo.
+var SUPPLEMENTS = [
+    { key:'protein',   kw:['whey','proteine in polvere','protein powder','isolate','isolato di prote','concentrato di prote','caseina','casein','siero di latte','protein bar','barretta protein','proteine del siero'] },
+    { key:'creatine',  kw:['creatina','creatine','monoidrato'] },
+    { key:'omega3',    kw:['omega 3','omega-3','omega3','olio di pesce','fish oil','krill','epa e dha','epa/dha'] },
+    { key:'vitd',      kw:['vitamina d','vitamin d','colecalciferolo','cholecalciferol'] },
+    { key:'magnesium', kw:['magnesio','magnesium'] },
+    { key:'bcaa',      kw:['bcaa','eaa','aminoacidi ramificati','amminoacidi ramificati','essential amino'] },
+    { key:'betaala',   kw:['beta alanina','beta-alanina','beta alanine','beta-alanine'] },
+    { key:'caffeine',  kw:['pre workout','pre-workout','preworkout','caffeina','caffeine'] },
+    { key:'multivit',  kw:['multivitaminico','multivitamin','multi vitamin'] },
+    { key:'collagen',  kw:['collagene','collagen'] },
+    { key:'zinc',      kw:['zinco','zinc'] }
+];
+
+function detectSupplement(name, categories) {
+    var hay = _normTxt((name || '') + ' ' + (Array.isArray(categories) ? categories.join(' ') : (categories || '')));
+    for (var i = 0; i < SUPPLEMENTS.length; i++) {
+        var kws = SUPPLEMENTS[i].kw;
+        for (var j = 0; j < kws.length; j++) {
+            if (hay.indexOf(_normTxt(kws[j])) !== -1) return SUPPLEMENTS[i].key;
+        }
+    }
+    return null;
+}
+
+// Ultimo peso registrato, per personalizzare il fabbisogno proteico
+function _lastBodyWeight() {
     try {
-        const prompt = 'Classifica questo alimento secondo NOVA (1=non processato, 2=ingrediente culinario, ' +
-            '3=trasformato, 4=ultra-processato).\nProdotto: ' + (name || '') +
-            (ingredients ? '\nIngredienti: ' + ingredients : '\n(lista ingredienti non disponibile: basati sul tipo di prodotto)') +
-            '\nSe non hai elementi sufficienti per decidere, rispondi con nova:null.' +
-            '\nRispondi SOLO con un JSON: {"nova":numero oppure null}';
-        const res = await fetch(SUPABASE_FUNCTION_URL, {
-            method: 'POST',
-            headers: { 'Content-Type':'application/json', 'Authorization':'Bearer ' + SUPABASE_ANON_KEY, 'apikey': SUPABASE_ANON_KEY },
-            body: JSON.stringify({ messages: [{ role:'user', content: prompt }], max_tokens: 40 })
-        });
-        const data = await res.json();
-        let txt = (data.content || []).map(function(b){ return b.text || ''; }).join('').trim();
-        txt = txt.replace(/```json|```/g, '').replace(/\*+/g, '').trim();
-        const st = txt.indexOf('{'), en = txt.lastIndexOf('}');
-        if (st >= 0 && en > st) txt = txt.slice(st, en + 1);
-        const o = JSON.parse(txt);
-        const v = parseInt(o.nova, 10);
-        // Gli additivi NON si stimano: senza etichetta non sono conoscibili
-        return { nova: (v >= 1 && v <= 4) ? v : null };
-    } catch(e) { return null; }
+        var log = weightGetLog();
+        if (log && log.length) {
+            var kg = parseFloat(log[log.length - 1].kg);
+            if (!isNaN(kg) && kg > 25 && kg < 300) return kg;
+        }
+    } catch(e) {}
+    return null;
+}
+
+function supplementMessage(key) {
+    var kg = _lastBodyWeight();
+    switch (key) {
+        case 'protein': {
+            var base = 'Per l\u2019ipertrofia servono 1,6\u20132,2 g di proteine per kg di peso al giorno. \u00c8 il totale della giornata: ci rientrano anche carne, pesce, uova, latticini e legumi, non solo la polvere.';
+            if (kg) {
+                base += ' Per i tuoi ' + Math.round(kg) + ' kg sono ' +
+                        Math.round(kg * 1.6) + '\u2013' + Math.round(kg * 2.2) + ' g complessivi.' +
+                        ' Oltre questa soglia i benefici si appiattiscono.';
+            } else {
+                base += ' Oltre questa soglia i benefici si appiattiscono.' +
+                        '<br><span style="color:#a5b4fc;">Registra il tuo peso in Progressi: la prossima volta ti calcolo il fabbisogno esatto.</span>';
+            }
+            return { icon:'\u{1F4AA}', title:'Proteine in polvere', text: base,
+                     src:'Morton et al., Br J Sports Med 2018' };
+        }
+        case 'creatine':
+            return { icon:'\u26A1', title:'Creatina',
+                     text:'3\u20135 g al giorno di creatina monoidrato aumentano le scorte di fosfocreatina nel muscolo: pi\u00f9 forza e pi\u00f9 ripetizioni negli sforzi brevi e intensi. Non serve la fase di carico, conta la costanza. L\u2019orario \u00e8 indifferente.',
+                     src:'Kreider et al., ISSN Position Stand 2017' };
+        case 'omega3':
+            return { icon:'\u{1F41F}', title:'Omega-3',
+                     text:'EPA e DHA sostengono la funzione cardiaca e hanno un effetto antinfiammatorio. L\u2019assunzione di riferimento per un adulto \u00e8 di circa 250 mg al giorno di EPA + DHA. Utili soprattutto se mangi poco pesce azzurro.',
+                     src:'EFSA, valori dietetici di riferimento' };
+        case 'vitd':
+            return { icon:'\u2600\uFE0F', title:'Vitamina D',
+                     text:'Contribuisce al mantenimento di ossa e funzione muscolare normali. Il riferimento per gli adulti \u00e8 di circa 15 \u00b5g (600 UI) al giorno. La carenza \u00e8 comune in inverno: per dosaggi pi\u00f9 alti conviene basarsi su un esame del sangue.',
+                     src:'EFSA, valori dietetici di riferimento' };
+        case 'magnesium':
+            return { icon:'\u{1F9C2}', title:'Magnesio',
+                     text:'Contribuisce alla normale funzione muscolare e alla riduzione della stanchezza. Il riferimento \u00e8 di circa 300\u2013350 mg al giorno. Integrarlo aiuta se l\u2019apporto con la dieta \u00e8 scarso; non aumenta la performance di per s\u00e9.',
+                     src:'EFSA, valori dietetici di riferimento' };
+        case 'bcaa':
+            return { icon:'\u{1F9EC}', title:'Aminoacidi ramificati',
+                     text:'Se il tuo apporto proteico giornaliero \u00e8 gi\u00e0 adeguato, i BCAA aggiungono poco: la sintesi proteica richiede tutti gli aminoacidi essenziali, non solo tre. Meglio investire su proteine complete.',
+                     src:'Jackman et al., Front Physiol 2017' };
+        case 'betaala':
+            return { icon:'\u{1F525}', title:'Beta-alanina',
+                     text:'4\u20136 g al giorno per almeno 2\u20134 settimane aumentano la carnosina muscolare e tamponano l\u2019acidosi: utile negli sforzi tra 1 e 4 minuti. Il formicolio alla pelle \u00e8 innocuo e si riduce dividendo le dosi.',
+                     src:'Trexler et al., ISSN Position Stand 2015' };
+        case 'caffeine':
+            var ctxt = '3\u20136 mg per kg di peso, 30\u201360 minuti prima dell\u2019allenamento, migliorano forza, resistenza e percezione dello sforzo.';
+            if (kg) ctxt += ' Per i tuoi ' + Math.round(kg) + ' kg sono circa ' + Math.round(kg*3) + '\u2013' + Math.round(kg*6) + ' mg.';
+            ctxt += ' Evitala nelle ore serali per non compromettere il sonno.';
+            if (!kg) ctxt += '<br><span style="color:#a5b4fc;">Registra il tuo peso in Progressi: la prossima volta ti calcolo la dose su misura.</span>';
+            return { icon:'\u2615', title:'Caffeina', text: ctxt,
+                     src:'Guest et al., ISSN Position Stand 2021' };
+        case 'multivit':
+            return { icon:'\u{1F48A}', title:'Multivitaminico',
+                     text:'Fa da rete di sicurezza sulle carenze, ma se la dieta \u00e8 varia non migliora forza n\u00e9 composizione corporea. Non sostituisce frutta e verdura.',
+                     src:'Position of the Academy of Nutrition and Dietetics, 2016' };
+        case 'collagen':
+            return { icon:'\u{1F9B4}', title:'Collagene',
+                     text:'Circa 15 g assunti con vitamina C, un\u2019ora prima del lavoro sui tendini, mostrano un effetto sulla sintesi di collagene. Come proteina alimentare invece \u00e8 incompleta: non conteggiarla come fonte proteica principale.',
+                     src:'Shaw et al., Am J Clin Nutr 2017' };
+        case 'zinc':
+            return { icon:'\u{1F9EA}', title:'Zinco',
+                     text:'Contribuisce alla normale funzione immunitaria e al metabolismo dei macronutrienti. Il riferimento \u00e8 di circa 9\u201311 mg al giorno. Dosi elevate e prolungate interferiscono con l\u2019assorbimento del rame.',
+                     src:'EFSA, valori dietetici di riferimento' };
+    }
+    return null;
+}
+
+function supplementBoxHTML(key) {
+    var m = supplementMessage(key);
+    if (!m) return '';
+    return '<div style="display:flex;gap:10px;align-items:center;border-radius:13px;padding:12px 13px;margin-top:13px;' +
+            'background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.25);">' +
+        '<div style="font-size:1.05rem;flex-shrink:0;line-height:1;">' + m.icon + '</div>' +
+        '<div style="min-width:0;">' +
+            '<div style="font-size:0.72rem;font-weight:800;margin-bottom:3px;color:#a5b4fc;">' + m.title + '</div>' +
+            '<div style="font-size:0.62rem;line-height:1.55;color:#cbd5e1;">' + m.text + '</div>' +
+            '<div style="font-size:0.46rem;color:#94a3b8;margin-top:5px;font-style:italic;">' + m.src + '</div>' +
+        '</div>' +
+    '</div>';
 }
 
 // ── NOVA + additivi + consiglio ────────────────────────────────
@@ -8315,13 +8406,12 @@ var NOVA_COLORS = { 1:'#0f8b4c', 2:'#7ac13f', 3:'#e8811c', 4:'#e1341e' };
 
 function novaSourceTag(src) {
     if (src === 'derived') return '<span style="display:inline-flex;align-items:center;padding:2px 6px;border-radius:5px;font-size:0.44rem;font-weight:700;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.3);color:#a5b4fc;margin-left:6px;vertical-align:middle;">stimato</span>';
-    if (src === 'ai')      return '<span style="display:inline-flex;align-items:center;padding:2px 6px;border-radius:5px;font-size:0.44rem;font-weight:700;background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;margin-left:6px;vertical-align:middle;">AI</span>';
     return '';
 }
 
 // "i" che spiega le diciture stimato / AI
 function novaSourceInfoBtn(src) {
-    if (src !== 'derived' && src !== 'ai') return '';
+    if (src !== 'derived') return '';
     return '<span onclick="event.stopPropagation();novaSourceInfoToggle()" style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;border:1px solid rgba(255,255,255,0.25);color:#94a3b8;font-size:0.45rem;font-style:italic;font-family:Georgia,serif;margin-left:5px;cursor:pointer;vertical-align:middle;">i</span>';
 }
 
@@ -8336,21 +8426,16 @@ function novaSourceInfoToggle() {
     d.innerHTML =
         '<div style="font-size:0.58rem;color:#cbd5e1;line-height:1.6;">' +
             '<b style="color:#a5b4fc;">stimato</b> \u2014 il produttore non dichiara il dato: \u00e8 stato ricavato leggendo la lista ingredienti.<br>' +
-            '<b style="color:#c4b5fd;">AI</b> \u2014 la lista ingredienti non bastava a decidere, la classificazione \u00e8 stata stimata dal modello.<br>' +
-            'Senza etichetta, il dato arriva direttamente da Open Food Facts.' +
+            'Senza etichetta, il dato arriva direttamente da Open Food Facts.<br><br>' +
+            'Quando la lista ingredienti non \u00e8 disponibile, il grado di lavorazione e gli additivi non vengono mostrati: preferiamo non mostrare nulla piuttosto che una stima inaffidabile.' +
         '</div>' +
         '<div onclick="novaSourceInfoToggle()" style="font-size:0.55rem;color:#6366f1;font-weight:700;margin-top:7px;cursor:pointer;">Ho capito</div>';
     host.appendChild(d);
 }
 
-function novaBarHTML(nova, src, pending) {
-    if (!nova || nova < 1 || nova > 4) {
-        var txt = pending ? 'stima in corso\u2026' : 'non determinabile';
-        return '<div style="margin-top:14px;display:flex;justify-content:space-between;align-items:baseline;">' +
-            '<span style="font-size:0.5rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.09em;">Grado di lavorazione</span>' +
-            '<span style="font-size:0.55rem;color:#64748b;font-style:italic;">' + txt + '</span>' +
-        '</div>';
-    }
+function novaBarHTML(nova, src) {
+    // Nessun dato reale -> non si mostra nulla, nessuna stima
+    if (!nova || nova < 1 || nova > 4) return '';
     var segs = '';
     for (var i = 1; i <= 4; i++) {
         segs += '<div style="flex:1;height:6px;border-radius:99px;background:' +
@@ -8373,14 +8458,9 @@ function additivesToggle() {
     if (el) el.style.display = (el.style.display === 'none') ? 'block' : 'none';
 }
 
-function additivesPillHTML(n, list, src, pending) {
-    if (n == null) {
-        var ptxt = 'non determinabili';
-        return '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;">' +
-            '<span style="font-size:0.5rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.09em;">Additivi</span>' +
-            '<span style="font-size:0.55rem;color:#64748b;font-style:italic;">' + ptxt + '</span>' +
-        '</div>';
-    }
+function additivesPillHTML(n, list, src) {
+    // Nessun dato reale -> non si mostra nulla
+    if (n == null) return '';
     var tone;
     if (n === 0)      tone = { bg:'rgba(52,211,153,0.1)', bd:'rgba(52,211,153,0.32)', c:'#34d399' };
     else if (n <= 4)  tone = { bg:'rgba(239,159,39,0.1)', bd:'rgba(239,159,39,0.32)', c:'#EF9F27' };
@@ -9581,29 +9661,11 @@ function gramsRefUpdate() {
         // Mostra il blocco solo se c'e' almeno il Nutri-Score o un dato NOVA
         const src  = food.novaSource || null;
         const list = Array.isArray(food.additivesList) ? food.additivesList : null;
-        if (score || nova != null || adds != null) {
+        const supp = detectSupplement(food.name, food.offCategory);
+        if (score || nova != null || adds != null || supp) {
             novaEl.style.display = 'block';
-            novaEl.innerHTML = novaBarHTML(nova, src, !food._novaAiTried) + additivesPillHTML(adds, list, food.additivesSource || null, !food._novaAiTried) + nutAdviceHTML(score, nova, adds);
-            // Se l'euristica non ha deciso ma abbiamo gli ingredienti, chiedi all'AI (non bloccante)
-            if (nova == null && !food._novaAiTried) {
-                food._novaAiTried = true;
-                aiEstimateNova(food.name, food.ingredientsText || '').then(function(r) {
-                    if (!r || r.nova == null) return;
-                    food.novaGroup  = r.nova;
-                    food.novaSource = 'ai';
-                    const ov = document.getElementById('grams-overlay');
-                    if (ov) { try { ov.dataset.food = JSON.stringify(food); } catch(e) {} }
-                    gramsRefUpdate();
-                    // Scrive in aw_products cosi' vale per tutti
-                    if (food.barcode) {
-                        try {
-                            sbClient.from('aw_products').update({
-                                nova_group: r.nova, nova_source: 'ai'
-                            }).eq('barcode', food.barcode);
-                        } catch(e) {}
-                    }
-                });
-            }
+            novaEl.innerHTML = novaBarHTML(nova, src) + additivesPillHTML(adds, list) +
+                (supp ? supplementBoxHTML(supp) : nutAdviceHTML(score, nova, adds));
         } else {
             novaEl.style.display = 'none';
             novaEl.innerHTML = '';
