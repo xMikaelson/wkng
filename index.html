@@ -3320,11 +3320,15 @@ const DELOAD_WEEK = 4; // indice (0-based) della settimana deload
 const OVERLOAD_WEEK = DELOAD_WEEK - 1; // Chapter 4: ultima settimana di carico
 // Percentuali del baseWeight per ogni settimana
 // Percentuali del MTR, cioè del massimo tecnico ALLE RIPETIZIONI TARGET.
-// Il ciclo costruisce fino al 100% del massimo tecnico nel Chapter 4: non lo
-// supera, perché le ripetizioni prescritte restano le stesse per tutto il
-// ciclo e un carico superiore le renderebbe ineseguibili.
-// W1:80%  W2:87%  W3:94%  W4:100%  W5(Deload):94% con volume dimezzato
-const WEEK_LOADS = [0.80, 0.87, 0.94, 1.00, 0.94];
+// La scala sale fino al 100% del massimo tecnico, ma viene applicata al
+// TRAINING MAX (90% dell'MTR) e non all'MTR pieno: l'MTR è un valore da
+// serie singola, mentre lo schema prescrive 4-5 serie a quel carico.
+// È la stessa soluzione del 5/3/1 di Jim Wendler, che programma sul 90%
+// del massimale proprio per rendere completabile il lavoro multi-serie.
+// Risultato sull'MTR: W1:72%  W2:78,3%  W3:84,6%  W4:90%  W5(Deload):84,6%
+const TRAINING_MAX = 0.90;
+const MTR_LADDER   = [0.80, 0.87, 0.94, 1.00, 0.94];
+const WEEK_LOADS   = MTR_LADDER.map(function(p){ return Math.round(p * TRAINING_MAX * 1000) / 1000; });
 const STORAGE_KEY = 'awakening_state';
 
 const MOTIVATIONAL_QUOTES = [
@@ -7770,8 +7774,6 @@ function initWorkoutPage() {
                 if (_kSkip) _kSkip.style.display = 'block';
             } else {
             prevList.innerHTML = '';
-            // L'avviso va sopra al riscaldamento specifico
-            if (showOvlNotice) prevList.appendChild(buildOverloadNotice());
             if (!isDeload && exData.length > 0) {
                 var warmupContainer = document.createElement('div');
                 warmupContainer.id = 'wo-warmup-container';
@@ -7807,6 +7809,13 @@ function initWorkoutPage() {
                 }).join('')}`;
             }
             } // fine else (ricostruzione warmup)
+
+            // L'avviso va sopra al riscaldamento specifico. Fuori dal ramo
+            // else: con keepWarm il blocco non viene ricostruito, e prima
+            // l'avviso non compariva mai al rientro nella sezione.
+            if (showOvlNotice && !document.getElementById('wo-overload-notice')) {
+                prevList.insertBefore(buildOverloadNotice(), prevList.firstChild);
+            }
         }
         // Salva lista esercizi per pagina 2
         woState._exListHtml = `<div style="font-size:0.55rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;font-weight:700;">Programma · ${protoName}</div>
@@ -11687,19 +11696,28 @@ function woApplyProgression() {
 
 function woDeloadFullRest() {
     if (!confirm('Segnare la settimana di Deload come completata con riposo totale?')) return;
-    var di;
-    for (di = 0; di < 7; di++) {
-        if (APP.dayAssignments[DELOAD_WEEK] && APP.dayAssignments[DELOAD_WEEK][di]) {
-            APP.chipStates[DELOAD_WEEK][di] = 'done';
-        }
+    var assigns = APP.dayAssignments[DELOAD_WEEK] || [];
+    for (var di = 0; di < 7; di++) {
+        if (assigns[di]) APP.chipStates[DELOAD_WEEK][di] = 'done';
     }
     APP.completedWeeks[DELOAD_WEEK] = true;
-    APP.totalWorkouts = APP.chipStates.flat().filter(function(s) { return s === 'done'; }).length;
+    if (APP.availableWeeks.indexOf(DELOAD_WEEK) === -1) APP.availableWeeks.push(DELOAD_WEEK);
+    // NON ricalcolare totalWorkouts dai chip: è un contatore cumulativo e il
+    // merge Supabase sceglie lo stato con il valore più alto. Azzerarlo qui
+    // farebbe sembrare questo dispositivo meno avanzato del server.
     saveState();
     if (typeof restoreChipStates === 'function') restoreChipStates();
     renderPlanPage(DELOAD_WEEK);
     if (typeof updateStats === 'function') updateStats();
-    checkChapterCompletion(DELOAD_WEEK);
+    // Celebrazione diretta: checkChapterCompletion esce subito quando la
+    // settimana non ha giorni assegnati, che col riposo totale è il caso normale.
+    if (!APP._weekCelebrated[DELOAD_WEEK]) {
+        APP._weekCelebrated[DELOAD_WEEK] = true;
+        saveState();
+        showWeekComplete(DELOAD_WEEK);
+    } else {
+        restartCycle();
+    }
 }
 
 // Riepilogo di SOLA LETTURA dopo l'animazione di fine Chapter 4.
@@ -15302,10 +15320,37 @@ function launchEpicConfetti() {
     }
 }
 
+// Azzera il ciclo e riapre il Chapter 1. Prima closeProgramComplete()
+// chiudeva solo l'animazione: i chapter restavano tutti completati e
+// sbloccati, quindi il ciclo non ripartiva mai e il riepilogo di
+// progressione non poteva riapparire.
+function restartCycle() {
+    APP.completedWeeks = [false, false, false, false, false];
+    APP.availableWeeks = [0];
+    APP._weekCelebrated = {};
+    // I giorni tornano da svolgere, ma lo schema settimanale resta:
+    // 'done' → 'workout', il resto invariato.
+    if (APP.chipStates) {
+        APP.chipStates = APP.chipStates.map(function(week) {
+            return (week || []).map(function(st) { return st === 'done' ? 'workout' : st; });
+        });
+    }
+    APP.overloadNoticeSeen = false;
+    APP.selectedViewWeek = 0;
+    saveState();
+    if (typeof restoreChipStates === 'function') restoreChipStates();
+    if (typeof selectPlanChapter === 'function') selectPlanChapter(0); // applica la progressione
+    else renderPlanPage(0);
+    if (typeof updateStats === 'function') updateStats();
+    if (typeof updateChapterTip === 'function') updateChapterTip(0);
+    if (typeof applyChapterTheme === 'function') applyChapterTheme(0);
+}
+
 function closeProgramComplete() {
     var overlay = document.getElementById('program-complete-overlay');
     if (overlay) overlay.style.display = 'none';
     document.querySelectorAll('.confetto').forEach(function(c){ c.remove(); });
+    restartCycle();
 }
 
 function closeWeekComplete() {
@@ -15601,7 +15646,7 @@ function restartBannerAnimations() {
 }
 function updateChapterBannerSilent() {
     const names = CHAPTER_NAMES.map(n => n.toUpperCase());
-    const pcts  = [65, 75, 85, 90, 50];
+    const pcts  = WEEK_LOADS.map(function(p){ return Math.round(p * 100); });
     const bannerGrads = [
         'linear-gradient(135deg,#1d4ed8,#7c3aed)',
         'linear-gradient(135deg,#065f46,#b45309)',
@@ -15635,7 +15680,7 @@ function updateChapterBannerSilent() {
 
 function updateChapterBanner(animate) {
     const names = CHAPTER_NAMES.map(n => n.toUpperCase());
-    const pcts  = [65, 75, 85, 90, 50];
+    const pcts  = WEEK_LOADS.map(function(p){ return Math.round(p * 100); });
     const bannerGrads = [
         'linear-gradient(135deg,#1d4ed8,#7c3aed)',
         'linear-gradient(135deg,#065f46,#b45309)',
