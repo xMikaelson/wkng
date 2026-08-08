@@ -1620,6 +1620,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .plan-legenda { display:flex; gap:10px; margin-bottom:8px; justify-content:center; }
         .plan-leg { display:flex; align-items:center; gap:4px; font-size:0.55rem; color:#94a3b8; }
         .plan-leg-dot { width:5px; height:5px; border-radius:50%; }
+        /* width/padding/text-transform espliciti contro la regola globale `button` */
+        .plan-rest-btn { width:auto; padding:9px 18px; margin:0; border-radius:10px;
+            border:1px solid rgba(129,140,248,0.45); background:rgba(99,102,241,0.14);
+            color:#a5b4fc; font-family:inherit; font-size:0.66rem; font-weight:800;
+            text-transform:none; cursor:pointer; }
+        .plan-rest-btn:active { background:rgba(99,102,241,0.28); }
         .plan-chips { display:flex; gap:5px; flex-wrap:wrap; justify-content:center; margin-bottom:14px; }
         .plan-chip { width:40px; height:40px; border-radius:8px; border:1px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.07); display:flex; align-items:center; justify-content:center; font-size:0.55rem; font-weight:700; color:#94a3b8; transition:all 0.18s cubic-bezier(0.34,1.56,0.64,1); cursor:not-allowed; user-select:none; }
         .plan-chip.assigned { cursor:pointer; border-color:rgba(99,102,241,0.4); background:rgba(99,102,241,0.12); color:#cbd5e1; }
@@ -1860,6 +1866,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wo-ovl-btn { width:100%; padding:13px; margin:12px 0 0; border:none; border-radius:11px;
             background:linear-gradient(135deg,#00ff88,#00cc88); color:#000; font-family:inherit;
             font-size:0.78rem; font-weight:900; text-transform:none; cursor:pointer; }
+
+        /* Opzioni della domanda Overload — width/padding/text-transform
+           espliciti per neutralizzare la regola globale `button`. */
+        .wo-ovl-opt { display:block; width:100%; text-align:left; padding:12px 13px; margin:0 0 8px;
+            border-radius:10px; border:1px solid rgba(255,255,255,0.12); background:transparent;
+            color:#e2e8f0; font-family:inherit; font-size:0.72rem; font-weight:600; line-height:1.35;
+            text-transform:none; cursor:pointer; transition:background 0.15s, border-color 0.15s; }
+        .wo-ovl-opt small { display:block; color:#94a3b8; font-size:0.58rem; font-weight:400; margin-top:3px; }
+        .wo-ovl-opt:active { background:rgba(0,255,136,0.1); border-color:rgba(0,255,136,0.5); }
+        .wo-ovl-opt.skip { margin-top:6px; border-color:rgba(255,255,255,0.07); color:#94a3b8; font-size:0.66rem; }
 
         .wc-body { padding:12px 16px 14px; }
         /* Intestazione esercizio (V3): riquadro interno con bordo e angoli tondi */
@@ -2212,30 +2228,30 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <!-- CHAPTER TIPS — one card per chapter, shown dynamically -->
         <div class="chapter-tips-row" id="chapter-tips-row">
             <div class="chapter-tip-card" id="tip-ch-0">
-                <div class="tip-chapter-label">💡 Chapter 1 · Activation — 65%</div>
-                <div class="tip-chapter-text">Non avere fretta. Se il 65% ti sembra troppo leggero, resisti alla tentazione di caricare di più. Il tuo corpo sta risvegliando schemi motori dimenticati. <strong>Concentrati sulla tecnica perfetta</strong>, sulla stabilità, sul controllo. Ogni ripetizione deve essere una dichiarazione di intenti. Questo è il momento in cui ricostruisci le fondamenta.</div>
+                <div class="tip-chapter-label">💡 Chapter 1 · Activation — 80%</div>
+                <div class="tip-chapter-text">Non avere fretta. Se l’ 80% ti sembra troppo leggero, resisti alla tentazione di caricare di più. Il tuo corpo sta risvegliando schemi motori dimenticati. <strong>Concentrati sulla tecnica perfetta</strong>, sulla stabilità, sul controllo. Ogni ripetizione deve essere una dichiarazione di intenti. Questo è il momento in cui ricostruisci le fondamenta.</div>
             </div>
             <div class="chapter-tip-card" id="tip-ch-1">
-                <div class="tip-chapter-label">💡 Chapter 2 · Momentum — 75%</div>
-                <div class="tip-chapter-text">Concentrati sulla respirazione e sulla costanza. Il 75% è il territorio dove il comfort inizia a scricchiolare. Qui la mente ti dirà di rallentare. <strong>Non ascoltarla.</strong> Ogni serie completata è un mattone che posi sulla tua nuova identità. Il progresso non è lineare, ma la direzione è chiara: avanti. Sempre avanti.</div>
+                <div class="tip-chapter-label">💡 Chapter 2 · Momentum — 87%</div>
+                <div class="tip-chapter-text">Concentrati sulla respirazione e sulla costanza. L’ 87% è il territorio dove il comfort inizia a scricchiolare. Qui la mente ti dirà di rallentare. <strong>Non ascoltarla.</strong> Ogni serie completata è un mattone che posi sulla tua nuova identità. Il progresso non è lineare, ma la direzione è chiara: avanti. Sempre avanti.</div>
             </div>
             <div class="chapter-tip-card" id="tip-ch-2">
-                <div class="tip-chapter-label">💡 Chapter 3 · The Peak — 85%</div>
-                <div class="tip-chapter-text">Assicurati di aver dormito a sufficienza. All'85% del carico, il margine di errore si restringe. <strong>Riscaldati con cura e visualizza ogni movimento</strong> prima di eseguirlo. Stai sfidando i tuoi vecchi limiti. Questo è il breakthrough. Non temerlo. Abbraccialo.</div>
+                <div class="tip-chapter-label">💡 Chapter 3 · The Peak — 94%</div>
+                <div class="tip-chapter-text">Assicurati di aver dormito a sufficienza. Al 94% del carico, il margine di errore si restringe. <strong>Riscaldati con cura e visualizza ogni movimento</strong> prima di eseguirlo. Stai sfidando i tuoi vecchi limiti. Questo è il breakthrough. Non temerlo. Abbraccialo.</div>
             </div>
             <div class="chapter-tip-card" id="tip-ch-3">
-                <div class="tip-chapter-label">💡 Chapter 4 · Overload — 90%</div>
-                <div class="tip-chapter-text">Hai costruito tutto per arrivare qui. Al 90% stai entrando nel territorio del vero overreaching controllato: il corpo viene spinto oltre la zona di comfort per innescare adattamenti profondi. <strong>Esegui ogni serie come se fosse l'ultima della tua vita.</strong> Recupera bene tra le sessioni. La settimana dopo ti ringrazierai.</div>
+                <div class="tip-chapter-label">💡 Chapter 4 · Overload — 100%</div>
+                <div class="tip-chapter-text">Hai costruito tutto per arrivare qui. Al 100% sei esattamente al tuo massimo tecnico: il carico più alto che riesci a tenere per le ripetizioni previste senza sporcare la tecnica. <strong>Esegui ogni serie come se fosse l'ultima della tua vita.</strong> Recupera bene tra le sessioni. La settimana dopo ti ringrazierai.</div>
             </div>
             <div class="chapter-tip-card" id="tip-ch-4">
-                <div class="tip-chapter-label">🔄 Chapter 5 · Deload — 50%</div>
-                <div class="tip-chapter-text">Non è una settimana di riposo: è una settimana di <strong>supercompensazione</strong>. Il corpo ripara i micro-traumi accumulati e si ricostruisce più forte. Il 50% del carico con volume ridotto mantiene i pattern motori senza stressare il sistema nervoso. Chi salta il deload perde fino al 20% dei guadagni. Non farlo.</div>
+                <div class="tip-chapter-label">🔄 Chapter 5 · Deload — 94%, volume dimezzato</div>
+                <div class="tip-chapter-text">Non è una settimana di riposo: è una settimana di <strong>supercompensazione</strong>. Il corpo ripara i micro-traumi accumulati e si ricostruisce più forte. Mantenere l’intensità tagliando il volume conserva gli adattamenti mentre la fatica si dissipa: è quanto emerge dalla ricerca sul tapering (Bosquet et al., 2007). Non saltarla.</div>
             </div>
         </div>
 
         <div class="next-step-panel" id="next-step-panel">
             <div class="next-step-title">✅ Protocollo pronto. E adesso?</div>
-            <div class="next-step-subtitle">Hai generato il tuo piano di 28 giorni. Segui questi 3 passi per iniziare il primo allenamento.</div>
+            <div class="next-step-subtitle">Hai generato il tuo piano di 35 giorni. Segui questi 3 passi per iniziare il primo allenamento.</div>
             <div class="next-step-steps">
                 <div class="nss-item done"><div class="nss-number">✓</div><div class="nss-label">Protocollo generato</div></div>
                 <div class="nss-item active" id="nss-step-2"><div class="nss-number" id="nss-num-2">2</div><div class="nss-label">Crea un account e assegna i protocolli ai giorni nella sezione Piani</div></div>
@@ -2577,7 +2593,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
                 <span style="font-size:9.9px;font-weight:700;color:#e2e8f0;">Idratazione</span>
                 <span id="water-label" style="font-size:8.5px;color:#378ADD;font-weight:700;">0 / 8 bicchieri</span>
               </div>
-              <div style="font-size:7.7px;color:#94a3b8;margin-bottom:7px;" id="water-ml">0 ml · obiettivo 1600 ml</div>
+              <div style="font-size:7.7px;color:#94a3b8;margin-bottom:7px;" id="water-ml">0 ml</div>
               <div style="display:flex;gap:5px;">
                 <button onclick="waterRemove()" style="padding:4px 10px;background:rgba(55,138,221,0.1);border:0.5px solid rgba(55,138,221,0.25);border-radius:7px;color:#85B7EB;font-size:9px;cursor:pointer;font-family:inherit;">− Rimuovi</button>
                 <button onclick="waterAdd()" style="flex:1;padding:4px 8px;background:#378ADD;border:none;border-radius:7px;color:#fff;font-size:9px;font-weight:700;cursor:pointer;font-family:inherit;">+ Bicchiere (200ml)</button>
@@ -3265,7 +3281,10 @@ const APP = {
     completedWeeks: [false, false, false, false, false],
     availableWeeks: [0],
     mtrValues: {}, // dizionario globale MTR: { "Nome Esercizio": 35 }
+    mtrReps: {}, // base di ripetizioni di ogni MTR: { "Nome": 5 }
     overloadNoticeSeen: false, // avviso Chapter 4 già letto in questo ciclo
+    overloadAnswers: {}, // { "Nome Esercizio": "margine"|"esatte"|"fatica" }
+    progressionPending: false, // Ch.4 chiuso: applica i nuovi MTR al prossimo Ch.1
     // Chip states per week: array of 7 values each ('rest', 'selected', 'done')
     chipStates: [
         ['rest','rest','rest','rest','rest','rest','rest'],
@@ -3300,8 +3319,12 @@ const N_WEEKS = 5;
 const DELOAD_WEEK = 4; // indice (0-based) della settimana deload
 const OVERLOAD_WEEK = DELOAD_WEEK - 1; // Chapter 4: ultima settimana di carico
 // Percentuali del baseWeight per ogni settimana
-// W1:65%  W2:75%  W3:85%  W4:92.5%  W5(Deload):50%
-const WEEK_LOADS = [0.65, 0.75, 0.85, 0.90, 0.50];
+// Percentuali del MTR, cioè del massimo tecnico ALLE RIPETIZIONI TARGET.
+// Il ciclo costruisce fino al 100% del massimo tecnico nel Chapter 4: non lo
+// supera, perché le ripetizioni prescritte restano le stesse per tutto il
+// ciclo e un carico superiore le renderebbe ineseguibili.
+// W1:80%  W2:87%  W3:94%  W4:100%  W5(Deload):94% con volume dimezzato
+const WEEK_LOADS = [0.80, 0.87, 0.94, 1.00, 0.94];
 const STORAGE_KEY = 'awakening_state';
 
 const MOTIVATIONAL_QUOTES = [
@@ -3327,7 +3350,10 @@ function saveState() {
             totalWorkouts: APP.totalWorkouts, startDate: APP.startDate ? APP.startDate.toISOString() : null,
             userName: APP.userName, selectedViewWeek: APP.selectedViewWeek,
             completedWeeks: APP.completedWeeks, availableWeeks: APP.availableWeeks,
+            mtrReps: APP.mtrReps,
             overloadNoticeSeen: APP.overloadNoticeSeen,
+            overloadAnswers: APP.overloadAnswers,
+            progressionPending: APP.progressionPending,
             chipStates: APP.chipStates, exerciseTracking: APP.exerciseTracking,
             currentExerciseIndex: APP.currentExerciseIndex, goal: document.getElementById('goal').value,
             activeProtocolId: APP.activeProtocolId, dayAssignments: APP.dayAssignments,
@@ -3477,7 +3503,10 @@ function loadState() {
         APP.userName = saved.userName || null;
         APP.selectedViewWeek = saved.selectedViewWeek || 0;
         APP.completedWeeks = saved.completedWeeks || [false, false, false, false, false];
+        APP.mtrReps = saved.mtrReps || {};
         APP.overloadNoticeSeen = !!saved.overloadNoticeSeen;
+        APP.overloadAnswers = saved.overloadAnswers || {};
+        APP.progressionPending = !!saved.progressionPending;
         // Recompute availableWeeks from completedWeeks — never trust saved value
         // ch0 always available; ch(n) available only if ch(n-1) completed
         const _cw = saved.completedWeeks || [false,false,false,false,false];
@@ -3563,9 +3592,9 @@ function migrateMtrLoads() {
             var mtr = parseFloat(ex.mtrValue);
             if (!mtr || mtr <= 0) return;
             // Ricalcola i loads corretti dal mtrValue
-            var newLoads = isMassa
-                ? MTR_MASSA_LOADS.map(function(p){ return Math.round(mtr*p*2)/2; })
-                : WEEK_LOADS.map(function(p){ return Math.round(mtr*p*2)/2; });
+            // MTR riportato alle ripetizioni di QUESTO schema
+            var ref = mtrForReps(ex.name, srReps(ex.sr)) || mtr;
+            var newLoads = WEEK_LOADS.map(function(p){ return Math.round(ref*p*2)/2; });
             ex.loads = newLoads;
             // baseWeight = carico del chapter attivo
             var wi = APP.selectedViewWeek || 0;
@@ -3720,7 +3749,7 @@ function woWarmupInfo() {
           '<div style="margin-top:8px;">Le ripetizioni calano mentre il carico sale: è quello che permette di avvicinarsi al peso di lavoro senza accumulare fatica.</div>') +
 
         H('MTR') +
-        P('Massimo Tecnico di Ripetizione: il carico più alto che riesci a sollevare mantenendo una tecnica impeccabile. ' +
+        P('Massimo Tecnico di Ripetizione: il carico più alto che sollevi per <b style="color:#e2e8f0;">1 ripetizione</b> mantenendo una tecnica impeccabile. ' +
           'Non è il tuo massimale a tutti i costi — è il massimo che controlli davvero. Tutte le percentuali partono da lì.') +
 
         H('Quali esercizi vengono riscaldati') +
@@ -3765,8 +3794,8 @@ function buildOverloadNotice() {
             '<div class="wo-ovl-title">Ultima settimana del ciclo</div>' +
         '</div>' +
         '<div class="wo-ovl-body">' +
-            '<div class="wo-ovl-p">Questa settimana lavori al <b>90% del tuo MTR</b>: \u00e8 il carico pi\u00f9 vicino ' +
-                'al tuo limite reale, quindi \u00e8 la misura pi\u00f9 affidabile di quanto sei cresciuto in queste quattro settimane.</div>' +
+            '<div class="wo-ovl-p">Questa settimana lavori al <b>100% del tuo MTR</b>: \u00e8 il carico pi\u00f9 alto ' +
+                'che riesci a tenere per le ripetizioni previste, quindi \u00e8 la misura pi\u00f9 affidabile di quanto sei cresciuto in queste quattro settimane.</div>' +
             '<div class="wo-ovl-p">Alla fine ti chieder\u00f2 com\u2019\u00e8 andato ogni esercizio. Poi ti riposi con la settimana ' +
                 'di <b>Deload</b>, e al ritorno il nuovo ciclo riparte con i carichi aggiornati.</div>' +
             '<div class="wo-ovl-note">Non serve fare nulla di diverso adesso. Allenati normalmente e fai attenzione ' +
@@ -3916,7 +3945,7 @@ function renderWarmupBlock(exName, exercises, container) {
                 mtrBox.className = 'wc-mtr-box joined';
                 mtrBox.innerHTML =
                     '<div class="wc-mtr-box-title">🎯 Imposta il Massimo Tecnico</div>' +
-                    '<div class="wc-mtr-box-desc">Il massimo che riesci a sollevare con tecnica perfetta. Serve per calcolare i carichi di riscaldamento.</div>' +
+                    '<div class="wc-mtr-box-desc">Il massimo che sollevi per 1 ripetizione con tecnica perfetta. Da qui derivano tutti i carichi del programma.</div>' +
                     '<input class="wc-mtr-box-input" type="number" placeholder="0" min="1" max="500" step="0.5" inputmode="decimal" id="wc-mtr-inp-' + exIdx + '">' +
                     '<div class="wc-mtr-box-unit">kg — massimo tecnico</div>' +
                     '<button class="wc-mtr-box-btn" id="wc-mtr-btn-' + exIdx + '">✓ Conferma</button>';
@@ -4891,7 +4920,10 @@ async function onLoginSuccess(user, usernameOverride = null) {
         APP.startDate = s.startDate ? new Date(s.startDate) : null;
         APP.selectedViewWeek = s.selectedViewWeek || 0;
         APP.completedWeeks = s.completedWeeks || [false,false,false,false,false];
+        APP.mtrReps = Object.assign({}, s.mtrReps || {}, APP.mtrReps || {});
         APP.overloadNoticeSeen = !!s.overloadNoticeSeen;
+        APP.overloadAnswers = Object.assign({}, s.overloadAnswers || {}, APP.overloadAnswers || {});
+        APP.progressionPending = !!s.progressionPending || !!APP.progressionPending;
         APP.availableWeeks = s.availableWeeks || [0];
         APP.chipStates = s.chipStates || [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']];
         APP.exerciseTracking = s.exerciseTracking || [];
@@ -5106,6 +5138,17 @@ function selectPlanChapter(w) {
         return;
     }
     APP.selectedViewWeek = w;
+    // Nuovo ciclo: qui e solo qui i nuovi MTR entrano in vigore. Indipendente
+    // da quante sedute di scarico sono state fatte — il riposo totale è un
+    // deload valido quanto lo scarico a carichi leggeri.
+    if (w === 0 && APP.progressionPending) {
+        var _nApplied = woApplyProgression();
+        APP.progressionPending = false;
+        saveState();
+        if (_nApplied && typeof showToast === 'function') {
+            showToast('Carichi aggiornati: ' + _nApplied + (_nApplied === 1 ? ' esercizio' : ' esercizi'), 'success');
+        }
+    }
     document.querySelectorAll('#plan-tabs .chapter-tab').forEach((t,i) => {
         t.classList.toggle('active', i===w);
         const unlocked = i===0 || APP.completedWeeks[i-1];
@@ -5146,7 +5189,7 @@ function renderPlanPage(w) {
         var hasDeload = APP.savedProtocols.some(function(p){ return p.name && p.name.toLowerCase().includes('deload'); });
         var hasSource = APP.savedProtocols.some(function(p){ var n=(p.name||'').toLowerCase(); return n.includes('upper')||n.includes('lower'); });
         deloadBanner.innerHTML = '<div style="font-weight:800;color:#818cf8;margin-bottom:4px;">🔄 Settimana Deload</div>' +
-            'Carico al <strong>50%</strong> del massimale · Serie ridotte di 1 · Volume dimezzato.<br>' +
+            'Carico al <strong>94%</strong> dell\'MTR · Serie <strong>dimezzate</strong> · Ripetizioni invariate.<br>' +
             'Questa settimana serve al corpo per recuperare e supercompensare: non saltarla!';
         if (!hasDeload && hasSource) {
             var btnRow = document.createElement('div');
@@ -5227,6 +5270,24 @@ function renderPlanPage(w) {
         chipsEl.appendChild(chip);
     });
     block.appendChild(chipsEl);
+
+    // Riposo totale: solo nel Deload. Senza questo, chi sceglie il riposo
+    // completo non chiude mai la settimana e il Chapter 1 resta bloccato.
+    if (w === DELOAD_WEEK && !APP.completedWeeks[DELOAD_WEEK]) {
+        const restWrap = document.createElement('div');
+        restWrap.style.cssText = 'text-align:center;margin:-4px 0 14px;';
+        const restBtn = document.createElement('button');
+        restBtn.type = 'button';
+        restBtn.className = 'plan-rest-btn';
+        restBtn.textContent = '😴 Riposo totale';
+        restBtn.onclick = woDeloadFullRest;
+        restWrap.appendChild(restBtn);
+        const restNote = document.createElement('div');
+        restNote.style.cssText = 'font-size:0.56rem;color:#94a3b8;margin-top:6px;line-height:1.5;';
+        restNote.textContent = 'Anche il riposo completo è un deload valido: chiude la settimana e sblocca il nuovo ciclo.';
+        restWrap.appendChild(restNote);
+        block.appendChild(restWrap);
+    }
 
     // Bottom cols: protocol list + schedule
     const cols = document.createElement('div');
@@ -5681,24 +5742,23 @@ function buildProtoEditorBox(proto, weekIdx) {
                     // 3. Aggiorna TUTTI i protocolli che contengono questo esercizio
                     APP.savedProtocols.forEach(function(p) {
                         if (!p.exercises) return;
-                        var pSlot = (protoResolveSlot(p) || '').toLowerCase();
-                        var pIsMassa = pSlot === 'push' || pSlot === 'pull' || pSlot === 'legs';
-                        var pLoads = pIsMassa ? massaLoads : forzaLoads;
                         p.exercises.forEach(function(pEx) {
-                            if (exSameExercise(pEx.name, ex.name)) {
-                                pEx.mtrValue = mtrValue;
-                                pEx.loads = pLoads;
-                                pEx.forzaLoads = forzaLoads;
-                                pEx.massaLoads = massaLoads;
-                                pEx.baseWeight = pLoads[weekIdx] || pLoads[0];
-                            }
+                            if (!exSameExercise(pEx.name, ex.name)) return;
+                            // Lo stesso esercizio può comparire con schemi diversi
+                            // (es. 5x5 in Upper e 4x10 in Push): l'MTR è uno solo,
+                            // quindi lo riportiamo alle ripetizioni di QUESTO schema.
+                            var pRef = mtrForReps(ex.name, srReps(pEx.sr)) || mtrValue;
+                            var pLoads = WEEK_LOADS.map(function(q){ return Math.round(pRef*q*2)/2; });
+                            pEx.mtrValue = mtrValue;
+                            pEx.loads = pLoads;
+                            pEx.baseWeight = pLoads[weekIdx] || pLoads[0];
                         });
                     });
                     // 4. Salva
                     saveState();
                     APP.savedProtocols.forEach(function(p) { saveProtocolToSupabase(p); });
                     showToast('🎯 MTR salvato su tutti i protocolli!', 'success');
-                });
+                }, srReps(ex.sr));
             };
             right.appendChild(srInput);
             right.appendChild(kgInput);
@@ -6275,6 +6335,12 @@ function checkChapterCompletion(w) {
     APP.completedWeeks[w] = true;
     if (APP._weekCelebrated[w]) return;
     APP._weekCelebrated[w] = true;
+    // Chiuso l'Overload: la progressione resta in attesa. Verrà applicata al
+    // rientro nel Chapter 1, non ora — durante il Deload i carichi devono
+    // restare calcolati sul vecchio MTR.
+    if (w === OVERLOAD_WEEK && Object.keys(APP.overloadAnswers || {}).length) {
+        APP.progressionPending = true;
+    }
     if (!APP.availableWeeks.includes(w)) APP.availableWeeks.push(w);
     if (w < 4 && !APP.availableWeeks.includes(w+1)) {
         APP.availableWeeks.push(w+1);
@@ -6292,26 +6358,70 @@ function checkChapterCompletion(w) {
 
 // ════════════════════════════════════════════════
 // MTR — Massimo Tecnico di Ripetizione
-// Basato su: Israetel et al. (RP Strength), Helms et al. (2016)
-// Forza (Upper/Lower): WEEK_LOADS = [0.65, 0.75, 0.85, 0.90, 0.50]
-// Massa (PPL): 50%, 57%, 65%, 70%, 50% — derivati da Schoenfeld (2010)
-// Il carico ipertrofico ottimale è 65-75% del massimo tecnico
+// Il carico massimo che l'utente solleva con tecnica pulita SU UN NUMERO
+// DI RIPETIZIONI DATO (la sua base). Serviva una scala separata per la massa
+// finché l'MTR era un valore unico: le alte ripetizioni richiedono percentuali
+// più basse dell'1RM. Ora che l'MTR è già relativo alle ripetizioni target,
+// una sola scala vale per entrambi i blocchi.
+// Conversione fra basi di ripetizioni diverse: Epley, test xRM descritto da
+// Baechle & Earle (NSCA, 3ª ed. 2008) come alternativa sicura all'1RM.
 // ════════════════════════════════════════════════
-var MTR_MASSA_LOADS = [0.50, 0.57, 0.65, 0.70, 0.50];
+var MTR_MASSA_LOADS = WEEK_LOADS;
 var _mtrCallback = null;
+
+// ── Base di ripetizioni dell'MTR ──
+// L'MTR è il massimo tecnico su un dato numero di ripetizioni: senza sapere
+// quale, il valore è ambiguo. Qui teniamo traccia della base usata.
+function mtrRepsGet(name) {
+    if (!APP.mtrReps) return null;
+    var v = APP.mtrReps[exCanonical(name)];
+    if (v == null) v = APP.mtrReps[name];
+    return v ? parseInt(v) : null;
+}
+function mtrRepsSet(name, reps) {
+    if (!APP.mtrReps) APP.mtrReps = {};
+    var r = parseInt(reps);
+    if (!r || r <= 0) return;
+    APP.mtrReps[exCanonical(name)] = r;
+}
+
+// Estrae le ripetizioni dallo schema serie×ripetizioni ("4 x 8" → 8)
+function srReps(sr) {
+    var m = (sr || '').match(/(\d+)\s*[xX×]\s*(\d+)/);
+    return m ? parseInt(m[2]) : null;
+}
+
+// MTR riportato a un numero di ripetizioni diverso dalla sua base.
+// Passa per l'1RM stimato con Epley: 1RM = kg × (1 + rip/30).
+// Serve quando lo stesso esercizio compare in due schemi diversi
+// (es. panca 5x5 in Upper e 4x10 in Push): l'MTR è uno solo.
+function mtrForReps(name, targetReps) {
+    var kg = parseFloat(mtrGet(name));
+    if (!kg || kg <= 0) return null;
+    var base = mtrRepsGet(name);
+    if (!base || !targetReps || base === targetReps) return kg;
+    var e1rm = kg * (1 + base / 30);
+    return Math.round((e1rm / (1 + targetReps / 30)) * 2) / 2;
+}
 var _mtrWeekIdx  = 0;
 var _mtrSlot     = 'forza'; // 'forza' o 'massa'
+var _mtrExName   = '';
 
-function mtrOpen(exName, weekIdx, slot, callback) {
+function mtrOpen(exName, weekIdx, slot, callback, defaultReps) {
     _mtrCallback = callback;
     _mtrWeekIdx  = weekIdx || 0;
     _mtrSlot     = slot || 'forza';
+    _mtrExName   = exName;
     var overlay = document.getElementById('mtr-overlay');
     var nameEl  = document.getElementById('mtr-exname');
     var input   = document.getElementById('mtr-input');
+    var repsEl  = document.getElementById('mtr-reps');
     if (!overlay) return;
     if (nameEl) nameEl.textContent = exName;
     if (input)  { input.value = ''; }
+    // Ripetizioni precompilate dallo schema dell'esercizio, o dalla base
+    // già registrata per questo MTR
+    if (repsEl) repsEl.value = mtrRepsGet(exName) || defaultReps || '';
     // Reset preview
     for (var i = 0; i < 5; i++) {
         var ef = document.getElementById('mf' + i);
@@ -6321,6 +6431,7 @@ function mtrOpen(exName, weekIdx, slot, callback) {
     }
     overlay.classList.add('active');
     if (input) input.oninput = mtrUpdatePreview;
+    if (repsEl) repsEl.oninput = mtrUpdatePreview;
     // Evidenzia il chapter attivo
     var activeF = document.getElementById('mf' + _mtrWeekIdx);
     var activeM = document.getElementById('mm' + _mtrWeekIdx);
@@ -6333,20 +6444,20 @@ function mtrUpdatePreview() {
     var val = parseFloat(document.getElementById('mtr-input').value);
     for (var i = 0; i < 5; i++) {
         var ef = document.getElementById('mf' + i);
-        var em = document.getElementById('mm' + i);
-        if (!val || val <= 0) {
-            if (ef) ef.textContent = '—';
-            if (em) em.textContent = '—';
-            continue;
-        }
-        if (ef) ef.textContent = (Math.round(val * WEEK_LOADS[i] * 2) / 2) + ' kg';
-        if (em) em.textContent = (Math.round(val * MTR_MASSA_LOADS[i] * 2) / 2) + ' kg';
+        if (!ef) continue;
+        ef.textContent = (!val || val <= 0)
+            ? '—'
+            : (Math.round(val * WEEK_LOADS[i] * 2) / 2) + ' kg';
     }
 }
 
 function mtrApply() {
     var val = parseFloat(document.getElementById('mtr-input').value);
     if (!val || val <= 0) { showToast('Inserisci il massimo tecnico', 'error'); return; }
+    var repsEl = document.getElementById('mtr-reps');
+    var reps = repsEl ? parseInt(repsEl.value) : 0;
+    if (!reps || reps <= 0) { showToast('Indica su quante ripetizioni', 'error'); if (repsEl) repsEl.focus(); return; }
+    if (_mtrExName) mtrRepsSet(_mtrExName, reps);
     var forzaLoads = WEEK_LOADS.map(function(p){ return Math.round(val * p * 2) / 2; });
     var massaLoads = MTR_MASSA_LOADS.map(function(p){ return Math.round(val * p * 2) / 2; });
     var isForza = _mtrSlot === 'forza' || _mtrSlot === 'upper' || _mtrSlot === 'lower';
@@ -6421,7 +6532,7 @@ function generateDeloadProtocol(mode) {
         if (typeof saveProtocolToSupabase === 'function') saveProtocolToSupabase(newProto);
         renderProtocolList();
         renderPlanPage(DELOAD_WEEK);
-        showToast('⚙️ Deload manuale creato con ' + exercises.length + ' esercizi al 50%', 'success');
+        showToast('⚙️ Deload manuale creato con ' + exercises.length + ' esercizi al 94% con volume dimezzato', 'success');
         return;
     }
 
@@ -6952,7 +7063,7 @@ function openDeloadManualForm() {
         '<span style="color:#94a3b8;">Esercizi</span><span><strong style="color:#e2e8f0;">3 totali</strong> — 1 Push · 1 Pull · 1 Lower</span>' +
         '<span style="color:#94a3b8;">Serie</span><span>3 (fisse)</span>' +
         '<span style="color:#94a3b8;">Reps</span><span>8-10 per set</span>' +
-        '<span style="color:#94a3b8;">Carico</span><span>50% del massimale</span>' +
+        '<span style="color:#94a3b8;">Carico</span><span>94% dell’MTR</span>' +
         '</div>' +
         '<div style="margin-top:8px;font-size:0.62rem;color:#94a3b8;">Seleziona il tuo esercizio principale per ciascun pattern. Non di più.</div>';
     content.appendChild(info);
@@ -7679,7 +7790,7 @@ function initWorkoutPage() {
                 var _dProg = document.getElementById('wo-warmup-fixed-footer');
                 if (_dProg) _dProg.style.display = 'none';
                 woShowActionFooter(true, false);
-                prevList.innerHTML = `<div style="background:rgba(99,102,241,0.09);border:1px solid rgba(99,102,241,0.22);border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:0.6rem;color:#818cf8;font-weight:700;">🔄 Deload Week — carico 50% · 3 serie</div>
+                prevList.innerHTML = `<div style="background:rgba(99,102,241,0.09);border:1px solid rgba(99,102,241,0.22);border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:0.6rem;color:#818cf8;font-weight:700;">🔄 Deload Week — carico 94% · serie dimezzate</div>
                 <div style="font-size:0.55rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;font-weight:700;">Programma · ${protoName}</div>
                 ${exData.map((ex,i) => {
                     const kg = ex.loads ? ex.loads[kgW].toFixed(1) : (ex.baseWeight||0);
@@ -8693,8 +8804,18 @@ function nutScoreBadge(score) {
 
 // ── Water Tracker ─────────────────────────────────────────────────────────
 const WATER_KEY = 'aw_water_'; // + dateKey
-const WATER_GOAL = 8;          // bicchieri
 const WATER_ML   = 200;        // ml per bicchiere (bicchiere standard ~200ml)
+
+// EFSA (2010) indica come assunzione adeguata di acqua totale 2,0 L/giorno
+// per le donne e 2,5 L per gli uomini; circa l'80% arriva dalle bevande,
+// cioè ~1600 ml e ~2000 ml. Il resto viene dagli alimenti.
+function waterGoalGlasses() {
+    try {
+        var inp = JSON.parse(localStorage.getItem('nut_tdee_input') || '{}');
+        if (inp && inp.sex === 'm') return 10; // 2000 ml
+    } catch (e) {}
+    return 8; // 1600 ml
+}
 
 function waterGetKey() {
     const d = new Date();
@@ -8721,21 +8842,22 @@ function waterUpdateUI(glasses, prevGlasses) {
     const label = document.getElementById('water-label');
     const mlEl  = document.getElementById('water-ml');
     if (!fill || !label || !mlEl) return;
+    const wGoal = waterGoalGlasses();
 
-    const pct = Math.min(glasses / WATER_GOAL * 100, 100);
+    const pct = Math.min(glasses / wGoal * 100, 100);
     fill.style.height = pct + '%';
 
     // Colore bottiglia: blu → teal al completamento
-    const wasComplete = prevGlasses !== undefined ? prevGlasses >= WATER_GOAL : false;
-    const isComplete = glasses >= WATER_GOAL;
+    const wasComplete = prevGlasses !== undefined ? prevGlasses >= wGoal : false;
+    const isComplete = glasses >= wGoal;
     if (isComplete && !wasComplete) updateBadges(); // controlla achievement Hydrated
     fill.style.background = isComplete ? 'rgba(93,202,165,0.55)' : 'rgba(55,138,221,0.5)';
 
-    label.textContent = glasses + ' / ' + WATER_GOAL + ' bicchieri';
+    label.textContent = glasses + ' / ' + wGoal + ' bicchieri';
     label.style.color = isComplete ? '#5DCAA5' : '#378ADD';
 
     const ml = glasses * WATER_ML;
-    const mlGoal = WATER_GOAL * WATER_ML;
+    const mlGoal = wGoal * WATER_ML;
     const remaining = mlGoal - ml;
     mlEl.textContent = ml + ' ml · ' + (remaining > 0 ? remaining + ' ml mancanti' : '\u2713 obiettivo raggiunto!');
     mlEl.style.color = isComplete ? '#5DCAA5' : '#64748b';
@@ -11005,9 +11127,19 @@ function tdeeCalcAndShow() {
         maintain:'mantenimento', bulk:'massa muscolare'
     }[TDEE_STATE.goal] || '');
 
-    const p = Math.round(w * 2.2);
-    const c = Math.round((target * 0.45) / 4);
-    const f = Math.round((target * 0.30) / 9);
+    // Proteine: Morton et al. 2018 (BJSM) collocano il plateau dei benefici
+    // intorno a 1,6 g/kg; ISSN (Jäger et al. 2017) indica 1,4–2,0 g/kg.
+    // In deficit calorico serve di più per proteggere la massa magra
+    // (Helms et al. 2014): saliamo a 2,2 g/kg.
+    const inDeficit = TDEE_STATE.goal === 'cut' || TDEE_STATE.goal === 'cut_aggressive';
+    const pPerKg = inDeficit ? 2.2 : 1.6;
+    const p = Math.round(w * pPerKg);
+    // Grassi e carboidrati si dividono le calorie RIMANENTI, non il totale:
+    // sommare percentuali del target alle proteine in grammi sforava le kcal.
+    const pKcal = p * 4;
+    const restKcal = Math.max(0, target - pKcal);
+    const f = Math.round((restKcal * 0.30) / 9);
+    const c = Math.round((restKcal - f * 9) / 4);
     document.getElementById('tdee-res-p').textContent = p + 'g';
     document.getElementById('tdee-res-c').textContent = c + 'g';
     document.getElementById('tdee-res-f').textContent = f + 'g';
@@ -11239,12 +11371,17 @@ function woStop() {
 }
 
 // Deload: riduce le serie a 3 e le ripetizioni al 60% (arrotondato)
+// Deload: dimezza le SERIE mantenendo le ripetizioni.
+// La ricerca sul tapering (Bosquet et al. 2007, meta-analisi; Mujika &
+// Padilla 2003) indica di ridurre il volume del 40–60% MANTENENDO
+// l'intensità: abbassare anche il carico compromette il mantenimento
+// degli adattamenti di forza.
 function woDeloadSr(sr) {
-    if (!sr) return '3 x 6';
+    if (!sr) return '2 x 6';
     const m = sr.match(/(\d+)\s*[xX×]\s*(\d+)/);
     if (!m) return sr;
-    const reps = Math.max(4, Math.round(parseInt(m[2]) * 0.6));
-    return '3 x ' + reps;
+    const sets = Math.max(2, Math.round(parseInt(m[1]) * 0.5));
+    return sets + ' x ' + m[2];
 }
 
 function woRenderEx() {
@@ -11418,6 +11555,207 @@ function _woCheckPR(exName, kg) {
 }
 
 
+// ── Momento 2: domanda a fine esercizio nella settimana Overload ──
+// Soglia in ripetizioni ASSOLUTE (2), non proporzionale allo schema:
+// è così che la formulano Baechle & Earle (NSCA, 3ª ed. 2008) e l'ACSM
+// (Kraemer et al. 2009), senza distinguere fra schemi di forza e di massa.
+var OVL_RANK = { fatica: 0, esatte: 1, margine: 2 };
+
+// Se lo stesso esercizio ricorre più volte nella settimana con schemi diversi,
+// vince la risposta PEGGIORE: un buon 4x10 non cancella una fatica sul 5x5.
+function woOverloadRecord(exName, answer) {
+    if (!exName || !OVL_RANK.hasOwnProperty(answer)) return;
+    if (!APP.overloadAnswers) APP.overloadAnswers = {};
+    var prev = APP.overloadAnswers[exName];
+    if (prev && OVL_RANK[prev] <= OVL_RANK[answer]) return; // già più conservativa
+    APP.overloadAnswers[exName] = answer;
+    saveState();
+}
+
+function woAskOverloadFeedback(exName, targetReps) {
+    var old = document.getElementById('wo-ovl-ask-overlay');
+    if (old) old.remove();
+
+    var ov = document.createElement('div');
+    ov.id = 'wo-ovl-ask-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(6,13,26,0.94);z-index:9300;' +
+        'display:flex;align-items:center;justify-content:center;' +
+        'padding:max(env(safe-area-inset-top),44px) 18px calc(24px + env(safe-area-inset-bottom,0px));' +
+        'box-sizing:border-box;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);';
+
+    var box = document.createElement('div');
+    box.style.cssText = 'background:#0f172a;border:1px solid rgba(255,255,255,0.09);border-radius:16px;' +
+        'max-width:420px;width:100%;max-height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;' +
+        'padding:20px 18px;box-sizing:border-box;';
+
+    var tgt = targetReps ? (' Il target era di <b style="color:#e2e8f0;">' + targetReps + ' ripetizioni</b>.') : '';
+    var opts = [
+        ['margine', 'Avevo ancora margine', 'Ho chiuso con 2 o pi\u00f9 ripetizioni oltre il target'],
+        ['esatte',  'Le ho chiuse esatte',  'Target centrato, ma ero al limite'],
+        ['fatica',  'Non le ho completate tutte', 'Mi sono fermato prima del target']
+    ];
+    var html =
+        '<div style="font-size:0.52rem;color:#818cf8;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">\u26a1 Overload \u00b7 ultima serie</div>' +
+        '<div style="font-size:0.95rem;font-weight:800;color:#e2e8f0;margin:4px 0 3px;">' + exName + '</div>' +
+        '<div style="font-size:0.7rem;color:#cbd5e1;line-height:1.6;margin-bottom:16px;">Com\u2019\u00e8 andata l\u2019ultima serie?' + tgt + '</div>';
+    opts.forEach(function(o) {
+        html += '<button type="button" data-a="' + o[0] + '" class="wo-ovl-opt">' + o[1] +
+                '<small>' + o[2] + '</small></button>';
+    });
+    html += '<button type="button" class="wo-ovl-opt skip" data-a="">Preferisco non rispondere<small>Il carico resta invariato</small></button>';
+    box.innerHTML = html;
+
+    box.querySelectorAll('.wo-ovl-opt').forEach(function(b) {
+        b.onclick = function() {
+            var a = b.getAttribute('data-a');
+            if (a) woOverloadRecord(exName, a);
+            ov.remove();
+        };
+    });
+
+    ov.appendChild(box);
+    document.body.appendChild(ov);
+}
+
+// ── Momento 3: dal Chapter 4 al nuovo ciclo ──
+// Incrementi entro la forbice 2–10% di Baechle & Earle (NSCA, 3ª ed. 2008):
+// fascia bassa per la parte superiore, alta per gli arti inferiori.
+var OVL_STEP = {
+    margine: { up: 0.05,  low: 0.10 },
+    esatte:  { up: 0.025, low: 0.05 },
+    fatica:  { up: 0,     low: 0 }   // invariato, non ridotto: segue un deload
+};
+
+function woIsLowerBody(exName) {
+    var p = getMovementPattern(exName);
+    return p === 'quad' || p === 'hinge';
+}
+
+// Calcola cosa cambierebbe, SENZA scrivere nulla.
+// Usato sia dal riepilogo di sola lettura sia dall'applicazione vera.
+function woComputeProgression() {
+    var out = [];
+    var ans = APP.overloadAnswers || {};
+    Object.keys(ans).forEach(function(name) {
+        var cur = parseFloat(mtrGet(name));
+        if (!cur || cur <= 0) return;
+        var step = OVL_STEP[ans[name]];
+        if (!step) return;
+        var lower = woIsLowerBody(name);
+        var pct = lower ? step.low : step.up;
+        out.push({
+            name: name,
+            answer: ans[name],
+            lower: lower,
+            pct: pct,
+            oldMtr: cur,
+            newMtr: Math.round(cur * (1 + pct) * 2) / 2
+        });
+    });
+    out.sort(function(a, b) { return b.pct - a.pct; });
+    return out;
+}
+
+// Scrive i nuovi MTR e ricalcola i loads. Chiamata SOLO al rientro nel
+// Chapter 1: durante il Deload i carichi devono restare sul vecchio MTR.
+function woApplyProgression() {
+    var rows = woComputeProgression();
+    var applied = 0;
+    rows.forEach(function(r) {
+        if (r.pct <= 0) return;
+        mtrSet(r.name, r.newMtr);
+        applied++;
+        (APP.savedProtocols || []).forEach(function(proto) {
+            if (!proto || !proto.exercises) return;
+            var slot = (proto._splitSlot || '').toLowerCase();
+            var isMassa = slot === 'push' || slot === 'pull' || slot === 'legs';
+            proto.exercises.forEach(function(ex) {
+                if (!ex || ex.name !== r.name) return;
+                ex.mtrValue = r.newMtr;
+                var ref = mtrForReps(r.name, srReps(ex.sr)) || r.newMtr;
+                ex.loads = WEEK_LOADS.map(function(p) {
+                    return Math.round(ref * p * 2) / 2;
+                });
+                ex.baseWeight = ex.loads[0];
+            });
+        });
+    });
+    APP.overloadAnswers = {};   // consumate: non riapplicarle al ciclo dopo
+    saveState();
+    return applied;
+}
+
+function woDeloadFullRest() {
+    if (!confirm('Segnare la settimana di Deload come completata con riposo totale?')) return;
+    var di;
+    for (di = 0; di < 7; di++) {
+        if (APP.dayAssignments[DELOAD_WEEK] && APP.dayAssignments[DELOAD_WEEK][di]) {
+            APP.chipStates[DELOAD_WEEK][di] = 'done';
+        }
+    }
+    APP.completedWeeks[DELOAD_WEEK] = true;
+    APP.totalWorkouts = APP.chipStates.flat().filter(function(s) { return s === 'done'; }).length;
+    saveState();
+    if (typeof restoreChipStates === 'function') restoreChipStates();
+    renderPlanPage(DELOAD_WEEK);
+    if (typeof updateStats === 'function') updateStats();
+    checkChapterCompletion(DELOAD_WEEK);
+}
+
+// Riepilogo di SOLA LETTURA dopo l'animazione di fine Chapter 4.
+function woShowProgressionSummary() {
+    var rows = woComputeProgression();
+    if (!rows.length) return;
+
+    var ov = document.createElement('div');
+    ov.id = 'wo-ovl-sum-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(6,13,26,0.94);z-index:9400;' +
+        'display:flex;align-items:center;justify-content:center;' +
+        'padding:max(env(safe-area-inset-top),44px) 18px calc(24px + env(safe-area-inset-bottom,0px));' +
+        'box-sizing:border-box;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);';
+
+    var box = document.createElement('div');
+    box.style.cssText = 'background:#0f172a;border:1px solid rgba(255,255,255,0.09);border-radius:16px;' +
+        'max-width:420px;width:100%;max-height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;' +
+        'padding:20px 18px;box-sizing:border-box;';
+
+    var h = '<div style="font-size:0.52rem;color:#818cf8;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">\uD83D\uDCAA Ciclo completato</div>' +
+        '<div style="font-size:1rem;font-weight:800;color:#e2e8f0;margin:4px 0 14px;">I tuoi progressi</div>';
+    var anyUp = false;
+    rows.forEach(function(r) {
+        if (r.pct > 0) anyUp = true;
+        var pctTxt = r.pct > 0 ? (' \u00b7 +' + (r.pct * 100).toFixed(1).replace('.0', '') + '%') : '';
+        h += '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,0.06);">' +
+            '<div style="min-width:0;"><div style="font-size:0.72rem;font-weight:700;color:#e2e8f0;">' + r.name + '</div>' +
+            '<div style="font-size:0.5rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;margin-top:2px;">' +
+                (r.lower ? 'arti inferiori' : 'parte superiore') + pctTxt + '</div></div>' +
+            '<div style="font-size:0.74rem;font-weight:800;white-space:nowrap;text-align:right;">' +
+                (r.pct > 0
+                    ? '<span style="color:#94a3b8;text-decoration:line-through;font-weight:600;font-size:0.64rem;">' + r.oldMtr + '</span> ' +
+                      '<span style="color:#00ff88;">' + r.newMtr + ' kg</span>'
+                    : '<span style="color:#cbd5e1;">' + r.oldMtr + ' kg</span>') +
+            '</div></div>';
+    });
+    h += '<div style="font-size:0.6rem;color:#94a3b8;line-height:1.6;margin-top:14px;padding:11px 12px;background:rgba(255,255,255,0.03);border-radius:9px;">' +
+        (anyUp
+            ? 'Questi carichi entreranno in vigore <b style="color:#cbd5e1;">al termine del Deload</b>. Durante la settimana di scarico continui con i valori attuali.'
+            : 'Nessun aumento questo ciclo: ripeti gli stessi carichi. Consolidare un peso \u00e8 progresso, non una battuta d\u2019arresto.') +
+        '</div>';
+    box.innerHTML = h;
+
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = 'Avanti verso il Deload';
+    btn.style.cssText = 'width:100%;margin-top:18px;padding:13px;border:none;border-radius:11px;' +
+        'background:linear-gradient(135deg,#00ff88,#00cc88);color:#000;font-family:inherit;' +
+        'font-size:0.78rem;font-weight:900;cursor:pointer;text-transform:none;';
+    btn.onclick = function() { ov.remove(); };
+    box.appendChild(btn);
+
+    ov.appendChild(box);
+    document.body.appendChild(ov);
+}
+
 function woCompleteSet() {
     const exData = APP.exerciseData || [];
     const ex = exData[woState.exIndex];
@@ -11440,6 +11778,14 @@ function woCompleteSet() {
 
     const isLastSet = woState.setIndex >= totalSets;
     const isLastEx  = isLastSet && (woState.exIndex + 1 >= exData.length);
+
+    // Momento 2: chiedi com'è andata l'ultima serie, subito, finché il dato è
+    // fresco. Va PRIMA del ramo isLastEx, che esce con return: altrimenti
+    // l'ultimo esercizio della sessione non verrebbe mai chiesto.
+    if (w === OVERLOAD_WEEK && isLastSet) {
+        var _tgtReps = srParts ? parseInt(srParts[2]) : null;
+        woAskOverloadFeedback(ex.name, _tgtReps);
+    }
 
     if (isLastEx) {
         // ── Workout completato ──
@@ -13440,7 +13786,8 @@ function bmiCategory(bmi) {
     if (bmi < 25)   return { label: 'Normopeso',   color: '#34d399' };
     if (bmi < 30)   return { label: 'Sovrappeso',  color: '#EF9F27' };
     if (bmi < 35)   return { label: 'Obesità I',   color: '#F09595' };
-                    return { label: 'Obesità II',  color: '#E24B4A' };
+    if (bmi < 40)   return { label: 'Obesità II',  color: '#E24B4A' };
+                    return { label: 'Obesità III', color: '#C62828' };
 }
 
 function bmiIndicatorLeft(bmi) {
@@ -14962,9 +15309,14 @@ function closeProgramComplete() {
 }
 
 function closeWeekComplete() {
+    var wasOverload = document.getElementById('wc-chapter') &&
+                      /CHAPTER 4/.test(document.getElementById('wc-chapter').textContent || '');
     document.getElementById('week-complete-overlay').classList.remove('visible');
     // Rimuovi confetti
     document.querySelectorAll('.confetto').forEach(c => c.remove());
+    // Momento 3a: riepilogo di sola lettura, subito dopo l'animazione di Ch.4.
+    // Non scrive nulla: i nuovi MTR entrano in vigore solo al nuovo ciclo.
+    if (wasOverload) setTimeout(woShowProgressionSummary, 350);
 }
 
 function launchConfetti() {
@@ -15958,27 +16310,21 @@ function homeRefreshData() {
                 <button class="mtr-close-btn" onclick="mtrClose()">✕</button>
             </div>
             <div class="mtr-exname" id="mtr-exname">—</div>
-            <div class="mtr-input-label">Il tuo massimo con tecnica perfetta</div>
+            <div class="mtr-input-label">Il carico massimo con tecnica pulita…</div>
             <input id="mtr-input" type="number" placeholder="es. 80" min="1" max="500" step="0.5" inputmode="decimal">
+            <div class="mtr-input-label" style="margin-top:10px;">… mantenuta per quante ripetizioni?</div>
+            <input id="mtr-reps" type="number" placeholder="es. 5" min="1" max="30" step="1" inputmode="numeric">
             <div class="mtr-split">
-                <div class="mtr-block forza">
-                    <div class="mtr-block-title">⚡ Upper/Lower · Forza</div>
-                    <div class="mtr-block-row"><span class="mtr-block-ch">Ch.1 65%</span><span class="mtr-block-kg" id="mf0">—</span></div>
-                    <div class="mtr-block-row"><span class="mtr-block-ch">Ch.2 75%</span><span class="mtr-block-kg" id="mf1">—</span></div>
-                    <div class="mtr-block-row"><span class="mtr-block-ch">Ch.3 85%</span><span class="mtr-block-kg" id="mf2">—</span></div>
-                    <div class="mtr-block-row"><span class="mtr-block-ch">Ch.4 90%</span><span class="mtr-block-kg" id="mf3">—</span></div>
-                    <div class="mtr-block-row"><span class="mtr-block-ch">Deload 50%</span><span class="mtr-block-kg" id="mf4" style="color:#94a3b8">—</span></div>
-                </div>
-                <div class="mtr-block massa">
-                    <div class="mtr-block-title">💪 Push/Pull/Legs · Massa</div>
-                    <div class="mtr-block-row"><span class="mtr-block-ch">Ch.1 50%</span><span class="mtr-block-kg" id="mm0">—</span></div>
-                    <div class="mtr-block-row"><span class="mtr-block-ch">Ch.2 57%</span><span class="mtr-block-kg" id="mm1">—</span></div>
-                    <div class="mtr-block-row"><span class="mtr-block-ch">Ch.3 65%</span><span class="mtr-block-kg" id="mm2">—</span></div>
-                    <div class="mtr-block-row"><span class="mtr-block-ch">Ch.4 70%</span><span class="mtr-block-kg" id="mm3">—</span></div>
-                    <div class="mtr-block-row"><span class="mtr-block-ch">Deload 50%</span><span class="mtr-block-kg" id="mm4" style="color:#94a3b8">—</span></div>
+                <div class="mtr-block forza" style="flex:1;">
+                    <div class="mtr-block-title">📈 Carichi del ciclo</div>
+                    <div class="mtr-block-row"><span class="mtr-block-ch">Ch.1 80%</span><span class="mtr-block-kg" id="mf0">—</span></div>
+                    <div class="mtr-block-row"><span class="mtr-block-ch">Ch.2 87%</span><span class="mtr-block-kg" id="mf1">—</span></div>
+                    <div class="mtr-block-row"><span class="mtr-block-ch">Ch.3 94%</span><span class="mtr-block-kg" id="mf2">—</span></div>
+                    <div class="mtr-block-row"><span class="mtr-block-ch">Ch.4 100%</span><span class="mtr-block-kg" id="mf3">—</span></div>
+                    <div class="mtr-block-row"><span class="mtr-block-ch">Deload 94%</span><span class="mtr-block-kg" id="mf4" style="color:#94a3b8">—</span></div>
                 </div>
             </div>
-            <div class="mtr-note">📖 Schoenfeld (2010) · Il carico ipertrofico ottimale è il 65-75% del massimo tecnico, non dell'1RM assoluto.</div>
+            <div class="mtr-note">📖 Il MTR è il carico più alto che riesci a tenere per le ripetizioni indicate <strong>prima che la tecnica si sporchi</strong>. Il Chapter 4 ti porta esattamente lì.</div>
             <button id="mtr-apply" onclick="mtrApply()">✓ Applica ai carichi</button>
             <button id="mtr-cancel" onclick="mtrClose()">Annulla</button>
         </div>
