@@ -1845,6 +1845,22 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             vertical-align:middle; transition:background 0.15s;
         }
         .wc-info-btn:active { background:rgba(99,102,241,0.32); }
+        /* ═══ Avviso Chapter 4 · Overload ═══ */
+        .wo-ovl-card { background:#0f172a; border:1px solid rgba(255,255,255,0.07); border-radius:14px; overflow:hidden; margin:0 16px 14px; }
+        .wo-ovl-head { padding:13px 15px 11px; border-bottom:1px solid rgba(255,255,255,0.07); }
+        .wo-ovl-eyebrow { font-size:0.52rem; color:#818cf8; text-transform:uppercase; letter-spacing:0.1em; font-weight:700; margin-bottom:4px; display:flex; align-items:center; flex-wrap:nowrap; gap:6px; min-width:0; }
+        .wo-ovl-eyebrow > .wc-sci-badge { margin-left:0; flex-shrink:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .wo-ovl-title { font-size:0.92rem; font-weight:800; color:#e2e8f0; line-height:1.3; }
+        .wo-ovl-body { padding:12px 15px 14px; }
+        .wo-ovl-p { font-size:0.7rem; color:#cbd5e1; line-height:1.6; margin-bottom:10px; }
+        .wo-ovl-p b { color:#e2e8f0; }
+        .wo-ovl-note { font-size:0.62rem; color:#94a3b8; line-height:1.55; padding:10px 12px; background:rgba(255,255,255,0.03); border-radius:9px; }
+        .wo-ovl-note b { color:#cbd5e1; }
+        /* width/padding/text-transform espliciti: la regola globale `button` li imporrebbe */
+        .wo-ovl-btn { width:100%; padding:13px; margin:12px 0 0; border:none; border-radius:11px;
+            background:linear-gradient(135deg,#00ff88,#00cc88); color:#000; font-family:inherit;
+            font-size:0.78rem; font-weight:900; text-transform:none; cursor:pointer; }
+
         .wc-body { padding:12px 16px 14px; }
         /* Intestazione esercizio (V3): riquadro interno con bordo e angoli tondi */
         .wc-ex-head {
@@ -3249,6 +3265,7 @@ const APP = {
     completedWeeks: [false, false, false, false, false],
     availableWeeks: [0],
     mtrValues: {}, // dizionario globale MTR: { "Nome Esercizio": 35 }
+    overloadNoticeSeen: false, // avviso Chapter 4 già letto in questo ciclo
     // Chip states per week: array of 7 values each ('rest', 'selected', 'done')
     chipStates: [
         ['rest','rest','rest','rest','rest','rest','rest'],
@@ -3281,6 +3298,7 @@ const DAYS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
 const CHAPTER_NAMES = ['Activation', 'Momentum', 'The Peak', 'Overload', 'Deload'];
 const N_WEEKS = 5;
 const DELOAD_WEEK = 4; // indice (0-based) della settimana deload
+const OVERLOAD_WEEK = DELOAD_WEEK - 1; // Chapter 4: ultima settimana di carico
 // Percentuali del baseWeight per ogni settimana
 // W1:65%  W2:75%  W3:85%  W4:92.5%  W5(Deload):50%
 const WEEK_LOADS = [0.65, 0.75, 0.85, 0.90, 0.50];
@@ -3309,6 +3327,7 @@ function saveState() {
             totalWorkouts: APP.totalWorkouts, startDate: APP.startDate ? APP.startDate.toISOString() : null,
             userName: APP.userName, selectedViewWeek: APP.selectedViewWeek,
             completedWeeks: APP.completedWeeks, availableWeeks: APP.availableWeeks,
+            overloadNoticeSeen: APP.overloadNoticeSeen,
             chipStates: APP.chipStates, exerciseTracking: APP.exerciseTracking,
             currentExerciseIndex: APP.currentExerciseIndex, goal: document.getElementById('goal').value,
             activeProtocolId: APP.activeProtocolId, dayAssignments: APP.dayAssignments,
@@ -3458,6 +3477,7 @@ function loadState() {
         APP.userName = saved.userName || null;
         APP.selectedViewWeek = saved.selectedViewWeek || 0;
         APP.completedWeeks = saved.completedWeeks || [false, false, false, false, false];
+        APP.overloadNoticeSeen = !!saved.overloadNoticeSeen;
         // Recompute availableWeeks from completedWeeks — never trust saved value
         // ch0 always available; ch(n) available only if ch(n-1) completed
         const _cw = saved.completedWeeks || [false,false,false,false,false];
@@ -3731,6 +3751,38 @@ function woWarmupInfo() {
 }
 
 // ── Popup informativo sul riscaldamento specifico — fine ──
+// ── Avviso "ultima settimana del ciclo" (Chapter 4 · Overload) ──
+// Compare sopra al riscaldamento specifico. Si nasconde alla conferma e
+// riappare al ciclo successivo: il flag viene azzerato appena esci da Overload.
+function buildOverloadNotice() {
+    var box = document.createElement('div');
+    box.id = 'wo-overload-notice';
+    box.className = 'wo-ovl-card';
+    box.innerHTML =
+        '<div class="wo-ovl-head">' +
+            '<div class="wo-ovl-eyebrow">\u26a1 Settimana 4 \u00b7 Overload ' +
+                '<span class="wc-sci-badge">NSCA 2008</span></div>' +
+            '<div class="wo-ovl-title">Ultima settimana del ciclo</div>' +
+        '</div>' +
+        '<div class="wo-ovl-body">' +
+            '<div class="wo-ovl-p">Questa settimana lavori al <b>90% del tuo MTR</b>: \u00e8 il carico pi\u00f9 vicino ' +
+                'al tuo limite reale, quindi \u00e8 la misura pi\u00f9 affidabile di quanto sei cresciuto in queste quattro settimane.</div>' +
+            '<div class="wo-ovl-p">Alla fine ti chieder\u00f2 com\u2019\u00e8 andato ogni esercizio. Poi ti riposi con la settimana ' +
+                'di <b>Deload</b>, e al ritorno il nuovo ciclo riparte con i carichi aggiornati.</div>' +
+            '<div class="wo-ovl-note">Non serve fare nulla di diverso adesso. Allenati normalmente e fai attenzione ' +
+                'a come chiudi <b>l\u2019ultima serie</b> di ogni esercizio: \u00e8 quella che conta per la valutazione.</div>' +
+            '<button type="button" class="wo-ovl-btn" onclick="woOverloadNoticeDismiss()">Ho capito</button>' +
+        '</div>';
+    return box;
+}
+
+function woOverloadNoticeDismiss() {
+    var el = document.getElementById('wo-overload-notice');
+    if (el) el.remove();
+    APP.overloadNoticeSeen = true;
+    saveState();
+}
+
 function renderWarmupBlock(exName, exercises, container) {
     // Usa sempre il contenitore stabile: evita che i re-render risalgano il DOM
     container = document.getElementById('wo-warmup-container') || container;
@@ -4839,6 +4891,7 @@ async function onLoginSuccess(user, usernameOverride = null) {
         APP.startDate = s.startDate ? new Date(s.startDate) : null;
         APP.selectedViewWeek = s.selectedViewWeek || 0;
         APP.completedWeeks = s.completedWeeks || [false,false,false,false,false];
+        APP.overloadNoticeSeen = !!s.overloadNoticeSeen;
         APP.availableWeeks = s.availableWeeks || [0];
         APP.chipStates = s.chipStates || [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']];
         APP.exerciseTracking = s.exerciseTracking || [];
@@ -7578,6 +7631,13 @@ function initWorkoutPage() {
         // Pagina 1: solo warmup block, niente lista esercizi
         const kgW = w;
         const isDeload = kgW === DELOAD_WEEK;
+        // Fuori da Overload il flag si azzera da solo: così l'avviso ricompare
+        // al ciclo successivo senza bisogno di un contatore di cicli.
+        if (w !== OVERLOAD_WEEK && APP.overloadNoticeSeen) {
+            APP.overloadNoticeSeen = false;
+            saveState();
+        }
+        var showOvlNotice = (w === OVERLOAD_WEEK) && !APP.overloadNoticeSeen;
         if (prevList) {
             // Firma del riscaldamento corrente: se rientrando nella sezione è
             // ancora la stessa, NON ricostruiamo il blocco. Ricostruirlo
@@ -7599,6 +7659,8 @@ function initWorkoutPage() {
                 if (_kSkip) _kSkip.style.display = 'block';
             } else {
             prevList.innerHTML = '';
+            // L'avviso va sopra al riscaldamento specifico
+            if (showOvlNotice) prevList.appendChild(buildOverloadNotice());
             if (!isDeload && exData.length > 0) {
                 var warmupContainer = document.createElement('div');
                 warmupContainer.id = 'wo-warmup-container';
