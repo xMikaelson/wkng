@@ -1673,9 +1673,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .mtr-close-btn { background:rgba(255,255,255,0.06); border:none; border-radius:50%; width:26px; height:26px; color:#94a3b8; font-size:0.8rem; cursor:pointer; display:flex; align-items:center; justify-content:center; font-family:inherit; }
         .mtr-exname { font-size:0.7rem; color:var(--primary); font-weight:700; margin-bottom:14px; }
         .mtr-input-label { font-size:0.5rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px; }
-        #mtr-input { width:100%; background:rgba(255,255,255,0.05); border:1.5px solid rgba(0,255,136,0.3); border-radius:10px; padding:11px 14px; color:#fff; font-size:1.1rem; font-weight:800; text-align:center; outline:none; font-family:inherit; box-sizing:border-box; margin-bottom:14px; }
-        #mtr-input:focus { border-color:var(--primary); }
-        .mtr-split { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+        /* I due campi affiancati: min-width 0 evita che l'input sfori la colonna */
+        .mtr-fields { display:flex; gap:10px; margin-bottom:14px; align-items:flex-end; }
+        .mtr-field  { flex:1; min-width:0; }
+        #mtr-input, #mtr-reps { width:100%; background:rgba(255,255,255,0.05); border:1.5px solid rgba(0,255,136,0.3); border-radius:10px; padding:11px 10px; color:#fff; font-size:1.1rem; font-weight:800; text-align:center; outline:none; font-family:inherit; box-sizing:border-box; margin:0; }
+        #mtr-input:focus, #mtr-reps:focus { border-color:var(--primary); }
+        /* Una sola colonna dopo l'unificazione della scala: va centrata,
+           altrimenti la griglia a 2 colonne la lascia schiacciata a sinistra. */
+        .mtr-split { display:flex; justify-content:center; margin-bottom:12px; }
+        .mtr-split .mtr-block { width:100%; max-width:270px; }
         .mtr-block { border-radius:10px; padding:10px; }
         .mtr-block.forza { background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.2); }
         .mtr-block.massa { background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.2); }
@@ -6338,14 +6344,15 @@ function checkChapterCompletion(w) {
     const done = APP.chipStates[w].filter(s => s === 'done').length;
     if (done < assignments.length) return;
     APP.completedWeeks[w] = true;
+    // Chiuso l'Overload: la progressione resta in attesa, verrà applicata al
+    // rientro nel Chapter 1 (durante il Deload i carichi restano sul vecchio
+    // MTR). Va PRIMA del guard su _weekCelebrated, e senza controllare che le
+    // risposte esistano già: l'ultima serie apre il popup e l'utente risponde
+    // DOPO che questa funzione è passata. Se poi non ci sono risposte,
+    // woApplyProgression() non tocca nulla e restituisce 0.
+    if (w === OVERLOAD_WEEK) APP.progressionPending = true;
     if (APP._weekCelebrated[w]) return;
     APP._weekCelebrated[w] = true;
-    // Chiuso l'Overload: la progressione resta in attesa. Verrà applicata al
-    // rientro nel Chapter 1, non ora — durante il Deload i carichi devono
-    // restare calcolati sul vecchio MTR.
-    if (w === OVERLOAD_WEEK && Object.keys(APP.overloadAnswers || {}).length) {
-        APP.progressionPending = true;
-    }
     if (!APP.availableWeeks.includes(w)) APP.availableWeeks.push(w);
     if (w < 4 && !APP.availableWeeks.includes(w+1)) {
         APP.availableWeeks.push(w+1);
@@ -11579,6 +11586,11 @@ function woOverloadRecord(exName, answer) {
     var prev = APP.overloadAnswers[exName];
     if (prev && OVL_RANK[prev] <= OVL_RANK[answer]) return; // già più conservativa
     APP.overloadAnswers[exName] = answer;
+    // Se l'Overload risulta già chiuso, la risposta è arrivata dopo:
+    // riarma comunque la progressione per il prossimo Chapter 1.
+    if (APP.completedWeeks && APP.completedWeeks[OVERLOAD_WEEK]) {
+        APP.progressionPending = true;
+    }
     saveState();
 }
 
@@ -11680,7 +11692,9 @@ function woApplyProgression() {
             var slot = (proto._splitSlot || '').toLowerCase();
             var isMassa = slot === 'push' || slot === 'pull' || slot === 'legs';
             proto.exercises.forEach(function(ex) {
-                if (!ex || ex.name !== r.name) return;
+                // exSameExercise e non !==: i nomi possono differire fra
+                // protocolli (italiano/inglese, maiuscole, spaziature)
+                if (!ex || !ex.name || !exSameExercise(ex.name, r.name)) return;
                 ex.mtrValue = r.newMtr;
                 var ref = mtrForReps(r.name, srReps(ex.sr)) || r.newMtr;
                 ex.loads = WEEK_LOADS.map(function(p) {
@@ -15243,6 +15257,7 @@ function showWeekComplete(w) {
     document.getElementById('wc-title').textContent   = 'Settimana ' + (w+1) + ' Completata!';
     document.getElementById('wc-sub').textContent     = msgs[w] || '';
     document.getElementById('wc-chapter').textContent = 'CHAPTER ' + (w+1) + ' · ' + (names[w] || '');
+    _lastWeekCompleteIdx = w; // serve a closeWeekComplete per il riepilogo
     document.getElementById('week-complete-overlay').classList.add('visible');
     launchConfetti();
 }
@@ -15328,7 +15343,7 @@ function launchEpicConfetti() {
 function restartCycle() {
     APP.completedWeeks = [false, false, false, false, false];
     APP.availableWeeks = [0];
-    APP._weekCelebrated = {};
+    APP._weekCelebrated = [false, false, false, false, false];
     // I giorni tornano da svolgere, ma lo schema settimanale resta:
     // 'done' → 'workout', il resto invariato.
     if (APP.chipStates) {
@@ -15354,9 +15369,13 @@ function closeProgramComplete() {
     restartCycle();
 }
 
+var _lastWeekCompleteIdx = -1;
+
 function closeWeekComplete() {
-    var wasOverload = document.getElementById('wc-chapter') &&
-                      /CHAPTER 4/.test(document.getElementById('wc-chapter').textContent || '');
+    // Indice memorizzato invece del testo dell'intestazione: leggere
+    // "CHAPTER 4" dalla stringa si romperebbe al primo ritocco di copy.
+    var wasOverload = _lastWeekCompleteIdx === OVERLOAD_WEEK;
+    _lastWeekCompleteIdx = -1;
     document.getElementById('week-complete-overlay').classList.remove('visible');
     // Rimuovi confetti
     document.querySelectorAll('.confetto').forEach(c => c.remove());
@@ -16356,12 +16375,19 @@ function homeRefreshData() {
                 <button class="mtr-close-btn" onclick="mtrClose()">✕</button>
             </div>
             <div class="mtr-exname" id="mtr-exname">—</div>
-            <div class="mtr-input-label">Il carico massimo con tecnica pulita…</div>
-            <input id="mtr-input" type="number" placeholder="es. 80" min="1" max="500" step="0.5" inputmode="decimal">
-            <div class="mtr-input-label" style="margin-top:10px;">… mantenuta per quante ripetizioni?</div>
-            <input id="mtr-reps" type="number" placeholder="es. 5" min="1" max="30" step="1" inputmode="numeric">
+            <div class="mtr-fields">
+                <div class="mtr-field">
+                    <div class="mtr-input-label">Carico massimo</div>
+                    <input id="mtr-input" type="number" placeholder="es. 80" min="1" max="500" step="0.5" inputmode="decimal">
+                </div>
+                <div class="mtr-field">
+                    <div class="mtr-input-label">Ripetizioni tenute</div>
+                    <input id="mtr-reps" type="number" placeholder="es. 5" min="1" max="30" step="1" inputmode="numeric">
+                </div>
+            </div>
+            <div class="mtr-input-label" style="text-align:center;margin:-8px 0 12px;text-transform:none;letter-spacing:0;font-size:0.54rem;">Il carico più alto che tieni con tecnica pulita, e per quante ripetizioni</div>
             <div class="mtr-split">
-                <div class="mtr-block forza" style="flex:1;">
+                <div class="mtr-block forza">
                     <div class="mtr-block-title">📈 Carichi del ciclo</div>
                     <div class="mtr-block-row"><span class="mtr-block-ch">Ch.1 72%</span><span class="mtr-block-kg" id="mf0">—</span></div>
                     <div class="mtr-block-row"><span class="mtr-block-ch">Ch.2 78%</span><span class="mtr-block-kg" id="mf1">—</span></div>
