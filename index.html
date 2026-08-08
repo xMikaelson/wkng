@@ -2228,23 +2228,23 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <!-- CHAPTER TIPS — one card per chapter, shown dynamically -->
         <div class="chapter-tips-row" id="chapter-tips-row">
             <div class="chapter-tip-card" id="tip-ch-0">
-                <div class="tip-chapter-label">💡 Chapter 1 · Activation — 80%</div>
-                <div class="tip-chapter-text">Non avere fretta. Se l’ 80% ti sembra troppo leggero, resisti alla tentazione di caricare di più. Il tuo corpo sta risvegliando schemi motori dimenticati. <strong>Concentrati sulla tecnica perfetta</strong>, sulla stabilità, sul controllo. Ogni ripetizione deve essere una dichiarazione di intenti. Questo è il momento in cui ricostruisci le fondamenta.</div>
+                <div class="tip-chapter-label">💡 Chapter 1 · Activation — 72%</div>
+                <div class="tip-chapter-text">Non avere fretta. Se il 72% ti sembra troppo leggero, resisti alla tentazione di caricare di più. Il tuo corpo sta risvegliando schemi motori dimenticati. <strong>Concentrati sulla tecnica perfetta</strong>, sulla stabilità, sul controllo. Ogni ripetizione deve essere una dichiarazione di intenti. Questo è il momento in cui ricostruisci le fondamenta.</div>
             </div>
             <div class="chapter-tip-card" id="tip-ch-1">
-                <div class="tip-chapter-label">💡 Chapter 2 · Momentum — 87%</div>
-                <div class="tip-chapter-text">Concentrati sulla respirazione e sulla costanza. L’ 87% è il territorio dove il comfort inizia a scricchiolare. Qui la mente ti dirà di rallentare. <strong>Non ascoltarla.</strong> Ogni serie completata è un mattone che posi sulla tua nuova identità. Il progresso non è lineare, ma la direzione è chiara: avanti. Sempre avanti.</div>
+                <div class="tip-chapter-label">💡 Chapter 2 · Momentum — 78%</div>
+                <div class="tip-chapter-text">Concentrati sulla respirazione e sulla costanza. Il 78% è il territorio dove il comfort inizia a scricchiolare. Qui la mente ti dirà di rallentare. <strong>Non ascoltarla.</strong> Ogni serie completata è un mattone che posi sulla tua nuova identità. Il progresso non è lineare, ma la direzione è chiara: avanti. Sempre avanti.</div>
             </div>
             <div class="chapter-tip-card" id="tip-ch-2">
-                <div class="tip-chapter-label">💡 Chapter 3 · The Peak — 94%</div>
-                <div class="tip-chapter-text">Assicurati di aver dormito a sufficienza. Al 94% del carico, il margine di errore si restringe. <strong>Riscaldati con cura e visualizza ogni movimento</strong> prima di eseguirlo. Stai sfidando i tuoi vecchi limiti. Questo è il breakthrough. Non temerlo. Abbraccialo.</div>
+                <div class="tip-chapter-label">💡 Chapter 3 · The Peak — 85%</div>
+                <div class="tip-chapter-text">Assicurati di aver dormito a sufficienza. All’ 85% del carico, il margine di errore si restringe. <strong>Riscaldati con cura e visualizza ogni movimento</strong> prima di eseguirlo. Stai sfidando i tuoi vecchi limiti. Questo è il breakthrough. Non temerlo. Abbraccialo.</div>
             </div>
             <div class="chapter-tip-card" id="tip-ch-3">
-                <div class="tip-chapter-label">💡 Chapter 4 · Overload — 100%</div>
-                <div class="tip-chapter-text">Hai costruito tutto per arrivare qui. Al 100% sei esattamente al tuo massimo tecnico: il carico più alto che riesci a tenere per le ripetizioni previste senza sporcare la tecnica. <strong>Esegui ogni serie come se fosse l'ultima della tua vita.</strong> Recupera bene tra le sessioni. La settimana dopo ti ringrazierai.</div>
+                <div class="tip-chapter-label">💡 Chapter 4 · Overload — 90%</div>
+                <div class="tip-chapter-text">Hai costruito tutto per arrivare qui. Al 90% del tuo MTR sei sul carico più alto del ciclo. Non è il tuo massimo assoluto: quel margine è voluto, perché devi completare tutte le serie previste, non solo la prima. <strong>Esegui ogni serie come se fosse l'ultima della tua vita.</strong> Recupera bene tra le sessioni. La settimana dopo ti ringrazierai.</div>
             </div>
             <div class="chapter-tip-card" id="tip-ch-4">
-                <div class="tip-chapter-label">🔄 Chapter 5 · Deload — 94%, volume dimezzato</div>
+                <div class="tip-chapter-label">🔄 Chapter 5 · Deload — 85%, volume dimezzato</div>
                 <div class="tip-chapter-text">Non è una settimana di riposo: è una settimana di <strong>supercompensazione</strong>. Il corpo ripara i micro-traumi accumulati e si ricostruisce più forte. Mantenere l’intensità tagliando il volume conserva gli adattamenti mentre la fatica si dissipa: è quanto emerge dalla ricerca sul tapering (Bosquet et al., 2007). Non saltarla.</div>
             </div>
         </div>
@@ -3798,8 +3798,9 @@ function buildOverloadNotice() {
             '<div class="wo-ovl-title">Ultima settimana del ciclo</div>' +
         '</div>' +
         '<div class="wo-ovl-body">' +
-            '<div class="wo-ovl-p">Questa settimana lavori al <b>100% del tuo MTR</b>: \u00e8 il carico pi\u00f9 alto ' +
-                'che riesci a tenere per le ripetizioni previste, quindi \u00e8 la misura pi\u00f9 affidabile di quanto sei cresciuto in queste quattro settimane.</div>' +
+            '<div class="wo-ovl-p">Questa settimana lavori al <b>90% del tuo MTR</b>: \u00e8 il carico pi\u00f9 alto ' +
+                'del ciclo. Il margine rispetto al tuo massimo tecnico \u00e8 voluto \u2014 l\u2019MTR \u00e8 un valore da ' +
+                'singola serie, mentre qui le serie da completare sono tutte.</div>' +
             '<div class="wo-ovl-p">Alla fine ti chieder\u00f2 com\u2019\u00e8 andato ogni esercizio. Poi ti riposi con la settimana ' +
                 'di <b>Deload</b>, e al ritorno il nuovo ciclo riparte con i carichi aggiornati.</div>' +
             '<div class="wo-ovl-note">Non serve fare nulla di diverso adesso. Allenati normalmente e fai attenzione ' +
@@ -5193,7 +5194,7 @@ function renderPlanPage(w) {
         var hasDeload = APP.savedProtocols.some(function(p){ return p.name && p.name.toLowerCase().includes('deload'); });
         var hasSource = APP.savedProtocols.some(function(p){ var n=(p.name||'').toLowerCase(); return n.includes('upper')||n.includes('lower'); });
         deloadBanner.innerHTML = '<div style="font-weight:800;color:#818cf8;margin-bottom:4px;">🔄 Settimana Deload</div>' +
-            'Carico al <strong>94%</strong> dell\'MTR · Serie <strong>dimezzate</strong> · Ripetizioni invariate.<br>' +
+            'Carico all\'<strong>85%</strong> dell\'MTR · Serie <strong>dimezzate</strong> · Ripetizioni invariate.<br>' +
             'Questa settimana serve al corpo per recuperare e supercompensare: non saltarla!';
         if (!hasDeload && hasSource) {
             var btnRow = document.createElement('div');
@@ -6536,7 +6537,7 @@ function generateDeloadProtocol(mode) {
         if (typeof saveProtocolToSupabase === 'function') saveProtocolToSupabase(newProto);
         renderProtocolList();
         renderPlanPage(DELOAD_WEEK);
-        showToast('⚙️ Deload manuale creato con ' + exercises.length + ' esercizi al 94% con volume dimezzato', 'success');
+        showToast('⚙️ Deload manuale creato con ' + exercises.length + ' esercizi all\'85% con volume dimezzato', 'success');
         return;
     }
 
@@ -7067,7 +7068,7 @@ function openDeloadManualForm() {
         '<span style="color:#94a3b8;">Esercizi</span><span><strong style="color:#e2e8f0;">3 totali</strong> — 1 Push · 1 Pull · 1 Lower</span>' +
         '<span style="color:#94a3b8;">Serie</span><span>3 (fisse)</span>' +
         '<span style="color:#94a3b8;">Reps</span><span>8-10 per set</span>' +
-        '<span style="color:#94a3b8;">Carico</span><span>94% dell’MTR</span>' +
+        '<span style="color:#94a3b8;">Carico</span><span>85% dell’MTR</span>' +
         '</div>' +
         '<div style="margin-top:8px;font-size:0.62rem;color:#94a3b8;">Seleziona il tuo esercizio principale per ciascun pattern. Non di più.</div>';
     content.appendChild(info);
@@ -7792,7 +7793,7 @@ function initWorkoutPage() {
                 var _dProg = document.getElementById('wo-warmup-fixed-footer');
                 if (_dProg) _dProg.style.display = 'none';
                 woShowActionFooter(true, false);
-                prevList.innerHTML = `<div style="background:rgba(99,102,241,0.09);border:1px solid rgba(99,102,241,0.22);border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:0.6rem;color:#818cf8;font-weight:700;">🔄 Deload Week — carico 94% · serie dimezzate</div>
+                prevList.innerHTML = `<div style="background:rgba(99,102,241,0.09);border:1px solid rgba(99,102,241,0.22);border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:0.6rem;color:#818cf8;font-weight:700;">🔄 Deload Week — carico 85% · serie dimezzate</div>
                 <div style="font-size:0.55rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;font-weight:700;">Programma · ${protoName}</div>
                 ${exData.map((ex,i) => {
                     const kg = ex.loads ? ex.loads[kgW].toFixed(1) : (ex.baseWeight||0);
@@ -16362,14 +16363,14 @@ function homeRefreshData() {
             <div class="mtr-split">
                 <div class="mtr-block forza" style="flex:1;">
                     <div class="mtr-block-title">📈 Carichi del ciclo</div>
-                    <div class="mtr-block-row"><span class="mtr-block-ch">Ch.1 80%</span><span class="mtr-block-kg" id="mf0">—</span></div>
-                    <div class="mtr-block-row"><span class="mtr-block-ch">Ch.2 87%</span><span class="mtr-block-kg" id="mf1">—</span></div>
-                    <div class="mtr-block-row"><span class="mtr-block-ch">Ch.3 94%</span><span class="mtr-block-kg" id="mf2">—</span></div>
-                    <div class="mtr-block-row"><span class="mtr-block-ch">Ch.4 100%</span><span class="mtr-block-kg" id="mf3">—</span></div>
-                    <div class="mtr-block-row"><span class="mtr-block-ch">Deload 94%</span><span class="mtr-block-kg" id="mf4" style="color:#94a3b8">—</span></div>
+                    <div class="mtr-block-row"><span class="mtr-block-ch">Ch.1 72%</span><span class="mtr-block-kg" id="mf0">—</span></div>
+                    <div class="mtr-block-row"><span class="mtr-block-ch">Ch.2 78%</span><span class="mtr-block-kg" id="mf1">—</span></div>
+                    <div class="mtr-block-row"><span class="mtr-block-ch">Ch.3 85%</span><span class="mtr-block-kg" id="mf2">—</span></div>
+                    <div class="mtr-block-row"><span class="mtr-block-ch">Ch.4 90%</span><span class="mtr-block-kg" id="mf3">—</span></div>
+                    <div class="mtr-block-row"><span class="mtr-block-ch">Deload 85%</span><span class="mtr-block-kg" id="mf4" style="color:#94a3b8">—</span></div>
                 </div>
             </div>
-            <div class="mtr-note">📖 Il MTR è il carico più alto che riesci a tenere per le ripetizioni indicate <strong>prima che la tecnica si sporchi</strong>. Il Chapter 4 ti porta esattamente lì.</div>
+            <div class="mtr-note">📖 Il MTR è il carico più alto che riesci a tenere per le ripetizioni indicate <strong>prima che la tecnica si sporchi</strong>. Il ciclo lavora sul 90% di questo valore, così puoi completare tutte le serie e non solo la prima.</div>
             <button id="mtr-apply" onclick="mtrApply()">✓ Applica ai carichi</button>
             <button id="mtr-cancel" onclick="mtrClose()">Annulla</button>
         </div>
