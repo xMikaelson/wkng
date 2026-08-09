@@ -3366,7 +3366,7 @@ function saveState() {
             overloadAnswers: APP.overloadAnswers,
             progressionPending: APP.progressionPending,
             chipStates: APP.chipStates, exerciseTracking: APP.exerciseTracking,
-            currentExerciseIndex: APP.currentExerciseIndex, goal: document.getElementById('goal').value,
+            currentExerciseIndex: APP.currentExerciseIndex, goal: (document.getElementById('goal') || {}).value || APP.goal || '',
             activeProtocolId: APP.activeProtocolId, dayAssignments: APP.dayAssignments,
             motivationalQuotes: APP.motivationalQuotes,
             personalRecords: APP.personalRecords || {},
@@ -3383,7 +3383,13 @@ function saveState() {
         updateStreakWidget();
         updateBadges();
         syncExtraToSupabase();
-    } catch(e) {}
+    } catch(e) {
+        // Il catch vuoto nascondeva i fallimenti di salvataggio: se qualcosa
+        // qui dentro lancia, lo stato non viene scritto e senza segnale
+        // l'utente perde dati senza accorgersene.
+        console.error('saveState fallito:', e);
+        try { showToast('Salvataggio non riuscito', 'error'); } catch(_) {}
+    }
 }
 async function saveToSupabase(stateData) {
     try {
@@ -4933,6 +4939,9 @@ async function onLoginSuccess(user, usernameOverride = null) {
         APP.selectedViewWeek = s.selectedViewWeek || 0;
         APP.completedWeeks = s.completedWeeks || [false,false,false,false,false];
         APP.mtrReps = Object.assign({}, s.mtrReps || {}, APP.mtrReps || {});
+        // Salvato nella whitelist ma mai riletto qui: su un dispositivo senza
+        // localStorage il nome non tornava più. Il valore locale, se c'è, vince.
+        if (!APP.userName && s.userName) APP.userName = s.userName;
         APP.overloadNoticeSeen = !!s.overloadNoticeSeen;
         APP.overloadAnswers = Object.assign({}, s.overloadAnswers || {}, APP.overloadAnswers || {});
         APP.progressionPending = !!s.progressionPending || !!APP.progressionPending;
@@ -11831,7 +11840,10 @@ function woCompleteSet() {
 
     // ── PR: conferma solo alla PRIMA serie (setIndex === 0 prima dell'incremento) ──
     if (woState.setIndex === 0) {
-        const kgEl = document.getElementById('wo-kg-val');
+        // L'id corretto è 'wo-kg-input' (creato in woRenderEx): 'wo-kg-val'
+        // non è mai esistito, quindi il controllo cadeva sempre e i record
+        // personali non venivano registrati.
+        const kgEl = document.getElementById('wo-kg-input');
         if (kgEl) {
             const kg = parseFloat(kgEl.value);
             if (!isNaN(kg) && kg > 0) _woCheckPR(ex.name, kg);
