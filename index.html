@@ -11584,29 +11584,16 @@ function _woCheckPR(exName, kg) {
         showToast(`🏆 Personal Record: ${exName} — ${kg} kg!`, 'success');
         woRenderExList();
     } else {
-        // Carico minore o uguale: memorizza comunque il carico modificato sul protocollo attivo
-        // così la prossima sessione parte dal peso effettivamente usato
-        const proto = APP.savedProtocols && APP.savedProtocols.find(p => p.id === APP.activeProtocolId);
-        if (proto && proto.exercises) {
-            const exEntry = proto.exercises.find(e => e.name === exName);
-            if (exEntry && kg > 0 && kg !== exEntry.baseWeight) {
-                exEntry.baseWeight = kg;
-                // Aggiorna anche exerciseData in memoria
-                const exD = (APP.exerciseData || []).find(e => e.name === exName);
-                if (exD) {
-                    exD.baseWeight = kg;
-                    const loads = WEEK_LOADS.map(function(p){return kg*p;});
-                    exD.loads = loads;
-                }
-                if (typeof saveProtocolToSupabase === 'function') {
-                    try { saveProtocolToSupabase(proto); } catch(e) {}
-                }
-                saveState();
-            }
-        }
+        // NON riscrivere qui baseWeight né loads. Il ramo precedente faceva
+        //   exEntry.baseWeight = kg;  exD.loads = WEEK_LOADS.map(p => kg*p);
+        // prendendo il carico della settimana corrente — che la scala l'ha
+        // GIÀ applicata — e riusandolo come base: la scala finiva applicata
+        // due volte e i carichi del protocollo si erodevano a ogni serie
+        // (un Ch3 da 67,5 diventava la base, e il Ch4 scendeva a 60,75
+        // invece di 72). I carichi devono derivare solo dall'MTR.
         if (badge) {
             badge.textContent = pr > 0 ? ('PR attuale: ' + pr + ' kg') : '';
-            badge.style.color = '#64748b';
+            badge.style.color = '#94a3b8';
         }
     }
 }
