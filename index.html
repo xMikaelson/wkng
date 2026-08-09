@@ -1676,6 +1676,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         /* I due campi affiancati: min-width 0 evita che l'input sfori la colonna */
         .mtr-fields { display:flex; gap:10px; margin-bottom:14px; align-items:flex-end; }
         .mtr-field  { flex:1; min-width:0; }
+        .mtr-field .mtr-input-label { text-align:center; }
         #mtr-input, #mtr-reps { width:100%; background:rgba(255,255,255,0.05); border:1.5px solid rgba(0,255,136,0.3); border-radius:10px; padding:11px 10px; color:#fff; font-size:1.1rem; font-weight:800; text-align:center; outline:none; font-family:inherit; box-sizing:border-box; margin:0; }
         #mtr-input:focus, #mtr-reps:focus { border-color:var(--primary); }
         /* Una sola colonna dopo l'unificazione della scala: va centrata,
@@ -6418,6 +6419,7 @@ function mtrForReps(name, targetReps) {
 var _mtrWeekIdx  = 0;
 var _mtrSlot     = 'forza'; // 'forza' o 'massa'
 var _mtrExName   = '';
+var _mtrSchemeReps = null; // ripetizioni previste dallo schema dell'esercizio
 
 function mtrOpen(exName, weekIdx, slot, callback, defaultReps) {
     _mtrCallback = callback;
@@ -6433,6 +6435,7 @@ function mtrOpen(exName, weekIdx, slot, callback, defaultReps) {
     if (input)  { input.value = ''; }
     // Ripetizioni precompilate dallo schema dell'esercizio, o dalla base
     // già registrata per questo MTR
+    _mtrSchemeReps = parseInt(defaultReps) || null;
     if (repsEl) repsEl.value = mtrRepsGet(exName) || defaultReps || '';
     // Reset preview
     for (var i = 0; i < 5; i++) {
@@ -6452,14 +6455,41 @@ function mtrOpen(exName, weekIdx, slot, callback, defaultReps) {
     setTimeout(function(){ if (input) input.focus(); }, 100);
 }
 
-function mtrUpdatePreview() {
+// Carico di riferimento per questo esercizio. Se l'MTR è stato misurato su un
+// numero di ripetizioni diverso da quello dello schema, lo converte con Epley:
+// dichiarare "80 kg su 8 rip" su una scheda 5x5 non equivale a 80 kg su 5.
+function mtrRefLoad() {
     var val = parseFloat(document.getElementById('mtr-input').value);
+    if (!val || val <= 0) return null;
+    var repsEl = document.getElementById('mtr-reps');
+    var reps = repsEl ? parseInt(repsEl.value) : 0;
+    if (!reps || !_mtrSchemeReps || reps === _mtrSchemeReps) return val;
+    var e1rm = val * (1 + reps / 30);
+    return Math.round((e1rm / (1 + _mtrSchemeReps / 30)) * 2) / 2;
+}
+
+function mtrUpdatePreview() {
+    var ref = mtrRefLoad();
     for (var i = 0; i < 5; i++) {
         var ef = document.getElementById('mf' + i);
         if (!ef) continue;
-        ef.textContent = (!val || val <= 0)
+        ef.textContent = (ref == null)
             ? '—'
-            : (Math.round(val * WEEK_LOADS[i] * 2) / 2) + ' kg';
+            : (Math.round(ref * WEEK_LOADS[i] * 2) / 2) + ' kg';
+    }
+    // Avvisa quando i carichi non derivano direttamente dal valore digitato
+    var note = document.getElementById('mtr-conv-note');
+    if (note) {
+        var raw = parseFloat(document.getElementById('mtr-input').value);
+        var repsEl2 = document.getElementById('mtr-reps');
+        var r2 = repsEl2 ? parseInt(repsEl2.value) : 0;
+        if (ref != null && _mtrSchemeReps && r2 && r2 !== _mtrSchemeReps) {
+            note.style.display = 'block';
+            note.textContent = 'Lo schema prevede ' + _mtrSchemeReps + ' ripetizioni: ' +
+                raw + ' kg su ' + r2 + ' equivalgono a ' + ref + ' kg su ' + _mtrSchemeReps + '.';
+        } else {
+            note.style.display = 'none';
+        }
     }
 }
 
@@ -6470,8 +6500,9 @@ function mtrApply() {
     var reps = repsEl ? parseInt(repsEl.value) : 0;
     if (!reps || reps <= 0) { showToast('Indica su quante ripetizioni', 'error'); if (repsEl) repsEl.focus(); return; }
     if (_mtrExName) mtrRepsSet(_mtrExName, reps);
-    var forzaLoads = WEEK_LOADS.map(function(p){ return Math.round(val * p * 2) / 2; });
-    var massaLoads = MTR_MASSA_LOADS.map(function(p){ return Math.round(val * p * 2) / 2; });
+    var ref = mtrRefLoad() || val;   // convertito se la base differisce dallo schema
+    var forzaLoads = WEEK_LOADS.map(function(p){ return Math.round(ref * p * 2) / 2; });
+    var massaLoads = MTR_MASSA_LOADS.map(function(p){ return Math.round(ref * p * 2) / 2; });
     var isForza = _mtrSlot === 'forza' || _mtrSlot === 'upper' || _mtrSlot === 'lower';
     var loads = isForza ? forzaLoads : massaLoads;
     var baseWeight = loads[_mtrWeekIdx] != null ? loads[_mtrWeekIdx] : loads[0];
@@ -16385,7 +16416,8 @@ function homeRefreshData() {
                     <input id="mtr-reps" type="number" placeholder="es. 5" min="1" max="30" step="1" inputmode="numeric">
                 </div>
             </div>
-            <div class="mtr-input-label" style="text-align:center;margin:-8px 0 12px;text-transform:none;letter-spacing:0;font-size:0.54rem;">Il carico più alto che tieni con tecnica pulita, e per quante ripetizioni</div>
+            <div class="mtr-input-label" style="text-align:center;margin:-8px 0 8px;text-transform:none;letter-spacing:0;font-size:0.54rem;">Il carico più alto che tieni con tecnica pulita, e per quante ripetizioni</div>
+            <div id="mtr-conv-note" style="display:none;text-align:center;font-size:0.54rem;color:#a5b4fc;background:rgba(99,102,241,0.1);border-radius:8px;padding:7px 9px;margin-bottom:10px;line-height:1.45;"></div>
             <div class="mtr-split">
                 <div class="mtr-block forza">
                     <div class="mtr-block-title">📈 Carichi del ciclo</div>
