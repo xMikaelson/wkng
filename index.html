@@ -1609,8 +1609,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wo-ex-row.active .wo-ex-rname { color:#e2e8f0; font-weight:600; }
         .wo-ex-rsr { color:#64748b; font-size:0.58rem; }
         .wo-ex-rkg { font-size:0.58rem; color:#cbd5e1; margin-left:auto; font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; }
-        .wo-ex-rkg-pr { color:var(--primary); font-weight:800; }
-        .wo-ex-rkg-pr .wo-rkg-sep { color:#94a3b8; font-weight:400; }
 
         /* ── Piani ── */
         #page-plans { padding-top: 0; }
@@ -11510,15 +11508,13 @@ function woRenderExList() {
     const listEl = document.getElementById('wo-ex-list-body');
     if (!listEl) return;
     const w = APP.selectedViewWeek || 0;
-    const prs = APP.personalRecords || {};
     listEl.innerHTML = exData.map((e,i) => {
         // carico pianificato: SEMPRE dal piano, mai modificato dalla sessione
         const plannedKg = parseFloat(e.loads ? e.loads[w] : (e.baseWeight||0)).toFixed(1);
-        // PR registrato per questo esercizio (solo se superato in sessione)
-        const prKg = prs[e.name];
-        const kgCol = prKg
-            ? `<span class="wo-ex-rkg">${plannedKg} kg <span class="wo-rkg-sep">|</span><span class="wo-ex-rkg-pr"> 🏆 ${parseFloat(prKg).toFixed(1)} kg</span></span>`
-            : `<span class="wo-ex-rkg">${plannedKg} kg</span>`;
+        // Il record NON compare più accanto al carico: oggi coincide con il
+        // carico prescritto, quindi affiancarlo aggiungeva rumore senza dire
+        // nulla. I record restano salvati e avranno una sezione dedicata.
+        const kgCol = `<span class="wo-ex-rkg">${plannedKg} kg</span>`;
         return `
         <div class="wo-ex-row ${i < woState.exIndex ? 'completed' : i===woState.exIndex ? 'active' : ''}" onclick="exVideoOpen('${escapeHTML(e.name).replace(/'/g,'\\&apos;')}')">
             <div class="wo-dot"></div>
@@ -16672,7 +16668,13 @@ if ('serviceWorker' in navigator) {
         // Only register SW if served from root scope (not subdirectory)
         const swScope = window.location.pathname.replace(/\/[^/]*$/, '/') || '/';
         navigator.serviceWorker.register('./sw.js', { scope: swScope })
-            .then(reg => console.log('SW registered:', reg.scope))
+            .then(function(reg) {
+                console.log('SW registered:', reg.scope);
+                // Chiede subito a GitHub se esiste un sw.js piu' recente.
+                // Senza questo iOS controlla con i suoi tempi e l'app resta
+                // ferma alla versione precedente per uno o piu' avvii.
+                if (reg.update) { try { reg.update(); } catch (e) {} }
+            })
             .catch(err => {
                 // Non-critical — app works without SW
                 console.log('SW skipped:', err.message);
