@@ -1,4 +1,4 @@
-const CACHE_NAME = 'awakening-v303';
+const CACHE_NAME = 'awakening-v305';
 
 const STATIC_ASSETS = [
     './',
@@ -10,10 +10,28 @@ const STATIC_ASSETS = [
     'https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js'
 ];
 
+// Un asset e' "documento" se e' la root o index.html: questi vanno sempre
+// chiesti alla rete per primi, altrimenti la PWA resta ferma alla versione vecchia.
+function isDocumentRequest(request) {
+    if (request.mode === 'navigate') return true;
+    const url = new URL(request.url);
+    if (url.origin !== self.location.origin) return false;
+    return url.pathname.endsWith('/') || url.pathname.endsWith('/index.html');
+}
+
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then(cache => cache.addAll(STATIC_ASSETS.filter(url => !url.startsWith('http') || url.includes('jsdelivr'))))
+            .then(cache => Promise.all(STATIC_ASSETS.map(url => {
+                // cache:'reload' salta la cache HTTP del browser: senza questo
+                // il precache puo' salvare di nuovo il vecchio index.html.
+                const req = url.startsWith('http')
+                    ? new Request(url, { mode: 'cors' })
+                    : new Request(url, { cache: 'reload' });
+                return fetch(req)
+                    .then(res => (res && res.ok) ? cache.put(url, res) : null)
+                    .catch(() => null);
+            })))
             .catch(err => console.log('Cache install error:', err))
     );
     self.skipWaiting();
@@ -21,14 +39,28 @@ self.addEventListener('install', event => {
 
 self.addEventListener('activate', event => {
     event.waitUntil(
-        caches.keys().then(keys =>
-            Promise.all(keys
+        caches.keys().then(keys => {
+            // Se esistevano cache vecchie siamo davanti a un AGGIORNAMENTO,
+            // non a una prima installazione: in quel caso ricarichiamo le finestre aperte.
+            const isUpdate = keys.some(key => key !== CACHE_NAME);
+            return Promise.all(keys
                 .filter(key => key !== CACHE_NAME)
                 .map(key => caches.delete(key))
-            )
-        )
+            ).then(() => self.clients.claim())
+             .then(() => {
+                if (!isUpdate) return;
+                return self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+                    .then(list => Promise.all(list.map(client => {
+                        try {
+                            return client.navigate(client.url);
+                        } catch (e) {
+                            return null;
+                        }
+                    })))
+                    .catch(() => null);
+             });
+        })
     );
-    self.clients.claim();
 });
 
 self.addEventListener('fetch', event => {
@@ -36,6 +68,25 @@ self.addEventListener('fetch', event => {
     const alwaysLive = ['supabase.co', 'openfoodfacts.org', 'youtube.com', 'googleapis.com', 'anthropic.com'];
     if (alwaysLive.some(domain => url.hostname.includes(domain))) return;
 
+    // ---- Documento (navigazione / index.html): NETWORK-FIRST ----
+    if (isDocumentRequest(event.request)) {
+        event.respondWith(
+            fetch(event.request)
+                .then(response => {
+                    if (response && response.status === 200) {
+                        const clone = response.clone();
+                        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+                    }
+                    return response;
+                })
+                .catch(() => caches.match(event.request)
+                    .then(cached => cached || caches.match('./index.html'))
+                )
+        );
+        return;
+    }
+
+    // ---- Tutto il resto: CACHE-FIRST (come prima) ----
     event.respondWith(
         caches.match(event.request).then(cached => {
             if (cached) return cached;
