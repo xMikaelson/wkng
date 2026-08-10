@@ -886,6 +886,32 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             .set-counter { font-size: 0.65rem; min-width: 35px; padding: 2px 4px; }
         }
 
+        /* ═══ VELO DI AUTENTICAZIONE ═══
+           Copre lo schermo mentre il login carica profilo e protocolli, così
+           la landing non riappare per un istante prima della home. */
+        #auth-veil {
+            position: fixed; inset: 0; z-index: 4000;
+            background: var(--bg);
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center; gap: 18px;
+            opacity: 0; visibility: hidden; pointer-events: none;
+            transition: opacity 0.2s ease, visibility 0s linear 0.2s;
+        }
+        #auth-veil.on {
+            opacity: 1; visibility: visible; pointer-events: auto;
+            transition: opacity 0.12s ease, visibility 0s;
+        }
+        #auth-veil .av-brand { color: #fff; font-weight: bold; letter-spacing: 5px; text-transform: uppercase; font-size: 1.1rem; }
+        #auth-veil .av-brand span { color: var(--primary); }
+        #auth-veil .av-ring {
+            width: 26px; height: 26px; border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.15); border-top-color: var(--primary);
+            animation: avSpin 0.8s linear infinite;
+        }
+        @keyframes avSpin { to { transform: rotate(360deg); } }
+        #auth-veil .av-txt { font-size: 0.7rem; color: #94a3b8; letter-spacing: 1px; text-transform: uppercase; }
+        @media (prefers-reduced-motion: reduce) { #auth-veil .av-ring { animation-duration: 2.4s; } }
+
         #login-modal { position: fixed; top: 0; bottom: 0; left: 0; right: 0; margin-left: auto; margin-right: auto; max-width: 480px; background: rgba(15,23,42,0.9); display: none; justify-content: center; align-items: center; z-index: 3000; }
         #modal-overlay { position: fixed; top: 0; bottom: 0; left: 0; right: 0; margin-left: auto; margin-right: auto; max-width: 480px; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 4000; }
         .modal-content { background: var(--card); padding: 25px; border-radius: 15px; width: 90%; max-width: 450px; }
@@ -3283,6 +3309,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
 </div>
 
+<div id="auth-veil">
+  <div class="av-brand">A<span>WAKE</span>NING</div>
+  <div class="av-ring"></div>
+  <div class="av-txt" id="auth-veil-txt">Accesso in corso...</div>
+</div>
+
 <div id="login-modal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.95); z-index:3000; justify-content:center; align-items:center;">
   <div class="modal-content" style="text-align:center; max-width:380px; width:90%;">
     <h2 style="color:var(--primary); margin-bottom:6px; letter-spacing:2px;">AWAKENING</h2>
@@ -4844,6 +4876,20 @@ function openLogin() {
 function closeLoginModal() {
     document.getElementById('login-modal').style.display = 'none';
 }
+// Velo a schermo intero: resta su finché il login non ha finito di caricare
+// profilo, stato e protocolli, altrimenti fra la chiusura della modale e la
+// comparsa della home si rivede per un istante la schermata iniziale.
+function authVeil(show, msg) {
+    var v = document.getElementById('auth-veil');
+    if (!v) return;
+    if (show) {
+        var t = document.getElementById('auth-veil-txt');
+        if (t) t.textContent = msg || 'Accesso in corso...';
+        v.classList.add('on');
+    } else {
+        v.classList.remove('on');
+    }
+}
 function switchTab(tab) {
     const isLogin = tab === 'login';
     document.getElementById('form-login').style.display = isLogin ? 'block' : 'none';
@@ -4876,8 +4922,13 @@ async function performLogin() {
     const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
     setAuthLoading('btn-login-submit', false);
     if (error) { showAuthError(error.message); return; }
+    authVeil(true, 'Accesso in corso...');
     closeLoginModal();
-    await onLoginSuccess(data.user);
+    try {
+        await onLoginSuccess(data.user);
+    } finally {
+        authVeil(false);
+    }
 }
 async function performRegister() {
     const username = document.getElementById('reg-username').value.trim();
@@ -4900,8 +4951,13 @@ async function performRegister() {
     }
     if (!data.user) { showAuthError('Errore durante la registrazione. Riprova.'); return; }
     await sbClient.from('profiles').insert({ id: data.user.id, username });
+    authVeil(true, 'Creazione account...');
     closeLoginModal();
-    await onLoginSuccess(data.user, username);
+    try {
+        await onLoginSuccess(data.user, username);
+    } finally {
+        authVeil(false);
+    }
     showToast('Account creato! Benvenuto in Awakening', 'success');
     // Se il panel next-step è visibile, avanza la sequenza
     const nsp = document.getElementById('next-step-panel');
@@ -16001,7 +16057,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 document.getElementById('hero-section').style.display = '';
                 return;
             }
-            await onLoginSuccess(session.user);
+            authVeil(true, 'Ripristino sessione...');
+            try {
+                await onLoginSuccess(session.user);
+            } finally {
+                authVeil(false);
+            }
             // Badge peso: delay per assicurarsi che la navbar sia visibile
             setTimeout(() => updateWeightBadge(), 300);
             return;
@@ -16705,12 +16766,40 @@ document.addEventListener('visibilitychange', function() {
 });
 
 if ('serviceWorker' in navigator) {
+    // Il nuovo SW ha finito activate() e ha preso controllo: ricarica la pagina
+    // per mostrare subito la versione aggiornata. E' la pagina a ricaricarsi
+    // (non il SW a farla navigare) perche' su iOS in modalita' standalone
+    // client.navigate() dal lato SW resta silenzioso e blocca l'app sull'avvio.
+    navigator.serviceWorker.addEventListener('message', function(event) {
+        if (event.data && event.data.type === 'SW_UPDATED') {
+            window.location.reload();
+        }
+    });
+
     window.addEventListener('load', () => {
         // Only register SW if served from root scope (not subdirectory)
         const swScope = window.location.pathname.replace(/\/[^/]*$/, '/') || '/';
         navigator.serviceWorker.register('./sw.js', { scope: swScope })
             .then(function(reg) {
                 console.log('SW registered:', reg.scope);
+
+                // Se un nuovo SW resta "in attesa" (waiting), lo si sblocca
+                // subito invece di lasciarlo li' finche' l'app non viene
+                // chiusa e riaperta manualmente.
+                function skipIfWaiting(worker) {
+                    if (worker && worker.state === 'installed') {
+                        try { worker.postMessage({ type: 'SKIP_WAITING' }); } catch (e) {}
+                    }
+                }
+                skipIfWaiting(reg.waiting);
+                reg.addEventListener('updatefound', function() {
+                    const nw = reg.installing;
+                    if (!nw) return;
+                    nw.addEventListener('statechange', function() {
+                        skipIfWaiting(nw);
+                    });
+                });
+
                 // Chiede subito a GitHub se esiste un sw.js piu' recente.
                 // Senza questo iOS controlla con i suoi tempi e l'app resta
                 // ferma alla versione precedente per uno o piu' avvii.
