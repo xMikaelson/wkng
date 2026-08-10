@@ -67,7 +67,7 @@
         }
         /* ── MOBILE FIRST ── */
         *, *::before, *::after { box-sizing: border-box; }
-        html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+        html { font-size: var(--aw-root-fs, 16px); -webkit-text-size-adjust: 100%; }
         img, video { max-width: 100%; }
         input, button, select, textarea { font-family: inherit; }
         
@@ -482,6 +482,20 @@
         .settings-row:active { background:rgba(255,255,255,0.06); }
         .settings-row-left { display:flex; align-items:center; gap:10px; }
         .settings-row-icon { font-size:1rem; width:28px; }
+        /* Slider dimensione testo — stile iOS-like */
+        #font-scale-slider::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: 22px; height: 22px; border-radius: 50%;
+            background: var(--primary, #34d399);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+            cursor: pointer; border: 2px solid #0f172a;
+        }
+        #font-scale-slider::-moz-range-thumb {
+            width: 22px; height: 22px; border-radius: 50%;
+            background: var(--primary, #34d399);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+            cursor: pointer; border: 2px solid #0f172a;
+        }
         .settings-row-label { font-size:0.72rem; font-weight:600; }
         .settings-row-arrow { color:#64748b; font-size:0.7rem; }
         .settings-row.danger .settings-row-label { color:#f43f5e; }
@@ -3008,6 +3022,22 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     </div>
     <div id="mtr-manager-panel" style="display:none; background:rgba(255,255,255,0.03); border-radius:10px; padding:10px 14px; margin-bottom:4px;">
       <div id="mtr-manager-list"></div>
+    </div>
+    <div class="settings-row" style="margin-top:4px" onclick="toggleFontScalePanel()">
+      <div class="settings-row-left"><span class="settings-row-icon">🔤</span><span class="settings-row-label">Dimensione Testo</span></div>
+      <span class="settings-row-arrow" id="font-scale-arrow">›</span>
+    </div>
+    <div id="font-scale-panel" style="display:none; background:rgba(255,255,255,0.03); border-radius:10px; padding:14px 14px 10px; margin-bottom:4px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span style="font-size:0.72rem; color:#64748b; flex-shrink:0;">A</span>
+        <input type="range" id="font-scale-slider" min="13" max="22" step="1" value="16"
+               style="flex:1; -webkit-appearance:none; appearance:none; height:4px; background:#334155; border-radius:99px; outline:none;">
+        <span style="font-size:1.15rem; color:#e2e8f0; flex-shrink:0; font-weight:700;">A</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+        <span id="font-scale-label" style="font-size:0.68rem; color:#94a3b8;">Normale · 16 px</span>
+        <button onclick="fontScaleReset()" style="width:auto; padding:5px 12px; background:rgba(255,255,255,0.06); border:0.5px solid rgba(255,255,255,0.12); border-radius:7px; color:#94a3b8; font-size:0.62rem; text-transform:none; cursor:pointer;">Ripristina</button>
+      </div>
     </div>
     <div class="settings-row" style="margin-top:12px" onclick="closeSettingsAndReset()">
       <div class="settings-row-left"><span class="settings-row-icon">🔄</span><span class="settings-row-label">Reset Dati</span></div>
@@ -7471,6 +7501,89 @@ function toggleNotifDebug() {
     if (arrow) arrow.textContent = open ? '\u203a' : '\u2039';
     if (!open) renderNotifDebug();
 }
+
+// ═════════ FONT SIZE (Dimensione Testo) ═════════
+// Slider stile iOS Dynamic Type. Cambia il font-size del root html;
+// il resto della UI è in rem, quindi scala automaticamente.
+// Persistito in localStorage; applicato al boot da awFontScaleApply().
+var AW_FONT_DEFAULT = 16;
+var AW_FONT_MIN = 13;
+var AW_FONT_MAX = 22;
+
+function awFontScaleGet() {
+    var v = parseInt(localStorage.getItem('aw_font_scale'), 10);
+    if (isNaN(v) || v < AW_FONT_MIN || v > AW_FONT_MAX) return AW_FONT_DEFAULT;
+    return v;
+}
+
+function awFontScaleApply(px) {
+    document.documentElement.style.setProperty('--aw-root-fs', px + 'px');
+}
+
+function awFontScaleLabel(px) {
+    if (px <= 13) return 'Molto piccolo';
+    if (px === 14) return 'Piccolo';
+    if (px === 15) return 'Ridotto';
+    if (px === 16) return 'Normale';
+    if (px === 17) return 'Leggermente grande';
+    if (px === 18) return 'Grande';
+    if (px === 19 || px === 20) return 'Molto grande';
+    return 'Massimo';
+}
+
+function toggleFontScalePanel() {
+    var panel = document.getElementById('font-scale-panel');
+    var arrow = document.getElementById('font-scale-arrow');
+    if (!panel) return;
+    var open = panel.style.display === 'block';
+    panel.style.display = open ? 'none' : 'block';
+    if (arrow) arrow.textContent = open ? '\u203a' : '\u2039';
+    if (!open) {
+        // Al momento dell'apertura sincronizza slider al valore corrente
+        var cur = awFontScaleGet();
+        var slider = document.getElementById('font-scale-slider');
+        var lbl = document.getElementById('font-scale-label');
+        if (slider) slider.value = cur;
+        if (lbl) lbl.textContent = awFontScaleLabel(cur) + ' \u00b7 ' + cur + ' px';
+    }
+}
+
+function fontScaleReset() {
+    localStorage.setItem('aw_font_scale', AW_FONT_DEFAULT);
+    awFontScaleApply(AW_FONT_DEFAULT);
+    var slider = document.getElementById('font-scale-slider');
+    var lbl = document.getElementById('font-scale-label');
+    if (slider) slider.value = AW_FONT_DEFAULT;
+    if (lbl) lbl.textContent = awFontScaleLabel(AW_FONT_DEFAULT) + ' \u00b7 ' + AW_FONT_DEFAULT + ' px';
+    if (typeof showToast === 'function') showToast('Dimensione testo ripristinata');
+}
+
+function awFontScaleInitSlider() {
+    var slider = document.getElementById('font-scale-slider');
+    var lbl = document.getElementById('font-scale-label');
+    if (!slider || slider._awBound) return;
+    slider._awBound = true;
+    // Applica live durante il trascinamento
+    slider.addEventListener('input', function() {
+        var px = parseInt(slider.value, 10);
+        awFontScaleApply(px);
+        if (lbl) lbl.textContent = awFontScaleLabel(px) + ' \u00b7 ' + px + ' px';
+    });
+    // Salva alla fine (debounce interno via 'change')
+    slider.addEventListener('change', function() {
+        var px = parseInt(slider.value, 10);
+        localStorage.setItem('aw_font_scale', px);
+    });
+}
+
+// Applica IMMEDIATAMENTE al primo caricamento del file, prima ancora del boot
+// dell'app, così l'utente non vede un "flash" di font a dimensione default.
+(function() {
+    try {
+        var initial = awFontScaleGet();
+        awFontScaleApply(initial);
+    } catch(e) {}
+})();
 
 function renderNotifDebug() {
     var list = document.getElementById('notif-debug-list');
@@ -12451,6 +12564,8 @@ function buildProfiloPage() {
     if (el('profile-workouts')) el('profile-workouts').textContent = APP.totalWorkouts || 0;
     const streak = el('streak-count')?.textContent || '0';
     if (el('profile-streak'))   el('profile-streak').textContent   = streak + '🔥';
+    // Aggancia il listener dello slider dimensione testo (idempotente)
+    if (typeof awFontScaleInitSlider === 'function') awFontScaleInitSlider();
 }
 
 function closeDashboard() {
