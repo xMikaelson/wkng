@@ -1,4 +1,4 @@
-const CACHE_NAME = 'awakening-v310';
+const CACHE_NAME = 'awakening-v311';
 
 const STATIC_ASSETS = [
     './',
@@ -78,20 +78,43 @@ self.addEventListener('fetch', event => {
     const alwaysLive = ['supabase.co', 'openfoodfacts.org', 'youtube.com', 'googleapis.com', 'anthropic.com'];
     if (alwaysLive.some(domain => url.hostname.includes(domain))) return;
 
-    // ---- Documento (navigazione / index.html): NETWORK-FIRST ----
+    // ---- Documento (navigazione / index.html): STALE-WHILE-REVALIDATE ----
+    // Network-first faceva attendere ~950 KB di download prima del primo paint:
+    // su rete lenta l'avvio restava bianco a intermittenza. Ora si serve subito
+    // la copia in cache e si riallinea in background. Gli aggiornamenti arrivano
+    // lo stesso: ogni rilascio cambia CACHE_NAME, install riscarica index.html,
+    // activate cancella la cache vecchia e manda SW_UPDATED, la pagina ricarica.
     if (isDocumentRequest(event.request)) {
         event.respondWith(
-            fetch(event.request)
-                .then(response => {
-                    if (response && response.status === 200) {
-                        const clone = response.clone();
-                        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-                    }
-                    return response;
-                })
-                .catch(() => caches.match(event.request)
-                    .then(cached => cached || caches.match('./index.html'))
-                )
+            caches.open(CACHE_NAME).then(cache =>
+                cache.match(event.request)
+                    .then(hit => hit || cache.match('./index.html'))
+                    .then(cached => {
+                        const fromNetwork = fetch(event.request)
+                            .then(response => {
+                                if (response && response.status === 200) {
+                                    cache.put('./index.html', response.clone());
+                                }
+                                return response;
+                            })
+                            .catch(() => null);
+
+                        if (cached) {
+                            event.waitUntil(fromNetwork);   // non blocca il primo paint
+                            return cached;
+                        }
+                        return fromNetwork.then(res => res
+                            || new Response(
+                                '<!doctype html><meta charset="utf-8">'
+                                + '<body style="background:#0f172a;color:#e2e8f0;'
+                                + 'font-family:-apple-system,sans-serif;display:flex;'
+                                + 'align-items:center;justify-content:center;height:100vh;'
+                                + 'margin:0;text-align:center;padding:24px">'
+                                + 'Connessione assente. Riapri l\'app quando sei online.',
+                                { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+                            ));
+                    })
+            )
         );
         return;
     }
