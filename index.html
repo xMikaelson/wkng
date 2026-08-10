@@ -1947,23 +1947,23 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         /* Warmup block styles */
         .wo-warmup-card { background:#0f172a; border:1px solid rgba(255,255,255,0.07); border-radius:14px; overflow:hidden; margin:0 16px 14px; }
         .wo-warmup-card .wc-ex-header { padding:12px 16px 10px; }
-        .wo-warmup-card .wc-ex-num { font-size:0.52rem; color:#818cf8; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:3px; font-weight:700; display:flex; align-items:center; flex-wrap:nowrap; gap:6px; min-width:0; }
+        .wo-warmup-card .wc-ex-num { font-size:0.52rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:3px; font-weight:700; display:flex; align-items:center; flex-wrap:nowrap; gap:6px; min-width:0; }
         /* Il badge è l'unico elemento che può restringersi: la "i" resta
            sempre sulla stessa riga, anche su schermi stretti. */
         .wo-warmup-card .wc-ex-num > .wc-sci-badge { margin-left:0; flex-shrink:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .wo-warmup-card .wc-ex-num > .wc-info-btn { margin-left:0; flex-shrink:0; }
         .wo-warmup-card .wc-ex-name { font-size:0.9rem; font-weight:800; color:#e2e8f0; }
-        .wc-analysis { border-top:1px solid rgba(255,255,255,0.06); border-bottom:1px solid rgba(255,255,255,0.06); padding:10px 16px; background:rgba(99,102,241,0.03); }
-        .wc-analysis-title { font-size:0.52rem; color:#818cf8; text-transform:uppercase; letter-spacing:0.1em; font-weight:700; margin-bottom:8px; }
+        .wc-analysis { border-top:1px solid rgba(255,255,255,0.06); border-bottom:1px solid rgba(255,255,255,0.06); padding:10px 16px; background:rgba(var(--ac),0.03); }
+        .wc-analysis-title { font-size:0.52rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; font-weight:700; margin-bottom:8px; }
         .wc-a-row { display:flex; align-items:center; gap:8px; padding:3px 0; }
         .wc-a-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
-        .wc-a-dot.warm { background:#818cf8; }
+        .wc-a-dot.warm { background:var(--accent); }
         .wc-a-dot.skip { background:#334155; }
         .wc-a-name { font-size:0.62rem; flex:1; }
         .wc-a-name.warm { color:#e2e8f0; font-weight:600; }
         .wc-a-name.skip { color:#cbd5e1; }
         .wc-a-why { font-size:0.52rem; }
-        .wc-a-why.warm { color:#818cf8; }
+        .wc-a-why.warm { color:var(--accent); }
         .wc-a-why.skip { color:#cbd5e1; }
         .wc-sci-badge { font-size:0.46rem; color:#cbd5e1; border:0.5px solid #475569; border-radius:4px; padding:1px 6px; margin-left:6px; vertical-align:middle; }
         /* width/padding/text-transform espliciti: la regola globale `button`
@@ -1971,17 +1971,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wc-info-btn {
             width:17px; height:17px; min-width:17px; padding:0; margin:0 0 0 5px;
             border-radius:50%; border:1px solid rgba(129,140,248,0.55);
-            background:rgba(99,102,241,0.16); color:#a5b4fc;
+            background:rgba(var(--ac),0.16); color:var(--accent);
             font-family:Georgia,'Times New Roman',serif; font-size:0.62rem; font-weight:700;
             font-style:italic; text-transform:none; line-height:1; cursor:pointer;
             display:inline-flex; align-items:center; justify-content:center;
             vertical-align:middle; transition:background 0.15s;
         }
-        .wc-info-btn:active { background:rgba(99,102,241,0.32); }
+        .wc-info-btn:active { background:rgba(var(--ac),0.32); }
         /* ═══ Avviso Chapter 4 · Overload ═══ */
         .wo-ovl-card { background:#0f172a; border:1px solid rgba(255,255,255,0.07); border-radius:14px; overflow:hidden; margin:0 16px 14px; }
         .wo-ovl-head { padding:13px 15px 11px; border-bottom:1px solid rgba(255,255,255,0.07); }
-        .wo-ovl-eyebrow { font-size:0.52rem; color:#818cf8; text-transform:uppercase; letter-spacing:0.1em; font-weight:700; margin-bottom:4px; display:flex; align-items:center; flex-wrap:nowrap; gap:6px; min-width:0; }
+        .wo-ovl-eyebrow { font-size:0.52rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; font-weight:700; margin-bottom:4px; display:flex; align-items:center; flex-wrap:nowrap; gap:6px; min-width:0; }
         .wo-ovl-eyebrow > .wc-sci-badge { margin-left:0; flex-shrink:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .wo-ovl-title { font-size:0.92rem; font-weight:800; color:#e2e8f0; line-height:1.3; }
         .wo-ovl-body { padding:12px 15px 14px; }
@@ -2007,8 +2007,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wc-body { padding:12px 16px 14px; }
         /* Intestazione esercizio (V3): riquadro interno con bordo e angoli tondi */
         .wc-ex-head {
-            border:1px solid rgba(99,102,241,0.28);
-            background:rgba(99,102,241,0.06);
+            border:1px solid rgba(var(--ac),0.28);
+            background:rgba(var(--ac),0.06);
             border-radius:11px;
             padding:11px 13px;
             margin-bottom:10px;
@@ -2021,32 +2021,32 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             border-bottom:none;
             border-bottom-left-radius:0; border-bottom-right-radius:0;
         }
-        .wc-ex-eyebrow { font-size:0.48rem; color:#818cf8; text-transform:uppercase; letter-spacing:0.1em; font-weight:700; margin-bottom:3px; }
+        .wc-ex-eyebrow { font-size:0.48rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; font-weight:700; margin-bottom:3px; }
         .wc-ex-title { font-size:0.82rem; font-weight:800; color:#e2e8f0; line-height:1.3; }
         .wc-ex-mtr { font-size:0.54rem; color:#cbd5e1; margin-top:4px; }
         /* Box MTR inline — centrato, input grande, bottone sotto */
-        .wc-mtr-box { background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.2); border-radius:12px; padding:16px; margin-bottom:12px; text-align:center; }
+        .wc-mtr-box { background:rgba(var(--ac),0.06); border:1px solid rgba(var(--ac),0.2); border-radius:12px; padding:16px; margin-bottom:12px; text-align:center; }
         .wc-mtr-box.joined {
             margin-top:0;
-            border-color:rgba(99,102,241,0.28);
+            border-color:rgba(var(--ac),0.28);
             border-top-left-radius:0; border-top-right-radius:0;
         }
-        .wc-mtr-box-title { font-size:0.6rem; color:#818cf8; font-weight:700; margin-bottom:4px; }
+        .wc-mtr-box-title { font-size:0.6rem; color:var(--accent); font-weight:700; margin-bottom:4px; }
         .wc-mtr-box-desc { font-size:0.58rem; color:#cbd5e1; line-height:1.5; margin-bottom:14px; }
-        .wc-mtr-box-input { width:100%; background:rgba(255,255,255,0.06); border:1.5px solid rgba(99,102,241,0.4); border-radius:10px; padding:12px; color:#e2e8f0; font-size:1.4rem; font-weight:900; text-align:center; outline:none; font-family:inherit; margin-bottom:6px; letter-spacing:0.05em; box-sizing:border-box; }
+        .wc-mtr-box-input { width:100%; background:rgba(255,255,255,0.06); border:1.5px solid rgba(var(--ac),0.4); border-radius:10px; padding:12px; color:#e2e8f0; font-size:1.4rem; font-weight:900; text-align:center; outline:none; font-family:inherit; margin-bottom:6px; letter-spacing:0.05em; box-sizing:border-box; }
         .wc-mtr-box-unit { font-size:0.6rem; color:#cbd5e1; margin-bottom:14px; }
         .wc-mtr-box-btn { width:100%; padding:12px; background:linear-gradient(135deg,#00ff88,#00cc88); border:none; border-radius:10px; color:#000; font-size:0.8rem; font-weight:900; cursor:pointer; font-family:inherit; }
         /* Set rows */
         .wc-set-row { display:flex; align-items:center; gap:10px; padding:10px 0; }
         .wc-set-row:last-of-type { border:none; }
-        .wc-set-num { width:28px; height:28px; border-radius:8px; background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.2); font-size:0.58rem; font-weight:800; color:#818cf8; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+        .wc-set-num { width:28px; height:28px; border-radius:8px; background:rgba(var(--ac),0.1); border:1px solid rgba(var(--ac),0.2); font-size:0.58rem; font-weight:800; color:var(--accent); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
         .wc-set-info { flex:1; }
         .wc-set-kg { font-size:0.85rem; font-weight:800; color:#e2e8f0; }
         .wc-set-pct { font-size:0.54rem; color:#cbd5e1; margin-left:5px; }
         .wc-set-detail { font-size:0.58rem; color:#cbd5e1; margin-top:3px; display:flex; align-items:center; gap:5px; }
         .wc-set-rec { color:#cbd5e1; font-weight:600; }
         .wc-set-rec::before { content:'·'; margin-right:4px; color:#94a3b8; }
-        .wc-set-btn { width:32px; height:32px; border-radius:9px; border:1.5px solid rgba(99,102,241,0.5); background:rgba(99,102,241,0.12); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; transition:all 0.2s; font-size:0.8rem; color:#818cf8; font-family:inherit; }
+        .wc-set-btn { width:32px; height:32px; border-radius:9px; border:1.5px solid rgba(var(--ac),0.5); background:rgba(var(--ac),0.12); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; transition:all 0.2s; font-size:0.8rem; color:var(--accent); font-family:inherit; }
         .wc-set-btn.done { background:rgba(0,255,136,0.15); border-color:rgba(0,255,136,0.5); color:#00ff88; }
         .wc-set-lbl { font-size:0.48rem; color:#cbd5e1; text-align:center; margin-top:1px; }
         .wc-set-lbl.active { color:#00ff88; }
@@ -2054,7 +2054,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wo-warmup-footer { background:rgba(10,14,26,0.6); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:10px 16px 6px; margin:6px 16px 0; }
         .wo-warmup-progress { display:flex; align-items:center; gap:8px; margin-bottom:0; }
         .wo-warmup-bar { flex:1; height:4px; background:rgba(255,255,255,0.06); border-radius:2px; overflow:hidden; }
-        .wo-warmup-fill { height:100%; background:#818cf8; border-radius:2px; transition:width 0.3s, background 0.4s; width:0%; }
+        .wo-warmup-fill { height:100%; background:var(--accent); border-radius:2px; transition:width 0.3s, background 0.4s; width:0%; }
         .wo-warmup-fill.complete { background:#00ff88; }
         .wo-warmup-prog-lbl { font-size:0.5rem; color:#94a3b8; white-space:nowrap; }
         .wo-start-btn.warmup-locked { background:rgba(255,255,255,0.05) !important; color:#334155 !important; cursor:not-allowed !important; pointer-events:none; box-shadow:none !important; animation:none !important; }
@@ -2116,10 +2116,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wc-rest-bar-wrap { display:flex; align-items:center; gap:8px; padding:6px 0 2px; }
         .wc-rest-bar-track { flex:1; height:3px; background:rgba(255,255,255,0.06); border-radius:2px; overflow:hidden; }
         .wc-rest-bar-fill { height:100%; border-radius:2px; background:var(--accent); transition:width 1s linear; width:100%; }
-        .wc-rest-bar-lbl { font-size:0.48rem; color:#818cf8; white-space:nowrap; min-width:32px; text-align:right; font-weight:600; }
+        .wc-rest-bar-lbl { font-size:0.48rem; color:var(--accent); white-space:nowrap; min-width:32px; text-align:right; font-weight:600; }
         /* Pulse sul toggle successivo dopo rest completato */
-        @keyframes wc-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(99,102,241,0.6);} 50%{box-shadow:0 0 0 6px rgba(99,102,241,0);} }
-        .wc-set-btn.pulse { animation:wc-pulse 1.2s infinite; border-color:rgba(99,102,241,0.9); background:rgba(99,102,241,0.25); }
+        @keyframes wc-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(var(--ac),0.6);} 50%{box-shadow:0 0 0 6px rgba(var(--ac),0);} }
+        .wc-set-btn.pulse { animation:wc-pulse 1.2s infinite; border-color:rgba(var(--ac),0.9); background:rgba(var(--ac),0.25); }
 
         .wo-idle-state  { display: block; }
         .wo-active-state { display: none; }
@@ -3886,7 +3886,7 @@ function woWarmupInfo() {
         'padding:20px 18px;box-sizing:border-box;';
 
     var H = function(t) {
-        return '<div style="font-size:0.56rem;color:#818cf8;text-transform:uppercase;' +
+        return '<div style="font-size:0.56rem;color:var(--accent);text-transform:uppercase;' +
                'letter-spacing:0.1em;font-weight:700;margin:16px 0 6px;">' + t + '</div>';
     };
     var P = function(t) {
@@ -3894,7 +3894,7 @@ function woWarmupInfo() {
     };
 
     box.innerHTML =
-        '<div style="font-size:0.52rem;color:#818cf8;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">🔥 Riscaldamento specifico</div>' +
+        '<div style="font-size:0.52rem;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">🔥 Riscaldamento specifico</div>' +
         '<div style="font-size:1rem;font-weight:800;color:#e2e8f0;margin-top:4px;">Come funziona e perché</div>' +
 
         H('A cosa serve') +
@@ -4330,9 +4330,9 @@ function startWarmupRestTimer(el, totalSecs, nextBtn, allNextBtns) {
     if (!fill || !lbl) return;
     fill.style.transition = 'none';
     fill.style.width = '100%';
-    fill.style.background = '#818cf8';
+    fill.style.background = 'var(--accent)';
     lbl.textContent = totalSecs + 's';
-    lbl.style.color = '#818cf8';
+    lbl.style.color = 'var(--accent)';
     // Blocca TUTTI i successivi durante il rest
     if (allNextBtns) {
         allNextBtns.forEach(function(b) {
@@ -4363,7 +4363,7 @@ function startWarmupRestTimer(el, totalSecs, nextBtn, allNextBtns) {
             fill.style.width = pct + '%';
             lbl.textContent = remaining + 's';
             if (remaining <= Math.round(totalSecs * 0.3)) {
-                fill.style.background = 'linear-gradient(90deg,#818cf8,#00ff88)';
+                fill.style.background = 'linear-gradient(90deg,var(--accent),var(--primary))';
             }
         }
     }, 1000);
@@ -4379,8 +4379,8 @@ function stopWarmupRestTimer(el) {
     el.classList.remove('active');
     var fill = el.querySelector('.wc-rest-bar-fill');
     var lbl  = el.querySelector('.wc-rest-bar-lbl');
-    if (fill) { fill.style.width = '100%'; fill.style.background = '#818cf8'; fill.style.transition = 'none'; }
-    if (lbl)  { lbl.textContent = ''; lbl.style.color = '#818cf8'; }
+    if (fill) { fill.style.width = '100%'; fill.style.background = 'var(--accent)'; fill.style.transition = 'none'; }
+    if (lbl)  { lbl.textContent = ''; lbl.style.color = 'var(--accent)'; }
 }
 
 // Salta il riscaldamento e vai direttamente all'allenamento
@@ -11948,7 +11948,7 @@ function woAskOverloadFeedback(exName, targetReps) {
         ['fatica',  'Non le ho completate tutte', 'Mi sono fermato prima del target']
     ];
     var html =
-        '<div style="font-size:0.52rem;color:#818cf8;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">\u26a1 Overload \u00b7 ultima serie</div>' +
+        '<div style="font-size:0.52rem;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">\u26a1 Overload \u00b7 ultima serie</div>' +
         '<div style="font-size:0.95rem;font-weight:800;color:#e2e8f0;margin:4px 0 3px;">' + exName + '</div>' +
         '<div style="font-size:0.7rem;color:#cbd5e1;line-height:1.6;margin-bottom:16px;">Com\u2019\u00e8 andata l\u2019ultima serie?' + tgt + '</div>';
     opts.forEach(function(o) {
@@ -12083,7 +12083,7 @@ function woShowProgressionSummary() {
         'max-width:420px;width:100%;max-height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;' +
         'padding:20px 18px;box-sizing:border-box;';
 
-    var h = '<div style="font-size:0.52rem;color:#818cf8;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">\uD83D\uDCAA Ciclo completato</div>' +
+    var h = '<div style="font-size:0.52rem;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">\uD83D\uDCAA Ciclo completato</div>' +
         '<div style="font-size:1rem;font-weight:800;color:#e2e8f0;margin:4px 0 14px;">I tuoi progressi</div>';
     var anyUp = false;
     // Griglia a 2 colonne, stessa impronta visiva delle .stat-card della Home.
@@ -12412,6 +12412,10 @@ function navSwitch(tab) {
     } else if (tab === 'workout') {
         const woPage = document.getElementById('page-workout');
         if (woPage) woPage.classList.add('active');
+        // Il tema del capitolo vive su :root: riapplicarlo qui garantisce che
+        // la card del riscaldamento segua il chapter corrente anche se si
+        // entra in Allenamento senza passare dalla home o dai Piani.
+        if (typeof applyChapterTheme === 'function') applyChapterTheme(APP.selectedViewWeek || 0);
         initWorkoutPage();
         // Fix bug iOS PWA: al primo ingresso lo scroll layer resta "congelato"
         // perché l'elemento passa da display:none a display:block insieme
