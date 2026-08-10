@@ -1,4 +1,4 @@
-const CACHE_NAME = 'awakening-v307';
+const CACHE_NAME = 'awakening-v309';
 
 const STATIC_ASSETS = [
     './',
@@ -18,6 +18,14 @@ function isDocumentRequest(request) {
     if (url.origin !== self.location.origin) return false;
     return url.pathname.endsWith('/') || url.pathname.endsWith('/index.html');
 }
+
+// La pagina chiede di sbloccare subito un SW rimasto "in attesa" (waiting),
+// invece di aspettare che l'utente chiuda e riapra l'app manualmente.
+self.addEventListener('message', event => {
+    if (event.data && event.data.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
+});
 
 self.addEventListener('install', event => {
     event.waitUntil(
@@ -41,7 +49,7 @@ self.addEventListener('activate', event => {
     event.waitUntil(
         caches.keys().then(keys => {
             // Se esistevano cache vecchie siamo davanti a un AGGIORNAMENTO,
-            // non a una prima installazione: in quel caso ricarichiamo le finestre aperte.
+            // non a una prima installazione: in quel caso avvisiamo le finestre aperte.
             const isUpdate = keys.some(key => key !== CACHE_NAME);
             return Promise.all(keys
                 .filter(key => key !== CACHE_NAME)
@@ -49,14 +57,16 @@ self.addEventListener('activate', event => {
             ).then(() => self.clients.claim())
              .then(() => {
                 if (!isUpdate) return;
+                // client.navigate() da dentro il SW non e' affidabile in modalita'
+                // standalone su iOS (resta silenzioso e l'app si blocca sulla
+                // schermata di avvio). Si manda invece un messaggio e si lascia
+                // che sia la pagina stessa a ricaricarsi con location.reload().
                 return self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-                    .then(list => Promise.all(list.map(client => {
+                    .then(list => list.forEach(client => {
                         try {
-                            return client.navigate(client.url);
-                        } catch (e) {
-                            return null;
-                        }
-                    })))
+                            client.postMessage({ type: 'SW_UPDATED' });
+                        } catch (e) {}
+                    }))
                     .catch(() => null);
              });
         })
