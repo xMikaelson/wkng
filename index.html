@@ -387,26 +387,79 @@
         /* Progressi page */
         #page-progress { padding-top: 0; padding-left: 0; padding-right: 0; padding-bottom: 20px; }
         .prog-page-title { font-size:1.3rem; font-weight:900; letter-spacing:-0.02em; margin-bottom:16px; }
-        .prog-menu-item { border-radius:14px; overflow:hidden; margin-bottom:8px; border:1px solid rgba(255,255,255,0.06); transition:border-color 0.15s; cursor:pointer; }
-        .prog-menu-item.open { border-color:rgba(var(--pr,52,211,153),0.3); }
-        .prog-menu-row { display:flex; align-items:center; gap:12px; padding:12px 14px; }
-        .prog-menu-icon-wrap { position:relative; flex-shrink:0; }
-        .prog-menu-icon { width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:19px; background:rgba(var(--pr,52,211,153),0.1); border:1px solid rgba(var(--pr,52,211,153),0.2); transition:background 0.3s,border-color 0.3s; }
-        .prog-menu-badge { position:absolute; top:-5px; right:-5px; background:#f43f5e; color:#fff; font-size:7px; font-weight:800; letter-spacing:0.06em; padding:2px 4px; border-radius:6px; border:1.5px solid #0f172a; line-height:1; }
-        .prog-menu-content { flex:1; min-width:0; }
-        .prog-menu-top { display:flex; justify-content:space-between; align-items:center; }
-        .prog-menu-label { font-size:14px; font-weight:600; color:#e2e8f0; }
-        .prog-menu-value { font-size:14px; font-weight:800; color:var(--primary); margin-left:8px; flex-shrink:0; }
-        .prog-menu-bottom { display:flex; justify-content:space-between; align-items:center; margin-top:2px; }
-        .prog-menu-sub { font-size:11px; color:#4b5563; }
-        .prog-menu-pct { font-size:10px; color:#374151; }
-        .prog-menu-bar-wrap { height:3px; background:rgba(255,255,255,0.06); border-radius:99px; overflow:hidden; margin-top:7px; }
-        .prog-menu-bar { height:100%; border-radius:99px; background:var(--primary); transition:width 0.7s cubic-bezier(0.34,1.56,0.64,1),background 0.3s; }
-        .prog-menu-chevron { color:#21262d; font-size:16px; flex-shrink:0; transition:transform 0.2s; }
-        .prog-menu-item.open .prog-menu-chevron { transform:rotate(90deg); }
-        .prog-menu-detail { padding:10px 14px 14px 66px; background:rgba(var(--pr,52,211,153),0.03); border-top:1px solid rgba(255,255,255,0.05); border-left:3px solid rgba(var(--pr,52,211,153),0.25); font-size:12px; color:#6b7280; line-height:1.8; display:none; }
-        .prog-menu-item.open .prog-menu-detail { display:block; }
-        .prog-menu-detail-btn { margin-top:8px; background:rgba(var(--pr,52,211,153),0.1); border:1px solid rgba(var(--pr,52,211,153),0.25); color:var(--primary); border-radius:8px; padding:5px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; }
+        /* ── Riepilogo fine ciclo: box a 2 colonne (woShowProgressionSummary) ── */
+        .ovlp-cards { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+        .ovlp-card { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:15px; padding:13px 10px 12px; text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; position:relative; overflow:hidden; min-height:112px; }
+        .ovlp-card::before { content:''; position:absolute; top:-40%; left:50%; transform:translateX(-50%); width:120%; height:120%; pointer-events:none; background:radial-gradient(circle, rgba(0,255,136,0.16) 0%, transparent 70%); }
+        .ovlp-card.ovlp-flat::before { background:radial-gradient(circle, rgba(100,116,139,0.22) 0%, transparent 70%); }
+        .ovlp-card.ovlp-wide { grid-column:span 2; }
+        .ovlp-delta { position:relative; z-index:1; display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:5px; height:14px; }
+        .ovlp-old { font-size:0.6rem; font-weight:600; color:#94a3b8; text-decoration:line-through; }
+        .ovlp-pct { font-size:0.52rem; font-weight:800; color:#00ff88; background:rgba(0,255,136,0.1); border:1px solid rgba(0,255,136,0.25); border-radius:20px; padding:2px 6px; line-height:1; }
+        .ovlp-nochange { font-size:0.52rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.08em; }
+        .ovlp-val { position:relative; z-index:1; font-size:1.7rem; font-weight:800; color:#00ff88; line-height:1; margin-bottom:6px; }
+        .ovlp-card.ovlp-flat .ovlp-val { color:#cbd5e1; }
+        .ovlp-val small { font-size:0.62rem; font-weight:700; margin-left:2px; opacity:0.8; }
+        .ovlp-name { position:relative; z-index:1; font-size:0.6rem; font-weight:700; color:#e2e8f0; line-height:1.25; text-transform:uppercase; letter-spacing:0.04em; }
+        .ovlp-area { position:relative; z-index:1; font-size:0.48rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.08em; font-weight:600; margin-top:3px; }
+
+        /* ── Menu Progressi: box a 2 colonne + popup dedicato (v.138) ── */
+        .pmenu-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+        .pmenu-card { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:15px; padding:14px 10px 12px; text-align:center; display:flex; flex-direction:column; align-items:center; position:relative; overflow:hidden; cursor:pointer; transition:transform 0.12s, border-color 0.15s; min-height:150px; -webkit-tap-highlight-color:transparent; }
+        .pmenu-card:active { transform:scale(0.97); border-color:rgba(var(--pr,52,211,153),0.35); }
+        .pmenu-card::before { content:''; position:absolute; top:-45%; left:50%; transform:translateX(-50%); width:130%; height:130%; pointer-events:none; background:radial-gradient(circle, rgba(var(--pr,52,211,153),0.16) 0%, transparent 70%); }
+        .pmenu-icon-wrap { position:relative; z-index:1; margin-bottom:9px; }
+        .pmenu-icon { width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:19px; background:rgba(var(--pr,52,211,153),0.1); border:1px solid rgba(var(--pr,52,211,153),0.2); }
+        .pmenu-badge { position:absolute; top:-5px; right:-5px; background:#f43f5e; color:#fff; font-size:7px; font-weight:800; letter-spacing:0.06em; padding:2px 4px; border-radius:6px; border:1.5px solid #0f172a; line-height:1; }
+        .pmenu-val { position:relative; z-index:1; font-size:1.45rem; font-weight:800; color:var(--primary); line-height:1; margin-bottom:6px; }
+        .pmenu-val small { font-size:0.6rem; font-weight:700; margin-left:2px; }
+        .pmenu-label { position:relative; z-index:1; font-size:0.6rem; font-weight:700; color:#e2e8f0; text-transform:uppercase; letter-spacing:0.05em; line-height:1.25; }
+        .pmenu-sub { position:relative; z-index:1; font-size:0.5rem; color:#94a3b8; margin-top:3px; line-height:1.3; }
+        .pmenu-bar-outer { width:100%; margin-top:auto; padding-top:10px; position:relative; z-index:1; }
+        .pmenu-bar-track { height:3px; background:rgba(255,255,255,0.06); border-radius:99px; overflow:hidden; }
+        .pmenu-bar { height:100%; border-radius:99px; background:var(--primary); transition:width 0.7s cubic-bezier(0.34,1.56,0.64,1); }
+        .pmenu-pct { font-size:0.45rem; color:#475569; margin-top:4px; letter-spacing:0.08em; }
+
+        /* popup categoria */
+        .pmodal { position:fixed; inset:0; z-index:9500; display:none; background:rgba(6,13,26,0.94); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:max(env(safe-area-inset-top),34px) 14px calc(20px + env(safe-area-inset-bottom,0px)); }
+        .pmodal.open { display:flex; }
+        .pmodal-box { background:#0f172a; border:1px solid rgba(255,255,255,0.09); border-radius:18px; width:100%; max-width:420px; max-height:100%; display:flex; flex-direction:column; overflow:hidden; animation:pmIn 0.22s cubic-bezier(0.34,1.3,0.64,1) backwards; }
+        @keyframes pmIn { from { opacity:0; transform:translateY(14px) scale(0.98); } }
+        .pmodal-head { display:flex; align-items:center; gap:11px; padding:15px 14px 13px 16px; flex-shrink:0; border-bottom:1px solid rgba(255,255,255,0.07); }
+        .pmodal-icon { width:36px; height:36px; border-radius:11px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:17px; background:rgba(var(--pr,52,211,153),0.1); border:1px solid rgba(var(--pr,52,211,153),0.2); }
+        .pmodal-titles { flex:1; min-width:0; }
+        .pmodal-title { font-size:0.82rem; font-weight:800; color:#e2e8f0; line-height:1.2; }
+        .pmodal-sub { font-size:0.55rem; color:#94a3b8; margin-top:2px; }
+        .pmodal-x { width:32px; height:32px; flex-shrink:0; border-radius:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:#94a3b8; font-size:15px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; font-family:inherit; padding:0; text-transform:none; }
+        .pmodal-x:active { background:rgba(255,255,255,0.12); color:#e2e8f0; }
+        .pmodal-body { padding:16px 16px 20px; overflow-y:auto; -webkit-overflow-scrolling:touch; flex:1; }
+
+        /* contenuti interni ai popup */
+        .m-row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+        .m-stat { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:12px 10px; text-align:center; }
+        .m-stat-lab { font-size:0.48rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.09em; margin-bottom:5px; }
+        .m-stat-val { font-size:1.35rem; font-weight:800; line-height:1; }
+        .m-stat-sub { font-size:0.52rem; color:#94a3b8; margin-top:4px; }
+        .m-sec-title { font-size:0.52rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.1em; font-weight:700; margin:16px 0 8px; }
+        .m-note { font-size:0.6rem; color:#94a3b8; line-height:1.65; background:rgba(255,255,255,0.03); border-radius:9px; padding:10px 12px; margin-top:14px; }
+        .m-note b { color:#cbd5e1; }
+        .m-empty { text-align:center; color:#64748b; font-size:0.68rem; padding:22px 10px; line-height:1.6; }
+        .m-list-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.06); }
+        .m-list-name { font-size:0.68rem; font-weight:700; color:#e2e8f0; }
+        .m-list-meta { font-size:0.48rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.06em; margin-top:2px; }
+        .m-list-val { font-size:0.72rem; font-weight:800; color:var(--primary); white-space:nowrap; }
+        .m-week { display:flex; align-items:center; gap:7px; margin-bottom:7px; }
+        .m-week-lab { font-size:0.45rem; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; width:34px; flex-shrink:0; }
+        .m-dots { display:flex; gap:4px; flex:1; }
+        .m-dot { flex:1; height:22px; border-radius:6px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.07); display:flex; align-items:center; justify-content:center; font-size:9px; color:#475569; }
+        .m-dot.on { background:rgba(var(--pr,52,211,153),0.15); border-color:rgba(var(--pr,52,211,153),0.35); color:var(--primary); }
+        .m-badges { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; }
+        .m-badge { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:11px 6px; text-align:center; }
+        .m-badge.locked { opacity:0.38; }
+        .m-badge-ic { font-size:20px; line-height:1; }
+        .m-badge-nm { font-size:0.45rem; color:#cbd5e1; text-transform:uppercase; letter-spacing:0.05em; margin-top:5px; line-height:1.2; }
+        .m-badge-ds { font-size:0.4rem; color:#64748b; margin-top:2px; line-height:1.2; }
+
         .prog-page-title span { color: var(--primary); }
 
 
@@ -2891,6 +2944,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div id="weight-empty-msg" style="text-align:center;color:#64748b;font-size:0.72rem;padding:10px 0 4px;">Registra la prima pesata per iniziare il tracking</div>
   </div>
 
+</div>
+
+<!-- ══════════ POPUP CATEGORIA PROGRESSI ══════════ -->
+<div class="pmodal" id="prog-modal" onclick="if(event.target===this) closeProgModal()">
+  <div class="pmodal-box">
+    <div class="pmodal-head">
+      <div class="pmodal-icon" id="prog-modal-icon">📊</div>
+      <div class="pmodal-titles">
+        <div class="pmodal-title" id="prog-modal-title">Dettaglio</div>
+        <div class="pmodal-sub" id="prog-modal-sub"></div>
+      </div>
+      <button class="pmodal-x" type="button" onclick="closeProgModal()" aria-label="Chiudi">&#10005;</button>
+    </div>
+    <div class="pmodal-body" id="prog-modal-body"></div>
+  </div>
 </div>
 
 <!-- ══════════ PAGE: PROFILO ══════════ -->
@@ -7590,65 +7658,202 @@ var PROG_MENU_ITEMS = [
 function renderProgMenu() {
     var container = document.getElementById('prog-menu-list');
     if (!container) return;
+    container.className = 'pmenu-grid';
     container.innerHTML = '';
     PROG_MENU_ITEMS.forEach(function(item) {
         var data = item.getValue();
+        var parts = _pmSplitValue(data.value);
         var div = document.createElement('div');
-        div.className = 'prog-menu-item';
+        div.className = 'pmenu-card';
         div.id = 'prog-menu-' + item.id;
+        div.setAttribute('onclick', "openProgModal('" + item.id + "')");
         div.innerHTML =
-            '<div class="prog-menu-row" onclick="toggleProgMenuItem(\'' + item.id + '\')">' +
-                '<div class="prog-menu-icon-wrap">' +
-                    '<div class="prog-menu-icon">' + item.icon + '</div>' +
-                    (data.badge ? '<div class="prog-menu-badge">NUOVO</div>' : '') +
-                '</div>' +
-                '<div class="prog-menu-content">' +
-                    '<div class="prog-menu-top">' +
-                        '<span class="prog-menu-label">' + item.label + '</span>' +
-                        '<span class="prog-menu-value">' + data.value + '</span>' +
-                    '</div>' +
-                    '<div class="prog-menu-bottom">' +
-                        '<span class="prog-menu-sub">' + data.sub + '</span>' +
-                        '<span class="prog-menu-pct">' + data.progress + '%</span>' +
-                    '</div>' +
-                    '<div class="prog-menu-bar-wrap"><div class="prog-menu-bar" style="width:' + data.progress + '%"></div></div>' +
-                '</div>' +
-                '<span class="prog-menu-chevron">\u203a</span>' +
+            '<div class="pmenu-icon-wrap">' +
+                '<div class="pmenu-icon">' + item.icon + '</div>' +
+                (data.badge ? '<div class="pmenu-badge">NUOVO</div>' : '') +
             '</div>' +
-            '<div class="prog-menu-detail">' + (data.detail||'') +
-            (data.detailHtml ? data.detailHtml : '<br><button class="prog-menu-detail-btn" onclick="openProgDetail(\'' + item.id + '\')" >Vedi dettaglio \u2192</button>') +
+            '<div class="pmenu-val">' + parts.num +
+                (parts.unit ? '<small>' + parts.unit + '</small>' : '') + '</div>' +
+            '<div class="pmenu-label">' + item.label + '</div>' +
+            '<div class="pmenu-sub">' + (data.sub || '') + '</div>' +
+            '<div class="pmenu-bar-outer">' +
+                '<div class="pmenu-bar-track"><div class="pmenu-bar" style="width:' + data.progress + '%"></div></div>' +
+                '<div class="pmenu-pct">' + data.progress + '%</div>' +
             '</div>';
         container.appendChild(div);
     });
 }
 
-function toggleProgMenuItem(id) {
-    var el = document.getElementById('prog-menu-' + id);
-    if (!el) return;
-    var wasOpen = el.classList.contains('open');
-    document.querySelectorAll('.prog-menu-item.open').forEach(function(i){ i.classList.remove('open'); });
-    if (!wasOpen) el.classList.add('open');
+// Separa il numero dall'unita' ("78.4 kg" -> 78.4 + kg, "7/20" -> 7/20 + '')
+function _pmSplitValue(v) {
+    v = String(v == null ? '\u2014' : v).trim();
+    var m = v.match(/^([0-9]+(?:[.,][0-9]+)?(?:\/[0-9]+)?)\s*(.*)$/);
+    if (!m) return { num: v, unit: '' };
+    return { num: m[1], unit: m[2] };
 }
 
-function openProgDetail(id) {
-    // Mostra la sezione dettaglio corrispondente e nascondi le altre
-    var volGrid   = document.getElementById('prog-grid');
-    var volChart  = document.getElementById('prog-chart');
-    var weightSec = document.getElementById('weight-section-wrap');
-    // Nascondi tutto
-    if (volGrid)   volGrid.style.display   = 'none';
-    if (volChart)  volChart.style.display  = 'none';
-    if (weightSec) weightSec.style.display = 'none';
-    // Mostra quello corretto
-    if (id === 'volume') {
-        if (volGrid)  volGrid.style.display  = 'grid';
-        if (volChart) volChart.style.display = 'flex';
-    } else if (id === 'massa') {
-        if (weightSec) weightSec.style.display = 'block';
+// Retrocompatibilita': la vecchia lista a fisarmonica non esiste piu', ma la
+// funzione resta definita perche' potrebbe essere richiamata altrove.
+function toggleProgMenuItem(id) { openProgModal(id); }
+function openProgDetail(id)     { openProgModal(id); }
+
+// ── POPUP DI CATEGORIA ──────────────────────────────────
+// Le sezioni di dettaglio gia' esistenti (peso, volume) vengono SPOSTATE
+// dentro il popup e rimesse al loro posto alla chiusura: cosi' tutti gli id
+// restano unici e le funzioni che li cercano continuano a funzionare.
+var _pmMovedNodes = [];
+
+function _pmAdopt(parent, id, disp) {
+    var node = document.getElementById(id);
+    if (!node) return;
+    _pmMovedNodes.push({ node: node, home: node.parentNode, disp: node.style.display });
+    parent.appendChild(node);
+    node.style.display = disp || 'block';
+}
+
+function _pmRestoreNodes() {
+    _pmMovedNodes.forEach(function(rec) {
+        rec.node.style.display = rec.disp;
+        if (rec.home) rec.home.appendChild(rec.node);
+    });
+    _pmMovedNodes = [];
+}
+
+function openProgModal(id) {
+    var item = null;
+    PROG_MENU_ITEMS.forEach(function(it) { if (it.id === id) item = it; });
+    if (!item) return;
+    var data = item.getValue();
+    var body = document.getElementById('prog-modal-body');
+    var modal = document.getElementById('prog-modal');
+    if (!body || !modal) return;
+
+    _pmRestoreNodes();
+    body.innerHTML = '';
+    document.getElementById('prog-modal-icon').textContent  = item.icon;
+    document.getElementById('prog-modal-title').textContent = item.label;
+    document.getElementById('prog-modal-sub').textContent   = data.sub || '';
+
+    if (id === 'massa') {
+        _pmAdopt(body, 'weight-section-wrap', 'block');
+    } else if (id === 'volume') {
+        _pmAdopt(body, 'prog-grid', 'grid');
+        _pmAdopt(body, 'prog-chart', 'flex');
+    } else if (id === 'pesi') {
+        body.innerHTML = _pmPesiHtml();
+    } else if (id === 'streak') {
+        body.innerHTML = _pmStreakHtml();
+    } else if (id === 'badge') {
+        body.innerHTML = _pmBadgeHtml();
     }
+
+    modal.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    body.scrollTop = 0;
+    // Il ridisegno va fatto a popup gia' visibile: canvas e barre leggono la
+    // larghezza reale del contenitore, che a display:none sarebbe zero.
+    setTimeout(function() {
+        if (id === 'massa'  && typeof weightUpdateUI    === 'function') weightUpdateUI();
+        if (id === 'volume' && typeof updateProgressPage === 'function') updateProgressPage();
+    }, 0);
 }
 
+function closeProgModal() {
+    var modal = document.getElementById('prog-modal');
+    _pmRestoreNodes();                       // prima di svuotare, o li distrugge
+    var body = document.getElementById('prog-modal-body');
+    if (body) body.innerHTML = '';
+    if (modal) modal.classList.remove('open');
+    document.body.style.overflow = '';
+}
 
+// ── Contenuti dei popup senza sezione dedicata ──────────
+// Base provvisoria: struttura definita, contenuti da rifinire.
+
+function _pmPesiHtml() {
+    var mtr = APP.mtrValues || {};
+    var prs = APP.personalRecords || {};
+    var names = Object.keys(mtr);
+    Object.keys(prs).forEach(function(n) {
+        var dup = false;
+        names.forEach(function(x) { if (exSameExercise(x, n)) dup = true; });
+        if (!dup) names.push(n);
+    });
+    names.sort(function(a, b) { return a.localeCompare(b); });
+
+    if (!names.length) {
+        return '<div class="m-empty">Nessun carico di riferimento registrato.<br>Completa il wizard per impostare i tuoi MTR.</div>';
+    }
+
+    var h = '<div class="m-sec-title">Carico di riferimento (MTR)</div>';
+    names.forEach(function(n) {
+        var v = mtrGet(n);
+        var lower = (typeof woIsLowerBody === 'function') ? woIsLowerBody(n) : false;
+        h += '<div class="m-list-row">' +
+                '<div><div class="m-list-name">' + escapeHTML(n) + '</div>' +
+                '<div class="m-list-meta">' + (lower ? 'arti inferiori' : 'parte superiore') + '</div></div>' +
+                '<div class="m-list-val">' + (v != null ? v + ' kg' : '\u2014') + '</div>' +
+             '</div>';
+    });
+    h += '<div class="m-note">L\'MTR e\' il massimo tecnico di riferimento: da qui derivano tutti i carichi del ciclo (72\u201390% del training max). Si aggiorna alla fine del Chapter 4.</div>';
+    return h;
+}
+
+function _pmStreakHtml() {
+    var streak = parseInt(localStorage.getItem('aw_streak') || '0');
+    var record = parseInt(localStorage.getItem('aw_streak_record') || '0');
+    if (typeof computeStreak === 'function' && !streak) streak = computeStreak();
+    if (record < streak) record = streak;
+
+    var h = '<div class="m-row2">' +
+        '<div class="m-stat"><div class="m-stat-lab">Streak attuale</div>' +
+        '<div class="m-stat-val" style="color:var(--primary);">' + streak + '</div>' +
+        '<div class="m-stat-sub">allenamenti di fila</div></div>' +
+        '<div class="m-stat"><div class="m-stat-lab">Record</div>' +
+        '<div class="m-stat-val" style="color:#f59e0b;">' + record + '</div>' +
+        '<div class="m-stat-sub">personale</div></div>' +
+    '</div>';
+
+    h += '<div class="m-sec-title">Sessioni del ciclo</div>';
+    var dayLetters = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
+    var chapNames  = ['Ch.1', 'Ch.2', 'Ch.3', 'Ch.4', 'Dld'];
+    var done = 0, planned = 0;
+    for (var w = 0; w < N_WEEKS; w++) {
+        h += '<div class="m-week"><div class="m-week-lab">' + (chapNames[w] || ('Ch.' + (w + 1))) + '</div><div class="m-dots">';
+        for (var d = 0; d < 7; d++) {
+            var st = (APP.chipStates[w] || [])[d];
+            var assigned = ((APP.dayAssignments[w] || [])[d]) ? true : false;
+            if (assigned) planned++;
+            if (st === 'done') done++;
+            h += '<div class="m-dot' + (st === 'done' ? ' on' : '') + '">' +
+                 (st === 'done' ? '\u2713' : (assigned ? dayLetters[d] : '\u00b7')) + '</div>';
+        }
+        h += '</div></div>';
+    }
+    var pct = planned > 0 ? Math.round(done / planned * 100) : 0;
+    h += '<div class="m-note">Aderenza al programma: <b>' + done + ' su ' + planned + '</b> sessioni previste (' + pct + '%).</div>';
+    return h;
+}
+
+function _pmBadgeHtml() {
+    var earned = [];
+    try { earned = JSON.parse(localStorage.getItem('awakening_badges') || '[]'); } catch (e) {}
+    if (typeof BADGES_CONFIG === 'undefined') {
+        return '<div class="m-empty">Traguardi non disponibili.</div>';
+    }
+    var h = '<div class="m-badges">';
+    BADGES_CONFIG.forEach(function(b) {
+        var got = earned.indexOf(b.id) !== -1;
+        h += '<div class="m-badge' + (got ? '' : ' locked') + '">' +
+                '<div class="m-badge-ic">' + (got ? b.icon : '\uD83D\uDD12') + '</div>' +
+                '<div class="m-badge-nm">' + escapeHTML(b.name) + '</div>' +
+                '<div class="m-badge-ds">' + escapeHTML(b.desc) + '</div>' +
+             '</div>';
+    });
+    h += '</div>';
+    h += '<div class="m-note">Sbloccati <b>' + earned.length + ' su ' + BADGES_CONFIG.length + '</b>. I traguardi si sbloccano da soli quando raggiungi la condizione.</div>';
+    return h;
+}
 
 function updateProgressPage() {
     renderProgMenu();
@@ -11881,20 +12086,27 @@ function woShowProgressionSummary() {
     var h = '<div style="font-size:0.52rem;color:#818cf8;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">\uD83D\uDCAA Ciclo completato</div>' +
         '<div style="font-size:1rem;font-weight:800;color:#e2e8f0;margin:4px 0 14px;">I tuoi progressi</div>';
     var anyUp = false;
-    rows.forEach(function(r) {
+    // Griglia a 2 colonne, stessa impronta visiva delle .stat-card della Home.
+    // Le classi hanno prefisso 'ovlp-' perche' '.prog-card' e' gia' usata
+    // dalla pagina Progressi con tutt'altro significato.
+    h += '<div class="ovlp-cards">';
+    rows.forEach(function(r, idx) {
         if (r.pct > 0) anyUp = true;
-        var pctTxt = r.pct > 0 ? (' \u00b7 +' + (r.pct * 100).toFixed(1).replace('.0', '') + '%') : '';
-        h += '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,0.06);">' +
-            '<div style="min-width:0;"><div style="font-size:0.72rem;font-weight:700;color:#e2e8f0;">' + r.name + '</div>' +
-            '<div style="font-size:0.5rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;margin-top:2px;">' +
-                (r.lower ? 'arti inferiori' : 'parte superiore') + pctTxt + '</div></div>' +
-            '<div style="font-size:0.74rem;font-weight:800;white-space:nowrap;text-align:right;">' +
-                (r.pct > 0
-                    ? '<span style="color:#94a3b8;text-decoration:line-through;font-weight:600;font-size:0.64rem;">' + r.oldMtr + '</span> ' +
-                      '<span style="color:#00ff88;">' + r.newMtr + ' kg</span>'
-                    : '<span style="color:#cbd5e1;">' + r.oldMtr + ' kg</span>') +
-            '</div></div>';
+        // ultimo box di una lista dispari: occupa entrambe le colonne
+        var wide = (rows.length % 2 === 1 && idx === rows.length - 1) ? ' ovlp-wide' : '';
+        var flat = r.pct > 0 ? '' : ' ovlp-flat';
+        var pctTxt = r.pct > 0
+            ? '<span class="ovlp-old">' + r.oldMtr + '</span>' +
+              '<span class="ovlp-pct">+' + (r.pct * 100).toFixed(1).replace('.0', '') + '%</span>'
+            : '<span class="ovlp-nochange">Invariato</span>';
+        h += '<div class="ovlp-card' + flat + wide + '">' +
+                '<div class="ovlp-delta">' + pctTxt + '</div>' +
+                '<div class="ovlp-val">' + r.newMtr + '<small>kg</small></div>' +
+                '<div class="ovlp-name">' + r.name + '</div>' +
+                '<div class="ovlp-area">' + (r.lower ? 'Arti inferiori' : 'Parte superiore') + '</div>' +
+             '</div>';
     });
+    h += '</div>';
     h += '<div style="font-size:0.6rem;color:#94a3b8;line-height:1.6;margin-top:14px;padding:11px 12px;background:rgba(255,255,255,0.03);border-radius:9px;">' +
         (anyUp
             ? 'Questi carichi entreranno in vigore <b style="color:#cbd5e1;">al termine del Deload</b>. Durante la settimana di scarico continui con i valori attuali.'
