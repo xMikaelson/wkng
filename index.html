@@ -132,6 +132,7 @@
 :root {
             --primary: #34d399; --bg: #0f172a; --card: #1e293b; --accent: #6366f1;
             --pr: 52,211,153; --ac: 99,102,241; --nav-h: 64px;
+            --btn-grad: linear-gradient(135deg,#059669,#4f46e5);
             --sat: env(safe-area-inset-top, 0px);
             --sab: env(safe-area-inset-bottom, 0px);
             --topbar-h: calc(max(env(safe-area-inset-top), 44px) + 44px);
@@ -2005,7 +2006,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wo-ovl-note b { color:#cbd5e1; }
         /* width/padding/text-transform espliciti: la regola globale `button` li imporrebbe */
         .wo-ovl-btn { width:100%; padding:13px; margin:12px 0 0; border:none; border-radius:11px;
-            background:linear-gradient(135deg,#00ff88,#00cc88); color:#000; font-family:inherit;
+            background:var(--btn-grad); color:#fff; font-family:inherit;
             font-size:0.78rem; font-weight:900; text-transform:none; cursor:pointer; }
 
         /* Opzioni della domanda Overload — width/padding/text-transform
@@ -2015,7 +2016,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             color:#e2e8f0; font-family:inherit; font-size:0.72rem; font-weight:600; line-height:1.35;
             text-transform:none; cursor:pointer; transition:background 0.15s, border-color 0.15s; }
         .wo-ovl-opt small { display:block; color:#94a3b8; font-size:0.58rem; font-weight:400; margin-top:3px; }
-        .wo-ovl-opt:active { background:rgba(0,255,136,0.1); border-color:rgba(0,255,136,0.5); }
+        .wo-ovl-opt:active { background:rgba(var(--pr),0.1); border-color:rgba(var(--pr),0.5); }
         .wo-ovl-opt.skip { margin-top:6px; border-color:rgba(255,255,255,0.07); color:#94a3b8; font-size:0.66rem; }
 
         .wc-body { padding:12px 16px 14px; }
@@ -2049,7 +2050,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wc-mtr-box-desc { font-size:0.58rem; color:#cbd5e1; line-height:1.5; margin-bottom:14px; }
         .wc-mtr-box-input { width:100%; background:rgba(255,255,255,0.06); border:1.5px solid rgba(var(--ac),0.4); border-radius:10px; padding:12px; color:#e2e8f0; font-size:1.4rem; font-weight:900; text-align:center; outline:none; font-family:inherit; margin-bottom:6px; letter-spacing:0.05em; box-sizing:border-box; }
         .wc-mtr-box-unit { font-size:0.6rem; color:#cbd5e1; margin-bottom:14px; }
-        .wc-mtr-box-btn { width:100%; padding:12px; background:linear-gradient(135deg,#00ff88,#00cc88); border:none; border-radius:10px; color:#000; font-size:0.8rem; font-weight:900; cursor:pointer; font-family:inherit; }
+        .wc-mtr-box-btn { width:100%; padding:12px; background:var(--btn-grad); border:none; border-radius:10px; color:#fff; font-size:0.8rem; font-weight:900; cursor:pointer; font-family:inherit; }
         /* Set rows */
         .wc-set-row { display:flex; align-items:center; gap:10px; padding:10px 0; }
         .wc-set-row:last-of-type { border:none; }
@@ -2061,21 +2062,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wc-set-rec { color:#cbd5e1; font-weight:600; }
         .wc-set-rec::before { content:'·'; margin-right:4px; color:#94a3b8; }
         .wc-set-btn { width:32px; height:32px; border-radius:9px; border:1.5px solid rgba(var(--ac),0.5); background:rgba(var(--ac),0.12); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; transition:all 0.2s; font-size:0.8rem; color:var(--accent); font-family:inherit; }
-        .wc-set-btn.done { background:rgba(0,255,136,0.15); border-color:rgba(0,255,136,0.5); color:#00ff88; }
+        .wc-set-btn.done { background:rgba(var(--pr),0.15); border-color:rgba(var(--pr),0.5); color:var(--primary); }
         .wc-set-lbl { font-size:0.48rem; color:#cbd5e1; text-align:center; margin-top:1px; }
-        .wc-set-lbl.active { color:#00ff88; }
+        .wc-set-lbl.active { color:var(--primary); }
         /* Footer warmup */
         .wo-warmup-footer { background:rgba(10,14,26,0.6); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:10px 16px 6px; margin:6px 16px 0; }
         .wo-warmup-progress { display:flex; align-items:center; gap:8px; margin-bottom:0; }
         .wo-warmup-bar { flex:1; height:4px; background:rgba(255,255,255,0.06); border-radius:2px; overflow:hidden; }
         .wo-warmup-fill { height:100%; background:var(--accent); border-radius:2px; transition:width 0.3s, background 0.4s; width:0%; }
-        .wo-warmup-fill.complete { background:#00ff88; }
+        .wo-warmup-fill.complete { background:var(--primary); }
         .wo-warmup-prog-lbl { font-size:0.5rem; color:#94a3b8; white-space:nowrap; }
         .wo-start-btn.warmup-locked { background:rgba(255,255,255,0.05) !important; color:#334155 !important; cursor:not-allowed !important; pointer-events:none; box-shadow:none !important; animation:none !important; }
-        .wo-start-btn.warmup-unlocked { background:linear-gradient(135deg,#00ff88,#00cc88) !important; color:#000 !important; pointer-events:auto; animation:woStartPulse 1.8s ease-in-out infinite; }
+        .wo-start-btn.warmup-unlocked { background:var(--btn-grad) !important; color:#fff !important; pointer-events:auto; animation:woStartPulse 1.8s ease-in-out infinite; }
         @keyframes woStartPulse {
-            0%, 100% { box-shadow:0 4px 16px rgba(0,255,136,0.28); }
-            50%      { box-shadow:0 6px 26px rgba(0,255,136,0.55); }
+            0%, 100% { box-shadow:0 4px 16px rgba(var(--pr),0.28); }
+            50%      { box-shadow:0 6px 26px rgba(var(--pr),0.55); }
         }
 
         /* ═══ FOOTER AZIONI — in linea, unito alla card riscaldamento ═══ */
@@ -2478,11 +2479,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <div class="badges-section" id="badges-section">
             <div class="badges-section-title">🏆 Achievements</div>
             <div class="badges-grid-home" id="badges-grid"></div>
-        </div>
-        <!-- PR nella homepage -->
-        <div id="home-pr-section" style="display:none;padding:0 16px 16px;">
-            <div class="badges-section-title" style="margin-bottom:8px;">⚡ Personal Records</div>
-            <div id="home-pr-rows"></div>
         </div>
         <div id="main-table" style="display:none;">
             <table><tbody id="plan-body"></tbody></table>
@@ -3960,7 +3956,7 @@ function woWarmupInfo() {
     closeBtn.type = 'button';
     closeBtn.textContent = 'Ho capito';
     closeBtn.style.cssText = 'width:100%;margin-top:20px;padding:13px;border:none;border-radius:11px;' +
-        'background:linear-gradient(135deg,#00ff88,#00cc88);color:#000;font-family:inherit;' +
+        'background:var(--btn-grad);color:#fff;font-family:inherit;' +
         'font-size:0.78rem;font-weight:900;cursor:pointer;text-transform:none;';
     closeBtn.onclick = function() { ov.remove(); };
     box.appendChild(closeBtn);
@@ -4042,7 +4038,7 @@ function renderWarmupBlock(exName, exercises, container) {
         var allDone = setsToComplete > 0 && completedSets >= setsToComplete;
         var pct = setsToComplete > 0 ? Math.round(completedSets / setsToComplete * 100) : 0;
         if (fill) { fill.style.width = pct + '%'; fill.className = 'wo-warmup-fill' + (allDone ? ' complete' : ''); }
-        if (lbl)  { lbl.textContent = completedSets + ' / ' + setsToComplete + ' set'; lbl.style.color = allDone ? '#00ff88' : '#64748b'; }
+        if (lbl)  { lbl.textContent = completedSets + ' / ' + setsToComplete + ' set'; lbl.style.color = allDone ? 'var(--primary)' : '#64748b'; }
         startBtn.style.display = 'block';
         if (allDone) {
             startBtn.className = (startBtn.className || '').replace(/warmup-locked/g,'').trim() + ' warmup-unlocked';
@@ -4375,7 +4371,7 @@ function startWarmupRestTimer(el, totalSecs, nextBtn, allNextBtns) {
         if (remaining <= 0) {
             fill.style.transition = 'width 0.5s linear';
             fill.style.width = '0%';
-            fill.style.background = '#00ff88';
+            fill.style.background = 'var(--primary)';
             // Rimuovi testo, lascia solo la pulsazione del next
             lbl.textContent = '';
             clearInterval(interval);
@@ -8055,13 +8051,6 @@ function updateProgressPage() {
         : '';
     const prRows = document.getElementById('pr-rows');
     if (prRows) prRows.innerHTML = prHtml || '<div style="font-size:0.72rem;color:#64748b;padding:12px 0;text-align:center;">Completa il wizard per vedere i tuoi PR.</div>';
-    // Home PR section
-    const homePrSection = document.getElementById('home-pr-section');
-    const homePrRows    = document.getElementById('home-pr-rows');
-    if (homePrSection) {
-        homePrSection.style.display = prs.length > 0 ? 'block' : 'none';
-        if (homePrRows) homePrRows.innerHTML = prHtml;
-    }
     // Exercise chart
     populateExerciseSelector();
     const selVal = document.getElementById('prog-ex-select')?.value;
@@ -12231,7 +12220,7 @@ function woShowProgressionSummary() {
     btn.type = 'button';
     btn.textContent = 'Avanti verso il Deload';
     btn.style.cssText = 'width:100%;margin-top:18px;padding:13px;border:none;border-radius:11px;' +
-        'background:linear-gradient(135deg,#00ff88,#00cc88);color:#000;font-family:inherit;' +
+        'background:var(--btn-grad);color:#fff;font-family:inherit;' +
         'font-size:0.78rem;font-weight:900;cursor:pointer;text-transform:none;';
     btn.onclick = function() { ov.remove(); };
     box.appendChild(btn);
@@ -16097,6 +16086,7 @@ function applyChapterTheme(w) {
     root.style.setProperty('--accent',  t.accent);
     root.style.setProperty('--pr',      t.pr);
     root.style.setProperty('--ac',      t.ac);
+    root.style.setProperty('--btn-grad', t.btnGrad);
 
     // Streak widget
     const streakW = document.getElementById('streak-widget');
