@@ -435,6 +435,40 @@
         .pmodal-x:active { background:rgba(255,255,255,0.12); color:#e2e8f0; }
         .pmodal-body { padding:16px 16px 20px; overflow-y:auto; -webkit-overflow-scrolling:touch; flex:1; }
 
+        /* v.144 — grafico per esercizio, pattern volume */
+        .m-row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+        .m-list-row { cursor:pointer; }
+        .m-list-row:active { background:rgba(255,255,255,0.03); }
+        .m-list-right { display:flex; align-items:center; gap:8px; }
+        .m-list-trend { font-size:0.45rem; font-weight:800; color:#00ff88; background:rgba(0,255,136,0.1); border:1px solid rgba(0,255,136,0.25); border-radius:20px; padding:2px 5px; }
+        .m-list-trend.down { color:#f87171; background:rgba(248,113,113,0.1); border-color:rgba(248,113,113,0.25); }
+        .chev { color:#475569; font-size:0.7rem; }
+        .pat-row { display:flex; align-items:center; gap:8px; margin-bottom:7px; }
+        .pat-name { font-size:0.52rem; color:#cbd5e1; width:80px; flex-shrink:0; }
+        .pat-track { flex:1; height:6px; background:rgba(255,255,255,0.05); border-radius:99px; overflow:hidden; }
+        .pat-fill { height:100%; border-radius:99px; background:var(--primary); }
+        .pat-val { font-size:0.5rem; color:#94a3b8; width:46px; text-align:right; flex-shrink:0; }
+        .pmodal-back { width:30px; height:30px; flex-shrink:0; border-radius:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:#94a3b8; font-size:14px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; font-family:inherit; padding:0; text-transform:none; }
+        .exfilter { display:flex; gap:5px; margin-bottom:12px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+        .exf { flex:0 0 auto; width:auto; padding:5px 10px; border-radius:20px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); color:#94a3b8; font-size:0.55rem; font-weight:700; font-family:inherit; cursor:pointer; text-transform:none; letter-spacing:0.03em; }
+        .exf.on { background:rgba(var(--pr,52,211,153),0.15); border-color:rgba(var(--pr,52,211,153),0.4); color:var(--primary); }
+        .exf.off { opacity:0.35; }
+        .exchart { width:100%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:12px 8px 6px; }
+        .exlg { display:flex; gap:12px; justify-content:center; margin-top:8px; font-size:0.45rem; color:#64748b; }
+        .exlg i { display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:4px; vertical-align:middle; }
+        .hist-row { display:grid; grid-template-columns:52px 42px 1fr auto; gap:8px; align-items:center; padding:7px 2px; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.58rem; }
+        .hist-date { color:#94a3b8; }
+        .hist-ch { font-size:0.42rem; font-weight:800; letter-spacing:0.05em; padding:2px 5px; border-radius:5px; background:rgba(var(--pr,52,211,153),0.12); color:var(--primary); text-align:center; }
+        .hist-ch.dl { background:rgba(100,116,139,0.18); color:#94a3b8; }
+        .hist-bar { height:4px; background:rgba(255,255,255,0.05); border-radius:99px; overflow:hidden; }
+        .hist-bar i { display:block; height:100%; background:var(--primary); border-radius:99px; }
+        .hist-kg { font-weight:800; color:#e2e8f0; white-space:nowrap; }
+        .fc-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 2px; border-bottom:1px solid rgba(255,255,255,0.05); }
+        .fc-lab { font-size:0.6rem; color:#cbd5e1; }
+        .fc-val { font-size:0.72rem; font-weight:800; color:#facc15; white-space:nowrap; }
+        .exwarn { font-size:0.55rem; color:#94a3b8; line-height:1.65; background:rgba(250,204,21,0.06); border:1px solid rgba(250,204,21,0.18); border-radius:9px; padding:10px 12px; margin-top:12px; }
+        .exwarn b { color:#facc15; }
+
         /* contenuti interni ai popup */
         .m-row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
         .m-stat { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:12px 10px; text-align:center; }
@@ -454,6 +488,7 @@
         .m-dots { display:flex; gap:4px; flex:1; }
         .m-dot { flex:1; height:22px; border-radius:6px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.07); display:flex; align-items:center; justify-content:center; font-size:9px; color:#475569; }
         .m-dot.on { background:rgba(var(--pr,52,211,153),0.15); border-color:rgba(var(--pr,52,211,153),0.35); color:var(--primary); }
+        .m-week-flag { width:14px; flex-shrink:0; font-size:9px; text-align:center; }
         .m-badges { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; }
         .m-badge { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:11px 6px; text-align:center; }
         .m-badge.locked { opacity:0.38; }
@@ -1623,7 +1658,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .prog-card-label { font-size:0.55rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:8px; }
         .prog-card-val { font-size:1.8rem; font-weight:900; color:var(--primary); line-height:1; }
         .prog-card-sub { font-size:0.62rem; color:#94a3b8; margin-top:4px; }
-        .chart-placeholder { margin:0 16px 24px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:14px; padding:16px 16px 28px; height:160px; display:flex; }
+        .chart-placeholder { margin:0 16px 24px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:14px; padding:16px 16px 28px; height:186px; display:flex; }
         .prog-bars-wrap { display:flex; align-items:flex-end; gap:6px; flex:1; min-height:0; }
         .bar { flex:1; border-radius:4px 4px 0 0; background:rgba(var(--pr,0,255,136),0.3); position:relative; min-height:4px; }
         .bar.highlight { background:var(--primary); box-shadow:0 0 12px rgba(var(--pr,0,255,136),0.4); }
@@ -2419,12 +2454,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
                 <div class="streak-top">
                     <div>
                         <div class="streak-count" id="streak-count">0</div>
-                        <div class="streak-count-label">giorni consecutivi</div>
+                        <div class="streak-count-label">settimane complete</div>
                     </div>
                     <div class="streak-flame">🔥</div>
                 </div>
                 <div class="streak-days-row" id="streak-days-row"></div>
-                <div class="streak-record-line">Record personale: <span id="streak-record">0</span> giorni</div>
+                <div class="streak-record-line">Record personale: <span id="streak-record">0</span> settimane</div>
             </div>
             <div class="carico-card">
                 <div class="carico-top">
@@ -2825,10 +2860,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div class="prog-card"><div class="prog-card-label">Volume totale</div><div class="prog-card-val" id="prog-vol">—</div><div class="prog-card-sub" id="prog-vol-sub">nessun allenamento</div></div>
     <div class="prog-card"><div class="prog-card-label">PR attivi</div><div class="prog-card-val" id="prog-pr-count">0</div><div class="prog-card-sub" id="prog-pr-names">—</div></div>
   </div>
+  <div id="prog-vol-extra" style="display:none;"></div>
   <div class="chart-placeholder" id="prog-chart" style="display:none;">
     <div style="display:flex;flex-direction:column;width:100%;height:100%">
-      <div style="font-size:0.52rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;flex-shrink:0">Volume settimanale (kg)</div>
-      <div style="display:flex;flex:1;min-height:0;gap:6px;">
+      <div style="font-size:0.52rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;flex-shrink:0">Volume per capitolo (kg)</div>
+      <div style="display:flex;flex:1;min-height:0;gap:6px;padding-top:16px;">
         <!-- Y axis -->
         <div id="prog-yaxis" style="display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;padding-bottom:20px;flex-shrink:0;min-width:32px;"></div>
         <!-- Bars -->
@@ -2936,12 +2972,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       </div>
       <!-- Form altezza inline (nascosto di default) -->
       <div id="bmi-edit-row" style="display:none;flex-direction:column;gap:8px;margin-top:8px;padding:12px;background:rgba(99,102,241,0.07);border:0.5px solid rgba(99,102,241,0.2);border-radius:10px;">
-        <div style="font-size:0.55rem;color:#cbd5e1;text-align:center;">Inserisci la tua altezza per calcolare il BMI</div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <input id="bmi-height-input" type="number" min="100" max="250" step="1" inputmode="numeric" placeholder="es. 175"
-            style="flex:1;padding:10px;background:#0f172a;border:1px solid #334155;border-radius:9px;color:#e2e8f0;font-size:1rem;font-weight:700;text-align:center;font-family:inherit;-webkit-appearance:none;">
-          <span style="font-size:0.75rem;color:#94a3b8;flex-shrink:0;">cm</span>
-        </div>
+        <div style="font-size:0.55rem;color:#cbd5e1;text-align:center;">Inserisci la tua altezza in centimetri</div>
+        <input id="bmi-height-input" type="number" min="100" max="250" step="1" inputmode="numeric" placeholder="es. 175"
+          style="width:100%;padding:10px;background:#0f172a;border:1px solid #334155;border-radius:9px;color:#e2e8f0;font-size:1rem;font-weight:700;text-align:center;font-family:inherit;-webkit-appearance:none;">
         <button onclick="bmiHeightSave()" style="width:100%;padding:11px;background:#6366f1;border:none;border-radius:9px;color:#fff;font-size:0.85rem;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:0.03em;">Salva</button>
       </div>
     </div>
@@ -2968,6 +3001,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <button class="pmodal-x" type="button" onclick="closeProgModal()" aria-label="Chiudi">&#10005;</button>
     </div>
     <div class="pmodal-body" id="prog-modal-body"></div>
+  </div>
+</div>
+
+<!-- ══════════ POPUP GRAFICO ESERCIZIO ══════════ -->
+<div class="pmodal" id="ex-modal" style="z-index:9600;" onclick="if(event.target===this) closeExChart()">
+  <div class="pmodal-box">
+    <div class="pmodal-head">
+      <button class="pmodal-back" type="button" onclick="closeExChart()" aria-label="Indietro">&#8249;</button>
+      <div class="pmodal-titles">
+        <div class="pmodal-title" id="ex-modal-title">Esercizio</div>
+        <div class="pmodal-sub" id="ex-modal-sub"></div>
+      </div>
+      <button class="pmodal-x" type="button" onclick="closeExChart()" aria-label="Chiudi">&#10005;</button>
+    </div>
+    <div class="pmodal-body" id="ex-modal-body"></div>
   </div>
 </div>
 
@@ -3478,6 +3526,7 @@ const APP = {
     workoutSeconds: 0,
     restSeconds: 0,
     exerciseTracking: [],
+    loadHistory: [],   // [{k,d:'YYYY-MM-DD',w:capitolo,ex:nome,kg}] storico carichi
     currentExerciseIndex: 0,
     currentSet: 1,
     savedProtocols: [],
@@ -3549,7 +3598,8 @@ function saveState() {
             mtrValues: APP.mtrValues || {},
             nutTemplates: APP.nutTemplates || [],
             nutFavorites: APP.nutFavorites || [],
-            nutritionLogs: nutGetAllLogs()
+            nutritionLogs: nutGetAllLogs(),
+            loadHistory: APP.loadHistory || []
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
         saveToSupabase(toSave);
@@ -3712,6 +3762,7 @@ function loadState() {
             ['rest','rest','rest','rest','rest','rest','rest']
         ];
         APP.exerciseTracking = saved.exerciseTracking || [];
+        APP.loadHistory = saved.loadHistory || [];
         APP.currentExerciseIndex = saved.currentExerciseIndex || 0;
         APP.savedProtocols = saved.savedProtocols || [];
         APP.activeProtocolId = saved.activeProtocolId || null;
@@ -5171,6 +5222,17 @@ async function onLoginSuccess(user, usernameOverride = null) {
         }
         if (s.personalRecords) {
             APP.personalRecords = Object.assign({}, s.personalRecords, APP.personalRecords || {});
+        }
+        // Storico carichi: unione per chiave, cosi' due dispositivi diversi
+        // non si cancellano le sedute a vicenda.
+        if (s.loadHistory && s.loadHistory.length) {
+            var _seen = {}, _merged = [];
+            (APP.loadHistory || []).concat(s.loadHistory).forEach(function(e) {
+                if (!e || !e.k || _seen[e.k]) return;
+                _seen[e.k] = 1; _merged.push(e);
+            });
+            _merged.sort(function(a, b) { return a.d < b.d ? -1 : (a.d > b.d ? 1 : 0); });
+            APP.loadHistory = _merged.slice(-800);
         }
     }
     const { data: protocols } = await sbClient.from('protocols').select('*').eq('user_id', user.id).order('created_at');
@@ -7751,10 +7813,9 @@ var PROG_MENU_ITEMS = [
     {
         id: 'streak', icon: '🔥', label: 'Streak & Costanza',
         getValue: function() {
-            var streak = parseInt(localStorage.getItem('aw_streak')||'0');
-            var record = parseInt(localStorage.getItem('aw_streak_record')||'0');
-            var pct = record>0 ? Math.round(streak/record*100) : (streak>0?100:0);
-            return { value: streak+'gg', sub: 'record: '+record+'gg', progress: Math.min(100,pct), badge: false, detail: 'Streak: '+streak+' giorni \u00b7 Record: '+record+' giorni' };
+            var st = computeWeekStreak();
+            var pct = st.record>0 ? Math.round(st.current/st.record*100) : (st.current>0?100:0);
+            return { value: st.current+' sett', sub: 'record: '+st.record+' sett', progress: Math.min(100,pct), badge: false, detail: 'Settimane complete di fila: '+st.current+' \u00b7 Record: '+st.record };
         }
     },
     {
@@ -7852,6 +7913,7 @@ function openProgModal(id) {
     } else if (id === 'volume') {
         _pmAdopt(body, 'prog-grid', 'grid');
         _pmAdopt(body, 'prog-chart', 'flex');
+        _pmAdopt(body, 'prog-vol-extra', 'block');
     } else if (id === 'pesi') {
         body.innerHTML = _pmPesiHtml();
     } else if (id === 'streak') {
@@ -7867,11 +7929,15 @@ function openProgModal(id) {
     // larghezza reale del contenitore, che a display:none sarebbe zero.
     setTimeout(function() {
         if (id === 'massa'  && typeof weightUpdateUI    === 'function') weightUpdateUI();
-        if (id === 'volume' && typeof updateProgressPage === 'function') updateProgressPage();
+        if (id === 'volume') {
+            if (typeof updateProgressPage === 'function') updateProgressPage();
+            if (typeof renderVolExtra === 'function') renderVolExtra();
+        }
     }, 0);
 }
 
 function closeProgModal() {
+    closeExChart();
     var modal = document.getElementById('prog-modal');
     _pmRestoreNodes();                       // prima di svuotare, o li distrugge
     var body = document.getElementById('prog-modal-body');
@@ -7882,6 +7948,92 @@ function closeProgModal() {
 
 // ── Contenuti dei popup senza sezione dedicata ──────────
 // Base provvisoria: struttura definita, contenuti da rifinire.
+
+// ── VOLUME: dati aggiuntivi (v.144) ───────────────────────
+var PATTERN_LABELS = {
+    'push-h': 'Spinta orizz.', 'push-v': 'Spinta vert.',
+    'pull-h': 'Trazione orizz.', 'pull-v': 'Trazione vert.',
+    'quad': 'Quadricipiti', 'hinge': 'Catena post.'
+};
+var WEEKLY_SET_TARGET = 10;   // Schoenfeld, Ogborn & Krieger 2017
+
+function _exSetsReps(ex) {
+    var m = (ex.sr || '').match(/(\d+)\s*[\u00d7xX]\s*(\d+)/);
+    return { sets: m ? parseInt(m[1]) : 3, reps: m ? parseInt(m[2]) : 5 };
+}
+
+function renderVolExtra() {
+    var host = document.getElementById('prog-vol-extra');
+    if (!host) return;
+    var exData = APP.exerciseData || [];
+    if (!exData.length) { host.innerHTML = ''; return; }
+
+    // Totali sulle sessioni effettivamente completate
+    var totSets = 0, totReps = 0, totLoad = 0;
+    for (var w = 0; w < N_WEEKS; w++) {
+        var sessions = (APP.chipStates[w] || []).filter(function(x) { return x === 'done'; }).length;
+        if (!sessions) continue;
+        exData.forEach(function(ex) {
+            var sr = _exSetsReps(ex);
+            var kg = ex.loads ? (ex.loads[w] || ex.baseWeight || 0) : (ex.baseWeight || 0);
+            totSets += sr.sets * sessions;
+            totReps += sr.sets * sr.reps * sessions;
+            totLoad += sr.sets * sr.reps * kg * sessions;
+        });
+    }
+    var avgKg = totReps > 0 ? (totLoad / totReps) : 0;
+
+    var h = '<div class="m-row3">' +
+        '<div class="m-stat"><div class="m-stat-lab">Serie totali</div><div class="m-stat-val">' + totSets + '</div><div class="m-stat-sub">completate</div></div>' +
+        '<div class="m-stat"><div class="m-stat-lab">Ripetizioni</div><div class="m-stat-val">' + totReps + '</div><div class="m-stat-sub">totali</div></div>' +
+        '<div class="m-stat"><div class="m-stat-lab">Carico medio</div><div class="m-stat-val">' + (avgKg > 0 ? avgKg.toFixed(0) : '\u2014') + '<span style="font-size:0.5rem">kg</span></div><div class="m-stat-sub">per ripetizione</div></div>' +
+    '</div>';
+
+    // Serie settimanali per pattern nel capitolo in corso
+    var wSel = APP.selectedViewWeek || 0;
+    var sessPerWeek = 0;
+    for (var d = 0; d < 7; d++) if ((APP.dayAssignments[wSel] || [])[d]) sessPerWeek++;
+    if (!sessPerWeek) sessPerWeek = 3;
+
+    var byPat = {}, other = 0;
+    exData.forEach(function(ex) {
+        var sr = _exSetsReps(ex);
+        var pat = (typeof getMovementPattern === 'function') ? getMovementPattern(ex.name) : null;
+        if (!pat) { other += sr.sets * sessPerWeek; return; }
+        byPat[pat] = (byPat[pat] || 0) + sr.sets * sessPerWeek;
+    });
+    var pats = Object.keys(byPat).sort(function(a, b) { return byPat[b] - byPat[a]; });
+
+    if (pats.length) {
+        var maxSets = Math.max(WEEKLY_SET_TARGET, byPat[pats[0]]);
+        h += '<div class="m-sec-title">Serie settimanali per pattern</div>';
+        pats.forEach(function(pt) {
+            var v = byPat[pt];
+            var low = v < WEEKLY_SET_TARGET;
+            h += '<div class="pat-row">' +
+                    '<div class="pat-name">' + (PATTERN_LABELS[pt] || pt) + '</div>' +
+                    '<div class="pat-track"><div class="pat-fill" style="width:' + Math.min(100, v / maxSets * 100) + '%;' + (low ? 'background:#f59e0b;' : '') + '"></div></div>' +
+                    '<div class="pat-val">' + v + ' serie</div>' +
+                 '</div>';
+        });
+        if (other > 0) {
+            h += '<div class="pat-row"><div class="pat-name" style="color:#64748b">Isolamento</div>' +
+                 '<div class="pat-track"><div class="pat-fill" style="width:' + Math.min(100, other / maxSets * 100) + '%;background:#475569"></div></div>' +
+                 '<div class="pat-val">' + other + ' serie</div></div>';
+        }
+        h += '<div class="m-note"><b>Cosa vuol dire la soglia di 10 serie.</b> Il conteggio e\' quante serie a settimana ' +
+             'ricadono su ogni schema di movimento (spinta, trazione, quadricipiti, catena posteriore). La meta-analisi ' +
+             'dose-risposta di Schoenfeld, Ogborn &amp; Krieger (2017) osserva che l\'ipertrofia cresce all\'aumentare del ' +
+             'volume settimanale, con i risultati migliori sopra le ~10 serie per gruppo muscolare.<br><br>' +
+             '<b>Sotto le 10 serie</b> (barra ambra): sei nella fascia che mantiene la forza e fa crescere poco. ' +
+             'E\' la scelta giusta in un Deload, se hai poco tempo, o se stai recuperando da un infortunio.<br>' +
+             '<b>Sopra le 10 serie</b> (barra verde): sei nella fascia dove si ottiene la maggior crescita muscolare, ' +
+             'a patto che il recupero regga. Salire oltre non e\' automaticamente meglio: se il sonno, il cibo o il tempo ' +
+             'fra le sedute non bastano, il volume in piu\' diventa fatica e basta.<br><br>' +
+             'Uno squilibrio marcato fra spinta e trazione e\' il segnale piu\' utile da cogliere qui.</div>';
+    }
+    host.innerHTML = h;
+}
 
 function _pmPesiHtml() {
     var mtr = APP.mtrValues || {};
@@ -7902,29 +8054,224 @@ function _pmPesiHtml() {
     names.forEach(function(n) {
         var v = mtrGet(n);
         var lower = (typeof woIsLowerBody === 'function') ? woIsLowerBody(n) : false;
-        h += '<div class="m-list-row">' +
+        var series = _exSeries(n);
+        var trend = '';
+        if (series.length >= 2) {
+            var dp = (series[series.length-1].kg - series[0].kg) / series[0].kg * 100;
+            if (Math.abs(dp) >= 0.5) {
+                trend = '<span class="m-list-trend' + (dp < 0 ? ' down' : '') + '">' +
+                        (dp > 0 ? '+' : '') + dp.toFixed(1) + '%</span>';
+            }
+        }
+        h += '<div class="m-list-row" onclick="openExChart(' + JSON.stringify(n).replace(/"/g, '&quot;') + ')">' +
                 '<div><div class="m-list-name">' + escapeHTML(n) + '</div>' +
                 '<div class="m-list-meta">' + (lower ? 'arti inferiori' : 'parte superiore') + '</div></div>' +
-                '<div class="m-list-val">' + (v != null ? v + ' kg' : '\u2014') + '</div>' +
+                '<div class="m-list-right">' + trend +
+                    '<span class="m-list-val">' + (v != null ? v + ' kg' : '\u2014') + '</span>' +
+                    '<span class="chev">\u203a</span>' +
+                '</div>' +
              '</div>';
     });
-    h += '<div class="m-note">L\'MTR e\' il massimo tecnico di riferimento: da qui derivano tutti i carichi del ciclo (72\u201390% del training max). Si aggiorna alla fine del Chapter 4.</div>';
+    h += '<div class="m-note">Tocca un esercizio per vedere l\'andamento del carico nel tempo.<br><br>' +
+         'L\'MTR e\' il massimo tecnico di riferimento: da qui derivano tutti i carichi del ciclo ' +
+         '(72\u201390% del training max). Si aggiorna alla fine del Chapter 4.</div>';
     return h;
 }
 
+// ── GRAFICO PER ESERCIZIO (v.144) ─────────────────────────
+var CH_LABELS = ['Ch1', 'Ch2', 'Ch3', 'Ch4', 'Dld'];
+var _exChartName = '';
+var _exChartFilter = 'all';
+
+function _fmtDay(iso) {
+    var p = String(iso || '').split('-');
+    return p.length === 3 ? (p[2] + '/' + p[1]) : iso;
+}
+
+// Serie storica di un esercizio. Usa lo storico reale; se non c'e' ancora
+// (o e' troppo corto) ricostruisce il ciclo in corso dai carichi programmati
+// e dalla data di inizio. I punti ricostruiti sono marcati recon:true.
+function _exSeries(name) {
+    var out = [];
+    (APP.loadHistory || []).forEach(function(e) {
+        if (!e || !e.ex) return;
+        if (!exSameExercise(e.ex, name)) return;
+        out.push({ d: e.d, w: e.w, kg: e.kg, recon: false });
+    });
+    out.sort(function(a, b) { return a.d < b.d ? -1 : (a.d > b.d ? 1 : 0); });
+    if (out.length >= 2) return out;
+
+    // Ricostruzione: un punto per capitolo con almeno una sessione completata
+    var ex = null;
+    (APP.exerciseData || []).forEach(function(x) { if (exSameExercise(x.name, name)) ex = x; });
+    if (!ex) return out;
+    var start = APP.startDate ? new Date(APP.startDate) : null;
+    var rec = [];
+    for (var w = 0; w < N_WEEKS; w++) {
+        var done = (APP.chipStates[w] || []).filter(function(x) { return x === 'done'; }).length;
+        if (!done) continue;
+        var kg = ex.loads ? (ex.loads[w] || ex.baseWeight || 0) : (ex.baseWeight || 0);
+        if (!kg) continue;
+        var iso = '';
+        if (start) {
+            var dt = new Date(start.getTime() + w * 7 * 86400000);
+            iso = dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0');
+        }
+        rec.push({ d: iso, w: w, kg: kg, recon: true });
+    }
+    return rec.length > out.length ? rec : out;
+}
+
+function _exSvg(pts) {
+    if (pts.length === 1) {
+        return '<div class="exchart" style="text-align:center;padding:26px 10px;">' +
+               '<div style="font-size:1.6rem;font-weight:800;color:var(--primary);">' + pts[0].kg + ' kg</div>' +
+               '<div style="font-size:0.55rem;color:#64748b;margin-top:6px;">' + _fmtDay(pts[0].d) +
+               ' \u00b7 un solo rilevamento: servono almeno due sedute per tracciare una linea</div></div>';
+    }
+    var W = 300, H = 132, L = 26, R = 6, T = 10, B = 24;
+    var kgs = pts.map(function(p) { return p.kg; });
+    var mn = Math.min.apply(null, kgs), mx = Math.max.apply(null, kgs);
+    var pad = (mx - mn) * 0.2 || 2;
+    mn = Math.max(0, mn - pad); mx = mx + pad;
+    var X = function(i) { return L + i * ((W - L - R) / Math.max(pts.length - 1, 1)); };
+    var Y = function(v) { return T + (1 - (v - mn) / (mx - mn)) * (H - T - B); };
+    var d = '', dots = '', labs = '', grid = '';
+    [0, 0.5, 1].forEach(function(f) {
+        var v = mn + (mx - mn) * f, yy = Y(v);
+        grid += '<line x1="' + L + '" y1="' + yy.toFixed(1) + '" x2="' + (W - R) + '" y2="' + yy.toFixed(1) + '" stroke="rgba(255,255,255,0.06)" stroke-width="0.7"/>';
+        grid += '<text x="' + (L - 4) + '" y="' + (yy + 2).toFixed(1) + '" fill="#64748b" font-size="6.5" text-anchor="end">' + Math.round(v) + '</text>';
+    });
+    var step = Math.ceil(pts.length / 6);
+    pts.forEach(function(p, i) {
+        d += (i ? ' L' : 'M') + X(i).toFixed(1) + ' ' + Y(p.kg).toFixed(1);
+        var dl = (p.w === DELOAD_WEEK);
+        dots += '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(p.kg).toFixed(1) + '" r="' + (dl ? 2.4 : 3.2) +
+                '" fill="' + (dl ? '#64748b' : 'var(--primary)') + '" stroke="#0f172a" stroke-width="1.2"/>';
+        if (i % step === 0 || i === pts.length - 1) {
+            labs += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 10) + '" fill="#64748b" font-size="6.5" text-anchor="middle">' + _fmtDay(p.d) + '</text>';
+        }
+    });
+    var area = d + ' L' + X(pts.length - 1).toFixed(1) + ' ' + (H - B) + ' L' + X(0).toFixed(1) + ' ' + (H - B) + ' Z';
+    return '<div class="exchart"><svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block">' +
+        '<defs><linearGradient id="exg" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0%" stop-color="rgba(var(--pr,52,211,153),0.28)"/>' +
+        '<stop offset="100%" stop-color="rgba(var(--pr,52,211,153),0)"/></linearGradient></defs>' +
+        grid + '<path d="' + area + '" fill="url(#exg)"/>' +
+        '<path d="' + d + '" fill="none" stroke="var(--primary)" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>' +
+        dots + labs + '</svg></div>' +
+        '<div class="exlg"><span><i style="background:var(--primary)"></i>capitoli di carico</span>' +
+        '<span><i style="background:#64748b"></i>deload</span></div>';
+}
+
+function setExFilter(f) {
+    _exChartFilter = f;
+    renderExChartBody();
+}
+
+function renderExChartBody() {
+    var body = document.getElementById('ex-modal-body');
+    if (!body) return;
+    var name = _exChartName;
+    var all = _exSeries(name);
+    var pts = (_exChartFilter === 'all') ? all : all.filter(function(p) { return p.w === parseInt(_exChartFilter); });
+
+    // filtro capitolo
+    var h = '<div class="exfilter">';
+    h += '<button type="button" class="exf' + (_exChartFilter === 'all' ? ' on' : '') + '" onclick="setExFilter(\'all\')">Tutti</button>';
+    for (var w = 0; w < N_WEEKS; w++) {
+        var n = all.filter(function(p) { return p.w === w; }).length;
+        h += '<button type="button" class="exf' + (String(_exChartFilter) === String(w) ? ' on' : '') + (n ? '' : ' off') + '"' +
+             (n ? ' onclick="setExFilter(\'' + w + '\')"' : ' disabled') + '>' + CH_LABELS[w] + '</button>';
+    }
+    h += '</div>';
+
+    if (!pts.length) {
+        h += '<div class="m-empty">Nessun dato per questa selezione.</div>';
+        body.innerHTML = h;
+        return;
+    }
+
+    h += _exSvg(pts);
+
+    var first = pts[0].kg, last = pts[pts.length - 1].kg;
+    var delta = first > 0 ? ((last - first) / first * 100) : 0;
+    h += '<div class="m-row2" style="margin-top:14px">' +
+         '<div class="m-stat"><div class="m-stat-lab">Carico iniziale</div><div class="m-stat-val">' + first +
+         '<span style="font-size:0.5rem">kg</span></div><div class="m-stat-sub">' + _fmtDay(pts[0].d) + '</div></div>' +
+         '<div class="m-stat"><div class="m-stat-lab">Variazione</div><div class="m-stat-val" style="color:' +
+         (delta < 0 ? '#f87171' : 'var(--primary)') + '">' + (delta >= 0 ? '+' : '') + delta.toFixed(1) + '%</div>' +
+         '<div class="m-stat-sub">su ' + pts.length + ' rilevament' + (pts.length === 1 ? 'o' : 'i') + '</div></div></div>';
+
+    // storico
+    h += '<div class="m-sec-title">Storico</div>';
+    var mxKg = Math.max.apply(null, pts.map(function(p) { return p.kg; }));
+    pts.slice().reverse().forEach(function(p) {
+        h += '<div class="hist-row">' +
+             '<div class="hist-date">' + _fmtDay(p.d) + '</div>' +
+             '<div class="hist-ch' + (p.w === DELOAD_WEEK ? ' dl' : '') + '">' + (CH_LABELS[p.w] || ('Ch' + (p.w + 1))) + '</div>' +
+             '<div class="hist-bar"><i style="width:' + (p.kg / mxKg * 100) + '%"></i></div>' +
+             '<div class="hist-kg">' + p.kg + ' kg</div></div>';
+    });
+
+    // proiezione
+    var mtr = mtrGet(name);
+    if (mtr) {
+        var lower = (typeof woIsLowerBody === 'function') ? woIsLowerBody(name) : false;
+        var lo = lower ? OVL_STEP.esatte.low : OVL_STEP.esatte.up;
+        var hi = lower ? OVL_STEP.margine.low : OVL_STEP.margine.up;
+        h += '<div class="m-sec-title">Proiezione MTR</div>';
+        [1, 2, 3].forEach(function(n) {
+            var a = mtr * Math.pow(1 + lo, n), b = mtr * Math.pow(1 + hi, n);
+            h += '<div class="fc-row"><div class="fc-lab">Fra ' + n + ' ciclo' + (n > 1 ? 'i' : '') +
+                 ' <span style="color:#64748b">(' + (n * N_WEEKS) + ' settimane)</span></div>' +
+                 '<div class="fc-val">' + a.toFixed(1) + '\u2013' + b.toFixed(1) + ' kg</div></div>';
+        });
+        h += '<div class="exwarn">Non e\' una previsione fisiologica: e\' la <b>regola di progressione dell\'app</b> ' +
+             'proiettata in avanti. La forbice (' + (lo * 100) + '\u2013' + (hi * 100) + '% per ciclo su questo esercizio) ' +
+             'e\' quella raccomandata da Baechle &amp; Earle (NSCA, 3\u00aa ed.) e dall\'ACSM. I guadagni <b>rallentano con ' +
+             'l\'esperienza di allenamento</b>: oltre il primo o secondo ciclo il valore alto della forbice diventa poco realistico.</div>';
+    }
+
+    if (pts.some(function(p) { return p.recon; })) {
+        h += '<div class="m-note">I dati mostrati sono <b>ricostruiti</b> dai carichi programmati del ciclo in corso: ' +
+             'lo storico vero e proprio parte da questa versione dell\'app e si riempie a ogni allenamento completato.</div>';
+    }
+
+    body.innerHTML = h;
+    body.scrollTop = 0;
+}
+
+function openExChart(name) {
+    _exChartName = name;
+    _exChartFilter = 'all';
+    var mtr = mtrGet(name);
+    var lower = (typeof woIsLowerBody === 'function') ? woIsLowerBody(name) : false;
+    document.getElementById('ex-modal-title').textContent = name;
+    document.getElementById('ex-modal-sub').textContent =
+        (lower ? 'arti inferiori' : 'parte superiore') + (mtr ? ' \u00b7 MTR ' + mtr + ' kg' : '');
+    renderExChartBody();
+    document.getElementById('ex-modal').classList.add('open');
+}
+
+function closeExChart() {
+    var m = document.getElementById('ex-modal');
+    if (m) m.classList.remove('open');
+    var b = document.getElementById('ex-modal-body');
+    if (b) b.innerHTML = '';
+    // il popup di categoria resta aperto sotto: non tocchiamo body.overflow
+}
+
 function _pmStreakHtml() {
-    var streak = parseInt(localStorage.getItem('aw_streak') || '0');
-    var record = parseInt(localStorage.getItem('aw_streak_record') || '0');
-    if (typeof computeStreak === 'function' && !streak) streak = computeStreak();
-    if (record < streak) record = streak;
+    var st = computeWeekStreak();
 
     var h = '<div class="m-row2">' +
         '<div class="m-stat"><div class="m-stat-lab">Streak attuale</div>' +
-        '<div class="m-stat-val" style="color:var(--primary);">' + streak + '</div>' +
-        '<div class="m-stat-sub">allenamenti di fila</div></div>' +
+        '<div class="m-stat-val" style="color:var(--primary);">' + st.current + '</div>' +
+        '<div class="m-stat-sub">settimane complete di fila</div></div>' +
         '<div class="m-stat"><div class="m-stat-lab">Record</div>' +
-        '<div class="m-stat-val" style="color:#f59e0b;">' + record + '</div>' +
-        '<div class="m-stat-sub">personale</div></div>' +
+        '<div class="m-stat-val" style="color:#f59e0b;">' + st.record + '</div>' +
+        '<div class="m-stat-sub">settimane</div></div>' +
     '</div>';
 
     h += '<div class="m-sec-title">Sessioni del ciclo</div>';
@@ -7932,19 +8279,28 @@ function _pmStreakHtml() {
     var chapNames  = ['Ch.1', 'Ch.2', 'Ch.3', 'Ch.4', 'Dld'];
     var done = 0, planned = 0;
     for (var w = 0; w < N_WEEKS; w++) {
+        var wp = 0, wd = 0;
+        for (var d0 = 0; d0 < 7; d0++) {
+            if ((APP.dayAssignments[w] || [])[d0]) wp++;
+            if ((APP.chipStates[w] || [])[d0] === 'done') wd++;
+        }
+        var full = wp > 0 && wd >= wp;
+        planned += wp; done += wd;
         h += '<div class="m-week"><div class="m-week-lab">' + (chapNames[w] || ('Ch.' + (w + 1))) + '</div><div class="m-dots">';
         for (var d = 0; d < 7; d++) {
-            var st = (APP.chipStates[w] || [])[d];
+            var stt = (APP.chipStates[w] || [])[d];
             var assigned = ((APP.dayAssignments[w] || [])[d]) ? true : false;
-            if (assigned) planned++;
-            if (st === 'done') done++;
-            h += '<div class="m-dot' + (st === 'done' ? ' on' : '') + '">' +
-                 (st === 'done' ? '\u2713' : (assigned ? dayLetters[d] : '\u00b7')) + '</div>';
+            h += '<div class="m-dot' + (stt === 'done' ? ' on' : '') + '">' +
+                 (stt === 'done' ? '\u2713' : (assigned ? dayLetters[d] : '\u00b7')) + '</div>';
         }
-        h += '</div></div>';
+        h += '</div><div class="m-week-flag">' + (full ? '\uD83D\uDD25' : '') + '</div></div>';
     }
     var pct = planned > 0 ? Math.round(done / planned * 100) : 0;
-    h += '<div class="m-note">Aderenza al programma: <b>' + done + ' su ' + planned + '</b> sessioni previste (' + pct + '%).</div>';
+    h += '<div class="m-note">Aderenza al programma: <b>' + done + ' su ' + planned + '</b> sessioni previste (' + pct + '%).<br><br>' +
+         '<b>Come si conta la streak.</b> Una settimana entra nella striscia solo quando hai completato <b>tutte</b> le ' +
+         'sessioni che le avevi assegnato. Non conta i giorni consecutivi: un programma di forza prescrive il riposo, ' +
+         'e premiare i giorni di fila spingerebbe ad allenarsi proprio quando bisogna recuperare. Saltare una sessione ' +
+         'azzera la striscia, ma non il record.</div>';
     return h;
 }
 
@@ -8032,7 +8388,7 @@ function updateProgressPage() {
             const isCurr = i === (APP.selectedViewWeek||0);
             const label = v >= 1000 ? (v/1000).toFixed(1)+'t' : v > 0 ? Math.round(v)+'kg' : '0';
             return `<div class="bar ${isCurr?'highlight':''}" style="height:${h}%;flex:1;" title="${label}">
-                <div class="bar-val-top" style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:0.38rem;color:${isCurr?'var(--primary)':'#64748b'};white-space:nowrap;">${v>0?label:''}</div>
+                <div class="bar-val-top" style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:0.38rem;color:${isCurr?'var(--primary)':'#64748b'};white-space:nowrap;">${v>0?label:''}</div>
                 <span class="bar-label">Ch${i+1}</span></div>`;
         }).join('');
         // Y axis ticks (3 livelli: 0, metà, max)
@@ -12287,6 +12643,7 @@ function woCompleteSet() {
         if (di !== undefined && di !== null && APP.chipStates[wIdx] && APP.chipStates[wIdx][di] !== 'done') {
             APP.chipStates[wIdx][di] = 'done';
             APP.totalWorkouts = APP.chipStates.flat().filter(s => s === 'done').length;
+            logLoadHistory(wIdx);   // storico carichi per i grafici per esercizio
             saveState();
             // Refresh completo di tutte le viste che mostrano lo stato dei workout:
             // - chip della Home (pagina results) + donut + motivazione
@@ -16016,7 +16373,7 @@ async function performFullReset() {
 let _loginBadgeSnapshot = null;
 const BADGES_CONFIG = [
     { id: 'first_workout',  icon: '🚀', name: 'Primo Passo',   desc: 'Primo allenamento completato',   check: () => APP.totalWorkouts >= 1 },
-    { id: 'on_fire',        icon: '🔥', name: 'On Fire',        desc: '7 giorni consecutivi',            check: () => computeStreak() >= 7 },
+    { id: 'on_fire',        icon: '🔥', name: 'On Fire',        desc: '3 settimane complete di fila',    check: () => computeWeekStreak().current >= 3 },
     { id: 'ten_workouts',   icon: '💪', name: '10 Workout',     desc: '10 allenamenti completati',       check: () => APP.totalWorkouts >= 10 },
     { id: 'chapter2',       icon: '⚡', name: 'Chapter II',     desc: 'Completa la settimana 1',         check: () => APP.completedWeeks[0] === true },
     { id: 'one_month',      icon: '🏅', name: 'Un Mese',        desc: "30 giorni dall'inizio",          check: () => APP.startDate && ((new Date() - new Date(APP.startDate)) / 86400000) >= 30 },
@@ -16039,25 +16396,64 @@ const BADGES_CONFIG = [
     }},
 ];
 
-function computeStreak() {
-    // Conta giorni consecutivi guardando i chipStates done a ritroso da oggi
-    const allDone = [];
-    for (let w = 0; w < N_WEEKS; w++) {
-        for (let d = 0; d < 7; d++) {
-            if (APP.chipStates[w][d] === 'done') allDone.push(`${w}-${d}`);
-        }
-    }
-    // Usa totalWorkouts come proxy semplice per lo streak
-    // In futuro si può usare startDate + chip completati per calcolo esatto
-    const done = APP.chipStates.flat().filter(s => s === 'done').length;
-    return done; // semplificato: streak = allenamenti fatti consecutivi (da migliorare con date)
+// ── STORICO CARICHI (v.144) ───────────────────────────────
+// Fino alla v.143 l'app non conservava nessuna traccia storica: si sapeva
+// il carico previsto oggi, non quello di un mese fa. Da qui in avanti ogni
+// sessione completata lascia una riga per esercizio.
+function logLoadHistory(wIdx) {
+    if (!Array.isArray(APP.loadHistory)) APP.loadHistory = [];
+    var d = new Date();
+    var iso = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    var existing = {};
+    APP.loadHistory.forEach(function(e) { if (e && e.k) existing[e.k] = 1; });
+    (APP.exerciseData || []).forEach(function(ex) {
+        var kg = ex.loads ? (ex.loads[wIdx] || ex.baseWeight || 0) : (ex.baseWeight || 0);
+        if (!kg) return;
+        var key = iso + '|' + wIdx + '|' + ex.name;
+        if (existing[key]) return;
+        existing[key] = 1;
+        APP.loadHistory.push({ k: key, d: iso, w: wIdx, ex: ex.name, kg: kg });
+    });
+    if (APP.loadHistory.length > 800) APP.loadHistory = APP.loadHistory.slice(-800);
 }
 
-function getStreak() {
-    // Streak reale: conta giorni con almeno un 'done' negli ultimi N giorni
-    // Semplificato: usa il totale dei done come streak per ora
-    return APP.chipStates.flat().filter(s => s === 'done').length;
+// ── STREAK A SETTIMANE (v.144) ────────────────────────────
+// La vecchia streak contava semplicemente le sessioni completate e le
+// chiamava "giorni consecutivi": due cose diverse. Inoltre una streak a
+// giorni consecutivi e' la metrica sbagliata per un programma di forza,
+// che PRESCRIVE giorni di riposo: l'utente veniva penalizzato per aver
+// seguito il protocollo. Ora si conta una settimana come completa quando
+// tutte le sessioni previste da dayAssignments risultano 'done'.
+function computeWeekStreak() {
+    var lastActive = -1;
+    for (var i = 0; i < N_WEEKS; i++) {
+        var anyDone = ((APP.chipStates[i] || []).indexOf('done') !== -1);
+        if (anyDone) lastActive = i;
+    }
+    var run = 0, best = 0, weeks = [];
+    for (var w = 0; w <= lastActive; w++) {
+        var planned = 0, done = 0;
+        for (var d = 0; d < 7; d++) {
+            if ((APP.dayAssignments[w] || [])[d]) planned++;
+            if ((APP.chipStates[w] || [])[d] === 'done') done++;
+        }
+        var full = planned > 0 && done >= planned;
+        weeks.push({ w: w, planned: planned, done: done, full: full });
+        if (full) { run++; if (run > best) best = run; }
+        else if (w < lastActive) { run = 0; }
+        // La settimana in corso, se ancora incompleta, non azzera la striscia:
+        // altrimenti chi ha due settimane perfette alle spalle vedrebbe 0
+        // solo perche' non ha ancora finito quella di oggi.
+    }
+    var stored = parseInt(localStorage.getItem('aw_week_streak_record') || '0') || 0;
+    var record = Math.max(stored, best);
+    if (record !== stored) { try { localStorage.setItem('aw_week_streak_record', record); } catch(e) {} }
+    return { current: run, best: best, record: record, weeks: weeks, lastActive: lastActive };
 }
+
+// Manteniamo i vecchi nomi: erano richiamati dai badge e dal widget Home.
+function computeStreak() { return computeWeekStreak().current; }
+function getStreak()     { return computeWeekStreak().current; }
 
 function applyChapterTheme(w) {
     const themes = [
@@ -16254,9 +16650,9 @@ function updateStreakWidget() {
     count.textContent = streak;
 
     // Record
-    const prevRecord = parseInt(localStorage.getItem('awakening_streak_record') || '0');
-    const newRecord = Math.max(prevRecord, streak);
-    localStorage.setItem('awakening_streak_record', newRecord);
+    // Chiave nuova: 'awakening_streak_record' conteneva il vecchio conteggio
+    // di sessioni e mostrarlo come settimane gonfierebbe il record.
+    const newRecord = computeWeekStreak().record;
     record.textContent = newRecord;
 
     // Ultimi 7 giorni della settimana corrente
