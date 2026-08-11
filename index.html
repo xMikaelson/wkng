@@ -2858,7 +2858,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
   <div class="prog-grid" id="prog-grid" style="display:none;">
     <div class="prog-card"><div class="prog-card-label">Volume totale</div><div class="prog-card-val" id="prog-vol">—</div><div class="prog-card-sub" id="prog-vol-sub">nessun allenamento</div></div>
-    <div class="prog-card"><div class="prog-card-label">PR attivi</div><div class="prog-card-val" id="prog-pr-count">0</div><div class="prog-card-sub" id="prog-pr-names">—</div></div>
+    <div class="prog-card"><div class="prog-card-label">Media per sessione</div><div class="prog-card-val" id="prog-vol-avg">—</div><div class="prog-card-sub" id="prog-vol-avg-sub">nessun allenamento</div></div>
   </div>
   <div id="prog-vol-extra" style="display:none;"></div>
   <div class="chart-placeholder" id="prog-chart" style="display:none;">
@@ -8358,11 +8358,15 @@ function updateProgressPage() {
         .filter(p => p.kg > 0)
         .sort((a,b) => a.name.localeCompare(b.name));
 
-    const prCountEl = document.getElementById('prog-pr-count');
-    if (prCountEl) prCountEl.textContent = prs.length || '0';
-
-    const prNamesEl = document.getElementById('prog-pr-names');
-    if (prNamesEl) prNamesEl.textContent = prs.length > 0 ? prs.slice(0,2).map(p => p.name + ' ' + p.kg + 'kg').join(', ') : '—';
+    // Volume medio per sessione: dice se la singola seduta si sta facendo piu'
+    // densa, indipendentemente da quante sedute hai fatto. I PR stavano qui
+    // fuori posto: appartengono a "Progressi nei Pesi".
+    const avgVol = APP.totalWorkouts > 0 ? totalVol / APP.totalWorkouts : 0;
+    const avgEl = document.getElementById('prog-vol-avg');
+    if (avgEl) avgEl.textContent = avgVol >= 1000 ? (avgVol/1000).toFixed(1)+'t'
+                                 : avgVol > 0     ? Math.round(avgVol)+'kg' : '—';
+    const avgSubEl = document.getElementById('prog-vol-avg-sub');
+    if (avgSubEl) avgSubEl.textContent = avgVol > 0 ? 'per allenamento' : 'nessun allenamento';
 
     // Bars: volume reale per chapter (sets × reps × kg × sessioni fatte)
     const barsEl  = document.getElementById('prog-bars');
