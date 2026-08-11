@@ -449,14 +449,18 @@
         .pat-fill { height:100%; border-radius:99px; background:var(--primary); }
         .pat-val { font-size:0.5rem; color:#94a3b8; width:46px; text-align:right; flex-shrink:0; }
         .pmodal-back { width:30px; height:30px; flex-shrink:0; border-radius:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:#94a3b8; font-size:14px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; font-family:inherit; padding:0; text-transform:none; }
-        .exfilter { display:flex; gap:5px; margin-bottom:12px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+        .exfilter-lab { font-size:0.45rem; color:#64748b; text-transform:uppercase; letter-spacing:0.12em; font-weight:700; margin-bottom:5px; }
+        .exscope { font-size:0.52rem; color:#94a3b8; background:rgba(255,255,255,0.03); border-radius:8px; padding:7px 10px; margin-bottom:12px; line-height:1.4; }
+        .exscope b { color:#e2e8f0; }
+        .hist-cy { display:inline-block; margin-left:5px; font-size:0.4rem; font-weight:800; color:#64748b; background:rgba(255,255,255,0.05); border-radius:4px; padding:1px 4px; vertical-align:middle; }
+        .exfilter { display:flex; gap:5px; margin-bottom:10px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
         .exf { flex:0 0 auto; width:auto; padding:5px 10px; border-radius:20px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); color:#94a3b8; font-size:0.55rem; font-weight:700; font-family:inherit; cursor:pointer; text-transform:none; letter-spacing:0.03em; }
         .exf.on { background:rgba(var(--pr,52,211,153),0.15); border-color:rgba(var(--pr,52,211,153),0.4); color:var(--primary); }
         .exf.off { opacity:0.35; }
         .exchart { width:100%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:12px 8px 6px; }
         .exlg { display:flex; gap:12px; justify-content:center; margin-top:8px; font-size:0.45rem; color:#64748b; }
         .exlg i { display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:4px; vertical-align:middle; }
-        .hist-row { display:grid; grid-template-columns:52px 42px 1fr auto; gap:8px; align-items:center; padding:7px 2px; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.58rem; }
+        .hist-row { display:grid; grid-template-columns:66px 42px 1fr auto; gap:8px; align-items:center; padding:7px 2px; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.58rem; }
         .hist-date { color:#94a3b8; }
         .hist-ch { font-size:0.42rem; font-weight:800; letter-spacing:0.05em; padding:2px 5px; border-radius:5px; background:rgba(var(--pr,52,211,153),0.12); color:var(--primary); text-align:center; }
         .hist-ch.dl { background:rgba(100,116,139,0.18); color:#94a3b8; }
@@ -8082,6 +8086,7 @@ function _pmPesiHtml() {
 var CH_LABELS = ['Ch1', 'Ch2', 'Ch3', 'Ch4', 'Dld'];
 var _exChartName = '';
 var _exChartFilter = 'all';
+var _exChartCycle  = 'all';
 
 function _fmtDay(iso) {
     var p = String(iso || '').split('-');
@@ -8099,13 +8104,25 @@ function _exSeries(name) {
         out.push({ d: e.d, w: e.w, kg: e.kg, recon: false });
     });
     out.sort(function(a, b) { return a.d < b.d ? -1 : (a.d > b.d ? 1 : 0); });
-    if (out.length >= 2) return out;
+    if (out.length >= 2) return _exTagCycles(out);
 
     // Ricostruzione: un punto per capitolo con almeno una sessione completata
     var ex = null;
     (APP.exerciseData || []).forEach(function(x) { if (exSameExercise(x.name, name)) ex = x; });
-    if (!ex) return out;
+    if (!ex) return _exTagCycles(out);
+
+    // Data di partenza: quella del programma; in mancanza, la prima riga dello
+    // storico riportata indietro al suo capitolo. Senza nessuna delle due i
+    // punti restano senza data invece di mostrarne una inventata.
     var start = APP.startDate ? new Date(APP.startDate) : null;
+    if (!start && (APP.loadHistory || []).length) {
+        var first = APP.loadHistory.slice().sort(function(a, b) { return a.d < b.d ? -1 : 1; })[0];
+        if (first && first.d) {
+            var t = new Date(first.d + 'T00:00:00');
+            if (!isNaN(t.getTime())) start = new Date(t.getTime() - (first.w || 0) * 7 * 86400000);
+        }
+    }
+
     var rec = [];
     for (var w = 0; w < N_WEEKS; w++) {
         var done = (APP.chipStates[w] || []).filter(function(x) { return x === 'done'; }).length;
@@ -8119,7 +8136,19 @@ function _exSeries(name) {
         }
         rec.push({ d: iso, w: w, kg: kg, recon: true });
     }
-    return rec.length > out.length ? rec : out;
+    return _exTagCycles(rec.length > out.length ? rec : out);
+}
+
+// Assegna il numero di ciclo a ogni punto: un capitolo che torna indietro
+// (es. dal Deload al Ch1) segna l'inizio di un ciclo nuovo.
+function _exTagCycles(pts) {
+    var cyc = 1, prev = -1;
+    pts.forEach(function(p) {
+        if (prev >= 0 && p.w < prev) cyc++;
+        p.c = cyc;
+        prev = p.w;
+    });
+    return pts;
 }
 
 function _exSvg(pts) {
@@ -8169,22 +8198,62 @@ function setExFilter(f) {
     renderExChartBody();
 }
 
+function setExCycle(c) {
+    _exChartCycle = c;
+    renderExChartBody();
+}
+
 function renderExChartBody() {
     var body = document.getElementById('ex-modal-body');
     if (!body) return;
     var name = _exChartName;
     var all = _exSeries(name);
-    var pts = (_exChartFilter === 'all') ? all : all.filter(function(p) { return p.w === parseInt(_exChartFilter); });
+    var nCycles = all.length ? Math.max.apply(null, all.map(function(p) { return p.c || 1; })) : 1;
 
-    // filtro capitolo
-    var h = '<div class="exfilter">';
-    h += '<button type="button" class="exf' + (_exChartFilter === 'all' ? ' on' : '') + '" onclick="setExFilter(\'all\')">Tutti</button>';
+    // il ciclo selezionato potrebbe non esistere piu' dopo un cambio esercizio
+    if (_exChartCycle !== 'all' && parseInt(_exChartCycle) > nCycles) _exChartCycle = 'all';
+
+    var byCycle = (_exChartCycle === 'all') ? all
+                : all.filter(function(p) { return p.c === parseInt(_exChartCycle); });
+    var pts = (_exChartFilter === 'all') ? byCycle
+            : byCycle.filter(function(p) { return p.w === parseInt(_exChartFilter); });
+
+    var h = '';
+
+    // ── filtro periodo (solo se c'e' piu' di un ciclo) ──
+    if (nCycles > 1) {
+        h += '<div class="exfilter-lab">Periodo</div><div class="exfilter">';
+        h += '<button type="button" class="exf' + (_exChartCycle === 'all' ? ' on' : '') +
+             '" onclick="setExCycle(\'all\')">Tutti i cicli</button>';
+        for (var c = 1; c <= nCycles; c++) {
+            h += '<button type="button" class="exf' + (String(_exChartCycle) === String(c) ? ' on' : '') +
+                 '" onclick="setExCycle(\'' + c + '\')">Ciclo ' + c + '</button>';
+        }
+        h += '</div>';
+    }
+
+    // ── filtro capitolo ──
+    h += '<div class="exfilter-lab">Capitolo</div><div class="exfilter">';
+    h += '<button type="button" class="exf' + (_exChartFilter === 'all' ? ' on' : '') +
+         '" onclick="setExFilter(\'all\')">Tutti</button>';
     for (var w = 0; w < N_WEEKS; w++) {
-        var n = all.filter(function(p) { return p.w === w; }).length;
-        h += '<button type="button" class="exf' + (String(_exChartFilter) === String(w) ? ' on' : '') + (n ? '' : ' off') + '"' +
+        var n = byCycle.filter(function(p) { return p.w === w; }).length;
+        h += '<button type="button" class="exf' + (String(_exChartFilter) === String(w) ? ' on' : '') +
+             (n ? '' : ' off') + '"' +
              (n ? ' onclick="setExFilter(\'' + w + '\')"' : ' disabled') + '>' + CH_LABELS[w] + '</button>';
     }
     h += '</div>';
+
+    // ── riga che dichiara cosa si sta guardando ──
+    var dated = pts.filter(function(p) { return p.d; });
+    var range = dated.length
+        ? (dated.length > 1 ? _fmtDay(dated[0].d) + '\u2013' + _fmtDay(dated[dated.length-1].d)
+                            : _fmtDay(dated[0].d))
+        : 'date non disponibili';
+    var scopeCy = (_exChartCycle === 'all') ? (nCycles > 1 ? 'tutti i cicli' : 'ciclo in corso') : ('ciclo ' + _exChartCycle);
+    var scopeCh = (_exChartFilter === 'all') ? 'tutti i capitoli' : ('solo ' + CH_LABELS[parseInt(_exChartFilter)]);
+    h += '<div class="exscope"><b>' + pts.length + '</b> rilevament' + (pts.length === 1 ? 'o' : 'i') +
+         ' \u00b7 ' + scopeCy + ' \u00b7 ' + scopeCh + ' \u00b7 ' + range + '</div>';
 
     if (!pts.length) {
         h += '<div class="m-empty">Nessun dato per questa selezione.</div>';
@@ -8198,23 +8267,29 @@ function renderExChartBody() {
     var delta = first > 0 ? ((last - first) / first * 100) : 0;
     h += '<div class="m-row2" style="margin-top:14px">' +
          '<div class="m-stat"><div class="m-stat-lab">Carico iniziale</div><div class="m-stat-val">' + first +
-         '<span style="font-size:0.5rem">kg</span></div><div class="m-stat-sub">' + _fmtDay(pts[0].d) + '</div></div>' +
+         '<span style="font-size:0.5rem">kg</span></div><div class="m-stat-sub">' +
+         (pts[0].d ? _fmtDay(pts[0].d) : CH_LABELS[pts[0].w]) + '</div></div>' +
          '<div class="m-stat"><div class="m-stat-lab">Variazione</div><div class="m-stat-val" style="color:' +
          (delta < 0 ? '#f87171' : 'var(--primary)') + '">' + (delta >= 0 ? '+' : '') + delta.toFixed(1) + '%</div>' +
-         '<div class="m-stat-sub">su ' + pts.length + ' rilevament' + (pts.length === 1 ? 'o' : 'i') + '</div></div></div>';
+         '<div class="m-stat-sub">dal primo all\'ultimo</div></div></div>';
 
-    // storico
+    // ── storico: data, ciclo, capitolo, carico ──
     h += '<div class="m-sec-title">Storico</div>';
     var mxKg = Math.max.apply(null, pts.map(function(p) { return p.kg; }));
     pts.slice().reverse().forEach(function(p) {
         h += '<div class="hist-row">' +
-             '<div class="hist-date">' + _fmtDay(p.d) + '</div>' +
+             '<div class="hist-date">' + (p.d ? _fmtDay(p.d) : '\u2014') +
+                (nCycles > 1 ? '<span class="hist-cy">C' + p.c + '</span>' : '') + '</div>' +
              '<div class="hist-ch' + (p.w === DELOAD_WEEK ? ' dl' : '') + '">' + (CH_LABELS[p.w] || ('Ch' + (p.w + 1))) + '</div>' +
              '<div class="hist-bar"><i style="width:' + (p.kg / mxKg * 100) + '%"></i></div>' +
              '<div class="hist-kg">' + p.kg + ' kg</div></div>';
     });
+    if (!dated.length) {
+        h += '<div class="m-note">Le date compariranno dal primo allenamento completato con questa versione: ' +
+             'prima non veniva registrata la data delle sedute.</div>';
+    }
 
-    // proiezione
+    // ── proiezione ──
     var mtr = mtrGet(name);
     if (mtr) {
         var lower = (typeof woIsLowerBody === 'function') ? woIsLowerBody(name) : false;
@@ -8223,12 +8298,13 @@ function renderExChartBody() {
         h += '<div class="m-sec-title">Proiezione MTR</div>';
         [1, 2, 3].forEach(function(n) {
             var a = mtr * Math.pow(1 + lo, n), b = mtr * Math.pow(1 + hi, n);
-            h += '<div class="fc-row"><div class="fc-lab">Fra ' + n + ' ciclo' + (n > 1 ? 'i' : '') +
+            h += '<div class="fc-row"><div class="fc-lab">Fra ' + n + ' ' + (n > 1 ? 'cicli' : 'ciclo') +
                  ' <span style="color:#64748b">(' + (n * N_WEEKS) + ' settimane)</span></div>' +
                  '<div class="fc-val">' + a.toFixed(1) + '\u2013' + b.toFixed(1) + ' kg</div></div>';
         });
         h += '<div class="exwarn">Non e\' una previsione fisiologica: e\' la <b>regola di progressione dell\'app</b> ' +
-             'proiettata in avanti. La forbice (' + (lo * 100) + '\u2013' + (hi * 100) + '% per ciclo su questo esercizio) ' +
+             'proiettata in avanti, e parte sempre dall\'MTR attuale (' + mtr + ' kg), non dal periodo filtrato qui sopra. ' +
+             'La forbice (' + (lo * 100) + '\u2013' + (hi * 100) + '% per ciclo su questo esercizio) ' +
              'e\' quella raccomandata da Baechle &amp; Earle (NSCA, 3\u00aa ed.) e dall\'ACSM. I guadagni <b>rallentano con ' +
              'l\'esperienza di allenamento</b>: oltre il primo o secondo ciclo il valore alto della forbice diventa poco realistico.</div>';
     }
@@ -8245,6 +8321,7 @@ function renderExChartBody() {
 function openExChart(name) {
     _exChartName = name;
     _exChartFilter = 'all';
+    _exChartCycle  = 'all';
     var mtr = mtrGet(name);
     var lower = (typeof woIsLowerBody === 'function') ? woIsLowerBody(name) : false;
     document.getElementById('ex-modal-title').textContent = name;
