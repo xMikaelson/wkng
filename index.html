@@ -4482,13 +4482,20 @@ function woSkipWarmup() {
 function restoreUI() {
     // Restore login state
     if (APP.userName) {
-        document.getElementById('btn-login-trigger').style.display = 'none';
+        const loginBtn = document.getElementById('btn-login-trigger');
+        if (loginBtn) loginBtn.style.display = 'none';
+        // 'user-icon' non esiste piu' nel markup: senza guardia qui restoreUI()
+        // si interrompeva prima di initDashboard() per OGNI utente loggato.
         const av = document.getElementById('user-icon');
-        av.style.display = 'flex';
-        av.innerText = APP.userName[0].toUpperCase();
-        document.getElementById('dash-username').innerText = APP.userName;
+        if (av) {
+            av.style.display = 'flex';
+            av.innerText = APP.userName[0].toUpperCase();
+        }
+        const dashName = document.getElementById('dash-username');
+        if (dashName) dashName.innerText = APP.userName;
         if (APP.startDate) {
-            document.getElementById('start-date-small').innerText = APP.startDate.toLocaleDateString('it-IT');
+            const sd = document.getElementById('start-date-small');
+            if (sd) sd.innerText = APP.startDate.toLocaleDateString('it-IT');
         }
         initDashboard();
     }
@@ -4496,9 +4503,11 @@ function restoreUI() {
     // Restore unlock state
     if (APP.isUnlocked) {
         document.querySelectorAll('.blur-cell').forEach(el => el.classList.remove('blur-cell'));
-        document.getElementById('pay-overlay').style.display = 'none';
-        document.getElementById('rise-overlay').style.display = 'none';
-        document.getElementById('emerge-overlay').style.display = 'none';
+        // Overlay del vecchio paywall: non sono piu' nel markup.
+        ['pay-overlay','rise-overlay','emerge-overlay'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
     }
 
     // Restore exercises in input fields (senza cambiare visibilità hero/results)
@@ -15209,6 +15218,10 @@ function updateChart() {
 
 function positionAwakeButton() {
     const overlay = document.getElementById('pay-overlay');
+    // Il paywall e' stato rimosso: senza questa uscita anticipata la funzione
+    // lanciava un TypeError che interrompeva il chiamante, impedendo
+    // l'aggiornamento di streak e badge.
+    if (!overlay) return;
     overlay.style.display = 'flex';
 
     requestAnimationFrame(() => {
