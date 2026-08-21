@@ -4,9 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Awakening - Protocollo di Progressione</title>
+    <script>
+        // Rilevamento reload post-aggiornamento SW: se il flag e' presente,
+        // salta il boot splash (l'utente l'ha appena visto un secondo fa).
+        // Fatto qui in cima al <head> per evitare qualsiasi flash dello splash.
+        try {
+            if (sessionStorage.getItem('aw_boot_skip') === '1') {
+                sessionStorage.removeItem('aw_boot_skip');
+                document.documentElement.classList.add('aw-skip-boot');
+            }
+        } catch(e) {}
+    </script>
     <style>
         /* dipinto al primo frame: evita la tela bianca del browser */
         html{background:#0f172a}
+
+        /* Se e' un reload dopo aggiornamento SW, nascondi splash istantaneo */
+        html.aw-skip-boot #boot-splash { display:none !important; }
 
         /* ═══ BOOT SPLASH ═══ */
         #boot-splash{
@@ -3505,7 +3519,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '148';
+const APP_VERSION = '149';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -17604,6 +17618,11 @@ if ('serviceWorker' in navigator) {
     // client.navigate() dal lato SW resta silenzioso e blocca l'app sull'avvio.
     navigator.serviceWorker.addEventListener('message', function(event) {
         if (event.data && event.data.type === 'SW_UPDATED') {
+            // Segnala al prossimo avvio di saltare il boot splash: l'utente l'ha
+            // appena visto un attimo fa, farlo ripartire e' fastidioso.
+            // sessionStorage vale solo per questa "sessione di scheda": se
+            // l'utente chiude e riapre l'app da freddo, lo splash torna normale.
+            try { sessionStorage.setItem('aw_boot_skip', '1'); } catch(e) {}
             window.location.reload();
         }
     });
