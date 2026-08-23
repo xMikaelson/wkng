@@ -870,7 +870,72 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .set-counter.completed { color: var(--primary); }
 
         /* ONBOARDING WIZARD */
-        .onboarding-step { animation: fadeIn 0.4s ease; }
+        /* ONBOARDING CAROUSEL (v.150) */
+        #onboarding-wizard { overflow: hidden; }
+        .ob-railwrap { padding: 4px 0 16px; }
+        .ob-rail { display: flex; gap: 6px; max-width: 480px; margin: 0 auto; }
+        .ob-rail i { flex: 1; height: 4px; border-radius: 4px; background: rgba(255,255,255,0.09); transition: 0.35s; }
+        .ob-rail i.on { background: linear-gradient(90deg, var(--primary), var(--accent)); }
+        .ob-slabel { font-size: 0.58rem; letter-spacing: 0.16em; text-transform: uppercase; color: #64748b;
+                     margin-top: 9px; text-align: center; font-weight: 600; }
+        .ob-viewport { overflow: hidden; }
+        .ob-viewport.ob-free { overflow: visible; }
+        .ob-track { display: flex; width: 400%; transition: transform 0.42s cubic-bezier(0.4,0,0.2,1); }
+        .onboarding-step { width: 25%; flex-shrink: 0; padding: 0 3px; animation: none; }
+        .ob-track.ob-free .onboarding-step { visibility: hidden; }
+        .ob-track.ob-free #ob-step-4 { visibility: visible; }
+        .ob-card { background: linear-gradient(150deg, rgba(30,41,59,0.9), rgba(17,26,46,0.9));
+                   border: 1.5px solid rgba(255,255,255,0.07); border-radius: 18px; padding: 16px 14px;
+                   margin-bottom: 10px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 13px; }
+        .ob-card:active { transform: scale(0.98); }
+        .ob-card.selected { border-color: var(--ob-tint, var(--accent));
+                            box-shadow: 0 0 0 3px rgba(99,102,241,0.13); }
+        .ob-card.locked { opacity: 0.34; cursor: not-allowed; }
+        .ob-card .ob-c-ic { font-size: 1.75rem; width: 42px; text-align: center; flex-shrink: 0; }
+        .ob-card .ob-c-tt { font-weight: 700; font-size: 0.92rem; color: #fff; }
+        .ob-card .ob-c-dd { font-size: 0.68rem; color: #94a3b8; margin-top: 3px; line-height: 1.4; }
+        .ob-eqchips { display: flex; flex-wrap: wrap; gap: 8px; }
+        .ob-eqchip { background: rgba(30,41,59,0.8); border: 1.5px solid rgba(255,255,255,0.08);
+                     border-radius: 12px; padding: 9px 12px; font-size: 0.74rem; cursor: pointer;
+                     transition: 0.15s; display: flex; align-items: center; gap: 6px; color: #cbd5e1; }
+        .ob-eqchip.on { border-color: var(--primary); background: rgba(0,255,136,0.1); color: var(--primary); }
+        .ob-sumcard { background: linear-gradient(140deg, rgba(30,41,59,0.95), rgba(17,26,46,0.95));
+                      border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 16px; margin-bottom: 12px; }
+        .ob-sumrow { display: flex; gap: 9px; margin-top: 13px; }
+        .ob-sumbox { flex: 1; background: rgba(255,255,255,0.04); border-radius: 11px; padding: 9px; text-align: center; }
+        .ob-sumbox b { display: block; font-size: 1.1rem; color: var(--primary); font-weight: 700; }
+        .ob-sumbox span { font-size: 0.53rem; letter-spacing: 0.09em; text-transform: uppercase; color: #64748b; }
+        .ob-wk { display: flex; gap: 4px; margin-top: 13px; }
+        .ob-wk div { flex: 1; text-align: center; padding: 7px 0; border-radius: 8px; font-size: 0.6rem;
+                     font-weight: 600; background: rgba(255,255,255,0.04); color: #475569; border: 1px solid transparent; }
+        .ob-wk div.a { background: rgba(0,255,136,0.13); color: var(--primary); border-color: rgba(0,255,136,0.28); }
+        .ob-sess { background: rgba(19,28,46,0.85); border: 1px solid rgba(255,255,255,0.07);
+                   border-radius: 15px; margin-bottom: 9px; overflow: hidden; }
+        .ob-sess-hd { padding: 12px 14px; display: flex; align-items: center; gap: 9px; }
+        .ob-sess-hd .n { font-weight: 600; font-size: 0.83rem; flex: 1; color: #e2e8f0; text-align: left; }
+        .ob-sess-hd .idx { width: 21px; height: 21px; border-radius: 7px; background: rgba(99,102,241,0.2);
+                           color: #a5b4fc; font-size: 0.6rem; font-weight: 700; display: flex;
+                           align-items: center; justify-content: center; flex-shrink: 0; }
+        .ob-sess-tag { font-size: 0.5rem; letter-spacing: 0.09em; padding: 3px 6px; border-radius: 5px; font-weight: 700; }
+        .ob-sess-tag.F { background: rgba(245,158,11,0.17); color: #fbbf24; }
+        .ob-sess-tag.I { background: rgba(0,255,136,0.14); color: var(--primary); }
+        .ob-exl { padding: 0 14px 11px; }
+        .ob-ex { display: flex; align-items: center; gap: 9px; padding: 8px 0; border-top: 1px solid rgba(255,255,255,0.05); }
+        .ob-ex .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+        .ob-ex .en { flex: 1; font-size: 0.76rem; min-width: 0; text-align: left; color: #e2e8f0; }
+        .ob-ex .em { font-size: 0.6rem; color: #64748b; margin-top: 2px; }
+        .ob-ex .esr { font-size: 0.66rem; color: #a5b4fc; white-space: nowrap; font-weight: 600; }
+        .ob-warn { font-size: 0.68rem; color: #fbbf24; background: rgba(245,158,11,0.08);
+                   border-left: 2px solid #f59e0b; padding: 10px 12px; border-radius: 0 9px 9px 0;
+                   line-height: 1.5; margin-bottom: 11px; text-align: left; }
+        .ob-refs { background: rgba(255,255,255,0.03); border-radius: 13px; padding: 13px; margin-top: 6px; }
+        .ob-refs .rt { font-size: 0.58rem; letter-spacing: 0.13em; text-transform: uppercase; color: #64748b; margin-bottom: 7px; }
+        .ob-refs p { font-size: 0.61rem; color: #7c8ba1; line-height: 1.5; margin: 0 0 6px; padding-left: 11px;
+                     position: relative; text-align: left; }
+        .ob-refs p:before { content: ''; position: absolute; left: 0; top: 7px; width: 4px; height: 4px;
+                            border-radius: 50%; background: #334155; }
+        .ob-hint { font-size: 0.62rem; color: #64748b; text-align: center; margin-top: 12px; }
+
         @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         .ob-step-indicator { display: flex; justify-content: center; gap: 8px; margin-bottom: 25px; }
         .ob-dot { width: 10px; height: 10px; border-radius: 50%; background: #334155; transition: 0.3s; }
@@ -2298,100 +2363,73 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
     <!-- ONBOARDING WIZARD (nascosto inizialmente) -->
     <div id="onboarding-wizard" style="display: none;">
-        <!-- Pulsante torna alla home -->
         <div style="text-align:left; margin-bottom:8px;">
-            <button onclick="exitWizardToHome()" style="background:none; border:none; color:#94a3b8; font-size:0.78rem; cursor:pointer; display:flex; align-items:center; gap:5px; padding:4px 0;">
-                ← Torna alla home
+            <button onclick="exitWizardToHome()" style="background:none; border:none; color:#94a3b8; font-size:0.78rem; cursor:pointer; display:flex; align-items:center; gap:5px; padding:4px 0; width:auto; text-transform:none;">
+                &larr; Torna alla home
             </button>
         </div>
-        <!-- STEP 1: Livello -->
-        <div class="onboarding-step" id="ob-step-1">
-            <div class="ob-step-indicator"><span class="ob-dot active"></span><span class="ob-dot"></span><span class="ob-dot"></span></div>
-            <h2 class="ob-title">Qual è il tuo livello?</h2>
-            <p class="ob-subtitle">Non c'è risposta sbagliata. Ci serve per calibrare il punto di partenza.</p>
-            <div class="ob-options">
-                <div class="ob-option" onclick="selectLevel(this, 'principiante')">
-                    <div class="ob-option-icon">🌱</div>
-                    <div class="ob-option-label">Principiante</div>
-                    <div class="ob-option-desc">Prima volta o lungo stop</div>
-                </div>
-                <div class="ob-option" onclick="selectLevel(this, 'intermedio')">
-                    <div class="ob-option-icon">⚡</div>
-                    <div class="ob-option-label">Intermedio</div>
-                    <div class="ob-option-desc">Allenamento regolare da mesi</div>
-                </div>
-                <div class="ob-option" onclick="selectLevel(this, 'avanzato')">
-                    <div class="ob-option-icon">🔥</div>
-                    <div class="ob-option-label">Avanzato</div>
-                    <div class="ob-option-desc">Anni di esperienza</div>
-                </div>
-            </div>
-            <button class="ob-next-btn" id="ob-next-1" onclick="goToStep(2)" disabled>AVANTI →</button>
+
+        <div class="ob-railwrap">
+            <div class="ob-rail" id="ob-rail"><i class="on"></i><i></i><i></i><i></i></div>
+            <div class="ob-slabel" id="ob-slabel">Livello</div>
         </div>
 
-        <!-- STEP 2: Obiettivo + Luogo + Giorni -->
-        <div class="onboarding-step" id="ob-step-2" style="display: none;">
-            <div class="ob-step-indicator"><span class="ob-dot done"></span><span class="ob-dot active"></span><span class="ob-dot"></span></div>
-            <button class="ob-back-btn" onclick="goToStep(1)">← Indietro</button>
-            <h2 class="ob-title">Configura il tuo piano</h2>
-            <p class="ob-subtitle">Obiettivo, dove ti alleni e quanti giorni alla settimana.</p>
-            <label class="ob-label">OBIETTIVO</label>
-            <div class="ob-options ob-options-row">
-                <div class="ob-option-sm" onclick="selectGoal(this, 'forza')">
-                    <div class="ob-option-label">💪 Forza</div>
-                </div>
-                <div class="ob-option-sm" onclick="selectGoal(this, 'ipertrofia')">
-                    <div class="ob-option-label">📐 Ipertrofia</div>
-                </div>
-                <div class="ob-option-sm" onclick="selectGoal(this, 'hybrid')">
-                    <div class="ob-option-label">⚡ Hybrid</div>
-                    <div class="ob-option-desc" style="font-size:0.55rem; color:#94a3b8; margin-top:2px;">Upper/Lower + PPL</div>
-                </div>
-            </div>
-            <label class="ob-label" style="margin-top: 20px;">DOVE TI ALLENI</label>
-            <div class="ob-options ob-options-row">
-                <div class="ob-option-sm" onclick="selectEnv(this, 'casa')">
-                    <div class="ob-option-label">🏠 Casa</div>
-                    <div class="ob-option-desc" style="font-size:0.6rem; color:#94a3b8; margin-top:2px;">Manubri + Panca</div>
-                </div>
-                <div class="ob-option-sm" onclick="selectEnv(this, 'palestra')">
-                    <div class="ob-option-label">🏋️ Palestra</div>
-                    <div class="ob-option-desc" style="font-size:0.6rem; color:#94a3b8; margin-top:2px;">Attrezzatura completa</div>
-                </div>
-            </div>
-            <label class="ob-label" style="margin-top: 20px;">GIORNI A SETTIMANA</label>
-            <div class="ob-days-selector">
-                <div class="ob-day-chip" onclick="toggleObDay(this, 0)">Lun</div>
-                <div class="ob-day-chip" onclick="toggleObDay(this, 1)">Mar</div>
-                <div class="ob-day-chip" onclick="toggleObDay(this, 2)">Mer</div>
-                <div class="ob-day-chip" onclick="toggleObDay(this, 3)">Gio</div>
-                <div class="ob-day-chip" onclick="toggleObDay(this, 4)">Ven</div>
-                <div class="ob-day-chip" onclick="toggleObDay(this, 5)">Sab</div>
-                <div class="ob-day-chip" onclick="toggleObDay(this, 6)">Dom</div>
-            </div>
-            <button class="ob-next-btn" id="ob-next-2" onclick="goToStep(3)" disabled>AVANTI →</button>
-        </div>
+        <div class="ob-viewport">
+        <div class="ob-track" id="ob-track">
 
-        <!-- STEP 3: Nome + Esercizi -->
-        <div class="onboarding-step" id="ob-step-3" style="display: none;">
-            <div class="ob-step-indicator"><span class="ob-dot done"></span><span class="ob-dot done"></span><span class="ob-dot active"></span></div>
-            <button class="ob-back-btn" onclick="goToStep(2)">← Indietro</button>
-            <h2 class="ob-title">I tuoi esercizi</h2>
-            <p class="ob-subtitle">Abbiamo pre-caricato esercizi e pesi consigliati per il tuo livello. Modifica, rimuovi o aggiungi quello che vuoi.</p>
-            <label class="ob-label">NOME PROTOCOLLO</label>
-            <input type="text" id="ob-protocol-name" placeholder="Es. Push Day, Full Body, Gambe..." style="margin-bottom: 15px; max-width: 400px;" maxlength="40">
-            <div class="setup-section" style="background: transparent; padding: 0;">
-                <div id="input-list">
-                    <div class="input-group">
-                        <input type="text" class="ex-name" placeholder="Cerca esercizio..." oninput="debouncedSearch(this)">
-                        <div class="suggestions"></div>
-                        <input type="text" class="ex-sr" value="5 x 5">
-                        <input type="number" class="ex-weight" placeholder="Kg" min="0" step="0.5">
+            <!-- SLIDE 1: Livello -->
+            <div class="onboarding-step" id="ob-step-1">
+                <h2 class="ob-title">Da quanto ti alleni?</h2>
+                <p class="ob-subtitle">Definisce volume, intensit&agrave; e complessit&agrave; degli esercizi.</p>
+                <div id="ob-lvlbox"></div>
+            </div>
+
+            <!-- SLIDE 2: Obiettivo -->
+            <div class="onboarding-step" id="ob-step-2">
+                <h2 class="ob-title">Scegli il percorso</h2>
+                <p class="ob-subtitle">Serie, ripetizioni e recuperi derivati da studi reali.</p>
+                <div id="ob-goalbox"></div>
+            </div>
+
+            <!-- SLIDE 3: Attrezzatura -->
+            <div class="onboarding-step" id="ob-step-3">
+                <h2 class="ob-title">Attrezzatura</h2>
+                <p class="ob-subtitle" id="ob-eqsub">Ogni esercizio viene scelto in base a cosa hai davvero.</p>
+                <div id="ob-placebox"></div>
+                <div id="ob-eqdetail" style="display:none; margin-top:18px;">
+                    <label class="ob-label" id="ob-eqtitle">COSA HAI A DISPOSIZIONE</label>
+                    <div class="ob-eqchips" id="ob-eqchips"></div>
+                </div>
+            </div>
+
+            <!-- SLIDE 4: Protocollo -->
+            <div class="onboarding-step" id="ob-step-4">
+                <h2 class="ob-title" id="ob-res-title">Il tuo protocollo</h2>
+                <p class="ob-subtitle" id="ob-res-sub"></p>
+                <div id="ob-result"></div>
+                <div id="ob-free-editor" style="display:none;">
+                    <label class="ob-label">NOME PROTOCOLLO</label>
+                    <input type="text" id="ob-protocol-name" placeholder="Es. Push Day, Full Body, Gambe..." style="margin-bottom: 15px; max-width: 400px;" maxlength="40">
+                    <div class="setup-section" style="background: transparent; padding: 0;">
+                        <div id="input-list">
+                            <div class="input-group">
+                                <input type="text" class="ex-name" placeholder="Cerca esercizio..." oninput="debouncedSearch(this)">
+                                <div class="suggestions"></div>
+                                <input type="text" class="ex-sr" value="5 x 5">
+                                <input type="number" class="ex-weight" placeholder="Kg" min="0" step="0.5">
+                            </div>
+                        </div>
+                        <button onclick="addInput()" style="background:none; color:var(--primary); border:1px dashed var(--primary); margin: 10px 0;">+ AGGIUNGI ESERCIZIO</button>
                     </div>
                 </div>
-                <button onclick="addInput()" style="background:none; color:var(--primary); border:1px dashed var(--primary); margin: 10px 0;">+ AGGIUNGI ESERCIZIO</button>
             </div>
-            <button class="ob-next-btn" onclick="finishOnboarding()">GENERA IL TUO PROTOCOLLO 🚀</button>
+
+        </div>
+        </div>
+
+        <div style="margin-top:18px;">
+            <button class="ob-next-btn" id="ob-next-btn" onclick="obNext()" disabled>AVANTI &rarr;</button>
+            <button class="ob-back-btn" id="ob-back-btn" onclick="obBack()" style="display:none; margin-top:8px;">&larr; INDIETRO</button>
         </div>
     </div>
 
@@ -3519,7 +3557,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '149';
+const APP_VERSION = '150';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -13903,6 +13941,679 @@ const EXERCISE_PRESETS = {
     }
 };
 
+/* ═══ MOTORE PROTOCOLLI SCIENTIFICO (v.150) ═══ */
+/* ══════════════════════════════════════════════════════════════
+   AWAKENING — MOTORE PROTOCOLLI (anteprima)
+   Parametri derivati da letteratura peer-reviewed. Vedi AWK_REFS.
+   ══════════════════════════════════════════════════════════════ */
+
+const AWK_REFS = {
+  vol:  'Schoenfeld, Ogborn & Krieger (2017) — J Sports Sci: relazione dose-risposta volume/ipertrofia (≥10 serie/muscolo/sett.)',
+  rest: 'Schoenfeld et al. (2016) — JSCR: 3 min di recupero > 1 min per forza e ipertrofia',
+  rest2:'Grgic et al. (2018) — Sports Med: recuperi ≥2 min necessari per esprimere forza massimale',
+  freq: 'Schoenfeld, Ogborn & Krieger (2016) — Sports Med: frequenza 2x/sett. per muscolo > 1x',
+  load: 'Schoenfeld et al. (2017) — JSCR: carichi alti superiori per la forza massimale; ipertrofia simile a carichi bassi/alti se vicino al cedimento',
+  fail: 'Refalo et al. (2023) — J Sports Sci: RIR 0–3 sufficiente; il cedimento non è necessario',
+  dup:  'Rhea et al. (2002) — JSCR: periodizzazione ondulata efficace quanto/più di quella lineare',
+  cal:  'Kotarsky et al. (2018) — JSCR: push-up progressivi ≈ panca piana per forza e spessore muscolare',
+  cal2: 'Thomas et al. (2017) — Isokinet Exerc Sci: calisthenics migliora postura, forza e composizione corporea',
+  acsm: 'ACSM Position Stand (2009) — Med Sci Sports Exerc: 1–6 rep @ 80–90% per la forza; 3–5 min di recupero sui multiarticolari'
+};
+
+/* ── ATTREZZATURA ─────────────────────────────────────────── */
+const AWK_EQUIP = [
+  {k:'bilanciere', l:'Bilanciere', i:'🏋️'},
+  {k:'rack',       l:'Rack / Squat rack', i:'🗜️'},
+  {k:'panca',      l:'Panca piana', i:'🛋️'},
+  {k:'appoggio',   l:'Tavolo, sedie o gradino', i:'🪑'},
+  {k:'manubri',    l:'Manubri', i:'💪'},
+  {k:'kettlebell', l:'Kettlebell', i:'🔔'},
+  {k:'elastici',   l:'Elastici', i:'➰'},
+  {k:'sbarra',     l:'Sbarra trazioni', i:'🚧'},
+  {k:'parallele',  l:'Parallele / Dip', i:'⚖️'},
+  {k:'anelli',     l:'Anelli', i:'⭕'},
+  {k:'cavi',       l:'Cavi', i:'🔗'},
+  {k:'macchine',   l:'Macchinari', i:'🎛️'}
+];
+const AWK_EQUIP_FULL = AWK_EQUIP.map(e=>e.k);
+const AWK_EQUIP_CALI = ['sbarra','parallele','anelli','elastici','appoggio'];
+
+/* ── AWK_POOL ESERCIZI (ordinati per priorità: il primo compatibile vince) ── */
+const AWK_POOL = {
+  SQUAT: [
+    {n:'Squat con Bilanciere', eq:['bilanciere','rack']},
+    {n:'Front Squat', eq:['bilanciere','rack']},
+    {n:'Squat con Bilanciere (senza rack)', eq:['bilanciere']},
+    {n:'Hack Squat', eq:['macchine']},
+    {n:'Goblet Squat con Kettlebell', eq:['kettlebell']},
+    {n:'Goblet Squat con Manubrio', eq:['manubri']},
+    {n:'Bulgarian Split Squat', eq:['appoggio']},
+    {n:'Split Squat', eq:[]},
+    {n:'Squat a Corpo Libero', eq:[]}
+  ],
+  HINGE: [
+    {n:'Stacco da Terra', eq:['bilanciere']},
+    {n:'Stacco Rumeno con Bilanciere', eq:['bilanciere']},
+    {n:'Stacco Rumeno con Manubri', eq:['manubri']},
+    {n:'Kettlebell Swing', eq:['kettlebell']},
+    {n:'Hip Thrust con Bilanciere', eq:['bilanciere','panca']},
+    {n:'Hip Thrust Monopodalico', eq:['panca']},
+    {n:'Nordic Hamstring Curl', eq:['appoggio']},
+    {n:'Glute Bridge Monopodalico', eq:[]}
+  ],
+  HPUSH: [
+    {n:'Panca Piana con Bilanciere', eq:['bilanciere','panca']},
+    {n:'Panca Inclinata con Bilanciere', eq:['bilanciere','panca']},
+    {n:'Panca Piana con Manubri', eq:['manubri','panca']},
+    {n:'Chest Press', eq:['macchine']},
+    {n:'Dip alle Parallele', eq:['parallele']},
+    {n:'Floor Press con Manubri', eq:['manubri']},
+    {n:'Push-up agli Anelli', eq:['anelli']},
+    {n:'Push-up', eq:[]}
+  ],
+  HPUSH2: [
+    {n:'Panca Inclinata con Manubri', eq:['manubri','panca']},
+    {n:'Dip alle Parallele', eq:['parallele']},
+    {n:'Chest Press Inclinata', eq:['macchine']},
+    {n:'Push-up con Elastico', eq:['elastici']},
+    {n:'Push-up Declinato', eq:['appoggio']},
+    {n:'Archer Push-up', eq:[]}
+  ],
+  VPUSH: [
+    {n:'Military Press', eq:['bilanciere']},
+    {n:'Overhead Press con Manubri', eq:['manubri']},
+    {n:'Shoulder Press alla Macchina', eq:['macchine']},
+    {n:'Overhead Press con Kettlebell', eq:['kettlebell']},
+    {n:'Overhead Press con Elastico', eq:['elastici']},
+    {n:'Pike Push-up', eq:[]}
+  ],
+  HPULL: [
+    {n:'Rematore con Bilanciere', eq:['bilanciere']},
+    {n:'Pendlay Row', eq:['bilanciere']},
+    {n:'Rematore con Manubrio', eq:['manubri']},
+    {n:'Rematore ai Cavi', eq:['cavi']},
+    {n:'Rematore alla Macchina', eq:['macchine']},
+    {n:'Rematore agli Anelli', eq:['anelli']},
+    {n:'Australian Row alla Sbarra', eq:['sbarra']},
+    {n:'Rematore con Elastico', eq:['elastici']},
+    {n:'Rematore al Tavolo', eq:['appoggio'], fam:'row_bw'},
+    {n:'Alzate Prone Y-T-W', eq:[], fam:'prone_raise'}
+  ],
+  VPULL: [
+    {n:'Trazioni alla Sbarra', eq:['sbarra']},
+    {n:'Trazioni agli Anelli', eq:['anelli']},
+    {n:'Lat Machine', eq:['macchine']},
+    {n:'Lat Machine ai Cavi', eq:['cavi']},
+    {n:'Lat Pulldown con Elastico', eq:['elastici']},
+    {n:'Rematore al Tavolo Presa Supina', eq:['appoggio'], fam:'row_bw'},
+    {n:'Rematore Isometrico allo Stipite', eq:[]}
+  ],
+  QUAD: [
+    {n:'Leg Extension', eq:['macchine']},
+    {n:'Leg Press', eq:['macchine']},
+    {n:'Affondi Camminati con Manubri', eq:['manubri']},
+    {n:'Step-up sulla Panca', eq:['panca']},
+    {n:'Affondi a Corpo Libero', eq:[]}
+  ],
+  HAM: [
+    {n:'Leg Curl', eq:['macchine']},
+    {n:'Stacco Rumeno con Manubri', eq:['manubri']},
+    {n:'Good Morning con Bilanciere', eq:['bilanciere']},
+    {n:'Nordic Hamstring Curl', eq:['appoggio']},
+    {n:'Leg Curl con Asciugamano', eq:[]},
+    {n:'Glute Bridge Monopodalico', eq:[]}
+  ],
+  CALF: [
+    {n:'Calf Raise alla Macchina', eq:['macchine']},
+    {n:'Calf Raise con Manubri', eq:['manubri']},
+    {n:'Calf Raise Monopodalico', eq:[]}
+  ],
+  CHESTISO: [
+    {n:'Croci ai Cavi', eq:['cavi']},
+    {n:'Pectoral Machine', eq:['macchine']},
+    {n:'Croci con Manubri', eq:['manubri','panca']},
+    {n:'Croci con Elastico', eq:['elastici']},
+    {n:'Push-up Largo', eq:[]}
+  ],
+  LATDELT: [
+    {n:'Alzate Laterali ai Cavi', eq:['cavi']},
+    {n:'Alzate Laterali con Manubri', eq:['manubri']},
+    {n:'Alzate Laterali con Elastico', eq:['elastici']},
+    {n:'Handstand Hold al Muro', eq:[]}
+  ],
+  REARDELT: [
+    {n:'Face Pull ai Cavi', eq:['cavi']},
+    {n:'Face Pull con Elastico', eq:['elastici']},
+    {n:'Alzate Posteriori con Manubri', eq:['manubri']},
+    {n:'Reverse Fly agli Anelli', eq:['anelli']},
+    {n:'Y-Raise a Terra', eq:[], fam:'prone_raise'}
+  ],
+  BIC: [
+    {n:'Curl con Bilanciere', eq:['bilanciere']},
+    {n:'Curl con Manubri', eq:['manubri']},
+    {n:'Curl ai Cavi', eq:['cavi']},
+    {n:'Curl con Elastico', eq:['elastici']},
+    {n:'Chin-up', eq:['sbarra']},
+    {n:'Curl agli Anelli', eq:['anelli']},
+    {n:'Rematore al Tavolo Presa Stretta', eq:['appoggio'], fam:'row_bw'},
+    {n:'Curl Isometrico con Asciugamano', eq:[]}
+  ],
+  TRI: [
+    {n:'Push-down ai Cavi', eq:['cavi']},
+    {n:'French Press con Bilanciere', eq:['bilanciere']},
+    {n:'Estensioni Sopra la Testa con Manubrio', eq:['manubri']},
+    {n:'Dip alle Parallele', eq:['parallele']},
+    {n:'Push-down con Elastico', eq:['elastici']},
+    {n:'Diamond Push-up', eq:[]}
+  ],
+  CORE: [
+    {n:'Hanging Leg Raise', eq:['sbarra']},
+    {n:'Plank con Sovraccarico', eq:['manubri']},
+    {n:'Hollow Hold', eq:[]},
+    {n:'Plank', eq:[]}
+  ],
+  /* ── Calisthenics: progressioni ── */
+  C_PUSH: [
+    {n:'Dip alle Parallele', eq:['parallele']},
+    {n:'Dip agli Anelli', eq:['anelli']},
+    {n:'Archer Push-up', eq:[]},
+    {n:'Push-up', eq:[]}
+  ],
+  C_PUSH2: [
+    {n:'Pseudo Planche Push-up', eq:[]},
+    {n:'Push-up Declinato', eq:['appoggio']},
+    {n:'Archer Push-up', eq:[]}
+  ],
+  C_VPUSH: [
+    {n:'Handstand Push-up al Muro', eq:[]},
+    {n:'Pike Push-up Rialzato', eq:['appoggio']},
+    {n:'Pike Push-up', eq:[]}
+  ],
+  C_PULL: [
+    {n:'Trazioni alla Sbarra', eq:['sbarra']},
+    {n:'Trazioni agli Anelli', eq:['anelli']},
+    {n:'Trazioni con Elastico', eq:['sbarra','elastici']},
+    {n:'Rematore al Tavolo', eq:['appoggio'], fam:'row_bw'},
+    {n:'Rematore Isometrico allo Stipite', eq:[]}
+  ],
+  C_PULL2: [
+    {n:'Front Lever Tuck', eq:['sbarra']},
+    {n:'Front Lever Tuck agli Anelli', eq:['anelli']},
+    {n:'Rematore al Tavolo Monobraccio', eq:['appoggio'], fam:'row_bw'},
+    {n:'Alzate Prone Y-T-W', eq:[], fam:'prone_raise'}
+  ],
+  C_ROW: [
+    {n:'Australian Row alla Sbarra', eq:['sbarra']},
+    {n:'Rematore agli Anelli', eq:['anelli']},
+    {n:'Rematore al Tavolo', eq:['appoggio'], fam:'row_bw'},
+    {n:'Alzate Prone Y-T-W', eq:[], fam:'prone_raise'}
+  ],
+  C_LEG: [
+    {n:'Bulgarian Split Squat', eq:['appoggio']},
+    {n:'Pistol Squat Assistito', eq:[]},
+    {n:'Split Squat', eq:[]}
+  ],
+  C_LEG2: [
+    {n:'Nordic Hamstring Curl', eq:['appoggio']},
+    {n:'Glute Bridge Monopodalico', eq:[]}
+  ],
+  C_CORE: [
+    {n:'L-Sit alle Parallele', eq:['parallele']},
+    {n:'Hanging Leg Raise', eq:['sbarra']},
+    {n:'Hollow Hold', eq:[]}
+  ],
+  C_CORE2: [
+    {n:'Dragon Flag Negativo', eq:['panca']},
+    {n:'Plank Laterale', eq:[]}
+  ]
+};
+
+/* ── PARAMETRI SERIE/REP/RECUPERO PER RUOLO ─────────────────
+   main = compound primario · sec = compound secondario
+   iso  = isolamento · core = core                            */
+const AWK_PARAMS = {
+  forza: {
+    principiante: { main:{s:3,r:'5',rest:180,rir:'RIR 2–3'},  sec:{s:3,r:'6',rest:150,rir:'RIR 2'},  iso:{s:3,r:'8–10',rest:90,rir:'RIR 1–2'}, core:{s:3,r:'30–45s',rest:60,rir:''} },
+    intermedio:   { main:{s:4,r:'4',rest:240,rir:'RIR 1–2'},  sec:{s:3,r:'5',rest:180,rir:'RIR 2'},  iso:{s:3,r:'8–10',rest:90,rir:'RIR 1'},   core:{s:3,r:'40–60s',rest:60,rir:''} },
+    avanzato:     { main:{s:5,r:'3',rest:300,rir:'RIR 0–1'},  sec:{s:4,r:'5',rest:240,rir:'RIR 1'},  iso:{s:3,r:'8–12',rest:90,rir:'RIR 1'},   core:{s:4,r:'45–60s',rest:60,rir:''} }
+  },
+  ipertrofia: {
+    principiante: { main:{s:3,r:'8–10',rest:150,rir:'RIR 2–3'}, sec:{s:3,r:'10–12',rest:120,rir:'RIR 2'}, iso:{s:2,r:'12–15',rest:75,rir:'RIR 1–2'}, core:{s:3,r:'30–45s',rest:60,rir:''} },
+    intermedio:   { main:{s:4,r:'6–10',rest:180,rir:'RIR 1–2'}, sec:{s:3,r:'10–12',rest:120,rir:'RIR 1–2'}, iso:{s:3,r:'12–15',rest:75,rir:'RIR 1'}, core:{s:3,r:'40–60s',rest:60,rir:''} },
+    avanzato:     { main:{s:4,r:'6–10',rest:180,rir:'RIR 1'},   sec:{s:4,r:'10–12',rest:120,rir:'RIR 1'},   iso:{s:4,r:'12–20',rest:75,rir:'RIR 0–1'}, core:{s:4,r:'45–60s',rest:60,rir:''} }
+  },
+  calisthenic: {
+    principiante: { main:{s:3,r:'5–8',rest:150,rir:'RIR 2–3'}, sec:{s:3,r:'8–12',rest:120,rir:'RIR 2'}, iso:{s:3,r:'10–15',rest:75,rir:'RIR 1–2'}, core:{s:3,r:'20–30s',rest:60,rir:''} },
+    intermedio:   { main:{s:4,r:'5–8',rest:180,rir:'RIR 1–2'}, sec:{s:3,r:'8–12',rest:120,rir:'RIR 1–2'}, iso:{s:3,r:'12–15',rest:75,rir:'RIR 1'}, core:{s:4,r:'30–45s',rest:60,rir:''} },
+    avanzato:     { main:{s:5,r:'4–6',rest:240,rir:'RIR 1'},   sec:{s:4,r:'8–12',rest:150,rir:'RIR 1'},   iso:{s:4,r:'12–20',rest:75,rir:'RIR 0–1'}, core:{s:4,r:'40–60s',rest:60,rir:''} }
+  }
+};
+
+/* ── TEMPLATE SEDUTE ──────────────────────────────────────── */
+const AWK_TPL = {
+  full_forza: {
+    principiante: { days:3, dayIdx:[0,2,4], split:'Full Body', sessions:[
+      {n:'Full Body A', items:[['SQUAT','main'],['HPUSH','main'],['HPULL','main'],['CORE','core']]},
+      {n:'Full Body B', items:[['HINGE','main'],['VPUSH','main'],['VPULL','main'],['CORE','core']]},
+      {n:'Full Body C', items:[['SQUAT','main'],['HPUSH2','sec'],['HPULL','sec'],['CORE','core']]}
+    ]},
+    intermedio: { days:4, dayIdx:[0,1,3,4], split:'Upper / Lower', sessions:[
+      {n:'Upper Intensità', items:[['HPUSH','main'],['HPULL','main'],['VPUSH','sec'],['VPULL','sec'],['TRI','iso']]},
+      {n:'Lower Intensità', items:[['SQUAT','main'],['HINGE','sec'],['QUAD','iso'],['CORE','core']]},
+      {n:'Upper Volume',    items:[['VPUSH','main'],['VPULL','main'],['HPUSH2','sec'],['HPULL','sec'],['BIC','iso']]},
+      {n:'Lower Volume',    items:[['HINGE','main'],['SQUAT','sec'],['HAM','iso'],['CALF','iso']]}
+    ]},
+    avanzato: { days:4, dayIdx:[0,1,3,5], split:'Upper / Lower ondulato', sessions:[
+      {n:'Upper Pesante',  items:[['HPUSH','main'],['HPULL','main'],['VPUSH','sec'],['TRI','iso'],['BIC','iso']]},
+      {n:'Lower Pesante',  items:[['SQUAT','main'],['HINGE','sec'],['QUAD','iso'],['CORE','core']]},
+      {n:'Upper Velocità', items:[['VPUSH','main'],['VPULL','main'],['HPUSH2','sec'],['HPULL','sec'],['REARDELT','iso']]},
+      {n:'Lower Volume',   items:[['HINGE','main'],['SQUAT','sec'],['HAM','iso'],['CALF','iso'],['CORE','core']]}
+    ]}
+  },
+  full_ipertrofia: {
+    principiante: { days:3, dayIdx:[0,2,4], split:'Full Body', sessions:[
+      {n:'Full Body A', items:[['SQUAT','main'],['HPUSH','main'],['VPULL','main'],['LATDELT','iso'],['CORE','core']]},
+      {n:'Full Body B', items:[['HINGE','main'],['VPUSH','main'],['HPULL','main'],['BIC','iso'],['TRI','iso']]},
+      {n:'Full Body C', items:[['SQUAT','sec'],['HPUSH2','main'],['VPULL','sec'],['CHESTISO','iso'],['CORE','core']]}
+    ]},
+    intermedio: { days:4, dayIdx:[0,1,3,4], split:'Upper / Lower', sessions:[
+      {n:'Upper A', items:[['HPUSH','main'],['VPULL','main'],['VPUSH','sec'],['HPULL','sec'],['LATDELT','iso'],['TRI','iso']]},
+      {n:'Lower A', items:[['SQUAT','main'],['HAM','sec'],['QUAD','iso'],['CALF','iso'],['CORE','core']]},
+      {n:'Upper B', items:[['HPUSH2','main'],['HPULL','main'],['VPUSH','sec'],['VPULL','sec'],['REARDELT','iso'],['BIC','iso']]},
+      {n:'Lower B', items:[['HINGE','main'],['QUAD','sec'],['HAM','iso'],['CALF','iso'],['CORE','core']]}
+    ]},
+    avanzato: { days:5, dayIdx:[0,1,2,4,5], split:'Push / Pull / Legs + Upper / Lower', sessions:[
+      {n:'Push',  items:[['HPUSH','main'],['VPUSH','sec'],['HPUSH2','sec'],['LATDELT','iso'],['TRI','iso'],['CHESTISO','iso']]},
+      {n:'Pull',  items:[['VPULL','main'],['HPULL','sec'],['REARDELT','iso'],['BIC','iso'],['CORE','core']]},
+      {n:'Legs',  items:[['SQUAT','main'],['HINGE','sec'],['QUAD','iso'],['HAM','iso'],['CALF','iso']]},
+      {n:'Upper', items:[['HPUSH2','main'],['HPULL','main'],['VPUSH','sec'],['VPULL','sec'],['LATDELT','iso'],['BIC','iso']]},
+      {n:'Lower', items:[['HINGE','main'],['SQUAT','sec'],['QUAD','iso'],['CALF','iso'],['CORE','core']]}
+    ]}
+  },
+  hybrid: {
+    principiante: { days:4, dayIdx:[0,1,3,4], split:'Forza + Ipertrofia alternate', sessions:[
+      {n:'Upper Forza',      goal:'forza',      items:[['HPUSH','main'],['HPULL','main'],['VPUSH','sec']]},
+      {n:'Lower Forza',      goal:'forza',      items:[['SQUAT','main'],['HINGE','sec'],['CORE','core']]},
+      {n:'Upper Ipertrofia', goal:'ipertrofia', items:[['HPUSH2','main'],['VPULL','main'],['LATDELT','iso'],['BIC','iso'],['TRI','iso']]},
+      {n:'Lower Ipertrofia', goal:'ipertrofia', items:[['QUAD','main'],['HAM','sec'],['CALF','iso'],['CORE','core']]}
+    ]},
+    intermedio: { days:5, dayIdx:[0,1,2,4,5], split:'Upper / Lower forza + PPL ipertrofia', sessions:[
+      {n:'Upper Forza', goal:'forza', items:[['HPUSH','main'],['HPULL','main'],['VPUSH','sec'],['VPULL','sec']]},
+      {n:'Lower Forza', goal:'forza', items:[['SQUAT','main'],['HINGE','main'],['CORE','core']]},
+      {n:'Push',        goal:'ipertrofia', items:[['HPUSH2','main'],['VPUSH','sec'],['LATDELT','iso'],['TRI','iso']]},
+      {n:'Pull',        goal:'ipertrofia', items:[['VPULL','main'],['HPULL','sec'],['REARDELT','iso'],['BIC','iso']]},
+      {n:'Legs',        goal:'ipertrofia', items:[['QUAD','main'],['HAM','sec'],['CALF','iso'],['CORE','core']]}
+    ]},
+    avanzato: { days:5, dayIdx:[0,1,2,4,5], split:'Upper / Lower forza + PPL ipertrofia', sessions:[
+      {n:'Upper Forza', goal:'forza', items:[['HPUSH','main'],['HPULL','main'],['VPUSH','sec'],['VPULL','sec'],['TRI','iso']]},
+      {n:'Lower Forza', goal:'forza', items:[['SQUAT','main'],['HINGE','main'],['QUAD','iso'],['CORE','core']]},
+      {n:'Push',        goal:'ipertrofia', items:[['HPUSH2','main'],['VPUSH','sec'],['CHESTISO','iso'],['LATDELT','iso'],['TRI','iso']]},
+      {n:'Pull',        goal:'ipertrofia', items:[['VPULL','main'],['HPULL','sec'],['REARDELT','iso'],['BIC','iso'],['CORE','core']]},
+      {n:'Legs',        goal:'ipertrofia', items:[['QUAD','main'],['HAM','sec'],['HINGE','sec'],['CALF','iso']]}
+    ]}
+  },
+  calisthenic: {
+    principiante: { days:3, dayIdx:[0,2,4], split:'Full Body a corpo libero', sessions:[
+      {n:'Full Body A', items:[['C_PUSH','main'],['C_PULL','main'],['C_LEG','sec'],['C_CORE','core']]},
+      {n:'Full Body B', items:[['C_VPUSH','main'],['C_ROW','main'],['C_LEG2','sec'],['C_CORE2','core']]},
+      {n:'Full Body C', items:[['C_PUSH2','main'],['C_PULL','sec'],['C_LEG','sec'],['C_CORE','core']]}
+    ]},
+    intermedio: { days:4, dayIdx:[0,1,3,4], split:'Push / Pull / Legs / Skill', sessions:[
+      {n:'Push',  items:[['C_PUSH','main'],['C_VPUSH','sec'],['C_PUSH2','sec'],['TRI','iso']]},
+      {n:'Pull',  items:[['C_PULL','main'],['C_ROW','sec'],['C_PULL2','sec'],['BIC','iso']]},
+      {n:'Legs',  items:[['C_LEG','main'],['C_LEG2','sec'],['CALF','iso'],['C_CORE','core']]},
+      {n:'Skill & Core', items:[['C_VPUSH','main'],['C_PULL2','main'],['C_CORE','core'],['C_CORE2','core']]}
+    ]},
+    avanzato: { days:5, dayIdx:[0,1,2,4,5], split:'Skill / Push / Pull / Legs / Full', sessions:[
+      {n:'Skill',  items:[['C_VPUSH','main'],['C_PULL2','main'],['C_CORE','core']]},
+      {n:'Push',   items:[['C_PUSH','main'],['C_PUSH2','sec'],['C_VPUSH','sec'],['TRI','iso']]},
+      {n:'Pull',   items:[['C_PULL','main'],['C_PULL2','sec'],['C_ROW','sec'],['BIC','iso']]},
+      {n:'Legs',   items:[['C_LEG','main'],['C_LEG2','sec'],['CALF','iso'],['C_CORE2','core']]},
+      {n:'Full Body', items:[['C_PUSH','main'],['C_PULL','main'],['C_LEG','sec'],['C_CORE','core']]}
+    ]}
+  }
+};
+
+const AWK_GOALS = [
+  {k:'full_ipertrofia', l:'Full Ipertrofia', d:'Massimo volume, crescita muscolare', i:'🧬', tint:'#34d399'},
+  {k:'full_forza',      l:'Full Forza',      d:'Carichi alti, poche ripetizioni',    i:'⚡', tint:'#f59e0b'},
+  {k:'hybrid',          l:'Hybrid',          d:'Forza + ipertrofia nella stessa settimana', i:'🜛', tint:'#6366f1'},
+  {k:'calisthenic',     l:'Calisthenic',     d:'Corpo libero e progressioni skill',  i:'🤸', tint:'#22d3ee'},
+  {k:'free',            l:'Free',            d:'Costruisci tutto tu, zero vincoli',  i:'✒️', tint:'#94a3b8'},
+  {k:'soon',            l:'Prossimamente',   d:'Nuovi protocolli in arrivo',         i:'🔒', tint:'#475569', locked:true}
+];
+
+const AWK_LEVELS = [
+  {k:'principiante', l:'Principiante', d:'Meno di 1 anno di allenamento costante'},
+  {k:'intermedio',   l:'Intermedio',   d:'1–3 anni, tecnica consolidata'},
+  {k:'avanzato',     l:'Avanzato',     d:'Oltre 3 anni, progressi lenti'}
+];
+
+const AWK_DAYS_IT = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
+
+/* ── LOGICA ───────────────────────────────────────────────── */
+function awkPick(key, equip, used, usedFam, allowSkip){
+  const list = AWK_POOL[key] || [];
+  // SOLO esercizi i cui requisiti sono tutti soddisfatti
+  const ok = list.filter(ex => ex.eq.every(e => equip.includes(e)));
+  let c = ok.find(ex => !used.has(ex.n) && (!ex.fam || !usedFam.has(ex.fam)));
+  if (!c) c = ok.find(ex => !used.has(ex.n));
+  if (!c && allowSkip) return null;          // isolamento/core: meglio togliere che duplicare
+  if (!c) c = ok[0] || null;
+  if (!c) return null;
+  used.add(c.n); if (c.fam) usedFam.add(c.fam);
+  return c;
+}
+
+function awkFmtRest(s){ return s>=60 ? (s%60===0 ? (s/60)+' min' : Math.floor(s/60)+':'+String(s%60).padStart(2,'0')+' min') : s+'s'; }
+
+function awkBuildProtocol(goal, level, equip){
+  if (goal==='free' || goal==='soon') return null;
+  const tpl = AWK_TPL[goal][level];
+  const paramGoal = goal==='full_forza' ? 'forza' : goal==='calisthenic' ? 'calisthenic' : 'ipertrofia';
+  const sessions = tpl.sessions.map(sess => {
+    const used = new Set(), usedFam = new Set();
+    const pg = sess.goal ? (sess.goal==='forza'?'forza':'ipertrofia') : paramGoal;
+    const P = AWK_PARAMS[pg][level];
+    const exercises = [];
+    sess.items.forEach(([key, role]) => {
+      const p = P[role];
+      const skippable = (role!=='main');
+      const c = awkPick(key, equip, used, usedFam, skippable);
+      if (!c) return;
+      exercises.push({ name:c.n, eq:c.eq, role, sets:p.s, reps:p.r, rest:p.rest, rir:p.rir });
+    });
+    return {
+      name: sess.n,
+      tag: sess.goal ? (sess.goal==='forza'?'FORZA':'IPERTROFIA') : null,
+      exercises: exercises
+    };
+  });
+  const totalSets = sessions.reduce((a,s)=>a+s.exercises.reduce((b,e)=>b+e.sets,0),0);
+  const warn = [];
+  const hasVPull = ['sbarra','anelli','macchine','cavi','elastici'].some(k=>equip.includes(k));
+  const hasHPull = hasVPull || equip.includes('appoggio') || equip.includes('bilanciere') || equip.includes('manubri');
+  if (!hasHPull) warn.push('Con quello che hai selezionato la schiena non e allenabile: ogni trazione richiede almeno un tavolo robusto sotto cui passare, o una sbarra. Al momento restano solo isometrie ed esercizi proni, che non bastano. Aggiungi almeno "Tavolo, sedie o gradino".');
+  else if (!hasVPull) warn.push('Puoi allenare la trazione orizzontale (rematori) ma non quella verticale. Una sbarra da porta e l\'aggiunta piu utile al tuo setup.');
+  const hasLoad = ['bilanciere','manubri','kettlebell','macchine','cavi','elastici'].some(k=>equip.includes(k));
+  if (!hasLoad && goal!=='calisthenic') warn.push('Con zero sovraccarichi la progressione avviene cambiando leva e difficolta dell\'esercizio, non aggiungendo kg. Il protocollo Calisthenic e strutturato per questo.');
+  if (goal==='full_forza' && !equip.includes('bilanciere')) warn.push('La forza massimale richiede incrementi di carico piccoli e misurabili: senza bilanciere la progressione sara meno precisa.');
+  return { goal, level, split: tpl.split, days: tpl.days, dayIdx: tpl.dayIdx, sessions, totalSets, warn };
+}
+
+function awkGoalMeta(k){ return AWK_GOALS.find(g=>g.k===k) || AWK_GOALS[0]; }
+
+/* Carico iniziale suggerito in kg per livello [principiante, intermedio, avanzato].
+   0 = esercizio a corpo libero: il carico va inserito solo se si usa una zavorra. */
+const AWK_KG = {
+ 'Squat con Bilanciere':[40,70,100],'Front Squat':[30,55,80],'Squat con Bilanciere (senza rack)':[30,50,70],
+ 'Hack Squat':[40,80,120],'Goblet Squat con Kettlebell':[12,20,28],'Goblet Squat con Manubrio':[12,22,30],
+ 'Stacco da Terra':[50,90,130],'Stacco Rumeno con Bilanciere':[40,70,100],'Stacco Rumeno con Manubri':[16,26,36],
+ 'Kettlebell Swing':[12,20,28],'Hip Thrust con Bilanciere':[40,80,120],
+ 'Panca Piana con Bilanciere':[30,55,80],'Panca Inclinata con Bilanciere':[25,45,70],
+ 'Panca Piana con Manubri':[12,22,32],'Chest Press':[25,45,65],'Floor Press con Manubri':[12,20,28],
+ 'Panca Inclinata con Manubri':[10,18,26],'Chest Press Inclinata':[20,40,60],
+ 'Military Press':[20,35,50],'Overhead Press con Manubri':[8,14,20],'Shoulder Press alla Macchina':[15,30,45],
+ 'Overhead Press con Kettlebell':[8,14,20],
+ 'Rematore con Bilanciere':[30,50,70],'Pendlay Row':[30,50,70],'Rematore con Manubrio':[12,22,32],
+ 'Rematore ai Cavi':[25,45,65],'Rematore alla Macchina':[25,45,65],
+ 'Lat Machine':[25,45,65],'Lat Machine ai Cavi':[25,45,65],
+ 'Leg Extension':[20,40,60],'Leg Press':[60,110,160],'Affondi Camminati con Manubri':[8,16,24],
+ 'Leg Curl':[15,30,45],'Good Morning con Bilanciere':[20,35,50],
+ 'Calf Raise alla Macchina':[40,70,100],'Calf Raise con Manubri':[10,20,30],
+ 'Croci ai Cavi':[8,15,22],'Pectoral Machine':[20,35,50],'Croci con Manubri':[6,12,18],
+ 'Alzate Laterali ai Cavi':[4,8,12],'Alzate Laterali con Manubri':[4,8,12],
+ 'Face Pull ai Cavi':[10,18,26],'Alzate Posteriori con Manubri':[4,8,12],
+ 'Curl con Bilanciere':[15,25,35],'Curl con Manubri':[6,12,18],'Curl ai Cavi':[10,20,30],
+ 'Push-down ai Cavi':[12,22,32],'French Press con Bilanciere':[12,22,32],
+ 'Estensioni Sopra la Testa con Manubrio':[8,14,20],'Plank con Sovraccarico':[5,10,15]
+};
+function awkDefaultKg(name, level){
+  const row = AWK_KG[name];
+  if (!row) return 0;
+  return row[{principiante:0, intermedio:1, avanzato:2}[level] ?? 1];
+}
+
+/* ═══════════ ONBOARDING CAROUSEL (v.150) ═══════════ */
+const AWK_PLACES = [
+  {k:'palestra',    l:'Palestra',     d:'Attrezzatura completa', i:'\uD83C\uDFDB\uFE0F'},
+  {k:'casa',        l:'Casa',         d:'Scegli cosa hai a disposizione', i:'\uD83C\uDFE0'},
+  {k:'corpolibero', l:'Corpo libero', d:'Nessun attrezzo, o quasi', i:'\uD83E\uDD38'}
+];
+const AWK_SLIDE_LABELS = ['Livello','Obiettivo','Attrezzatura','Protocollo'];
+
+function awkCards(box, items, sel, cb){
+  if (!box) return;
+  box.innerHTML = '';
+  items.forEach(function(o){
+    const d = document.createElement('div');
+    d.className = 'ob-card' + (sel === o.k ? ' selected' : '') + (o.locked ? ' locked' : '');
+    if (o.tint) d.style.setProperty('--ob-tint', o.tint);
+    d.innerHTML = '<div class="ob-c-ic">' + (o.i || '\u25CF') + '</div>' +
+      '<div style="flex:1; min-width:0;"><div class="ob-c-tt">' + o.l + '</div>' +
+      '<div class="ob-c-dd">' + o.d + '</div></div>';
+    if (!o.locked) d.onclick = function(){ cb(o.k); };
+    box.appendChild(d);
+  });
+}
+
+function awkDrawLevels(){
+  const icons = {principiante:'\uD83C\uDF31', intermedio:'\u26A1', avanzato:'\uD83D\uDD25'};
+  awkCards(document.getElementById('ob-lvlbox'),
+    AWK_LEVELS.map(function(l){ return {k:l.k, l:l.l, d:l.d, i:icons[l.k]}; }),
+    onboarding.level,
+    function(k){ onboarding.level = k; awkDrawLevels(); obUpdate(); setTimeout(function(){ obGo(2); }, 220); });
+}
+
+function awkDrawGoals(){
+  awkCards(document.getElementById('ob-goalbox'), AWK_GOALS, onboarding.goal,
+    function(k){
+      onboarding.goal = k;
+      const legacy = {full_forza:'forza', full_ipertrofia:'ipertrofia', hybrid:'hybrid',
+                      calisthenic:'ipertrofia', free:'ipertrofia'}[k] || 'ipertrofia';
+      const gs = document.getElementById('goal'); if (gs) gs.value = legacy;
+      if (k === 'calisthenic' && onboarding.place !== 'corpolibero'){
+        onboarding.place = 'corpolibero'; onboarding.equip = ['sbarra','parallele'];
+      }
+      awkDrawGoals(); obUpdate(); setTimeout(function(){ obGo(3); }, 220);
+    });
+}
+
+function awkDrawPlaces(){
+  let list = AWK_PLACES.slice();
+  if (onboarding.goal === 'calisthenic') list = [AWK_PLACES[2], AWK_PLACES[0], AWK_PLACES[1]];
+  awkCards(document.getElementById('ob-placebox'), list, onboarding.place, function(k){
+    onboarding.place = k;
+    onboarding.env = (k === 'palestra') ? 'palestra' : 'casa';
+    if (k === 'palestra') onboarding.equip = AWK_EQUIP_FULL.slice();
+    else if (k === 'corpolibero') onboarding.equip = [];
+    else if (!onboarding.equip.length || onboarding.equip.length === AWK_EQUIP_FULL.length)
+      onboarding.equip = ['manubri','panca','appoggio'];
+    awkDrawPlaces(); awkDrawEquip(); obUpdate();
+  });
+}
+
+function awkDrawEquip(){
+  const wrap = document.getElementById('ob-eqdetail');
+  if (!wrap) return;
+  const show = onboarding.place === 'casa' || onboarding.place === 'corpolibero';
+  wrap.style.display = show ? 'block' : 'none';
+  if (!show) return;
+  const pool = (onboarding.place === 'corpolibero')
+    ? AWK_EQUIP.filter(function(e){ return AWK_EQUIP_CALI.indexOf(e.k) >= 0; })
+    : AWK_EQUIP;
+  const t = document.getElementById('ob-eqtitle');
+  if (t) t.textContent = (onboarding.place === 'corpolibero')
+    ? 'HAI UNO DI QUESTI? (FACOLTATIVO)' : 'COSA HAI A DISPOSIZIONE';
+  const c = document.getElementById('ob-eqchips');
+  c.innerHTML = '';
+  pool.forEach(function(e){
+    const d = document.createElement('div');
+    d.className = 'ob-eqchip' + (onboarding.equip.indexOf(e.k) >= 0 ? ' on' : '');
+    d.innerHTML = '<span>' + e.i + '</span>' + e.l;
+    d.onclick = function(){
+      const i = onboarding.equip.indexOf(e.k);
+      if (i >= 0) onboarding.equip.splice(i, 1); else onboarding.equip.push(e.k);
+      awkDrawEquip();
+    };
+    c.appendChild(d);
+  });
+}
+
+function awkRoleColor(r){ return r === 'main' ? '#00ff88' : r === 'sec' ? '#6366f1' : r === 'iso' ? '#f59e0b' : '#64748b'; }
+function awkRoleLabel(r){ return r === 'main' ? 'Compound primario' : r === 'sec' ? 'Compound secondario' : r === 'iso' ? 'Isolamento' : 'Core'; }
+
+function awkRenderResult(){
+  const box = document.getElementById('ob-result');
+  const freeBox = document.getElementById('ob-free-editor');
+  const title = document.getElementById('ob-res-title');
+  const sub = document.getElementById('ob-res-sub');
+  if (!box) return;
+
+  if (onboarding.goal === 'free'){
+    box.innerHTML = '';
+    freeBox.style.display = 'block';
+    title.textContent = 'Costruisci il tuo protocollo';
+    sub.textContent = 'Nessun preset. Aggiungi esercizi, serie, ripetizioni e carico di partenza.';
+    APP._awkProto = null;
+    return;
+  }
+  freeBox.style.display = 'none';
+
+  const P = awkBuildProtocol(onboarding.goal, onboarding.level, onboarding.equip);
+  APP._awkProto = P;
+  if (!P){ box.innerHTML = ''; return; }
+
+  const g = awkGoalMeta(P.goal);
+  title.textContent = P.split;
+  sub.textContent = g.l + ' \u00B7 ' + P.level + ' \u00B7 carichi calcolati sul tuo MTR';
+
+  let h = '<div class="ob-sumcard"><div class="ob-sumrow">' +
+    '<div class="ob-sumbox"><b>' + P.days + '</b><span>giorni</span></div>' +
+    '<div class="ob-sumbox"><b>' + P.sessions.length + '</b><span>sedute</span></div>' +
+    '<div class="ob-sumbox"><b>' + P.totalSets + '</b><span>serie/sett</span></div>' +
+    '</div><div class="ob-wk">' +
+    AWK_DAYS_IT.map(function(d, i){ return '<div class="' + (P.dayIdx.indexOf(i) >= 0 ? 'a' : '') + '">' + d + '</div>'; }).join('') +
+    '</div></div>';
+
+  if (P.warn && P.warn.length)
+    h += P.warn.map(function(w){ return '<div class="ob-warn">' + w + '</div>'; }).join('');
+
+  P.sessions.forEach(function(sess, i){
+    h += '<div class="ob-sess"><div class="ob-sess-hd"><div class="idx">' + (i + 1) + '</div>' +
+      '<div class="n">' + sess.name + '</div>' +
+      (sess.tag ? '<div class="ob-sess-tag ' + (sess.tag === 'FORZA' ? 'F' : 'I') + '">' + sess.tag + '</div>' : '') +
+      '</div><div class="ob-exl">';
+    sess.exercises.forEach(function(e){
+      const kg = awkDefaultKg(e.name, P.level);
+      h += '<div class="ob-ex"><div class="dot" style="background:' + awkRoleColor(e.role) + '"></div>' +
+        '<div class="en">' + escapeHTML(e.name) + '<div class="em">' + awkRoleLabel(e.role) +
+        (e.rir ? ' \u00B7 ' + e.rir : '') + ' \u00B7 rec ' + awkFmtRest(e.rest) +
+        (kg ? ' \u00B7 ' + kg + ' kg' : ' \u00B7 corpo libero') + '</div></div>' +
+        '<div class="esr">' + e.sets + '\u00D7' + e.reps + '</div></div>';
+    });
+    h += '</div></div>';
+  });
+
+  let refs = [AWK_REFS.load, AWK_REFS.rest2, AWK_REFS.acsm];
+  if (P.goal === 'full_ipertrofia') refs = [AWK_REFS.vol, AWK_REFS.rest, AWK_REFS.freq, AWK_REFS.fail];
+  if (P.goal === 'hybrid')          refs = [AWK_REFS.dup, AWK_REFS.vol, AWK_REFS.rest2, AWK_REFS.freq];
+  if (P.goal === 'calisthenic')     refs = [AWK_REFS.cal, AWK_REFS.cal2, AWK_REFS.fail, AWK_REFS.vol];
+  h += '<div class="ob-refs"><div class="rt">Fonti dei parametri</div>' +
+       refs.map(function(r){ return '<p>' + r + '</p>'; }).join('') + '</div>';
+  h += '<div class="ob-hint">I carichi mostrati sono un punto di partenza: potrai correggerli con il tuo MTR reale.</div>';
+  box.innerHTML = h;
+}
+
+function obUpdate(){
+  const st = onboarding.step || 1;
+  const ok = st === 1 ? !!onboarding.level
+           : st === 2 ? !!onboarding.goal
+           : st === 3 ? !!onboarding.place
+           : true;
+  const btn = document.getElementById('ob-next-btn');
+  if (btn){
+    btn.disabled = !ok;
+    btn.innerHTML = st === 3 ? 'GENERA PROTOCOLLO' : st === 4 ? 'ATTIVA PROTOCOLLO \uD83D\uDE80' : 'AVANTI &rarr;';
+  }
+  const back = document.getElementById('ob-back-btn');
+  if (back) back.style.display = st > 1 ? 'block' : 'none';
+  const rail = document.getElementById('ob-rail');
+  if (rail) Array.prototype.forEach.call(rail.children, function(d, i){ d.className = i < st ? 'on' : ''; });
+  const lbl = document.getElementById('ob-slabel');
+  if (lbl) lbl.textContent = AWK_SLIDE_LABELS[st - 1];
+  const eqsub = document.getElementById('ob-eqsub');
+  if (eqsub) eqsub.textContent = (onboarding.goal === 'calisthenic')
+    ? 'Partiamo dal corpo libero. Aggiungi gli attrezzi che possiedi.'
+    : 'Ogni esercizio viene scelto in base a cosa hai davvero.';
+}
+
+function obGo(n){
+  onboarding.step = n;
+  const track = document.getElementById('ob-track');
+  if (track) track.style.transform = 'translateX(-' + ((n - 1) * 25) + '%)';
+  if (n === 3){ awkDrawPlaces(); awkDrawEquip(); }
+  if (n === 4) awkRenderResult();
+  // in modalita Free lo slide 4 contiene la ricerca esercizi: la tendina non
+  // deve essere tagliata dall'overflow del carousel
+  const vp = document.querySelector('.ob-viewport');
+  const freeMode = (n === 4 && onboarding.goal === 'free');
+  if (vp) vp.classList.toggle('ob-free', freeMode);
+  if (track) track.classList.toggle('ob-free', freeMode);
+  obUpdate();
+  window.scrollTo({ top: 0, behavior: 'instant' });
+}
+function obNext(){ if ((onboarding.step || 1) < 4) obGo((onboarding.step || 1) + 1); else finishOnboarding(); }
+function obBack(){ if ((onboarding.step || 1) > 1) obGo((onboarding.step || 1) - 1); }
+// compatibilita con chiamate legacy
+function goToStep(n){ obGo(n); }
+
+/* Genera un protocollo per ogni seduta del piano */
+function awkGenerateProtocols(){
+  const P = APP._awkProto;
+  if (!P) return false;
+  const g = awkGoalMeta(P.goal);
+  const groupId = Date.now().toString(36);
+  onboarding._splitGroupId = groupId;
+  let firstProtoId = null;
+
+  P.sessions.forEach(function(sess, i){
+    const legacyGoal = sess.tag === 'FORZA' ? 'forza'
+                     : sess.tag === 'IPERTROFIA' ? 'ipertrofia'
+                     : (P.goal === 'full_forza' ? 'forza' : 'ipertrofia');
+    const proto = {
+      id: generateUUID(),
+      name: g.l + ' \u00B7 ' + sess.name,
+      goal: legacyGoal,
+      exercises: sess.exercises.map(function(e){
+        return { name: e.name, sr: e.sets + ' x ' + e.reps, baseWeight: awkDefaultKg(e.name, P.level),
+                 _rest: e.rest, _rir: e.rir, _role: e.role };
+      }),
+      createdAt: new Date().toISOString(),
+      chipStates: [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']],
+      completedWeeks: [false, false, false, false, false],
+      availableWeeks: [0],
+      selectedViewWeek: 0,
+      startDate: null,
+      exerciseTracking: [],
+      totalWorkouts: 0,
+      _splitGroup: groupId,
+      _splitSlot: 'awk' + i,
+      _env: onboarding.place || 'palestra',
+      _awkGoal: P.goal,
+      _awkLevel: P.level,
+      _awkEquip: (onboarding.equip || []).slice()
+    };
+    APP.savedProtocols.push(proto);
+    if (!firstProtoId) firstProtoId = proto.id;
+  });
+
+  if (firstProtoId) activateProtocol(firstProtoId);
+  onboarding.days = P.dayIdx.slice();
+  showToast(P.sessions.length + ' protocolli creati su ' + P.days + ' giorni', 'success');
+  return true;
+}
+
 function startOnboarding() {
     document.getElementById('hero-section').style.display = 'none';
     document.getElementById('results').style.display = 'none';
@@ -13910,15 +14621,16 @@ function startOnboarding() {
     onboarding.level = null;
     onboarding.goal = null;
     onboarding.env = null;
+    onboarding.place = null;
+    onboarding.equip = [];
     onboarding.days = [];
-    document.querySelectorAll('.ob-option, .ob-option-sm, .ob-day-chip').forEach(el => el.classList.remove('selected'));
-    const btn2 = document.getElementById('ob-next-2');
-    if (btn2) btn2.disabled = true;
-    const btn1 = document.getElementById('ob-next-1');
-    if (btn1) btn1.disabled = true;
+    onboarding.step = 1;
+    APP._awkProto = null;
     const nameInput = document.getElementById('ob-protocol-name');
     if (nameInput) nameInput.value = '';
-    goToStep(1);
+    awkDrawLevels();
+    awkDrawGoals();
+    obGo(1);
 }
 
 function restartOnboarding() {
@@ -13930,89 +14642,6 @@ function restartOnboarding() {
     if (dashOvRestart) dashOvRestart.style.display = 'none';
     document.getElementById('results').style.display = 'none';
     startOnboarding();
-}
-
-function selectLevel(el, level) {
-    onboarding.level = level;
-    document.querySelectorAll('#ob-step-1 .ob-option').forEach(o => o.classList.remove('selected'));
-    el.classList.add('selected');
-    document.getElementById('ob-next-1').disabled = false;
-}
-
-function selectGoal(el, goal) {
-    onboarding.goal = goal;
-    document.getElementById('goal').value = goal;
-    document.querySelectorAll('#ob-step-2 .ob-option-sm[onclick*="selectGoal"]').forEach(o => o.classList.remove('selected'));
-    el.classList.add('selected');
-    updateDefaultSR();
-    checkStep2Ready();
-}
-
-function selectEnv(el, env) {
-    onboarding.env = env;
-    document.querySelectorAll('#ob-step-2 .ob-option-sm[onclick*="selectEnv"]').forEach(o => o.classList.remove('selected'));
-    el.classList.add('selected');
-    checkStep2Ready();
-}
-
-function toggleObDay(el, dayIndex) {
-    el.classList.toggle('selected');
-    if (el.classList.contains('selected')) {
-        if (!onboarding.days.includes(dayIndex)) onboarding.days.push(dayIndex);
-    } else {
-        onboarding.days = onboarding.days.filter(d => d !== dayIndex);
-    }
-    checkStep2Ready();
-}
-
-function checkStep2Ready() {
-    const btn = document.getElementById('ob-next-2');
-    const minDays = onboarding.goal === 'hybrid' ? 5 : 1;
-    const ready = onboarding.goal && onboarding.env && onboarding.days.length >= minDays;
-    btn.disabled = !ready;
-
-    // Show hint for hybrid
-    let hint = document.getElementById('ob-days-hint');
-    if (!hint) {
-        hint = document.createElement('div');
-        hint.id = 'ob-days-hint';
-        hint.style.cssText = 'text-align:center; font-size:0.65rem; margin-top:4px; min-height:16px;';
-        const daysSelector = document.querySelector('.ob-days-selector');
-        if (daysSelector) daysSelector.parentNode.insertBefore(hint, daysSelector.nextSibling);
-    }
-    if (onboarding.goal === 'hybrid') {
-        const count = onboarding.days.length;
-        if (count < 5) {
-            hint.innerHTML = `<span style="color:#fbbf24;">Hybrid richiede almeno 5 giorni (${count}/5 selezionati)</span>`;
-        } else if (count === 5) {
-            hint.innerHTML = `<span style="color:var(--primary);">✓ Perfetto: Upper, Lower, Push, Pull, Legs</span>`;
-        } else {
-            hint.innerHTML = `<span style="color:var(--primary);">✓ 5 allenamenti + ${count - 5} giorno/i extra</span>`;
-        }
-    } else if (onboarding.goal && onboarding.days.length > 0) {
-        const split = getSplitType(onboarding.goal, onboarding.days.length);
-        const splitLabel = SPLIT_CONFIGS[split]?.label || '';
-        hint.innerHTML = `<span style="color:var(--primary);">Split consigliato: ${splitLabel}</span>`;
-    } else {
-        hint.innerHTML = '';
-    }
-}
-
-function goToStep(step) {
-    document.querySelectorAll('.onboarding-step').forEach(s => s.style.display = 'none');
-    const target = document.getElementById(`ob-step-${step}`);
-    if (target) target.style.display = 'block';
-
-    if (step === 3) {
-        populateExercises();
-        // Always update protocol name based on current selections
-        const nameInput = document.getElementById('ob-protocol-name');
-        if (nameInput) {
-            const goalNames = { forza: 'Forza', ipertrofia: 'Ipertrofia', hybrid: 'Hybrid' };
-            const envNames = { casa: 'Casa', palestra: 'Palestra' };
-            nameInput.value = `${goalNames[onboarding.goal] || 'Protocollo'} - ${envNames[onboarding.env] || ''}`;
-        }
-    }
 }
 
 // Split logic: determines which muscle group split to use based on days selected
@@ -14359,23 +14988,16 @@ function finishOnboarding() {
     const baseName = nameInput ? nameInput.value.trim() : '';
     onboarding.protoName = baseName;
 
-    const goal = onboarding.goal || 'forza';
-    const numDays = onboarding.days.length;
-    const splitType = getSplitType(goal, numDays);
-
-    if (goal === 'hybrid') {
-        generateHybridProtocols(baseName);
-    } else if (splitType !== 'fullbody') {
-        // Multi-session split: generate multiple protocols
-        generateSplitProtocols(baseName, goal, splitType);
-    } else {
-        // Single full body protocol
+    if (onboarding.goal === 'free') {
+        // Modalita manuale: usa gli esercizi inseriti a mano
         generate();
         if (APP.exerciseData.length === 0) return;
         if (baseName && APP.activeProtocolId) {
             const proto = APP.savedProtocols.find(p => p.id === APP.activeProtocolId);
             if (proto) proto.name = baseName;
         }
+    } else {
+        if (!awkGenerateProtocols()) { showToast('Protocollo non generato, riprova'); return; }
     }
 
     document.getElementById('onboarding-wizard').style.display = 'none';
