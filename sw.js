@@ -1,4 +1,4 @@
-const CACHE_NAME = 'awakening-v324';
+const CACHE_NAME = 'awakening-v325';
 
 const STATIC_ASSETS = [
     './',
@@ -7,7 +7,7 @@ const STATIC_ASSETS = [
     './icon-192.png',
     './icon-512.png',
     'https://cdn.jsdelivr.net/npm/chart.js',
-    'https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js'
+    'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js'
 ];
 
 // Un asset e' "documento" se e' la root o index.html: questi vanno sempre
