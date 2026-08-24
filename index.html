@@ -925,6 +925,18 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .ob-ex .en { flex: 1; font-size: 0.76rem; min-width: 0; text-align: left; color: #e2e8f0; }
         .ob-ex .em { font-size: 0.6rem; color: #64748b; margin-top: 2px; }
         .ob-ex .esr { font-size: 0.66rem; color: #a5b4fc; white-space: nowrap; font-weight: 600; }
+        .ob-zone { margin-left: 15px; margin-top: 5px; font-size: 0.6rem; color: #7c8ba1;
+                   background: rgba(99,102,241,0.07); border-left: 2px solid rgba(99,102,241,0.4);
+                   padding: 6px 9px; border-radius: 0 7px 7px 0; line-height: 1.5; text-align: left; }
+        .ob-zone b { color: #a5b4fc; font-size: 0.6rem; font-weight: 700; }
+        .ob-ex .esr.time { color: #22d3ee; }
+        .wo-hold-btn { width: auto; padding: 13px 26px; border: none; border-radius: 12px;
+                       background: linear-gradient(135deg,#0891b2,#22d3ee); color: #04212b;
+                       font-weight: 800; font-size: 0.82rem; letter-spacing: 0.03em;
+                       text-transform: uppercase; cursor: pointer; font-family: inherit; }
+        .wo-hold-btn:disabled { opacity: 0.45; }
+        .wo-hold-info { font-size: 0.62rem; color: #22d3ee; letter-spacing: 0.1em;
+                        text-transform: uppercase; font-weight: 700; margin-bottom: 8px; }
         .ob-warn { font-size: 0.68rem; color: #fbbf24; background: rgba(245,158,11,0.08);
                    border-left: 2px solid #f59e0b; padding: 10px 12px; border-radius: 0 9px 9px 0;
                    line-height: 1.5; margin-bottom: 11px; text-align: left; }
@@ -3557,7 +3569,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '150';
+const APP_VERSION = '151';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -3660,7 +3672,8 @@ function saveState() {
             nutTemplates: APP.nutTemplates || [],
             nutFavorites: APP.nutFavorites || [],
             nutritionLogs: nutGetAllLogs(),
-            loadHistory: APP.loadHistory || []
+            loadHistory: APP.loadHistory || [],
+            _srMigratedV151: APP._srMigratedV151 || false
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
         saveToSupabase(toSave);
@@ -3824,6 +3837,7 @@ function loadState() {
         ];
         APP.exerciseTracking = saved.exerciseTracking || [];
         APP.loadHistory = saved.loadHistory || [];
+        APP._srMigratedV151 = saved._srMigratedV151 || false;
         APP.currentExerciseIndex = saved.currentExerciseIndex || 0;
         APP.savedProtocols = saved.savedProtocols || [];
         APP.activeProtocolId = saved.activeProtocolId || null;
@@ -3884,6 +3898,8 @@ function mtrSyncFromProtocols() {
 // Garantisce coerenza dopo update dell'app o fix di bug precedenti
 function migrateMtrLoads() {
     if (!APP.savedProtocols) return;
+    // v.151: converte i range di ripetizioni ereditati in numeri secchi
+    try { awkMigrateSr(); } catch (e) { console.warn('migrazione sr:', e && e.message); }
     if (!APP.mtrValues) APP.mtrValues = {};
     var changed = mtrCanonicalizeDict();
     if (mtrSyncFromProtocols()) changed = true;
@@ -5295,6 +5311,7 @@ async function onLoginSuccess(user, usernameOverride = null) {
         }
         // Storico carichi: unione per chiave, cosi' due dispositivi diversi
         // non si cancellano le sedute a vicenda.
+        if (s._srMigratedV151) APP._srMigratedV151 = true;
         if (s.loadHistory && s.loadHistory.length) {
             var _seen = {}, _merged = [];
             (APP.loadHistory || []).concat(s.loadHistory).forEach(function(e) {
@@ -6364,21 +6381,38 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
         muscoliEsclusi = '';
     }
 
-    // ── Regole serie per tipo di allenamento ──
-    // Usate sia nel badge che nel prompt, in modo esplicito e non ambiguo
+    // ── Parametri REALI di questo protocollo ──
+    // Prima qui c'erano regole fisse (5x5 / 4x10 per tutti) che bocciavano schede
+    // corrette: un 5x3 da avanzato veniva segnalato come errore. Ora il prompt
+    // riceve la stessa tabella usata dal generatore, differenziata per livello.
+    var awkLvl  = proto._awkLevel || 'intermedio';
+    var awkGoal = proto._awkGoal || (tipoAllenamento === 'forza' ? 'full_forza' : 'full_ipertrofia');
+    var pgKey = awkGoal === 'full_forza' ? 'forza'
+              : awkGoal === 'calisthenic' ? 'calisthenic' : 'ipertrofia';
+    var tab = (typeof AWK_PARAMS !== 'undefined' && AWK_PARAMS[pgKey] && AWK_PARAMS[pgKey][awkLvl])
+              ? AWK_PARAMS[pgKey][awkLvl] : null;
     var regoleSerie;
-    if (tipoAllenamento === 'forza') {
+    if (tab) {
+        function _zn(k){ return (typeof AWK_ZONES !== 'undefined' && AWK_ZONES[k]) ? AWK_ZONES[k].z : ''; }
         regoleSerie =
-            'REGOLE SERIE OBBLIGATORIE PER FORZA:\n' +
-            '• Esercizi multiarticolari (squat, stacco, panca piana, rematore, overhead press, pull-up, dip) → 5 x 5\n' +
-            '• Esercizi isolati / accessori (curl, lateral raise, face pull, tricep pushdown, leg curl isolato, calf raise) → 3 x 8\n' +
-            'NON usare 5x6, 4x8, 4x10 o qualsiasi altra combinazione non elencata sopra.';
+            'PARAMETRI DI QUESTO PROTOCOLLO (livello ' + awkLvl + ')\n' +
+            '• Compound primario   → ' + tab.main.s + ' x ' + tab.main.r + '   (zona ' + _zn(tab.main.z) + ')\n' +
+            '• Compound secondario → ' + tab.sec.s  + ' x ' + tab.sec.r  + '   (zona ' + _zn(tab.sec.z)  + ')\n' +
+            '• Isolamento          → ' + tab.iso.s  + ' x ' + tab.iso.r  + '   (zona ' + _zn(tab.iso.z)  + ')\n' +
+            '• Core isometrico     → ' + tab.core.s + ' x ' + tab.core.r + 's  (zona ' + _zn(tab.core.z) + ')\n\n' +
+            'Queste ripetizioni sono gia\' corrette e derivano da ACSM 2009 e Schoenfeld 2017.\n' +
+            'NON modificarle e NON segnalarle come errore. Le zone tra parentesi sono\n' +
+            'informative: la prescrizione e\' il numero secco, perche\' l\'MTR e\' definito\n' +
+            'per un dato numero di ripetizioni.\n' +
+            'NON usare mai intervalli tipo "6-10": scrivi sempre un numero solo.';
     } else {
         regoleSerie =
-            'REGOLE SERIE OBBLIGATORIE PER IPERTROFIA:\n' +
-            '• Esercizi composti principali (panca inclinata, lat machine, leg press, RDL, shoulder press, cable row) → 4 x 10\n' +
-            '• Esercizi isolati (curl, lateral raise, fly, tricep pushdown, leg extension, leg curl, calf raise, face pull) → 4 x 12\n' +
-            'NON usare 5x5, 5x6, 3x8, 4x8 o qualsiasi altra combinazione non elencata sopra.';
+            'PARAMETRI ' + (tipoAllenamento === 'forza' ? 'FORZA' : 'IPERTROFIA') + ':\n' +
+            (tipoAllenamento === 'forza'
+              ? '• Multiarticolari → 5 x 5\n• Isolati → 3 x 8\n'
+              : '• Composti principali → 4 x 8\n• Isolati → 3 x 12\n') +
+            'Mantieni le serie e ripetizioni gia\' presenti se sono coerenti con questi valori.\n' +
+            'NON usare mai intervalli tipo "6-10": scrivi sempre un numero solo.';
     }
 
     // ── Determina attrezzatura disponibile ──
@@ -6402,7 +6436,7 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
     }).join('\n');
 
     var esempioForza   = 'Bench Press | 5 x 5 | 60\nLateral Raise | 3 x 8 | 10';
-    var esempioIpert   = 'Lat Machine | 4 x 10 | 55\nCurl Manubri | 4 x 12 | 14';
+    var esempioIpert   = 'Lat Machine | 4 x 8 | 55\nCurl Manubri | 3 x 12 | 14';
     var esempioRiga    = tipoAllenamento === 'forza' ? esempioForza : esempioIpert;
 
     var prompt =
@@ -6413,12 +6447,15 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
         'Muscoli TARGET: ' + muscoliTarget + '\n' +
         (muscoliEsclusi ? 'Muscoli ESCLUSI da questa scheda: ' + muscoliEsclusi + '\n' : '') +
         'Attrezzatura: ' + attrezzaturaLabel + ' — ' + attrezzaturaDesc + '\n\n' +
-        '━━ REGOLE SERIE (VINCOLANTI) ━━\n' +
+        '━━ PARAMETRI SERIE E RIPETIZIONI ━━\n' +
         regoleSerie + '\n\n' +
         '━━ ESERCIZI INSERITI ━━\n' + exList + '\n\n' +
         '━━ ISTRUZIONI ━━\n' +
         '1. Usa SOLO i muscoli target. Rimuovi esercizi per muscoli sbagliati e segnalalo.\n' +
-        '2. Applica le regole serie sopra SENZA ECCEZIONI. Non inventare combinazioni diverse.\n' +
+        '2. NON toccare serie e ripetizioni: sono gia\' corrette per il livello dell\'utente.\n' +
+        '   Il tuo compito e\' verificare la SCELTA degli esercizi, non la programmazione.\n' +
+        '   Riporta ogni esercizio con lo stesso schema serie x ripetizioni che ha adesso.\n' +
+        '   Se aggiungi un esercizio nuovo, usa i parametri del suo ruolo dalla tabella sopra.\n' +
         '3. Rispetta l\'attrezzatura: ' + (env === 'casa' ? 'SOLO manubri/corpo libero.' : 'qualsiasi attrezzatura da palestra.') + '\n\n' +
         'Struttura risposta:\n' +
         '⚠️ PUNTI CRITICI\n(max 3, brevi)\n\n' +
@@ -6427,7 +6464,10 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
         '📋 LISTA DEFINITIVA\n' +
         'Lista completa e definitiva. Formato — un esercizio per riga:\n' +
         'NOME | SERIE x RIP | KG\n' +
-        'Esempio:\n' + esempioRiga + '\n\n' +
+        'Per gli esercizi isometrici (plank, hollow hold, L-sit, wall sit) usa la DURATA\n' +
+        'con la "s" finale e scrivi CL al posto dei kg: NOME | 3 x 45s | CL\n' +
+        'Usa CL anche per gli altri esercizi a corpo libero senza zavorra.\n' +
+        'Esempio:\n' + esempioRiga + '\nPlank | 3 x 45s | CL\n\n' +
         'Max 300 parole totali.';
 
     var AI_COACH_URL = 'https://trojbppshlfhrsimyxjl.supabase.co/functions/v1/ai-coach';
@@ -6592,8 +6632,14 @@ function protoEditorParseCoachList(text) {
             kg = parseFloat(parts[2].replace(/[^0-9.]/g, '')) || 0;
         }
 
+        // Rete di sicurezza: se il Coach scrive comunque un range, lo riportiamo
+        // al numero secco. Gli isometrici non hanno carico.
+        if (typeof awkRangeToFixed === 'function') sr = awkRangeToFixed(sr);
+        var isHold = (typeof srIsTime === 'function') && srIsTime(sr);
+        if (isHold) kg = 0;
+
         if (name.length > 1) {
-            result.push({ name: name, sr: sr, baseWeight: kg });
+            result.push({ name: name, sr: sr, baseWeight: kg, _type: isHold ? 'time' : 'reps' });
         }
     });
 
@@ -6738,10 +6784,76 @@ function mtrRepsSet(name, reps) {
     APP.mtrReps[exCanonical(name)] = r;
 }
 
-// Estrae le ripetizioni dallo schema serie×ripetizioni ("4 x 8" → 8)
+// Un esercizio isometrico ha lo schema "3 x 45s": la "s" finale marca la durata.
+// Non ha ripetizioni, non ha MTR e non entra nei record.
+function srIsTime(sr) {
+    // Riconosce sia "3 x 45s" sia un eventuale intervallo ereditato "3 x 40-60s",
+    // altrimenti prima della migrazione 40 secondi verrebbero letti come 40 ripetizioni.
+    return /(\d+)\s*[xX×]\s*(\d+)(?:\s*[–—-]\s*\d+)?\s*s/i.test(sr || '');
+}
+function srDuration(sr) {
+    var m = (sr || '').match(/(\d+)\s*[xX×]\s*(\d+)(?:\s*[–—-]\s*\d+)?\s*s/i);
+    return m ? parseInt(m[2]) : null;
+}
+function srSets(sr) {
+    var m = (sr || '').match(/(\d+)\s*[xX×]\s*(\d+)/);
+    return m ? parseInt(m[1]) : null;
+}
+// Estrae le ripetizioni dallo schema serie×ripetizioni ("4 x 8" → 8).
+// Restituisce null sugli isometrici: 45 secondi non sono 45 ripetizioni.
 function srReps(sr) {
+    if (srIsTime(sr)) return null;
     var m = (sr || '').match(/(\d+)\s*[xX×]\s*(\d+)/);
     return m ? parseInt(m[2]) : null;
+}
+
+/* ── Conversione range → ripetizione secca (migrazione protocolli esistenti) ──
+   Valori convenzionali usati nei protocolli sperimentali. Mai medie
+   matematiche: su 12–20 la media sarebbe 16, che nessuno prescrive. */
+const AWK_CONV_REPS = [3, 4, 5, 6, 8, 10, 12, 15, 20];
+function awkRangeToFixed(sr, role, goal, level) {
+    if (!sr) return sr;
+    // isometrici: "3 x 30–45s" → "3 x 30s" (limite basso, conservativo)
+    var t = sr.match(/(\d+)\s*[xX×]\s*(\d+)\s*[–—-]\s*(\d+)\s*s/i);
+    if (t) return t[1] + ' x ' + t[2] + 's';
+    var m = sr.match(/(\d+)\s*[xX×]\s*(\d+)\s*[–—-]\s*(\d+)/);
+    if (!m) return sr;                       // gia' secca, non toccare
+    var sets = parseInt(m[1]), lo = parseInt(m[2]), hi = parseInt(m[3]);
+    // 1) se il protocollo conosce obiettivo e livello, usa la tabella ufficiale
+    var pg = goal === 'full_forza' ? 'forza' : goal === 'calisthenic' ? 'calisthenic'
+           : goal === 'full_ipertrofia' || goal === 'hybrid' ? 'ipertrofia' : null;
+    if (pg && level && role && typeof AWK_PARAMS !== 'undefined'
+        && AWK_PARAMS[pg] && AWK_PARAMS[pg][level] && AWK_PARAMS[pg][level][role]) {
+        var r = AWK_PARAMS[pg][level][role].r;
+        if (r >= lo && r <= hi) return sets + ' x ' + r;
+    }
+    // 2) altrimenti il valore convenzionale piu' vicino al centro, a parita' il minore
+    var mid = (lo + hi) / 2, best = null, bd = Infinity;
+    AWK_CONV_REPS.forEach(function(v) {
+        if (v < lo || v > hi) return;
+        var d = Math.abs(v - mid);
+        if (d < bd) { bd = d; best = v; }
+    });
+    return sets + ' x ' + (best === null ? Math.round(mid) : best);
+}
+
+/* Migrazione una-tantum di tutti i protocolli salvati. */
+function awkMigrateSr() {
+    if (APP._srMigratedV151) return;
+    var changed = 0;
+    (APP.savedProtocols || []).forEach(function(p) {
+        (p.exercises || []).forEach(function(e) {
+            var nw = awkRangeToFixed(e.sr, e._role, p._awkGoal, p._awkLevel);
+            if (nw !== e.sr) { e.sr = nw; changed++; }
+        });
+    });
+    (APP.exerciseData || []).forEach(function(e) {
+        var nw = awkRangeToFixed(e.sr, e._role, null, null);
+        if (nw !== e.sr) { e.sr = nw; changed++; }
+    });
+    APP._srMigratedV151 = true;
+    if (changed) { try { saveState(); } catch (err) {} }
+    return changed;
 }
 
 // MTR riportato a un numero di ripetizioni diverso dalla sua base.
@@ -8029,6 +8141,8 @@ var WEEKLY_SET_TARGET = 10;   // Schoenfeld, Ogborn & Krieger 2017
 
 function _exSetsReps(ex) {
     var m = (ex.sr || '').match(/(\d+)\s*[\u00d7xX]\s*(\d+)/);
+    // Gli isometrici hanno una durata, non ripetizioni: non entrano nel volume
+    if (srIsTime(ex && ex.sr)) return { sets: m ? parseInt(m[1]) : 3, reps: 0 };
     return { sets: m ? parseInt(m[1]) : 3, reps: m ? parseInt(m[2]) : 5 };
 }
 
@@ -8482,7 +8596,7 @@ function updateProgressPage() {
         exData.forEach(ex => {
             const srMatch = (ex.sr || '').match(/(\d+)\s*[×xX]\s*(\d+)/);
             const sets = srMatch ? parseInt(srMatch[1]) : 3;
-            const reps = srMatch ? parseInt(srMatch[2]) : 5;
+            const reps = srIsTime(ex.sr) ? 0 : (srMatch ? parseInt(srMatch[2]) : 5);
             const kg   = ex.loads ? (ex.loads[wi] || ex.baseWeight || 0) : (ex.baseWeight || 0);
             sessionVol += sets * reps * kg;
         });
@@ -8523,7 +8637,7 @@ function updateProgressPage() {
             exData.forEach(ex => {
                 const srM = (ex.sr||'').match(/(\d+)\s*[×xX]\s*(\d+)/);
                 const sets = srM ? parseInt(srM[1]) : 3;
-                const reps = srM ? parseInt(srM[2]) : 5;
+                const reps = srIsTime(ex.sr) ? 0 : (srM ? parseInt(srM[2]) : 5);
                 const kg   = ex.loads ? (ex.loads[wi]||ex.baseWeight||0) : (ex.baseWeight||0);
                 sv += sets * reps * kg;
             });
@@ -8567,7 +8681,7 @@ function updateProgressPage() {
 // ════════════════════════════════════════════════
 // WORKOUT ATTIVO — init / timer
 // ════════════════════════════════════════════════
-let woState = { exIndex:0, setIndex:0, elapsed:0, restSecs:0, restTotal:0, restRunning:false, timer:null, totalEstSecs:0, paused:false };
+let woState = { exIndex:0, setIndex:0, elapsed:0, restSecs:0, restTotal:0, restRunning:false, timer:null, totalEstSecs:0, paused:false, holdSecs:0, holdTotal:0, holdRunning:false };
 
 function initWorkoutPage() {
     const page = document.getElementById('page-workout');
@@ -8687,9 +8801,10 @@ function initWorkoutPage() {
         exData.forEach(ex => {
             const srM = (ex.sr||'').match(/(\d+)\s*[xX×]\s*(\d+)/);
             const sets = srM ? parseInt(srM[1]) : 3;
-            const reps = srM ? parseInt(srM[2]) : 10;
-            const isForza = reps <= 6;
-            const setTime  = isForza ? 45 : 35;
+            const _isHold = srIsTime(ex.sr);
+            const reps = _isHold ? 0 : (srM ? parseInt(srM[2]) : 10);
+            const isForza = !_isHold && reps <= 6;
+            const setTime  = _isHold ? (srDuration(ex.sr) || 40) : (isForza ? 45 : 35);
             const restTime = isForza ? 180 : 120;
             totalWorkSecs += sets * setTime;
             totalRestSecs += (sets - 1) * restTime;
@@ -12311,13 +12426,14 @@ function _woBeginWorkout() {
     exData.forEach(ex => {
         const srM = (ex.sr||'').match(/(\d+)\s*[xX×]\s*(\d+)/);
         const sets = srM ? parseInt(srM[1]) : 3;
-        const reps = srM ? parseInt(srM[2]) : 10;
-        const isForza = reps <= 6;
-        estSecs += sets * (isForza ? 45 : 35);
+        const _isHold = srIsTime(ex.sr);
+        const reps = _isHold ? 0 : (srM ? parseInt(srM[2]) : 10);
+        const isForza = !_isHold && reps <= 6;
+        estSecs += sets * (_isHold ? (srDuration(ex.sr) || 40) : (isForza ? 45 : 35));
         estSecs += (sets - 1) * (isForza ? 180 : 120);
     });
 
-    woState = { exIndex:0, setIndex:0, elapsed:0, restSecs:0, restTotal:0, restRunning:false,
+    woState = { holdSecs:0, holdTotal:0, holdRunning:false, exIndex:0, setIndex:0, elapsed:0, restSecs:0, restTotal:0, restRunning:false,
                 timer:null, totalEstSecs: Math.max(estSecs, 1), paused:false,
                 _todayProtoId: woState._todayProtoId, _todayDayIdx: woState._todayDayIdx };
     if (woState.timer) clearInterval(woState.timer);
@@ -12333,6 +12449,7 @@ function woStop() {
     if (woState.timer) { clearInterval(woState.timer); woState.timer = null; }
     woState.exIndex = 0; woState.setIndex = 0; woState.elapsed = 0;
     woState.restSecs = 0; woState.restRunning = false; woState.restTotal = 0;
+    woState.holdSecs = 0; woState.holdRunning = false; woState.holdTotal = 0;
     woState.paused = false;
     const rw = document.getElementById('wo-rest-wrap');
     if (rw) rw.style.display = 'none';
@@ -12353,7 +12470,8 @@ function woDeloadSr(sr) {
     const m = sr.match(/(\d+)\s*[xX×]\s*(\d+)/);
     if (!m) return sr;
     const sets = Math.max(2, Math.round(parseInt(m[1]) * 0.5));
-    return sets + ' x ' + m[2];
+    // Negli isometrici si dimezzano le serie ma si mantiene la durata
+    return sets + ' x ' + m[2] + (srIsTime(sr) ? 's' : '');
 }
 
 function woRenderEx() {
@@ -12372,15 +12490,22 @@ function woRenderEx() {
     document.getElementById('wo-ex-num').textContent = `Esercizio ${woState.exIndex+1} di ${totalEx}`;
     document.getElementById('wo-ex-name').textContent = exItalian(ex.name);
     document.getElementById('wo-ex-scheme').textContent = displaySr + (w === DELOAD_WEEK ? ' 🔄' : '');
-    // Carico editabile
+    // Isometrico: nessun carico, nessun MTR, si tiene la posizione a tempo
+    const isHold = srIsTime(displaySr);
+    const holdDur = isHold ? srDuration(displaySr) : null;
+    // Carico editabile (solo esercizi a ripetizioni)
     const prEl = APP.personalRecords[ex.name];
     const isPR = prEl && parseFloat(kg) >= prEl;
-    document.getElementById('wo-weight-val').innerHTML =
-        `<button class="wo-kg-btn" onclick="woAdjustKg(-0.5)">−</button>` +
-        `<input id="wo-kg-input" class="wo-kg-input" type="number" step="0.5" min="0" value="${parseFloat(kg).toFixed(1)}"` +
-        ` onchange="woKgChanged(this.value)" onblur="woKgChanged(this.value)">` +
-        `<span class="wo-kg-unit">kg</span>` +
-        `<button class="wo-kg-btn" onclick="woAdjustKg(0.5)">+</button>`;
+    document.getElementById('wo-weight-val').innerHTML = isHold
+        ? `<div style="text-align:center;">` +
+          `<div class="wo-hold-info">Isometrico · corpo libero</div>` +
+          `<button class="wo-hold-btn" id="wo-hold-btn" onclick="woStartHold()">▶ Tieni ${holdDur}s</button>` +
+          `</div>`
+        : `<button class="wo-kg-btn" onclick="woAdjustKg(-0.5)">−</button>` +
+          `<input id="wo-kg-input" class="wo-kg-input" type="number" step="0.5" min="0" value="${parseFloat(kg).toFixed(1)}"` +
+          ` onchange="woKgChanged(this.value)" onblur="woKgChanged(this.value)">` +
+          `<span class="wo-kg-unit">kg</span>` +
+          `<button class="wo-kg-btn" onclick="woAdjustKg(0.5)">+</button>`;
     // PR badge separato sotto, riga propria
     const prContainer = document.getElementById('wo-weight-val').parentElement;
     let prBadgeEl = document.getElementById('wo-pr-badge');
@@ -12408,16 +12533,38 @@ function woRenderEx() {
     // Ex list
     woRenderExList();
 
-    // Timer — non resettare se stiamo solo aggiornando after rest
-    if (!woState.restRunning) {
+    // Timer — non resettare se stiamo solo aggiornando after rest o durante un hold
+    if (!woState.restRunning && !woState.holdRunning) {
         document.getElementById('wo-timer').textContent = '💪';
         document.getElementById('wo-timer').style.color = 'var(--primary)';
         document.getElementById('wo-timer-lbl').textContent = 'In allenamento';
     }
 
-    // Inizializza badge PR con il carico attuale
+    // Inizializza badge PR con il carico attuale (gli isometrici non hanno record)
     const kgInput = document.getElementById('wo-kg-input');
     if (kgInput) woKgChanged(kgInput.value);
+    if (isHold && prBadgeEl) prBadgeEl.textContent = '';
+}
+
+/* Countdown della posizione isometrica: a zero la serie si chiude da sola. */
+function woStartHold() {
+    const exData = APP.exerciseData || [];
+    const ex = exData[woState.exIndex];
+    if (!ex || woState.holdRunning) return;
+    const w = APP.selectedViewWeek || 0;
+    const displaySr = (w === DELOAD_WEEK) ? woDeloadSr(ex.sr) : ex.sr;
+    const dur = srDuration(displaySr);
+    if (!dur) return;
+    woState.holdSecs = dur;
+    woState.holdTotal = dur;
+    woState.holdRunning = true;
+    const btn = document.getElementById('wo-hold-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'In posizione…'; }
+    const t = document.getElementById('wo-timer');
+    const l = document.getElementById('wo-timer-lbl');
+    if (t) { t.textContent = '00:' + String(dur).padStart(2, '0'); t.style.color = '#22d3ee'; }
+    if (l) l.textContent = 'Tieni la posizione';
+    _woBeep(660, 0.15, 'sine');
 }
 
 function woRenderExList() {
@@ -12443,10 +12590,12 @@ function woRenderExList() {
 }
 
 function _woGetRestTime(ex) {
-    // Forza (rip ≤ 6): 3min; ipertrofia (rip ≥ 8): 2min; default 2min
-    const srM = ex && ex.sr ? ex.sr.match(/\d+\s*[xX×]\s*(\d+)/) : null;
-    const reps = srM ? parseInt(srM[1]) : 8;
-    return reps <= 6 ? 180 : 120;
+    // Il recupero e' un parametro del protocollo (Schoenfeld 2016, Grgic 2018):
+    // se il protocollo lo dichiara si usa quello, senza dedurlo dalle ripetizioni.
+    if (ex && ex._rest > 0) return ex._rest;
+    if (ex && srIsTime(ex.sr)) return 60;
+    const reps = ex ? srReps(ex.sr) : null;
+    return (reps !== null && reps <= 6) ? 180 : 120;
 }
 
 function woAdjustKg(delta) {
@@ -12891,6 +13040,22 @@ function woTick() {
     if (wb && woState.totalEstSecs > 0) {
         const pct = Math.min(Math.round((woState.elapsed / woState.totalEstSecs) * 100), 98);
         wb.style.width = pct + '%';
+    }
+
+    // ── Countdown isometrico ──
+    if (woState.holdRunning && woState.holdSecs > 0) {
+        woState.holdSecs--;
+        const ht = document.getElementById('wo-timer');
+        if (ht) ht.textContent = '00:' + String(Math.max(woState.holdSecs, 0)).padStart(2, '0');
+        if (woState.holdSecs > 0 && woState.holdSecs <= 3) _woBeep(440, 0.12, 'square');
+        if (woState.holdSecs === 0) {
+            woState.holdRunning = false;
+            _woBeep(880, 0.3, 'sine');
+            const hb = document.getElementById('wo-hold-btn');
+            if (hb) { hb.disabled = false; hb.textContent = '▶ Ripeti'; }
+            woCompleteSet();
+        }
+        return;
     }
 
     if (woState.restRunning && woState.restSecs > 0) {
@@ -14108,9 +14273,8 @@ const AWK_POOL = {
   ],
   CORE: [
     {n:'Hanging Leg Raise', eq:['sbarra']},
-    {n:'Plank con Sovraccarico', eq:['manubri']},
-    {n:'Hollow Hold', eq:[]},
-    {n:'Plank', eq:[]}
+    {n:'Hollow Hold', eq:[], hold:true},
+    {n:'Plank', eq:[], hold:true}
   ],
   /* ── Calisthenics: progressioni ── */
   C_PUSH: [
@@ -14158,34 +14322,48 @@ const AWK_POOL = {
     {n:'Glute Bridge Monopodalico', eq:[]}
   ],
   C_CORE: [
-    {n:'L-Sit alle Parallele', eq:['parallele']},
+    {n:'L-Sit alle Parallele', eq:['parallele'], hold:true},
     {n:'Hanging Leg Raise', eq:['sbarra']},
-    {n:'Hollow Hold', eq:[]}
+    {n:'Hollow Hold', eq:[], hold:true}
   ],
   C_CORE2: [
     {n:'Dragon Flag Negativo', eq:['panca']},
-    {n:'Plank Laterale', eq:[]}
+    {n:'Plank Laterale', eq:[], hold:true}
   ]
 };
 
 /* ── PARAMETRI SERIE/REP/RECUPERO PER RUOLO ─────────────────
    main = compound primario · sec = compound secondario
    iso  = isolamento · core = core                            */
+
+/* Zone di ripetizioni documentate in letteratura. Il numero secco prescritto
+   e' una scelta operativa dentro la zona, imposta dall'architettura MTR:
+   nessuno studio ha mai confrontato 4x8 contro 4x10 trovando un vincitore. */
+const AWK_ZONES = {
+  forza_main: {z:'1\u20136 rep sopra l\'80%', s:'ACSM 2009 \u2014 forza massimale in intermedi e avanzati'},
+  forza_novi: {z:'8\u201312 rep',  s:'ACSM 2009 \u2014 carico moderato consigliato ai principianti'},
+  forza_acc:  {z:'6\u201312 rep',  s:'ACSM 2009 \u2014 accessori e lavoro complementare'},
+  iper_main:  {z:'6\u201312 rep',  s:'ACSM 2009 \u2014 zona classica per l\'ipertrofia'},
+  iper_wide:  {z:'6\u201320 rep',  s:'Schoenfeld et al. 2017 \u2014 ipertrofia equivalente a carichi bassi e alti se vicini al cedimento'},
+  cali_main:  {z:'5\u201310 rep',  s:'Kotarsky et al. 2018 \u2014 progressioni a corpo libero comparabili al bilanciere'},
+  iso_time:   {z:'20\u201360s per serie', s:'Oranchuk et al. 2019 \u2014 negli isometrici conta il tempo sotto tensione totale'}
+};
+
 const AWK_PARAMS = {
   forza: {
-    principiante: { main:{s:3,r:'5',rest:180,rir:'RIR 2–3'},  sec:{s:3,r:'6',rest:150,rir:'RIR 2'},  iso:{s:3,r:'8–10',rest:90,rir:'RIR 1–2'}, core:{s:3,r:'30–45s',rest:60,rir:''} },
-    intermedio:   { main:{s:4,r:'4',rest:240,rir:'RIR 1–2'},  sec:{s:3,r:'5',rest:180,rir:'RIR 2'},  iso:{s:3,r:'8–10',rest:90,rir:'RIR 1'},   core:{s:3,r:'40–60s',rest:60,rir:''} },
-    avanzato:     { main:{s:5,r:'3',rest:300,rir:'RIR 0–1'},  sec:{s:4,r:'5',rest:240,rir:'RIR 1'},  iso:{s:3,r:'8–12',rest:90,rir:'RIR 1'},   core:{s:4,r:'45–60s',rest:60,rir:''} }
+    principiante: { main:{s:3,r:8,z:'forza_novi',rest:180,rir:'RIR 2\u20133'}, sec:{s:3,r:10,z:'forza_novi',rest:150,rir:'RIR 2'}, iso:{s:3,r:8,z:'forza_acc',rest:90,rir:'RIR 1\u20132'}, core:{s:3,r:30,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
+    intermedio:   { main:{s:4,r:4,z:'forza_main',rest:240,rir:'RIR 1\u20132'}, sec:{s:3,r:5,z:'forza_main',rest:180,rir:'RIR 2'}, iso:{s:3,r:8,z:'forza_acc',rest:90,rir:'RIR 1'}, core:{s:3,r:40,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
+    avanzato:     { main:{s:5,r:3,z:'forza_main',rest:300,rir:'RIR 0\u20131'}, sec:{s:4,r:5,z:'forza_main',rest:240,rir:'RIR 1'}, iso:{s:3,r:10,z:'forza_acc',rest:90,rir:'RIR 1'}, core:{s:4,r:45,rDyn:15,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} }
   },
   ipertrofia: {
-    principiante: { main:{s:3,r:'8–10',rest:150,rir:'RIR 2–3'}, sec:{s:3,r:'10–12',rest:120,rir:'RIR 2'}, iso:{s:2,r:'12–15',rest:75,rir:'RIR 1–2'}, core:{s:3,r:'30–45s',rest:60,rir:''} },
-    intermedio:   { main:{s:4,r:'6–10',rest:180,rir:'RIR 1–2'}, sec:{s:3,r:'10–12',rest:120,rir:'RIR 1–2'}, iso:{s:3,r:'12–15',rest:75,rir:'RIR 1'}, core:{s:3,r:'40–60s',rest:60,rir:''} },
-    avanzato:     { main:{s:4,r:'6–10',rest:180,rir:'RIR 1'},   sec:{s:4,r:'10–12',rest:120,rir:'RIR 1'},   iso:{s:4,r:'12–20',rest:75,rir:'RIR 0–1'}, core:{s:4,r:'45–60s',rest:60,rir:''} }
+    principiante: { main:{s:3,r:8,z:'iper_main',rest:150,rir:'RIR 2\u20133'}, sec:{s:3,r:10,z:'iper_main',rest:120,rir:'RIR 2'}, iso:{s:2,r:12,z:'iper_wide',rest:75,rir:'RIR 1\u20132'}, core:{s:3,r:30,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
+    intermedio:   { main:{s:4,r:8,z:'iper_main',rest:180,rir:'RIR 1\u20132'}, sec:{s:3,r:12,z:'iper_main',rest:120,rir:'RIR 1\u20132'}, iso:{s:3,r:12,z:'iper_wide',rest:75,rir:'RIR 1'}, core:{s:3,r:40,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
+    avanzato:     { main:{s:4,r:8,z:'iper_main',rest:180,rir:'RIR 1'}, sec:{s:4,r:12,z:'iper_main',rest:120,rir:'RIR 1'}, iso:{s:4,r:15,z:'iper_wide',rest:75,rir:'RIR 0\u20131'}, core:{s:4,r:45,rDyn:15,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} }
   },
   calisthenic: {
-    principiante: { main:{s:3,r:'5–8',rest:150,rir:'RIR 2–3'}, sec:{s:3,r:'8–12',rest:120,rir:'RIR 2'}, iso:{s:3,r:'10–15',rest:75,rir:'RIR 1–2'}, core:{s:3,r:'20–30s',rest:60,rir:''} },
-    intermedio:   { main:{s:4,r:'5–8',rest:180,rir:'RIR 1–2'}, sec:{s:3,r:'8–12',rest:120,rir:'RIR 1–2'}, iso:{s:3,r:'12–15',rest:75,rir:'RIR 1'}, core:{s:4,r:'30–45s',rest:60,rir:''} },
-    avanzato:     { main:{s:5,r:'4–6',rest:240,rir:'RIR 1'},   sec:{s:4,r:'8–12',rest:150,rir:'RIR 1'},   iso:{s:4,r:'12–20',rest:75,rir:'RIR 0–1'}, core:{s:4,r:'40–60s',rest:60,rir:''} }
+    principiante: { main:{s:3,r:6,z:'cali_main',rest:150,rir:'RIR 2\u20133'}, sec:{s:3,r:10,z:'iper_main',rest:120,rir:'RIR 2'}, iso:{s:3,r:12,z:'iper_wide',rest:75,rir:'RIR 1\u20132'}, core:{s:3,r:20,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
+    intermedio:   { main:{s:4,r:6,z:'cali_main',rest:180,rir:'RIR 1\u20132'}, sec:{s:3,r:10,z:'iper_main',rest:120,rir:'RIR 1\u20132'}, iso:{s:3,r:12,z:'iper_wide',rest:75,rir:'RIR 1'}, core:{s:4,r:30,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
+    avanzato:     { main:{s:5,r:5,z:'cali_main',rest:240,rir:'RIR 1'}, sec:{s:4,r:10,z:'iper_main',rest:150,rir:'RIR 1'}, iso:{s:4,r:15,z:'iper_wide',rest:75,rir:'RIR 0\u20131'}, core:{s:4,r:45,rDyn:15,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} }
   }
 };
 
@@ -14321,7 +14499,15 @@ function awkBuildProtocol(goal, level, equip){
       const skippable = (role!=='main');
       const c = awkPick(key, equip, used, usedFam, skippable);
       if (!c) return;
-      exercises.push({ name:c.n, eq:c.eq, role, sets:p.s, reps:p.r, rest:p.rest, rir:p.rir });
+      // La durata si applica solo agli esercizi realmente isometrici: un
+      // hanging leg raise e' a ripetizioni anche se occupa lo slot "core".
+      const asTime = (p.t === 'time') && !!c.hold;
+      exercises.push({ name:c.n, eq:c.eq, role,
+                       sets: p.s,
+                       reps: asTime ? p.r : (p.rDyn || p.r),
+                       rest: p.rest, rir: asTime ? '' : (p.rir || 'RIR 1\u20132'),
+                       type: asTime ? 'time' : 'reps',
+                       zone: asTime ? p.z : (p.zDyn || p.z) });
     });
     return {
       name: sess.n,
@@ -14461,7 +14647,7 @@ function awkDrawEquip(){
 }
 
 function awkRoleColor(r){ return r === 'main' ? '#00ff88' : r === 'sec' ? '#6366f1' : r === 'iso' ? '#f59e0b' : '#64748b'; }
-function awkRoleLabel(r){ return r === 'main' ? 'Compound primario' : r === 'sec' ? 'Compound secondario' : r === 'iso' ? 'Isolamento' : 'Core'; }
+function awkRoleLabel(r){ return r === 'main' ? 'Compound primario' : r === 'sec' ? 'Compound secondario' : r === 'iso' ? 'Isolamento' : 'Core isometrico'; }
 
 function awkRenderResult(){
   const box = document.getElementById('ob-result');
@@ -14505,12 +14691,16 @@ function awkRenderResult(){
       (sess.tag ? '<div class="ob-sess-tag ' + (sess.tag === 'FORZA' ? 'F' : 'I') + '">' + sess.tag + '</div>' : '') +
       '</div><div class="ob-exl">';
     sess.exercises.forEach(function(e){
-      const kg = awkDefaultKg(e.name, P.level);
+      const isTime = (e.type === 'time');
+      const kg = isTime ? 0 : awkDefaultKg(e.name, P.level);
+      const zn = AWK_ZONES[e.zone];
       h += '<div class="ob-ex"><div class="dot" style="background:' + awkRoleColor(e.role) + '"></div>' +
         '<div class="en">' + escapeHTML(e.name) + '<div class="em">' + awkRoleLabel(e.role) +
         (e.rir ? ' \u00B7 ' + e.rir : '') + ' \u00B7 rec ' + awkFmtRest(e.rest) +
-        (kg ? ' \u00B7 ' + kg + ' kg' : ' \u00B7 corpo libero') + '</div></div>' +
-        '<div class="esr">' + e.sets + '\u00D7' + e.reps + '</div></div>';
+        (isTime ? ' \u00B7 nessun carico' : (kg ? ' \u00B7 ' + kg + ' kg' : ' \u00B7 corpo libero')) +
+        '</div></div>' +
+        '<div class="esr' + (isTime ? ' time' : '') + '">' + e.sets + '\u00D7' + e.reps + (isTime ? 's' : '') + '</div></div>' +
+        (zn ? '<div class="ob-zone"><b>Zona di lavoro ' + zn.z + '</b><br>' + zn.s + '</div>' : '');
     });
     h += '</div></div>';
   });
@@ -14521,7 +14711,8 @@ function awkRenderResult(){
   if (P.goal === 'calisthenic')     refs = [AWK_REFS.cal, AWK_REFS.cal2, AWK_REFS.fail, AWK_REFS.vol];
   h += '<div class="ob-refs"><div class="rt">Fonti dei parametri</div>' +
        refs.map(function(r){ return '<p>' + r + '</p>'; }).join('') + '</div>';
-  h += '<div class="ob-hint">I carichi mostrati sono un punto di partenza: potrai correggerli con il tuo MTR reale.</div>';
+  h += '<div class="ob-hint">Le ripetizioni sono un numero unico, non un intervallo: l\'MTR e\' definito per un dato numero di ripetizioni. La zona indicata sotto ogni esercizio e\' l\'intervallo in cui la ricerca documenta lo stimolo, non una prescrizione da eseguire.</div>' +
+       '<div class="ob-hint">I carichi mostrati sono un punto di partenza: potrai correggerli con il tuo MTR reale.</div>';
   box.innerHTML = h;
 }
 
@@ -14586,8 +14777,12 @@ function awkGenerateProtocols(){
       name: g.l + ' \u00B7 ' + sess.name,
       goal: legacyGoal,
       exercises: sess.exercises.map(function(e){
-        return { name: e.name, sr: e.sets + ' x ' + e.reps, baseWeight: awkDefaultKg(e.name, P.level),
-                 _rest: e.rest, _rir: e.rir, _role: e.role };
+        const isTime = (e.type === 'time');
+        return { name: e.name,
+                 sr: e.sets + ' x ' + e.reps + (isTime ? 's' : ''),
+                 baseWeight: isTime ? 0 : awkDefaultKg(e.name, P.level),
+                 _rest: e.rest, _rir: e.rir, _role: e.role,
+                 _type: isTime ? 'time' : 'reps', _zone: e.zone };
       }),
       createdAt: new Date().toISOString(),
       chipStates: [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']],
