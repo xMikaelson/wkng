@@ -949,12 +949,28 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .ob-zbanner { background: linear-gradient(135deg, rgba(99,102,241,0.13), rgba(99,102,241,0.04));
                       border: 1px solid rgba(99,102,241,0.25); border-radius: 14px; padding: 13px 14px;
                       margin-bottom: 12px; display: flex; gap: 11px; align-items: flex-start;
-                      cursor: pointer; text-align: left; }
+                      text-align: left; }
         .ob-zbanner .zi { font-size: 1.05rem; flex-shrink: 0; margin-top: 1px; }
         .ob-zbanner .zt { font-size: 0.71rem; color: #cbd5e1; line-height: 1.55; }
         .ob-zbanner .zt b { color: #a5b4fc; font-family: 'Unbounded', sans-serif; font-size: 0.66rem;
                             display: block; margin-bottom: 3px; }
         .ob-zi-inline { vertical-align: -3px; margin: 0 1px; }
+        /* ── Dizionario ── */
+        .gl-item { border-top: 1px solid rgba(255,255,255,0.05); }
+        .gl-item:first-child { border-top: none; }
+        .gl-head { display: flex; align-items: center; gap: 9px; padding: 11px 0; cursor: pointer; }
+        .gl-term { font-weight: 700; font-size: 0.8rem; color: #e2e8f0; flex: 1; }
+        .gl-ext { font-size: 0.62rem; color: #64748b; font-weight: 400; }
+        .gl-arrow { color: #475569; font-size: 0.72rem; transition: 0.22s; flex-shrink: 0; }
+        .gl-item.open .gl-arrow { transform: rotate(90deg); }
+        .gl-body { display: none; padding: 0 0 12px; font-size: 0.72rem; color: #cbd5e1; line-height: 1.65; }
+        .gl-item.open .gl-body { display: block; }
+        .gl-src { margin-top: 8px; font-size: 0.62rem; color: #7c8ba1; padding-left: 10px;
+                  border-left: 2px solid rgba(99,102,241,0.4); line-height: 1.5; }
+        .gl-cat { font-size: 0.55rem; letter-spacing: 0.13em; text-transform: uppercase; color: #64748b;
+                  font-weight: 700; margin: 14px 0 2px; }
+        .gl-cat:first-child { margin-top: 2px; }
+        .gl-empty { font-size: 0.72rem; color: #64748b; text-align: center; padding: 16px 0; }
         /* Icona informativa su ogni esercizio */
         .ob-zi { width: 17px; height: 17px; border-radius: 50%; border: 1px solid #475569; color: #94a3b8;
                  font-size: 0.55rem; display: inline-flex; align-items: center; justify-content: center;
@@ -3198,6 +3214,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div id="mtr-manager-panel" style="display:none; background:rgba(255,255,255,0.03); border-radius:10px; padding:10px 14px; margin-bottom:4px;">
       <div id="mtr-manager-list"></div>
     </div>
+    <div class="settings-row" style="margin-top:4px" onclick="toggleGlossary()">
+      <div class="settings-row-left"><span class="settings-row-icon">\uD83D\uDCD6</span><span class="settings-row-label">Dizionario</span></div>
+      <span class="settings-row-arrow" id="glossary-arrow">›</span>
+    </div>
+    <div id="glossary-panel" style="display:none; background:rgba(255,255,255,0.03); border-radius:10px; padding:12px 14px; margin-bottom:4px;">
+      <input type="text" id="glossary-search" placeholder="Cerca un termine..." oninput="renderGlossary(this.value)"
+             style="margin-bottom:10px; font-size:0.78rem; padding:9px 11px;">
+      <div id="glossary-list"></div>
+    </div>
     <div class="settings-row" style="margin-top:4px" onclick="toggleFontScalePanel()">
       <div class="settings-row-left"><span class="settings-row-icon">🔤</span><span class="settings-row-label">Dimensione Testo</span></div>
       <span class="settings-row-arrow" id="font-scale-arrow">›</span>
@@ -3632,7 +3657,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '154';
+const APP_VERSION = '155';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -7836,6 +7861,141 @@ function awFontScaleLabel(px) {
     if (px === 18) return 'Grande';
     if (px === 19 || px === 20) return 'Molto grande';
     return 'Massimo';
+}
+
+
+/* ═══════════ DIZIONARIO ═══════════
+   Termini tecnici usati nell'app, spiegati in parole semplici.
+   Dove esiste una fonte, e' citata: niente definizioni inventate. */
+const GLOSSARY = [
+  // ── Carichi e intensita' ──
+  {t:'MTR', e:'Massimo Tecnico di Ripetizione', c:'Carichi',
+   d:'Il carico piu\u2019 alto che riesci a gestire con tecnica impeccabile per un dato numero di ripetizioni, senza compensi e senza "comporre" l\u2019alzata. E\u2019 diverso dal massimale puro: li\u2019 conta solo se il peso sale, qui conta come sale. Awakening calcola tutti i carichi delle cinque settimane a partire dal tuo MTR.',
+   s:'L\u2019MTR e\u2019 definito per un numero di ripetizioni preciso: il tuo MTR a 5 ripetizioni e\u2019 diverso da quello a 10.'},
+  {t:'1RM', e:'One Repetition Maximum', c:'Carichi',
+   d:'Il carico massimo che riesci a sollevare per una sola ripetizione. E\u2019 il riferimento classico della letteratura scientifica, ma testarlo e\u2019 faticoso e rischioso: Awakening usa l\u2019MTR proprio per evitartelo.'},
+  {t:'Training Max', e:'', c:'Carichi',
+   d:'Una versione prudente del tuo massimale, fissata al 90% dell\u2019MTR. Programmare sul Training Max invece che sul massimale reale lascia un margine per le giornate storte ed e\u2019 il motivo per cui la progressione resta sostenibile per settimane.',
+   s:'Impostazione derivata dal metodo 5/3/1 di Jim Wendler.'},
+  {t:'Formula di Epley', e:'', c:'Carichi',
+   d:'Una formula che stima quanto peserebbe il tuo massimale partendo da un carico sollevato per piu\u2019 ripetizioni. Serve all\u2019app per convertire il tuo MTR da un numero di ripetizioni a un altro senza farti rifare il test.',
+   s:'Epley (1985). Come tutte le formule di stima e\u2019 tanto piu\u2019 precisa quanto meno ripetizioni servono per il calcolo.'},
+
+  // ── Sforzo ──
+  {t:'RIR', e:'Repetitions In Reserve', c:'Sforzo',
+   d:'Quante ripetizioni avresti ancora potuto fare alla fine della serie. RIR 2 vuol dire che ti fermi due ripetizioni prima del cedimento. E\u2019 il modo in cui la scheda si adatta alla giornata: stesso schema, sforzo calibrato su come stai.',
+   s:'Helms et al. (2016), Strength Cond J \u2014 uso del RIR per regolare il carico in autoregolazione.'},
+  {t:'Cedimento', e:'Failure', c:'Sforzo',
+   d:'Il punto in cui non riesci piu\u2019 a completare una ripetizione con buona tecnica. Arrivarci a ogni serie non serve: la ricerca mostra risultati equivalenti fermandosi da zero a tre ripetizioni prima, con molta meno fatica accumulata.',
+   s:'Refalo et al. (2023), J Sports Sci \u2014 la vicinanza al cedimento conta, il cedimento in se\u2019 no.'},
+  {t:'Zona di stimolo', e:'', c:'Sforzo',
+   d:'L\u2019intervallo di ripetizioni entro cui la ricerca documenta lo stesso adattamento. La scheda ti da\u2019 un numero preciso perche\u2019 l\u2019MTR ne richiede uno, ma la zona ti dice dove lo stimolo resta valido. Toccando la "i" accanto a un esercizio vedi la sua zona e la fonte.'},
+
+  // ── Struttura dell'allenamento ──
+  {t:'Compound', e:'Esercizio multiarticolare', c:'Allenamento',
+   d:'Un esercizio che muove piu\u2019 articolazioni insieme e coinvolge molta massa muscolare: squat, panca, stacco, trazioni. Vanno all\u2019inizio della seduta, quando sei fresco, perche\u2019 sono quelli che portano il grosso dei risultati.'},
+  {t:'Isolamento', e:'', c:'Allenamento',
+   d:'Un esercizio che muove una sola articolazione e colpisce un muscolo alla volta: curl, alzate laterali, leg extension. Serve ad aggiungere volume dove serve, senza affaticare tutto il corpo.'},
+  {t:'Isometrico', e:'', c:'Allenamento',
+   d:'Un esercizio in cui non ti muovi: tieni una posizione sotto tensione, come il plank o l\u2019L-sit. Si misura in secondi e non in ripetizioni, e per questo non ha un carico ne\u2019 un massimale.',
+   s:'Oranchuk et al. (2019), Scand J Med Sci Sports \u2014 negli isometrici conta il tempo totale sotto tensione.'},
+  {t:'Serie', e:'Set', c:'Allenamento',
+   d:'Un blocco di ripetizioni consecutive, seguito da un recupero. "4 x 8" significa quattro serie da otto ripetizioni ciascuna.'},
+  {t:'Volume', e:'', c:'Allenamento',
+   d:'La quantita\u2019 totale di lavoro svolto, contata di solito come numero di serie per muscolo a settimana. E\u2019 la variabile piu\u2019 legata alla crescita muscolare: sotto le dieci serie settimanali per gruppo i risultati calano.',
+   s:'Schoenfeld, Ogborn & Krieger (2017), J Sports Sci \u2014 relazione dose-risposta tra volume e ipertrofia.'},
+  {t:'Frequenza', e:'', c:'Allenamento',
+   d:'Quante volte alleni lo stesso muscolo in una settimana. A parita\u2019 di volume totale, distribuirlo su due sedute rende piu\u2019 che concentrarlo in una sola.',
+   s:'Schoenfeld, Ogborn & Krieger (2016), Sports Med.'},
+  {t:'Recupero', e:'Rest', c:'Allenamento',
+   d:'Il tempo di pausa tra una serie e l\u2019altra. Non e\u2019 tempo perso: recuperi lunghi sui multiarticolari permettono di mantenere il carico nelle serie successive, e questo si traduce in piu\u2019 forza e piu\u2019 muscolo.',
+   s:'Schoenfeld et al. (2016), JSCR \u2014 tre minuti superiori a uno. Grgic et al. (2018), Sports Med \u2014 almeno due minuti per esprimere forza.'},
+
+  // ── Obiettivi ──
+  {t:'Ipertrofia', e:'', c:'Obiettivi',
+   d:'La crescita delle dimensioni del muscolo. Si ottiene con volume adeguato e serie portate vicino al cedimento; il carico usato conta meno di quanto si pensi, purche\u2019 lo sforzo sia alto.',
+   s:'Schoenfeld et al. (2017), JSCR \u2014 ipertrofia simile a carichi bassi e alti a pari vicinanza al cedimento.'},
+  {t:'Forza massimale', e:'', c:'Obiettivi',
+   d:'La capacita\u2019 di esprimere la massima tensione possibile in un\u2019alzata. Richiede carichi alti e poche ripetizioni, con recuperi lunghi.',
+   s:'ACSM Position Stand (2009) \u2014 da una a sei ripetizioni sopra l\u2019ottanta per cento in intermedi e avanzati.'},
+  {t:'Calisthenics', e:'', c:'Obiettivi',
+   d:'Allenamento a corpo libero basato su progressioni: invece di aggiungere chili cambi leva e difficolta\u2019 dell\u2019esercizio. Funziona, a patto che ogni progressione resti impegnativa.',
+   s:'Kotarsky et al. (2018), JSCR \u2014 push-up progressivi comparabili alla panca per forza e spessore muscolare.'},
+
+  // ── Periodizzazione ──
+  {t:'Chapter', e:'', c:'Periodizzazione',
+   d:'Una settimana del ciclo Awakening. Ce ne sono cinque: quattro in salita di carico e una di scarico. Ogni chapter ha una percentuale del tuo MTR gia\u2019 calcolata.'},
+  {t:'Deload', e:'Scarico', c:'Periodizzazione',
+   d:'La settimana in cui il volume viene dimezzato ma l\u2019intensita\u2019 resta alta. Serve a smaltire la fatica accumulata senza perdere gli adattamenti costruiti: abbassare anche il carico li farebbe arretrare.',
+   s:'Bosquet et al. (2007) e Mujika & Padilla (2003) \u2014 ricerca sul tapering.'},
+  {t:'Periodizzazione', e:'', c:'Periodizzazione',
+   d:'Organizzare l\u2019allenamento in fasi con obiettivi diversi invece di fare sempre la stessa cosa. Awakening usa una progressione a onda: il carico sale per quattro settimane, poi scarica.',
+   s:'Rhea et al. (2002), JSCR \u2014 confronto tra periodizzazione lineare e ondulata.'},
+  {t:'Sovraccarico progressivo', e:'', c:'Periodizzazione',
+   d:'Il principio per cui, per continuare a migliorare, la richiesta deve aumentare nel tempo: piu\u2019 carico, piu\u2019 ripetizioni, piu\u2019 serie o meno recupero. Senza, il corpo non ha motivo di adattarsi.'},
+
+  // ── Split ──
+  {t:'Full Body', e:'', c:'Split',
+   d:'Ogni seduta allena tutto il corpo. Ha senso quando ti alleni due o tre volte a settimana, perche\u2019 garantisce che ogni muscolo venga stimolato piu\u2019 volte.'},
+  {t:'Upper / Lower', e:'', c:'Split',
+   d:'Sedute alternate tra parte alta e parte bassa del corpo. Su quattro giorni permette di allenare tutto due volte a settimana con volume abbondante per seduta.'},
+  {t:'Push / Pull / Legs', e:'PPL', c:'Split',
+   d:'Tre tipi di seduta: spinta (petto, spalle, tricipiti), trazione (schiena, bicipiti) e gambe. Adatto a chi si allena cinque o sei volte a settimana.'},
+  {t:'Hybrid', e:'', c:'Split',
+   d:'Il protocollo che unisce sedute di forza con carichi alti e sedute di ipertrofia ad alto volume nella stessa settimana, invece di scegliere tra i due obiettivi.'},
+
+  // ── Nutrizione ──
+  {t:'TDEE', e:'Total Daily Energy Expenditure', c:'Nutrizione',
+   d:'Le calorie che consumi in una giornata intera, tenendo conto del metabolismo a riposo, del movimento e della digestione. E\u2019 il punto di partenza per decidere quanto mangiare.'},
+  {t:'Macronutrienti', e:'Macro', c:'Nutrizione',
+   d:'Proteine, carboidrati e grassi: i tre nutrienti che forniscono energia. Le proteine sono quelle che piu\u2019 direttamente sostengono la costruzione muscolare.'},
+  {t:'Deficit e surplus', e:'', c:'Nutrizione',
+   d:'Mangiare meno o piu\u2019 del proprio fabbisogno. In deficit il peso scende, in surplus sale. Nessuno dei due va tenuto all\u2019infinito.'}
+];
+
+function toggleGlossary(){
+  const p = document.getElementById('glossary-panel');
+  const a = document.getElementById('glossary-arrow');
+  if (!p) return;
+  const open = p.style.display === 'none' || !p.style.display;
+  p.style.display = open ? 'block' : 'none';
+  if (a) a.style.transform = open ? 'rotate(90deg)' : '';
+  if (open) renderGlossary('');
+}
+
+function glossaryToggleItem(el){
+  const wasOpen = el.parentElement.classList.contains('open');
+  const list = document.getElementById('glossary-list');
+  if (list) list.querySelectorAll('.gl-item.open').forEach(function(x){ x.classList.remove('open'); });
+  if (!wasOpen) el.parentElement.classList.add('open');
+}
+
+function renderGlossary(q){
+  const list = document.getElementById('glossary-list');
+  if (!list) return;
+  const needle = (q || '').trim().toLowerCase();
+  const hits = GLOSSARY.filter(function(g){
+    if (!needle) return true;
+    return (g.t + ' ' + (g.e || '') + ' ' + g.d + ' ' + (g.s || '')).toLowerCase().indexOf(needle) >= 0;
+  });
+  if (!hits.length){
+    list.innerHTML = '<div class="gl-empty">Nessun termine trovato.</div>';
+    return;
+  }
+  let h = '', lastCat = null;
+  hits.forEach(function(g, i){
+    if (!needle && g.c !== lastCat){ h += '<div class="gl-cat">' + g.c + '</div>'; lastCat = g.c; }
+    h += '<div class="gl-item">' +
+         '<div class="gl-head" onclick="glossaryToggleItem(this)">' +
+           '<span class="gl-term">' + escapeHTML(g.t) +
+           (g.e ? ' <span class="gl-ext">' + escapeHTML(g.e) + '</span>' : '') + '</span>' +
+           '<span class="gl-arrow">\u203a</span>' +
+         '</div>' +
+         '<div class="gl-body">' + g.d +
+           (g.s ? '<div class="gl-src">' + g.s + '</div>' : '') +
+         '</div></div>';
+  });
+  list.innerHTML = h;
 }
 
 function toggleFontScalePanel() {
@@ -14193,6 +14353,7 @@ const AWK_EQUIP = [
   {k:'bilanciere', l:'Bilanciere', i:'🏋️'},
   {k:'rack',       l:'Rack / Squat rack', i:'🗜️'},
   {k:'panca',      l:'Panca piana', i:'🛋️'},
+  {k:'panca_incl', l:'Panca regolabile', i:'📐'},
   {k:'appoggio',   l:'Tavolo, sedie o gradino', i:'🪑'},
   {k:'manubri',    l:'Manubri', i:'💪'},
   {k:'kettlebell', l:'Kettlebell', i:'🔔'},
@@ -14231,7 +14392,7 @@ const AWK_POOL = {
   ],
   HPUSH: [
     {n:'Panca Piana con Bilanciere', eq:['bilanciere','panca']},
-    {n:'Panca Inclinata con Bilanciere', eq:['bilanciere','panca']},
+    {n:'Panca Inclinata con Bilanciere', eq:['bilanciere','panca_incl']},
     {n:'Panca Piana con Manubri', eq:['manubri','panca']},
     {n:'Chest Press', eq:['macchine']},
     {n:'Dip alle Parallele', eq:['parallele']},
@@ -14240,7 +14401,7 @@ const AWK_POOL = {
     {n:'Push-up', eq:[]}
   ],
   HPUSH2: [
-    {n:'Panca Inclinata con Manubri', eq:['manubri','panca']},
+    {n:'Panca Inclinata con Manubri', eq:['manubri','panca_incl']},
     {n:'Dip alle Parallele', eq:['parallele']},
     {n:'Chest Press Inclinata', eq:['macchine']},
     {n:'Push-up con Elastico', eq:['elastici']},
@@ -14544,6 +14705,17 @@ const AWK_LEVELS = [
 const AWK_DAYS_IT = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
 
 /* ── LOGICA ───────────────────────────────────────────────── */
+
+/* Alcuni attrezzi ne implicano altri: una panca regolabile si usa anche piatta,
+   quindi chi la possiede ha accesso pure agli esercizi da panca piana. */
+const AWK_EQUIP_IMPLIES = { panca_incl: ['panca'] };
+function awkExpandEquip(list){
+  const out = (list || []).slice();
+  (list || []).forEach(function(k){
+    (AWK_EQUIP_IMPLIES[k] || []).forEach(function(x){ if (out.indexOf(x) < 0) out.push(x); });
+  });
+  return out;
+}
 function awkPick(key, equip, used, usedFam, allowSkip){
   const list = AWK_POOL[key] || [];
   // SOLO esercizi i cui requisiti sono tutti soddisfatti
@@ -14559,8 +14731,9 @@ function awkPick(key, equip, used, usedFam, allowSkip){
 
 function awkFmtRest(s){ return s>=60 ? (s%60===0 ? (s/60)+' min' : Math.floor(s/60)+':'+String(s%60).padStart(2,'0')+' min') : s+'s'; }
 
-function awkBuildProtocol(goal, level, equip){
+function awkBuildProtocol(goal, level, equipIn){
   if (goal==='free' || goal==='soon') return null;
+  const equip = awkExpandEquip(equipIn);
   const tpl = AWK_TPL[goal][level];
   const paramGoal = goal==='full_forza' ? 'forza' : goal==='calisthenic' ? 'calisthenic' : 'ipertrofia';
   const sessions = tpl.sessions.map(sess => {
@@ -14784,8 +14957,7 @@ function awkRenderResult(){
     h += P.warn.map(function(w){ return '<div class="ob-warn">' + w + '</div>'; }).join('');
 
   // Le zone di stimolo si spiegano una volta sola qui, non su ogni riga.
-  const zFirst = (P.sessions[0] && P.sessions[0].exercises[0]) ? P.sessions[0].exercises[0].zone : 'iper_main';
-  h += '<div class="ob-zbanner" onclick="zoneSheetOpen(\'' + zFirst + '\')"><div class="zi">\uD83D\uDD2C</div>' +
+  h += '<div class="ob-zbanner"><div class="zi">\uD83D\uDD2C</div>' +
        '<div class="zt"><b>Ogni esercizio ha una zona di stimolo</b>' +
        'Le ripetizioni prescritte sono un numero preciso, ma la ricerca documenta un intervallo piu\' ampio in cui il muscolo lavora. ' +
        'Tocca la <span class="ob-zi ob-zi-inline">i</span> accanto a un esercizio per vedere la sua zona e la fonte.' +
