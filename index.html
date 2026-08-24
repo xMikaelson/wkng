@@ -1970,6 +1970,25 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .plan-proto-item.active-item { border-color:var(--primary); color:var(--primary); }
         .plan-proto-item-name { flex:1; white-space:normal; overflow:visible; word-break:break-word; line-height:1.3; }
         .plan-proto-drag-icon { font-size:0.6rem; color:#64748b; margin-left:4px; transition:transform 0.2s; }
+        /* ── Bundle: protocolli raggruppati per obiettivo e attrezzatura ── */
+        .plan-bnd { background:rgba(99,102,241,0.09); border:1px solid rgba(99,102,241,0.28);
+                    border-radius:6px; padding:5px 8px; margin-bottom:3px; cursor:pointer;
+                    font-size:0.65rem; display:flex; align-items:flex-start; gap:6px;
+                    user-select:none; transition:0.15s; }
+        .plan-bnd.active-bnd { border-color:var(--primary); background:rgba(52,211,153,0.1); }
+        .plan-bnd-nm { color:#c7d2fe; font-weight:600; line-height:1.25; word-break:break-word; }
+        .plan-bnd.active-bnd .plan-bnd-nm { color:var(--primary); }
+        .plan-bnd-ct { font-size:0.5rem; color:#818cf8; background:rgba(99,102,241,0.2);
+                       border-radius:20px; padding:1px 5px; font-weight:700; flex-shrink:0; margin-top:1px; }
+        .plan-bnd-ar { font-size:0.6rem; color:#64748b; transition:transform 0.2s; flex-shrink:0; margin-top:1px; }
+        .plan-bnd.open .plan-bnd-ar { transform:rotate(90deg); }
+        .plan-bnd-days { display:flex; gap:2px; margin-top:3px; }
+        .plan-bnd-days i { font-size:0.44rem; padding:1px 3px; border-radius:3px;
+                           background:rgba(255,255,255,0.05); color:#475569; font-style:normal; font-weight:700; }
+        .plan-bnd-days i.a { background:rgba(52,211,153,0.16); color:var(--primary); }
+        .plan-bnd-kids { margin:0 0 4px 0; padding-left:9px; border-left:1.5px solid rgba(99,102,241,0.25); }
+        .plan-bnd-sep { font-size:0.5rem; letter-spacing:0.1em; text-transform:uppercase;
+                        color:#475569; margin:8px 0 4px; font-weight:700; }
         /* Protocol exercise editor (separate box below main plan block) */
         .proto-editor-box { background:var(--card); border-radius:14px; padding:14px; margin-top:14px; border:1px solid rgba(99,102,241,0.25); animation:protoEditorIn 0.28s cubic-bezier(0.22,1,0.36,1); }
         @keyframes protoEditorIn { 0% { opacity:0; transform:translateY(-8px); } 100% { opacity:1; transform:translateY(0); } }
@@ -3215,7 +3234,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <div id="mtr-manager-list"></div>
     </div>
     <div class="settings-row" style="margin-top:4px" onclick="toggleGlossary()">
-      <div class="settings-row-left"><span class="settings-row-icon">\uD83D\uDCD6</span><span class="settings-row-label">Dizionario</span></div>
+      <div class="settings-row-left"><span class="settings-row-icon">📖</span><span class="settings-row-label">Dizionario</span></div>
       <span class="settings-row-arrow" id="glossary-arrow">›</span>
     </div>
     <div id="glossary-panel" style="display:none; background:rgba(255,255,255,0.03); border-radius:10px; padding:12px 14px; margin-bottom:4px;">
@@ -3657,7 +3676,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '155';
+const APP_VERSION = '156';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -5583,6 +5602,51 @@ function shouldShowNav() {
 // PIANI — renderPlanPage + drag
 // ════════════════════════════════════════════════
 let planExpandedProto = null;
+/* Bundle aperti nella lista protocolli. Al primo render si apre da solo
+   quello che contiene il protocollo attivo. */
+let planOpenBundles = null;
+
+const AWK_GOAL_LABEL = { full_ipertrofia:'Full Ipertrofia', full_forza:'Full Forza',
+                         hybrid:'Hybrid', calisthenic:'Calisthenic',
+                         ipertrofia:'Ipertrofia', forza:'Forza' };
+const AWK_ENV_LABEL  = { palestra:'Palestra', casa:'Casa', corpolibero:'Corpo libero' };
+
+/* Nome leggibile del bundle: "Hybrid \u00B7 Casa". */
+function planBundleName(proto){
+  const g = AWK_GOAL_LABEL[proto._awkGoal] || AWK_GOAL_LABEL[proto.goal] || 'Protocollo';
+  const e = AWK_ENV_LABEL[proto._env];
+  return e ? (g + ' \u00B7 ' + e) : g;
+}
+
+/* Raggruppa i protocolli per _splitGroup. Quelli senza gruppo, o soli nel
+   loro gruppo, restano singoli: un bundle da un elemento non serve a nulla. */
+function planGroupProtocols(list){
+  const map = {}, order = [];
+  (list || []).forEach(function(p){
+    const k = p._splitGroup || ('__solo_' + p.id);
+    if (!map[k]) { map[k] = []; order.push(k); }
+    map[k].push(p);
+  });
+  const bundles = [], singles = [];
+  order.forEach(function(k){
+    const grp = map[k];
+    if (grp.length > 1) bundles.push({ id:k, name:planBundleName(grp[0]), protos:grp });
+    else singles.push(grp[0]);
+  });
+  return { bundles: bundles, singles: singles };
+}
+
+/* Giorni della settimana occupati dai protocolli del bundle. */
+function planBundleDays(bundle, w){
+  const ids = {}; bundle.protos.forEach(function(p){ ids[p.id] = 1; });
+  const out = [];
+  const row = (APP.dayAssignments && APP.dayAssignments[w]) || {};
+  for (let d = 0; d < 7; d++){
+    const a = row[d];
+    if (a && ids[a.protoId]) out.push(d);
+  }
+  return out;
+}
 const planDragState = { active:false, protoId:null, protoName:'', ghost:null, startX:0, startY:0, hasMoved:false, sourceElement:null };
 
 function selectPlanChapter(w) {
@@ -5758,7 +5822,17 @@ function renderPlanPage(w) {
     protoCol.appendChild(protoLbl);
 
     if (APP.savedProtocols && APP.savedProtocols.length > 0) {
-        APP.savedProtocols.forEach(proto => {
+        const grouped = planGroupProtocols(APP.savedProtocols);
+
+        // Prima apertura: si apre il bundle del protocollo attivo
+        if (planOpenBundles === null) {
+            planOpenBundles = {};
+            const act = APP.savedProtocols.find(p => p.id === APP.activeProtocolId);
+            if (act && act._splitGroup) planOpenBundles[act._splitGroup] = true;
+        }
+
+        // Crea la riga di un singolo protocollo (trascinabile sui giorni)
+        const makeProtoRow = (proto) => {
             const item = document.createElement('div');
             const isExp = planExpandedProto === proto.id;
             item.className = 'plan-proto-item' + (proto.id === APP.activeProtocolId ? ' active-item' : '') + (isExp ? ' expanded' : '');
@@ -5769,9 +5843,48 @@ function renderPlanPage(w) {
                 renderPlanPage(w);
             });
             if (isUnlocked) planSetupDrag(item, proto.id, proto.name);
-            protoCol.appendChild(item);
+            return item;
+        };
+
+        grouped.bundles.forEach(bundle => {
+            const isOpen = !!planOpenBundles[bundle.id];
+            const hasActive = bundle.protos.some(p => p.id === APP.activeProtocolId);
+            const days = planBundleDays(bundle, w);
+
+            const head = document.createElement('div');
+            head.className = 'plan-bnd' + (hasActive ? ' active-bnd' : '') + (isOpen ? ' open' : '');
+            head.innerHTML =
+                '<div style="flex:1; min-width:0;">' +
+                  '<div class="plan-bnd-nm">' + escapeHTML(bundle.name) + '</div>' +
+                  '<div class="plan-bnd-days">' +
+                    DAYS_SHORT.map((d, i) => '<i class="' + (days.indexOf(i) >= 0 ? 'a' : '') + '">' + d.charAt(0) + '</i>').join('') +
+                  '</div>' +
+                '</div>' +
+                '<span class="plan-bnd-ct">' + bundle.protos.length + '</span>' +
+                '<span class="plan-bnd-ar">›</span>';
+            head.addEventListener('click', () => {
+                planOpenBundles[bundle.id] = !planOpenBundles[bundle.id];
+                renderPlanPage(w);
+            });
+            protoCol.appendChild(head);
+
+            if (isOpen) {
+                const kids = document.createElement('div');
+                kids.className = 'plan-bnd-kids';
+                bundle.protos.forEach(p => kids.appendChild(makeProtoRow(p)));
+                protoCol.appendChild(kids);
+            }
         });
-        // Bottone genera deload rimosso — appare solo nel banner Ch.5
+
+        if (grouped.singles.length) {
+            if (grouped.bundles.length) {
+                const sep = document.createElement('div');
+                sep.className = 'plan-bnd-sep';
+                sep.textContent = 'Singoli';
+                protoCol.appendChild(sep);
+            }
+            grouped.singles.forEach(p => protoCol.appendChild(makeProtoRow(p)));
+        }
     } else {
         protoCol.innerHTML += '<div style="font-size:0.62rem;color:#64748b;padding:8px 0">Nessun protocollo. Creane uno dal Profilo.</div>';
     }
@@ -15115,6 +15228,8 @@ function awkGenerateProtocols(){
   });
 
   if (firstProtoId) activateProtocol(firstProtoId);
+  // riazzera lo stato dei bundle: il nuovo gruppo deve aprirsi da solo
+  planOpenBundles = null;
   onboarding.days = P.dayIdx.slice();
   showToast(P.sessions.length + ' protocolli creati su ' + P.days + ' giorni', 'success');
   return true;
