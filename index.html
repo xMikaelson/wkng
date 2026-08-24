@@ -925,10 +925,41 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .ob-ex .en { flex: 1; font-size: 0.76rem; min-width: 0; text-align: left; color: #e2e8f0; }
         .ob-ex .em { font-size: 0.6rem; color: #64748b; margin-top: 2px; }
         .ob-ex .esr { font-size: 0.66rem; color: #a5b4fc; white-space: nowrap; font-weight: 600; }
-        .ob-zone { margin-left: 15px; margin-top: 5px; font-size: 0.6rem; color: #7c8ba1;
-                   background: rgba(99,102,241,0.07); border-left: 2px solid rgba(99,102,241,0.4);
-                   padding: 6px 9px; border-radius: 0 7px 7px 0; line-height: 1.5; text-align: left; }
-        .ob-zone b { color: #a5b4fc; font-size: 0.6rem; font-weight: 700; }
+        /* Banner unico in testa: la spiegazione delle zone compare una volta sola */
+        .ob-zbanner { background: linear-gradient(135deg, rgba(99,102,241,0.13), rgba(99,102,241,0.04));
+                      border: 1px solid rgba(99,102,241,0.25); border-radius: 14px; padding: 13px 14px;
+                      margin-bottom: 12px; display: flex; gap: 11px; align-items: flex-start;
+                      cursor: pointer; text-align: left; }
+        .ob-zbanner .zi { font-size: 1.05rem; flex-shrink: 0; margin-top: 1px; }
+        .ob-zbanner .zt { font-size: 0.71rem; color: #cbd5e1; line-height: 1.55; }
+        .ob-zbanner .zt b { color: #a5b4fc; font-family: 'Unbounded', sans-serif; font-size: 0.66rem;
+                            display: block; margin-bottom: 3px; }
+        .ob-zbanner .zl { color: #6366f1; font-weight: 700; white-space: nowrap; }
+        /* Icona informativa su ogni esercizio */
+        .ob-zi { width: 17px; height: 17px; border-radius: 50%; border: 1px solid #475569; color: #94a3b8;
+                 font-size: 0.55rem; display: inline-flex; align-items: center; justify-content: center;
+                 cursor: pointer; flex-shrink: 0; font-family: Georgia, serif; font-style: italic;
+                 font-weight: 700; transition: 0.15s; }
+        .ob-zi:active { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .ob-ex-right { display: flex; align-items: center; gap: 7px; }
+        /* Foglio dal basso con la spiegazione della zona */
+        .zsheet-ov { position: fixed; inset: 0; background: rgba(2,6,18,0.7); backdrop-filter: blur(3px);
+                     opacity: 0; pointer-events: none; transition: 0.25s; z-index: 9000; }
+        .zsheet-ov.open { opacity: 1; pointer-events: auto; }
+        .zsheet { position: fixed; left: 0; right: 0; bottom: 0; background: #151f33;
+                  border-radius: 22px 22px 0 0; border-top: 1px solid rgba(255,255,255,0.1);
+                  padding: 22px 20px calc(28px + env(safe-area-inset-bottom, 0px));
+                  transform: translateY(100%); transition: 0.3s cubic-bezier(0.22,1,0.36,1);
+                  z-index: 9001; max-width: 480px; margin: 0 auto; text-align: left; }
+        .zsheet.open { transform: translateY(0); }
+        .zsheet .grab { width: 38px; height: 4px; border-radius: 4px; background: #334155; margin: 0 auto 16px; }
+        .zsheet .ze { font-size: 0.57rem; letter-spacing: 0.14em; text-transform: uppercase;
+                      color: var(--accent); font-weight: 700; margin-bottom: 8px; }
+        .zsheet .zz { font-family: 'Unbounded', sans-serif; font-size: 1.05rem; color: #fff; margin-bottom: 10px; }
+        .zsheet .zb { font-size: 0.75rem; color: #cbd5e1; line-height: 1.65; margin-bottom: 14px; }
+        .zsheet .zs { background: rgba(255,255,255,0.04); border-radius: 11px; padding: 12px;
+                      font-size: 0.65rem; color: #94a3b8; line-height: 1.55; }
+        .zsheet .zs b { color: #cbd5e1; display: block; margin-bottom: 3px; font-size: 0.63rem; }
         .ob-ex .esr.time { color: #22d3ee; }
         .wo-hold-btn { width: auto; padding: 13px 26px; border: none; border-radius: 12px;
                        background: linear-gradient(135deg,#0891b2,#22d3ee); color: #04212b;
@@ -2445,6 +2476,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         </div>
     </div>
 
+    <!-- Spiegazione zona di lavoro (foglio dal basso) -->
+    <div class="zsheet-ov" id="zsheet-ov" onclick="zoneSheetClose()"></div>
+    <div class="zsheet" id="zsheet">
+        <div class="grab"></div>
+        <div class="ze">Zona di stimolo</div>
+        <div class="zz" id="zsheet-z"></div>
+        <div class="zb" id="zsheet-b"></div>
+        <div class="zs" id="zsheet-s"></div>
+    </div>
+
     <!-- Setup section nascosta (usata internamente da generate) -->
     <div class="setup-section" id="legacy-setup" style="display: none;">
         <label style="font-size:0.8rem; color:var(--primary); font-weight:bold;">OBIETTIVO:</label>
@@ -3569,7 +3610,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '151';
+const APP_VERSION = '152';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -14339,6 +14380,17 @@ const AWK_POOL = {
 /* Zone di ripetizioni documentate in letteratura. Il numero secco prescritto
    e' una scelta operativa dentro la zona, imposta dall'architettura MTR:
    nessuno studio ha mai confrontato 4x8 contro 4x10 trovando un vincitore. */
+/* Spiegazione estesa mostrata nel foglio informativo */
+const AWK_ZONE_INFO = {
+  forza_main: 'E\' l\'intervallo in cui la ricerca documenta i migliori guadagni di forza massimale in chi ha gia\' esperienza. La scheda prescrive un numero solo perche\' l\'MTR e\' definito per un dato numero di ripetizioni: la zona ti dice dove lo stimolo resta valido, non quante ripetizioni fare.',
+  forza_novi: 'Per chi inizia la priorita\' e\' imparare il movimento, non spostare il massimo carico possibile. Con un carico moderato hai piu\' ripetizioni per costruire la tecnica, e i guadagni di forza arrivano comunque.',
+  forza_acc:  'Zona per accessori e lavoro complementare. Qui non cerchi il carico massimo ma volume di qualita\' sui muscoli che supportano i movimenti principali.',
+  iper_main:  'La zona classica per l\'ipertrofia. Il numero prescritto e\' una scelta operativa al suo interno: nessuno studio ha mai confrontato 4x8 contro 4x10 trovando un vincitore.',
+  iper_wide:  'L\'ipertrofia e\' equivalente tra carichi bassi e alti quando le serie arrivano vicino al cedimento. Per questo la zona utile si estende fino a 20 ripetizioni: quello che conta e\' lo sforzo, non il carico.',
+  cali_main:  'Nelle progressioni a corpo libero il carico non si aggiunge in chilogrammi ma cambiando leva e difficolta\'. La zona resta bassa perche\' ogni progressione va allenata quando e\' ancora impegnativa.',
+  iso_time:   'Negli isometrici l\'adattamento segue il tempo totale sotto tensione, non le ripetizioni. Per questo il core si misura in secondi e non ha un carico ne\' un massimale.'
+};
+
 const AWK_ZONES = {
   forza_main: {z:'1\u20136 rep sopra l\'80%', s:'ACSM 2009 \u2014 forza massimale in intermedi e avanzati'},
   forza_novi: {z:'8\u201312 rep',  s:'ACSM 2009 \u2014 carico moderato consigliato ai principianti'},
@@ -14646,6 +14698,28 @@ function awkDrawEquip(){
   });
 }
 
+/* Apre la spiegazione di una zona. Richiamata dalla "i" e dal banner. */
+function zoneSheetOpen(key){
+  const z = (typeof AWK_ZONES !== 'undefined') ? AWK_ZONES[key] : null;
+  if (!z) return;
+  const zz = document.getElementById('zsheet-z');
+  const zb = document.getElementById('zsheet-b');
+  const zs = document.getElementById('zsheet-s');
+  if (zz) zz.textContent = z.z;
+  if (zb) zb.textContent = (AWK_ZONE_INFO && AWK_ZONE_INFO[key]) || '';
+  if (zs) zs.innerHTML = '<b>Fonte</b>' + z.s;
+  const ov = document.getElementById('zsheet-ov');
+  const sh = document.getElementById('zsheet');
+  if (ov) ov.classList.add('open');
+  if (sh) sh.classList.add('open');
+}
+function zoneSheetClose(){
+  const ov = document.getElementById('zsheet-ov');
+  const sh = document.getElementById('zsheet');
+  if (ov) ov.classList.remove('open');
+  if (sh) sh.classList.remove('open');
+}
+
 function awkRoleColor(r){ return r === 'main' ? '#00ff88' : r === 'sec' ? '#6366f1' : r === 'iso' ? '#f59e0b' : '#64748b'; }
 function awkRoleLabel(r){ return r === 'main' ? 'Compound primario' : r === 'sec' ? 'Compound secondario' : r === 'iso' ? 'Isolamento' : 'Core isometrico'; }
 
@@ -14685,6 +14759,14 @@ function awkRenderResult(){
   if (P.warn && P.warn.length)
     h += P.warn.map(function(w){ return '<div class="ob-warn">' + w + '</div>'; }).join('');
 
+  // Le zone di stimolo si spiegano una volta sola qui, non su ogni riga.
+  const zFirst = (P.sessions[0] && P.sessions[0].exercises[0]) ? P.sessions[0].exercises[0].zone : 'iper_main';
+  h += '<div class="ob-zbanner" onclick="zoneSheetOpen(\'' + zFirst + '\')"><div class="zi">\uD83D\uDD2C</div>' +
+       '<div class="zt"><b>Ogni esercizio ha una zona di stimolo</b>' +
+       'Le ripetizioni prescritte sono un numero preciso, ma la ricerca documenta un intervallo piu\' ampio in cui il muscolo lavora. ' +
+       'Tocca la <span class="zl">i</span> accanto a un esercizio per vedere la sua zona e la fonte. ' +
+       '<span class="zl">Approfondisci &rarr;</span></div></div>';
+
   P.sessions.forEach(function(sess, i){
     h += '<div class="ob-sess"><div class="ob-sess-hd"><div class="idx">' + (i + 1) + '</div>' +
       '<div class="n">' + sess.name + '</div>' +
@@ -14699,8 +14781,10 @@ function awkRenderResult(){
         (e.rir ? ' \u00B7 ' + e.rir : '') + ' \u00B7 rec ' + awkFmtRest(e.rest) +
         (isTime ? ' \u00B7 nessun carico' : (kg ? ' \u00B7 ' + kg + ' kg' : ' \u00B7 corpo libero')) +
         '</div></div>' +
-        '<div class="esr' + (isTime ? ' time' : '') + '">' + e.sets + '\u00D7' + e.reps + (isTime ? 's' : '') + '</div></div>' +
-        (zn ? '<div class="ob-zone"><b>Zona di lavoro ' + zn.z + '</b><br>' + zn.s + '</div>' : '');
+        '<div class="ob-ex-right">' +
+        '<div class="esr' + (isTime ? ' time' : '') + '">' + e.sets + '\u00D7' + e.reps + (isTime ? 's' : '') + '</div>' +
+        (zn ? '<span class="ob-zi" onclick="event.stopPropagation();zoneSheetOpen(\'' + e.zone + '\')">i</span>' : '') +
+        '</div></div>';
     });
     h += '</div></div>';
   });
@@ -14711,8 +14795,7 @@ function awkRenderResult(){
   if (P.goal === 'calisthenic')     refs = [AWK_REFS.cal, AWK_REFS.cal2, AWK_REFS.fail, AWK_REFS.vol];
   h += '<div class="ob-refs"><div class="rt">Fonti dei parametri</div>' +
        refs.map(function(r){ return '<p>' + r + '</p>'; }).join('') + '</div>';
-  h += '<div class="ob-hint">Le ripetizioni sono un numero unico, non un intervallo: l\'MTR e\' definito per un dato numero di ripetizioni. La zona indicata sotto ogni esercizio e\' l\'intervallo in cui la ricerca documenta lo stimolo, non una prescrizione da eseguire.</div>' +
-       '<div class="ob-hint">I carichi mostrati sono un punto di partenza: potrai correggerli con il tuo MTR reale.</div>';
+  h += '<div class="ob-hint">I carichi mostrati sono un punto di partenza: potrai correggerli con il tuo MTR reale.</div>';
   box.innerHTML = h;
 }
 
