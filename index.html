@@ -665,6 +665,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
            homepage restano ancorati in alto e scorrevoli come prima. */
         body.hero-mode { padding-bottom: 0; }
         body.hero-mode .top-bar { display: none; }
+        /* Durante la creazione protocollo resta solo il marchio centrale */
+        body.ob-active .top-bar { display: none; }
         body.hero-mode .container {
             background: transparent;
             min-height: 100vh;
@@ -871,16 +873,29 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
         /* ONBOARDING WIZARD */
         /* ONBOARDING CAROUSEL (v.150) */
-        #onboarding-wizard { overflow: hidden; }
+        #onboarding-wizard { overflow: hidden; margin: 6px 2px 18px; padding: 14px 14px 18px;
+                             background: linear-gradient(165deg, rgba(30,41,59,0.55), rgba(15,23,42,0.8));
+                             border: 1px solid rgba(255,255,255,0.07); border-radius: 22px;
+                             box-shadow: 0 14px 40px rgba(0,0,0,0.28); }
         .ob-railwrap { padding: 4px 0 16px; }
         .ob-rail { display: flex; gap: 6px; max-width: 480px; margin: 0 auto; }
         .ob-rail i { flex: 1; height: 4px; border-radius: 4px; background: rgba(255,255,255,0.09); transition: 0.35s; }
-        .ob-rail i.on { background: linear-gradient(90deg, var(--primary), var(--accent)); }
+        /* Il gradiente attraversa l'intera barra: ogni segmento mostra la sua
+           porzione di un unico sfumato, invece di ripeterlo quattro volte. */
+        .ob-rail i.on { background-image: linear-gradient(90deg, var(--primary), var(--accent));
+                        background-size: 400% 100%; background-repeat: no-repeat; }
+        .ob-rail i:nth-child(1).on { background-position: 0%      0; }
+        .ob-rail i:nth-child(2).on { background-position: 33.333% 0; }
+        .ob-rail i:nth-child(3).on { background-position: 66.666% 0; }
+        .ob-rail i:nth-child(4).on { background-position: 100%    0; }
         .ob-slabel { font-size: 0.58rem; letter-spacing: 0.16em; text-transform: uppercase; color: #64748b;
                      margin-top: 9px; text-align: center; font-weight: 600; }
-        .ob-viewport { overflow: hidden; }
+        /* Senza altezza esplicita il carousel resta alto quanto lo slide piu' lungo
+           (il riepilogo protocollo), lasciando un vuoto enorme sugli altri passi. */
+        .ob-viewport { overflow: hidden; transition: height 0.38s cubic-bezier(0.4,0,0.2,1); }
         .ob-viewport.ob-free { overflow: visible; }
-        .ob-track { display: flex; width: 400%; transition: transform 0.42s cubic-bezier(0.4,0,0.2,1); }
+        .ob-track { display: flex; width: 400%; align-items: flex-start;
+                    transition: transform 0.42s cubic-bezier(0.4,0,0.2,1); }
         .onboarding-step { width: 25%; flex-shrink: 0; padding: 0 3px; animation: none; }
         .ob-track.ob-free .onboarding-step { visibility: hidden; }
         .ob-track.ob-free #ob-step-4 { visibility: visible; }
@@ -934,7 +949,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .ob-zbanner .zt { font-size: 0.71rem; color: #cbd5e1; line-height: 1.55; }
         .ob-zbanner .zt b { color: #a5b4fc; font-family: 'Unbounded', sans-serif; font-size: 0.66rem;
                             display: block; margin-bottom: 3px; }
-        .ob-zbanner .zl { color: #6366f1; font-weight: 700; white-space: nowrap; }
+        .ob-zi-inline { vertical-align: -3px; margin: 0 1px; }
         /* Icona informativa su ogni esercizio */
         .ob-zi { width: 17px; height: 17px; border-radius: 50%; border: 1px solid #475569; color: #94a3b8;
                  font-size: 0.55rem; display: inline-flex; align-items: center; justify-content: center;
@@ -2406,8 +2421,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
     <!-- ONBOARDING WIZARD (nascosto inizialmente) -->
     <div id="onboarding-wizard" style="display: none;">
-        <div style="text-align:left; margin-bottom:8px;">
-            <button onclick="exitWizardToHome()" style="background:none; border:none; color:#94a3b8; font-size:0.78rem; cursor:pointer; display:flex; align-items:center; gap:5px; padding:4px 0; width:auto; text-transform:none;">
+        <div style="text-align:left; margin-bottom:6px;">
+            <button id="ob-back-btn" onclick="obBack()" style="display:none; background:none; border:none; color:#94a3b8; font-size:0.78rem; cursor:pointer; align-items:center; gap:5px; padding:4px 0; width:auto; text-transform:none;">
+                &larr; Indietro
+            </button>
+            <button id="ob-home-btn" onclick="exitWizardToHome()" style="background:none; border:none; color:#94a3b8; font-size:0.78rem; cursor:pointer; display:flex; align-items:center; gap:5px; padding:4px 0; width:auto; text-transform:none;">
                 &larr; Torna alla home
             </button>
         </div>
@@ -2472,7 +2490,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
         <div style="margin-top:18px;">
             <button class="ob-next-btn" id="ob-next-btn" onclick="obNext()" disabled>AVANTI &rarr;</button>
-            <button class="ob-back-btn" id="ob-back-btn" onclick="obBack()" style="display:none; margin-top:8px;">&larr; INDIETRO</button>
         </div>
     </div>
 
@@ -3610,7 +3627,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '152';
+const APP_VERSION = '153';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -5451,7 +5468,7 @@ async function onLoginSuccess(user, usernameOverride = null) {
         showResultsFromHero(); // Always go to home on login
     } else {
         // Primo accesso senza protocolli: mostra hero (landing)
-        document.getElementById('onboarding-wizard').style.display = 'none';
+        obSetVisible(false);
         document.getElementById('hero-section').style.display = '';
         document.getElementById('results').style.display = 'none';
         const hint = document.getElementById('back-to-results-hint');
@@ -13336,7 +13353,7 @@ function performLogout() {
 
     // 2. Nascondi results/wizard
     document.getElementById('results').style.display = 'none';
-    document.getElementById('onboarding-wizard').style.display = 'none';
+    obSetVisible(false);
 
     // 3. Mostra hero con pulsante login
     document.getElementById('hero-section').style.display = '';
@@ -14676,7 +14693,7 @@ function awkDrawEquip(){
   if (!wrap) return;
   const show = onboarding.place === 'casa' || onboarding.place === 'corpolibero';
   wrap.style.display = show ? 'block' : 'none';
-  if (!show) return;
+  if (!show) { obSyncHeight(); return; }
   const pool = (onboarding.place === 'corpolibero')
     ? AWK_EQUIP.filter(function(e){ return AWK_EQUIP_CALI.indexOf(e.k) >= 0; })
     : AWK_EQUIP;
@@ -14693,6 +14710,7 @@ function awkDrawEquip(){
       const i = onboarding.equip.indexOf(e.k);
       if (i >= 0) onboarding.equip.splice(i, 1); else onboarding.equip.push(e.k);
       awkDrawEquip();
+      obSyncHeight();
     };
     c.appendChild(d);
   });
@@ -14764,8 +14782,8 @@ function awkRenderResult(){
   h += '<div class="ob-zbanner" onclick="zoneSheetOpen(\'' + zFirst + '\')"><div class="zi">\uD83D\uDD2C</div>' +
        '<div class="zt"><b>Ogni esercizio ha una zona di stimolo</b>' +
        'Le ripetizioni prescritte sono un numero preciso, ma la ricerca documenta un intervallo piu\' ampio in cui il muscolo lavora. ' +
-       'Tocca la <span class="zl">i</span> accanto a un esercizio per vedere la sua zona e la fonte. ' +
-       '<span class="zl">Approfondisci &rarr;</span></div></div>';
+       'Tocca la <span class="ob-zi ob-zi-inline">i</span> accanto a un esercizio per vedere la sua zona e la fonte.' +
+       '</div></div>';
 
   P.sessions.forEach(function(sess, i){
     h += '<div class="ob-sess"><div class="ob-sess-hd"><div class="idx">' + (i + 1) + '</div>' +
@@ -14810,8 +14828,11 @@ function obUpdate(){
     btn.disabled = !ok;
     btn.innerHTML = st === 3 ? 'GENERA PROTOCOLLO' : st === 4 ? 'ATTIVA PROTOCOLLO \uD83D\uDE80' : 'AVANTI &rarr;';
   }
+  // Passo 1: si torna alla home. Dagli altri: si torna indietro di uno slide.
   const back = document.getElementById('ob-back-btn');
-  if (back) back.style.display = st > 1 ? 'block' : 'none';
+  const home = document.getElementById('ob-home-btn');
+  if (back) back.style.display = st > 1 ? 'flex' : 'none';
+  if (home) home.style.display = st > 1 ? 'none' : 'flex';
   const rail = document.getElementById('ob-rail');
   if (rail) Array.prototype.forEach.call(rail.children, function(d, i){ d.className = i < st ? 'on' : ''; });
   const lbl = document.getElementById('ob-slabel');
@@ -14821,6 +14842,16 @@ function obUpdate(){
     ? 'Partiamo dal corpo libero. Aggiungi gli attrezzi che possiedi.'
     : 'Ogni esercizio viene scelto in base a cosa hai davvero.';
 }
+
+/* Adegua l'altezza del carousel allo slide visibile. */
+function obSyncHeight(){
+  const vp = document.querySelector('.ob-viewport');
+  const sl = document.getElementById('ob-step-' + (onboarding.step || 1));
+  if (!vp || !sl) return;
+  const hgt = sl.scrollHeight;
+  if (hgt > 0) vp.style.height = hgt + 'px';
+}
+window.addEventListener('resize', function(){ obSyncHeight(); });
 
 function obGo(n){
   onboarding.step = n;
@@ -14835,6 +14866,10 @@ function obGo(n){
   if (vp) vp.classList.toggle('ob-free', freeMode);
   if (track) track.classList.toggle('ob-free', freeMode);
   obUpdate();
+  obSyncHeight();
+  // il contenuto puo' cambiare altezza dopo il render (immagini, chip, riepilogo)
+  setTimeout(obSyncHeight, 60);
+  setTimeout(obSyncHeight, 460);
   window.scrollTo({ top: 0, behavior: 'instant' });
 }
 function obNext(){ if ((onboarding.step || 1) < 4) obGo((onboarding.step || 1) + 1); else finishOnboarding(); }
@@ -14892,10 +14927,18 @@ function awkGenerateProtocols(){
   return true;
 }
 
+/* Unico punto in cui il wizard viene mostrato o nascosto: tiene allineata
+   la classe che nasconde la barra superiore, evitando due volte "AWAKENING". */
+function obSetVisible(on) {
+    const w = document.getElementById('onboarding-wizard');
+    if (w) w.style.display = on ? 'block' : 'none';
+    document.body.classList.toggle('ob-active', !!on);
+}
+
 function startOnboarding() {
     document.getElementById('hero-section').style.display = 'none';
     document.getElementById('results').style.display = 'none';
-    document.getElementById('onboarding-wizard').style.display = 'block';
+    obSetVisible(true);
     onboarding.level = null;
     onboarding.goal = null;
     onboarding.env = null;
@@ -15278,7 +15321,7 @@ function finishOnboarding() {
         if (!awkGenerateProtocols()) { showToast('Protocollo non generato, riprova'); return; }
     }
 
-    document.getElementById('onboarding-wizard').style.display = 'none';
+    obSetVisible(false);
 
     // Pre-assign selected days to protocols
     if (APP.userName && onboarding.days.length > 0) {
@@ -15333,7 +15376,7 @@ function finishOnboarding() {
     setTimeout(() => _results.classList.remove('page-fade-in'), 400);
     updateChapterBanner(true);
     document.getElementById('hero-section').style.display = 'none';
-    document.getElementById('onboarding-wizard').style.display = 'none';
+    obSetVisible(false);
     window.scrollTo({ top: 0, behavior: 'instant' });
 
     setTimeout(() => {
@@ -17020,7 +17063,7 @@ function launchConfetti() {
 
 function showResultsFromHero() {
     document.getElementById('hero-section').style.display = 'none';
-    document.getElementById('onboarding-wizard').style.display = 'none';
+    obSetVisible(false);
     const hint = document.getElementById('back-to-results-hint');
     if (hint) hint.style.display = 'none';
     if (APP.exerciseData.length > 0 && document.getElementById('plan-body').innerHTML === '') {
@@ -17039,7 +17082,7 @@ function exitWizardToHome() {
     onboarding.level = null; onboarding.goal = null; onboarding.env = null; onboarding.days = [];
     document.querySelectorAll('.onboarding-step').forEach(s => s.classList.remove('active'));
     document.getElementById('ob-step-1').classList.add('active');
-    document.getElementById('onboarding-wizard').style.display = 'none';
+    obSetVisible(false);
     // Vai alla homepage (results) se ha protocolli, altrimenti hero
     if (APP.exerciseData.length > 0) {
         showResultsFromHero();
@@ -17354,7 +17397,7 @@ async function performFullReset() {
 
     // 2. Nascondi results/wizard
     document.getElementById('results').style.display = 'none';
-    document.getElementById('onboarding-wizard').style.display = 'none';
+    obSetVisible(false);
 
     // 3. Reset elementi minori
     const sdSmall = document.getElementById('start-date-small');
@@ -17823,7 +17866,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else {
                 document.getElementById('hero-section').style.display = '';
                 document.getElementById('results').style.display = 'none';
-                document.getElementById('onboarding-wizard').style.display = 'none';
+                obSetVisible(false);
             }
         }
     } catch(e) {
@@ -17837,7 +17880,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else {
                 document.getElementById('hero-section').style.display = '';
                 document.getElementById('results').style.display = 'none';
-                document.getElementById('onboarding-wizard').style.display = 'none';
+                obSetVisible(false);
             }
         }
     }
