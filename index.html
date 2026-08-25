@@ -3702,7 +3702,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '160';
+const APP_VERSION = '161';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -6211,6 +6211,8 @@ var _protoEditorDrafts = {};
 // ── Helper: risolve lo slot (upper/lower/push/pull/legs) da _splitSlot o dal nome ──
 function protoResolveSlot(proto) {
     var slot = (proto._splitSlot || '').toLowerCase();
+    // "awk0", "awk1"... non dicono nulla: si ricade sul nome del protocollo
+    if (/^awk\d+$/.test(slot)) slot = '';
     if (slot) return slot;
     var nL = (proto.name || '').toLowerCase();
     if (/upper[\s_-]?body|upperbody|corpo superiore|busto/.test(nL) || / - upper\b|-upper\b/.test(nL)) return 'upper';
@@ -6787,6 +6789,18 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
         tipoLabel = 'IPERTROFIA — Legs';
         muscoliTarget = 'quadricipiti, femorali, glutei, polpacci, abduttori';
         muscoliEsclusi = 'petto, schiena, spalle, bicipiti, tricipiti — sono per Push e Pull';
+    } else if (splitSlot === 'fullbody') {
+        tipoAllenamento = (goal === 'forza') ? 'forza' : 'ipertrofia';
+        serieSuggerite = '';
+        tipoLabel = (goal === 'forza' ? 'FORZA' : 'IPERTROFIA') + ' — Full Body';
+        muscoliTarget = 'tutto il corpo: almeno una spinta, una trazione e un movimento per le gambe';
+        muscoliEsclusi = '';
+    } else if (splitSlot === 'skill') {
+        tipoAllenamento = 'ipertrofia';
+        serieSuggerite = '';
+        tipoLabel = 'CALISTHENIC — Skill e Core';
+        muscoliTarget = 'core, spalle, dorsali; progressioni a corpo libero e lavoro isometrico';
+        muscoliEsclusi = '';
     } else if (goal === 'forza') {
         tipoAllenamento = 'forza';
         serieSuggerite = '5×5 oppure 5×6';
@@ -6835,17 +6849,39 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
             'NON usare mai intervalli tipo "6-10": scrivi sempre un numero solo.';
     }
 
-    // ── Determina attrezzatura disponibile ──
+    // ── Attrezzatura: l'inventario vero, non due casi fissi ──
+    // Prima esistevano solo "casa = manubri e panca" e "palestra = tutto": una
+    // scheda a casa con sbarra ed elastici si vedeva bocciare le trazioni, e il
+    // corpo libero veniva giudicato come se fosse una palestra completa.
     var env = proto._env || '';
     if (!env) {
         var nomeL = proto.name.toLowerCase();
-        if (nomeL.indexOf('casa') !== -1 || nomeL.indexOf('home') !== -1 || nomeL.indexOf('manubri') !== -1) env = 'casa';
+        if (nomeL.indexOf('corpo libero') !== -1) env = 'corpolibero';
+        else if (nomeL.indexOf('casa') !== -1 || nomeL.indexOf('home') !== -1 || nomeL.indexOf('manubri') !== -1) env = 'casa';
         else if (nomeL.indexOf('palestra') !== -1 || nomeL.indexOf('gym') !== -1) env = 'palestra';
     }
+    var envLabel = (env === 'casa') ? 'CASA' : (env === 'corpolibero') ? 'CORPO LIBERO' : 'PALESTRA';
     var attrezzaturaLabel, attrezzaturaDesc;
-    if (env === 'casa') {
-        attrezzaturaLabel = 'CASA (solo manubri e panca piana)';
-        attrezzaturaDesc = 'L\'utente si allena a casa con soli manubri e panca piana. VIETATO consigliare: bilanciere, macchine, lat machine, cavi, leg press, smith machine, multipower. USA SOLO esercizi con manubri o a corpo libero.';
+    var invRaw = proto._awkEquip;
+    if (Array.isArray(invRaw) && typeof AWK_EQUIP !== 'undefined') {
+        var inv = (typeof awkExpandEquip === 'function') ? awkExpandEquip(invRaw) : invRaw;
+        var nomi = inv.map(function(k){
+            var e = AWK_EQUIP.find(function(x){ return x.k === k; });
+            return e ? e.l : k;
+        });
+        attrezzaturaLabel = envLabel + (nomi.length ? ' — ' + nomi.join(', ') : ' — nessun attrezzo');
+        attrezzaturaDesc = nomi.length
+            ? 'L\'utente dispone SOLO di: ' + nomi.join(', ') + ', piu\' il corpo libero. '
+              + 'Ogni esercizio che richieda attrezzatura diversa da questa e\' VIETATO. '
+              + 'Non segnalare come problema un esercizio che rientra in questo elenco.'
+            : 'L\'utente si allena SOLO a corpo libero, senza alcun attrezzo. '
+              + 'VIETATO consigliare bilanciere, manubri, macchine, cavi, elastici, sbarra, parallele o anelli.';
+    } else if (env === 'corpolibero') {
+        attrezzaturaLabel = 'CORPO LIBERO';
+        attrezzaturaDesc = 'L\'utente si allena a corpo libero. VIETATO consigliare bilanciere, manubri, macchine o cavi. Ammessi corpo libero e piccoli attrezzi gia\' presenti nella scheda.';
+    } else if (env === 'casa') {
+        attrezzaturaLabel = 'CASA';
+        attrezzaturaDesc = 'L\'utente si allena a casa. VIETATO consigliare macchine, lat machine, cavi, leg press, smith machine o multipower. Ammessi manubri, bilanciere, corpo libero e i piccoli attrezzi gia\' presenti nella scheda.';
     } else {
         attrezzaturaLabel = 'PALESTRA (attrezzatura completa)';
         attrezzaturaDesc = 'L\'utente ha accesso a palestra completa: bilanciere, manubri, macchine, cavi, lat machine, leg press, smith machine. Sono ammessi anche esercizi a corpo libero come accessori (dip, chin-up, push-up, plank, ecc.).';
@@ -6855,12 +6891,30 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
         return (i+1) + '. ' + (e.name || '(senza nome)') + ' — ' + (e.sr || '?') + ' — ' + (e.baseWeight || 0) + 'kg';
     }).join('\n');
 
-    var esempioForza   = 'Bench Press | 5 x 5 | 60\nLateral Raise | 3 x 8 | 10';
-    var esempioIpert   = 'Lat Machine | 4 x 8 | 55\nCurl Manubri | 3 x 12 | 14';
-    var esempioRiga    = tipoAllenamento === 'forza' ? esempioForza : esempioIpert;
+    // L'esempio serve solo a mostrare il formato: con attrezzatura ridotta non
+    // deve suggerire macchine, altrimenti contraddice il vincolo appena dato.
+    var esempioRiga;
+    if (env === 'corpolibero') {
+        esempioRiga = 'Trazioni alla Sbarra | 4 x 6 | CL\nPush-up | 3 x 12 | CL';
+    } else if (env === 'casa') {
+        esempioRiga = tipoAllenamento === 'forza'
+            ? 'Panca Piana con Manubri | 5 x 5 | 30\nAlzate Laterali | 3 x 8 | 8'
+            : 'Panca Piana con Manubri | 4 x 8 | 26\nCurl con Manubri | 3 x 12 | 12';
+    } else {
+        esempioRiga = tipoAllenamento === 'forza'
+            ? 'Panca Piana con Bilanciere | 5 x 5 | 60\nAlzate Laterali | 3 x 8 | 10'
+            : 'Lat Machine | 4 x 8 | 55\nCurl con Manubri | 3 x 12 | 14';
+    }
 
     var prompt =
         'Sei un coach esperto. Analizza questo protocollo e rispondi SOLO in italiano.\n\n' +
+        (proto._awkGoal
+          ? 'Questa scheda e\' stata generata dal motore dell\'app secondo parametri\n' +
+            'presi da letteratura peer-reviewed (ACSM 2009, Schoenfeld 2016/2017,\n' +
+            'Grgic 2018), gia\' filtrati per il livello e l\'attrezzatura dell\'utente.\n' +
+            'Serie, ripetizioni, recuperi e selezione degli esercizi sono quindi\n' +
+            'gia\' coerenti: intervieni solo se trovi un errore concreto.\n\n'
+          : '') +
         '━━ CONTESTO ━━\n' +
         'Nome protocollo: "' + proto.name + '"\n' +
         'Tipo: ' + tipoLabel + '\n' +
@@ -6876,9 +6930,18 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
         '   Il tuo compito e\' verificare la SCELTA degli esercizi, non la programmazione.\n' +
         '   Riporta ogni esercizio con lo stesso schema serie x ripetizioni che ha adesso.\n' +
         '   Se aggiungi un esercizio nuovo, usa i parametri del suo ruolo dalla tabella sopra.\n' +
-        '3. Rispetta l\'attrezzatura: ' + (env === 'casa' ? 'SOLO manubri/corpo libero.' : 'qualsiasi attrezzatura da palestra.') + '\n\n' +
+        '3. Rispetta l\'attrezzatura elencata sopra: non proporre nulla che l\'utente non abbia.\n' +
+        '4. Gli esercizi con schema in secondi (es. "3 x 45s") sono isometrici: si\n' +
+        '   misurano a tempo, non hanno carico e non sono un errore. Lasciali come sono.\n' +
+        '5. Un esercizio a corpo libero con 0 kg e\' normale: non segnalarlo come dato mancante.\n\n' +
         'Struttura risposta:\n' +
-        '⚠️ PUNTI CRITICI\n(max 3, brevi)\n\n' +
+        '⚠️ PUNTI CRITICI\n' +
+        'Elenca SOLO problemi reali e verificabili: un esercizio per un muscolo\n' +
+        'escluso, un attrezzo che l\'utente non possiede, un pattern di movimento\n' +
+        'mancante. Massimo 3. Se non ne trovi, scrivi esattamente\n' +
+        '"Nessun problema rilevato." e passa oltre: NON inventare rilievi per\n' +
+        'riempire la sezione, e NON segnalare come critico cio\' che le istruzioni\n' +
+        'sopra ti dicono di lasciare invariato.\n\n' +
         '✅ COSA VA BENE\n(max 2)\n\n' +
         '💡 CONSIGLIO\n(una frase)\n\n' +
         '📋 LISTA DEFINITIVA\n' +
@@ -15444,6 +15507,22 @@ function obBack(){ if ((onboarding.step || 1) > 1) obGo((onboarding.step || 1) -
 function goToStep(n){ obGo(n); }
 
 /* Genera un protocollo per ogni seduta del piano */
+/* Traduce il nome di seduta del generatore nello slot che il Coach conosce.
+   Senza questo lo slot restava "awk0", nessun ramo lo riconosceva e ogni scheda
+   veniva analizzata come "tutto il corpo": il Coach non poteva sapere che una
+   Upper non deve contenere gambe. */
+function awkSlotFromSession(name){
+  const n = (name || '').toLowerCase();
+  if (/full\s*body/.test(n)) return 'fullbody';
+  if (/\bpush\b/.test(n)) return 'push';
+  if (/\bpull\b/.test(n)) return 'pull';
+  if (/\blegs\b|gambe/.test(n)) return 'legs';
+  if (/\bupper\b/.test(n)) return 'upper';
+  if (/\blower\b/.test(n)) return 'lower';
+  if (/skill|core/.test(n)) return 'skill';
+  return '';
+}
+
 function awkGenerateProtocols(){
   const P = APP._awkProto;
   if (!P) return false;
@@ -15477,7 +15556,7 @@ function awkGenerateProtocols(){
       exerciseTracking: [],
       totalWorkouts: 0,
       _splitGroup: groupId,
-      _splitSlot: 'awk' + i,
+      _splitSlot: awkSlotFromSession(sess.n) || ('awk' + i),
       _env: onboarding.place || 'palestra',
       _awkGoal: P.goal,
       _awkLevel: P.level,
