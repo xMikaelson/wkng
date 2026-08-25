@@ -3702,7 +3702,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '159';
+const APP_VERSION = '160';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -3913,6 +3913,7 @@ async function saveProtocolToSupabase(proto) {
             _awkGoal: proto._awkGoal || null,
             _awkLevel: proto._awkLevel || null,
             _awkEquip: proto._awkEquip || null,
+            _planDay: (typeof proto._planDay === 'number') ? proto._planDay : null,
             createdAt: proto.createdAt || null
         };
         const payload = { id: proto.id, user_id: user.id, name: proto.name, goal: proto.goal, exercises_json };
@@ -5505,7 +5506,8 @@ async function onLoginSuccess(user, usernameOverride = null) {
                 _env: meta._env || null,
                 _awkGoal: meta._awkGoal || null,
                 _awkLevel: meta._awkLevel || null,
-                _awkEquip: meta._awkEquip || null
+                _awkEquip: meta._awkEquip || null,
+                _planDay: (typeof meta._planDay === 'number') ? meta._planDay : undefined
             };
         });
     }
@@ -5668,18 +5670,64 @@ function planClearFocus(){ planFocus = null; renderPlanPage(APP.selectedViewWeek
 /* Rende "in uso" un intero bundle. Il protocollo che diventa corrente e' quello
    assegnato a oggi; se oggi e' riposo, il primo giorno occupato dal gruppo;
    se il gruppo non ha giorni, il suo primo protocollo. */
+/* I protocolli di un bundle senza giorno memorizzato lo ereditano da come
+   sono oggi assegnati in settimana: serve ai piani creati prima della v.160. */
+function planBackfillPlanDays(w){
+  const row = (APP.dayAssignments && APP.dayAssignments[w]) || {};
+  for (let d = 0; d < 7; d++){
+    const a = row[d];
+    if (!a) continue;
+    const p = (APP.savedProtocols || []).find(function(x){ return x.id === a.protoId; });
+    if (p && typeof p._planDay !== 'number') p._planDay = d;
+  }
+}
+
+/* Riscrive la settimana con i protocolli del bundle scelto. Senza questo la
+   pianificazione restava quella del piano precedente: il bundle veniva messo
+   in uso ma i giorni continuavano a mostrare i protocolli dell'altro. */
+function planApplyBundleSchedule(bundle){
+  if (!bundle || !bundle.protos || !bundle.protos.length) return 0;
+  const withDay = bundle.protos.filter(function(p){ return typeof p._planDay === 'number'; });
+  if (!withDay.length) return 0;
+  let n = 0;
+  for (let wi = 0; wi < N_WEEKS; wi++){
+    if (!APP.chipStates[wi]) APP.chipStates[wi] = ['rest','rest','rest','rest','rest','rest','rest'];
+    if (!APP.dayAssignments[wi]) APP.dayAssignments[wi] = [null,null,null,null,null,null,null];
+    // libera i giorni non ancora completati
+    for (let d = 0; d < 7; d++){
+      if (APP.chipStates[wi][d] === 'done') continue;
+      APP.chipStates[wi][d] = 'rest';
+      APP.dayAssignments[wi][d] = null;
+    }
+    withDay.forEach(function(p){
+      const d = p._planDay;
+      if (d < 0 || d > 6) return;
+      if (APP.chipStates[wi][d] === 'done') return;
+      APP.chipStates[wi][d] = 'selected';
+      APP.dayAssignments[wi][d] = { protoId: p.id, protoName: p.name };
+      if (wi === 0) n++;
+    });
+  }
+  return n;
+}
+
 function planActivateBundle(bundle){
   if (!bundle || !bundle.protos || !bundle.protos.length) return;
   const w = APP.selectedViewWeek || 0;
   const todayIdx = (new Date().getDay() + 6) % 7;   // 0 = lunedi'
-  const row = (APP.dayAssignments && APP.dayAssignments[w]) || {};
-  const inBundle = function(id){ return bundle.protos.find(function(p){ return p.id === id; }) || null; };
-  let target = null;
-  if (row[todayIdx]) target = inBundle(row[todayIdx].protoId);
-  for (let d = 0; d < 7 && !target; d++){ if (row[d]) target = inBundle(row[d].protoId); }
+  planBackfillPlanDays(w);
+  const byDay = {};
+  bundle.protos.forEach(function(p){ if (typeof p._planDay === 'number') byDay[p._planDay] = p; });
+  let target = byDay[todayIdx] || null;
+  for (let d = 0; d < 7 && !target; d++){ if (byDay[d]) target = byDay[d]; }
   if (!target) target = bundle.protos[0];
   planFocus = { type:'b', id: bundle.id };
+  // la settimana passa ai protocolli di questo piano
+  planBackfillPlanDays(w);
+  planApplyBundleSchedule(bundle);
   activateProtocol(target.id, true);
+  initDashboard();
+  restoreChipStates();
   renderPlanPage(w);
 }
 /* Il filtro non deve puntare a un protocollo o a un bundle sparito. */
@@ -15864,6 +15912,7 @@ function finishOnboarding() {
                 if (APP.chipStates[wIdx][dayIndex] === 'done') return;
                 APP.chipStates[wIdx][dayIndex] = 'selected';
                 APP.dayAssignments[wIdx][dayIndex] = { protoId: proto.id, protoName: proto.name };
+                proto._planDay = dayIndex;   // il giorno appartiene al protocollo, non alla settimana
             });
         };
         for (let wi = 0; wi < N_WEEKS; wi++) assign(wi);
@@ -17429,6 +17478,7 @@ function handleProtocolDrop(protoId, weekIndex, dayIndex) {
     // Mark this day as selected and assign the protocol
     APP.chipStates[weekIndex][dayIndex] = 'selected';
     APP.dayAssignments[weekIndex][dayIndex] = { protoId: protoId, protoName: proto.name };
+    proto._planDay = dayIndex;   // trascinando si aggiorna il giorno del protocollo
 
     // Aggiorna subito la classe della chip assegnata
     const _chipsEl = document.getElementById(`w-${weekIndex}`);
