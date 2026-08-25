@@ -3727,7 +3727,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '162';
+const APP_VERSION = '163';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -6970,7 +6970,14 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
         '3. Rispetta l\'attrezzatura elencata sopra: non proporre nulla che l\'utente non abbia.\n' +
         '4. Gli esercizi con schema in secondi (es. "3 x 45s") sono isometrici: si\n' +
         '   misurano a tempo, non hanno carico e non sono un errore. Lasciali come sono.\n' +
-        '5. Un esercizio a corpo libero con 0 kg e\' normale: non segnalarlo come dato mancante.\n\n' +
+        '5. Un esercizio a corpo libero con 0 kg e\' normale: non segnalarlo come dato mancante.\n' +
+        '6. FONDAMENTALE: la LISTA DEFINITIVA e\' il risultato finale, non la copia\n' +
+        '   della lista di partenza. Ogni esercizio che proponi di aggiungere DEVE\n' +
+        '   comparirci, e quelli che proponi di togliere NON devono comparirci.\n' +
+        '   Non consigliare nulla che non sia gia\' applicato nella lista: se scrivi\n' +
+        '   "aggiungi un calf raise", quel calf raise deve essere nella lista.\n' +
+        '   Se invece la scheda va bene cosi\', riporta la lista identica e non\n' +
+        '   proporre aggiunte.\n\n' +
         'Struttura risposta:\n' +
         '⚠️ PUNTI CRITICI\n' +
         'Verifica una per una queste quattro cose, e segnala solo quelle che\n' +
@@ -6979,12 +6986,19 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
         'b) un esercizio che richiede attrezzatura non presente nell\'elenco sopra;\n' +
         'c) un muscolo TARGET rimasto senza nessun esercizio;\n' +
         'd) uno stesso movimento ripetuto piu\' volte senza motivo.\n' +
-        'Se tutti e quattro i controlli passano, scrivi esattamente\n' +
-        '"Nessun problema rilevato." NON inventare rilievi per riempire la sezione,\n' +
-        'e NON segnalare come critico cio\' che le istruzioni sopra ti dicono di\n' +
-        'lasciare invariato (serie, ripetizioni, secondi degli isometrici, 0 kg).\n\n' +
+        'Se tutti e quattro i controlli passano, NON scrivere solo "nessun problema":\n' +
+        'spiega in una frase perche\' la scheda regge, citando i controlli fatti.\n' +
+        'Esempio: "Nessun problema. Gli esercizi coprono tutti i muscoli target,\n' +
+        'nessuno richiede attrezzatura che non hai e non ci sono movimenti ripetuti."\n' +
+        'NON inventare rilievi per riempire la sezione, e NON segnalare come critico\n' +
+        'cio\' che le istruzioni sopra ti dicono di lasciare invariato (serie,\n' +
+        'ripetizioni, secondi degli isometrici, 0 kg).\n\n' +
         '✅ COSA VA BENE\n(max 2)\n\n' +
-        '💡 CONSIGLIO\n(una frase)\n\n' +
+        '💡 CONSIGLIO\n' +
+        'Una frase su come sfruttare al meglio la scheda COSI\' COM\'E\' nella\n' +
+        'lista qui sotto: esecuzione, progressione, ordine degli esercizi.\n' +
+        'NON proporre aggiunte o rimozioni: quelle vanno gia\' applicate nella\n' +
+        'lista definitiva.\n\n' +
         '📋 LISTA DEFINITIVA\n' +
         'Lista completa e definitiva. Formato — un esercizio per riga:\n' +
         'NOME | SERIE x RIP | KG\n' +
@@ -7047,6 +7061,7 @@ function protoEditorShowCoachResult(proto, draft, weekIdx, saveBtn, coachBox, co
 
     // Confronto affiancato: a sinistra la lista attuale, a destra quella del
     // Coach. Cosi' si vede cosa cambierebbe prima di premere "Applica".
+    var nessunaDifferenza = false;
     if (suggestedExercises.length > 0) {
         var norm = function(x){ return (x || '').toString().trim().toLowerCase(); };
         var beforeList = draft.filter(function(e){ return e.name && e.name.trim(); });
@@ -7080,10 +7095,11 @@ function protoEditorShowCoachResult(proto, draft, weekIdx, saveBtn, coachBox, co
         }).join('') || '<div class="cmp-none">Nessun esercizio</div>';
 
         var cmp = document.createElement('div');
-        var riepilogo = (nAdd || nDel || nChg)
-            ? [nAdd ? nAdd + ' aggiunti' : '', nDel ? nDel + ' rimossi' : '', nChg ? nChg + ' modificati' : '']
-                .filter(Boolean).join(' \u00b7 ')
-            : 'Nessuna differenza: il Coach lascerebbe la scheda com\'e\'.';
+        nessunaDifferenza = !(nAdd || nDel || nChg);
+        var riepilogo = nessunaDifferenza
+            ? 'Nessuna differenza: il Coach lascerebbe la scheda com\'e\'.'
+            : [nAdd ? nAdd + ' aggiunti' : '', nDel ? nDel + ' rimossi' : '', nChg ? nChg + ' modificati' : '']
+                .filter(Boolean).join(' \u00b7 ');
         cmp.innerHTML =
             '<div class="cmp-legend">' + riepilogo + '</div>' +
             '<div class="cmp-wrap">' +
@@ -7097,30 +7113,39 @@ function protoEditorShowCoachResult(proto, draft, weekIdx, saveBtn, coachBox, co
     var actionsDiv = document.createElement('div');
     actionsDiv.className = 'proto-coach-actions';
 
-    // "Applica" è sempre presente — se il parser ha trovato esercizi li usa,
-    // altrimenti è disabilitato con spiegazione
-    var applyBtn = document.createElement('button');
-    applyBtn.className = 'proto-coach-apply';
-    if (suggestedExercises.length > 0) {
-        applyBtn.textContent = '✨ Applica la lista del Coach';
-        applyBtn.onclick = function() {
-            protoEditorCommit(proto, suggestedExercises, weekIdx, saveBtn, true);
+    if (nessunaDifferenza) {
+        // Le due liste coincidono: scegliere tra loro non avrebbe senso
+        var okBtn = document.createElement('button');
+        okBtn.className = 'proto-coach-apply';
+        okBtn.textContent = '✅ Conferma';
+        okBtn.onclick = function() {
+            protoEditorCommit(proto, draft, weekIdx, saveBtn, false);
         };
+        actionsDiv.appendChild(okBtn);
     } else {
-        applyBtn.textContent = '⚠️ Lista non rilevata — riprova';
-        applyBtn.style.opacity = '0.5';
-        applyBtn.style.cursor = 'not-allowed';
-        applyBtn.title = 'Il Coach non ha prodotto una lista nel formato atteso. Riprova l\'analisi.';
-    }
-    actionsDiv.appendChild(applyBtn);
+        var applyBtn = document.createElement('button');
+        applyBtn.className = 'proto-coach-apply';
+        if (suggestedExercises.length > 0) {
+            applyBtn.textContent = '✨ Applica la lista del Coach';
+            applyBtn.onclick = function() {
+                protoEditorCommit(proto, suggestedExercises, weekIdx, saveBtn, true);
+            };
+        } else {
+            applyBtn.textContent = '⚠️ Lista non rilevata — riprova';
+            applyBtn.style.opacity = '0.5';
+            applyBtn.style.cursor = 'not-allowed';
+            applyBtn.title = 'Il Coach non ha prodotto una lista nel formato atteso. Riprova l\'analisi.';
+        }
+        actionsDiv.appendChild(applyBtn);
 
-    var keepBtn = document.createElement('button');
-    keepBtn.className = 'proto-coach-keep';
-    keepBtn.textContent = '💪 Tieni la mia lista';
-    keepBtn.onclick = function() {
-        protoEditorCommit(proto, draft, weekIdx, saveBtn, false);
-    };
-    actionsDiv.appendChild(keepBtn);
+        var keepBtn = document.createElement('button');
+        keepBtn.className = 'proto-coach-keep';
+        keepBtn.textContent = '💪 Tieni la mia lista';
+        keepBtn.onclick = function() {
+            protoEditorCommit(proto, draft, weekIdx, saveBtn, false);
+        };
+        actionsDiv.appendChild(keepBtn);
+    }
     coachBox.appendChild(actionsDiv);
 }
 
