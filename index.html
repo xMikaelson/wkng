@@ -3737,7 +3737,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '165';
+const APP_VERSION = '166';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -7005,35 +7005,29 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
         '   "aggiungi un calf raise", quel calf raise deve essere nella lista.\n' +
         '   Se invece la scheda va bene cosi\', riporta la lista identica e non\n' +
         '   proporre aggiunte.\n\n' +
-        'Struttura risposta. Scrivi come parleresti a un atleta che hai davanti:\n' +
-        'dagli del tu, frasi intere, tono diretto e caldo. Niente elenchi telegrafici,\n' +
-        'niente linguaggio da referto. Spiega sempre il PERCHE\', non solo il cosa.\n\n' +
+        'Struttura della risposta. Devi usare ESATTAMENTE queste tre intestazioni,\n' +
+        'ognuna su una riga sua, nell\'ordine indicato. Sotto ogni intestazione\n' +
+        'scrivi a discorso, come parleresti a un atleta che hai davanti: dagli del\n' +
+        'tu, frasi intere, tono diretto e caldo, e spiega sempre il perche\'.\n' +
+        'Non usare grassetto, asterischi, trattini o elenchi puntati: solo prose.\n' +
+        'Non unire le sezioni in un blocco unico e non cambiare i titoli.\n' +
+        'Da due a quattro frasi per sezione.\n\n' +
         '⚠️ PUNTI CRITICI\n' +
         'Controlla queste quattro cose e parlagliene solo se sono davvero sbagliate:\n' +
-        'a) un esercizio che allena un muscolo ESCLUSO da questa scheda;\n' +
-        'b) un esercizio che richiede attrezzatura che non ha;\n' +
-        'c) un muscolo TARGET rimasto senza nessun esercizio;\n' +
-        'd) uno stesso movimento ripetuto piu\' volte senza motivo.\n' +
-        'Massimo 3, e per ognuno digli cosa hai cambiato e perche\' conta per lui.\n' +
-        'Esempio del tono: "Ho notato che i polpacci restavano scoperti: sono un\n' +
-        'gruppo che nel Lower Body vale la pena chiudere, cosi\' ho aggiunto un calf\n' +
-        'raise in fondo alla seduta."\n' +
-        'Se i quattro controlli passano tutti, NON scrivere solo "nessun problema":\n' +
-        'rassicuralo spiegandogli cosa hai guardato. Esempio: "Ho ricontrollato la\n' +
-        'scheda e mi convince: ogni gruppo che volevi allenare ha il suo esercizio,\n' +
-        'tutto e\' fattibile con quello che hai in casa e non ci sono doppioni."\n' +
-        'NON inventare rilievi per riempire la sezione, e NON segnalare come critico\n' +
-        'cio\' che le istruzioni sopra ti dicono di lasciare invariato (serie,\n' +
-        'ripetizioni, secondi degli isometrici, 0 kg).\n\n' +
+        'un esercizio che allena un muscolo escluso da questa scheda; un esercizio\n' +
+        'che richiede attrezzatura che non ha; un muscolo target rimasto senza\n' +
+        'nessun esercizio; uno stesso movimento ripetuto piu\' volte senza motivo.\n' +
+        'Massimo tre rilievi, e per ognuno digli cosa hai cambiato e perche\' conta.\n' +
+        'Se i quattro controlli passano tutti, non liquidarlo con "nessun problema":\n' +
+        'rassicuralo spiegando cosa hai guardato. Non inventare rilievi per riempire\n' +
+        'la sezione, e non segnalare cio\' che ti e\' stato detto di lasciare invariato.\n\n' +
         '✅ COSA VA BENE\n' +
-        'Una o due cose che ha fatto bene, dette come un complimento sincero e\n' +
-        'motivato, non come una voce di lista. Esempio: "La scelta dei compound e\'\n' +
-        'solida: con questi tre copri gia\' gran parte della catena posteriore."\n\n' +
+        'Una o due cose fatte bene, dette come un complimento sincero e motivato.\n' +
+        'Non ripetere quello che hai gia\' scritto nei punti critici.\n\n' +
         '💡 CONSIGLIO\n' +
-        'Un consiglio pratico su come affrontare la scheda COSI\' COM\'E\' nella lista\n' +
+        'Un consiglio pratico su come affrontare la scheda cosi\' com\'e\' nella lista\n' +
         'qui sotto: esecuzione, respirazione, ordine, come progredire nelle settimane.\n' +
-        'Parlagli come farebbe un coach a fine allenamento. NON proporre aggiunte o\n' +
-        'rimozioni: quelle vanno gia\' applicate nella lista definitiva.\n\n' +
+        'Non proporre aggiunte o rimozioni: quelle vanno gia\' applicate nella lista.\n\n' +
         '📋 LISTA DEFINITIVA\n' +
         'Lista completa e definitiva. Formato — un esercizio per riga:\n' +
         'NOME | SERIE x RIP | KG\n' +
@@ -7111,7 +7105,12 @@ function protoEditorShowCoachResult(proto, draft, weekIdx, saveBtn, coachBox, co
     var textDiv = document.createElement('div');
     textDiv.className = 'proto-coach-text';
     // Mostra il testo del Coach escludendo il blocco lista per non duplicarlo
-    var displayText = coachText.replace(/📋\s*LISTA\s*(DEFINITIVA|OTTIMIZZATA)[\s\S]*/i, '').trim();
+    var displayText = coachText
+        .replace(/<ai_modifications>[\s\S]*?(<\/ai_modifications>|$)/gi, '')   // blocco tecnico
+        .replace(/📋\s*LISTA\s*(DEFINITIVA|OTTIMIZZATA)[\s\S]*/i, '')   // lista, gia' mostrata sotto
+        .replace(/\*\*/g, '')                                                     // grassetto markdown
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
     if (!displayText) displayText = coachText;
     textDiv.textContent = displayText;
     coachBox.appendChild(textDiv);
@@ -7245,18 +7244,61 @@ const AWK_POOL_ROLE = {
 };
 
 let _awkCatalogIndex = null;
+/* Il Coach puo' scrivere i nomi come li vede l'atleta, cioe' anche in inglese
+   ("Dumbbell Incline Press" invece di "Panca Inclinata con Manubri"). L'indice
+   registra quindi ogni forma nota dello stesso esercizio, altrimenti verrebbero
+   scartati esercizi legittimi solo perche' scritti nell'altra lingua. */
 function awkCatalogIndex(){
   if (_awkCatalogIndex) return _awkCatalogIndex;
   _awkCatalogIndex = {};
+  const put = function(key, val){
+    const k = (key || '').toString().trim().toLowerCase();
+    if (k && !_awkCatalogIndex[k]) _awkCatalogIndex[k] = val;
+  };
   Object.keys(AWK_POOL).forEach(function(k){
     AWK_POOL[k].forEach(function(ex){
-      const key = ex.n.trim().toLowerCase();
-      if (!_awkCatalogIndex[key]) {
-        _awkCatalogIndex[key] = { name: ex.n, eq: ex.eq, hold: !!ex.hold, role: AWK_POOL_ROLE[k] || 'iso' };
-      }
+      const val = { name: ex.n, eq: ex.eq, hold: !!ex.hold, role: AWK_POOL_ROLE[k] || 'iso' };
+      put(ex.n, val);
+      try {
+        if (typeof exNormKey === 'function') put(exNormKey(ex.n), val);
+        if (typeof exCanonical === 'function') {
+          const c = exCanonical(ex.n);
+          put(c, val);
+          if (typeof exNormKey === 'function') put(exNormKey(c), val);
+        }
+      } catch (e) { /* indice non disponibile: si resta al nome esatto */ }
     });
   });
+  // Sinonimi inglesi noti all'app
+  try {
+    if (typeof EX_IT === 'object' && EX_IT) {
+      Object.keys(EX_IT).forEach(function(en){
+        const it = EX_IT[en];
+        const target = _awkCatalogIndex[(it || '').toLowerCase()] ||
+                       (typeof exNormKey === 'function' ? _awkCatalogIndex[exNormKey(it)] : null);
+        if (!target) return;
+        put(en, target);
+        if (typeof exNormKey === 'function') put(exNormKey(en), target);
+      });
+    }
+  } catch (e) { /* nessun dizionario: si resta ai nomi del catalogo */ }
   return _awkCatalogIndex;
+}
+
+/* Cerca un esercizio del catalogo provando tutte le forme del nome. */
+function awkCatalogLookup(name){
+  const idx = awkCatalogIndex();
+  const raw = (name || '').toString().trim().toLowerCase();
+  if (idx[raw]) return idx[raw];
+  try {
+    if (typeof exNormKey === 'function' && idx[exNormKey(name)]) return idx[exNormKey(name)];
+    if (typeof exCanonical === 'function') {
+      const c = exCanonical(name);
+      if (idx[(c || '').toLowerCase()]) return idx[(c || '').toLowerCase()];
+      if (typeof exNormKey === 'function' && idx[exNormKey(c)]) return idx[exNormKey(c)];
+    }
+  } catch (e) { /* fallback: nessuna corrispondenza */ }
+  return null;
 }
 
 /* Esercizi del catalogo compatibili con l'attrezzatura indicata. */
@@ -7293,7 +7335,14 @@ function awkVerifyCoachList(suggested, draft, proto){
   const exp = equip ? awkExpandEquip(equip) : null;
 
   const originali = {};
-  (draft || []).forEach(function(e){ if (e && e.name) originali[norm(e.name)] = e; });
+  (draft || []).forEach(function(e){
+    if (!e || !e.name) return;
+    originali[norm(e.name)] = e;
+    try {
+      if (typeof exNormKey === 'function') originali[exNormKey(e.name)] = e;
+      if (typeof exCanonical === 'function') originali[norm(exCanonical(e.name))] = e;
+    } catch (err) { /* solo nome esatto */ }
+  });
 
   const out = [], scartati = [], corretti = [];
 
@@ -7302,8 +7351,14 @@ function awkVerifyCoachList(suggested, draft, proto){
     if (!k) return;
 
     // 1. Esercizio gia' nella scheda: si conserva com'era
-    if (originali[k]) {
-      const o = originali[k];
+    let o = originali[k];
+    if (!o) {
+      try {
+        if (typeof exNormKey === 'function') o = originali[exNormKey(e.name)];
+        if (!o && typeof exCanonical === 'function') o = originali[norm(exCanonical(e.name))];
+      } catch (err) { /* nessuna corrispondenza */ }
+    }
+    if (o) {
       if (norm(o.sr) !== norm(e.sr) || (o.baseWeight || 0) !== (e.baseWeight || 0)) {
         corretti.push({ name: o.name, motivo: 'parametri riportati a quelli del protocollo' });
       }
@@ -7312,7 +7367,7 @@ function awkVerifyCoachList(suggested, draft, proto){
     }
 
     // 2. Esercizio nuovo: deve esistere nel catalogo dell'app
-    const cat = idx[k];
+    const cat = awkCatalogLookup(e.name);
     if (!cat) {
       scartati.push({ name: e.name, motivo: 'non presente nel catalogo verificato' });
       return;
@@ -7341,7 +7396,51 @@ function awkVerifyCoachList(suggested, draft, proto){
   return { list: out, scartati: scartati, corretti: corretti };
 }
 
+/* Il servizio a monte puo' rispondere in JSON dentro <ai_modifications>
+   invece che nel formato a barre verticali. Qui lo si legge comunque,
+   altrimenti la lista risulta "non rilevata" pur essendo presente. */
+function protoEditorParseCoachJson(text) {
+    if (!text) return null;
+    var m = text.match(/<ai_modifications>([\s\S]*?)(<\/ai_modifications>|$)/i);
+    var blob = m ? m[1] : null;
+    if (!blob) {
+        var i = text.indexOf('"exercises"');
+        if (i < 0) return null;
+        var start = text.lastIndexOf('{', i);
+        if (start < 0) return null;
+        blob = text.slice(start);
+    }
+    var tries = [blob];
+    var lastBrace = blob.lastIndexOf('}');
+    if (lastBrace > 0) tries.push(blob.slice(0, lastBrace + 1));
+    var lastBracket = blob.lastIndexOf(']');
+    if (lastBracket > 0) tries.push(blob.slice(0, lastBracket + 1) + '}');
+    for (var t = 0; t < tries.length; t++) {
+        try {
+            var obj = JSON.parse(tries[t].trim());
+            var arr = obj && (obj.exercises || obj.esercizi || obj.list);
+            if (!Array.isArray(arr)) continue;
+            var out = [];
+            arr.forEach(function(e) {
+                var nome = (e.name || e.nome || '').toString().trim();
+                if (!nome) return;
+                var sr = (e.sr || e.serie || '').toString().trim();
+                var kg = e.baseWeight != null ? e.baseWeight : (e.kg != null ? e.kg : 0);
+                if (typeof kg === 'string') kg = parseFloat(kg.replace(/,/g, '.').replace(/[^0-9.]/g, '')) || 0;
+                if (typeof awkRangeToFixed === 'function') sr = awkRangeToFixed(sr);
+                var isHold = (typeof srIsTime === 'function') && srIsTime(sr);
+                out.push({ name: nome, sr: sr, baseWeight: isHold ? 0 : (kg || 0), _type: isHold ? 'time' : 'reps' });
+            });
+            if (out.length) return out;
+        } catch (err) { /* prova il ritaglio successivo */ }
+    }
+    return null;
+}
+
 function protoEditorParseCoachList(text) {
+    // Prima si tenta il formato JSON, che alcune risposte usano
+    var viaJson = protoEditorParseCoachJson(text);
+    if (viaJson && viaJson.length) return viaJson;
     var result = [];
     if (!text) return result;
 
