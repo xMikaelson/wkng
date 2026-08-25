@@ -2015,6 +2015,31 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .pm-kids { padding-left:10px; border-left:1.5px solid rgba(99,102,241,0.25); margin-bottom:4px; }
         .pm-sep { font-size:0.5rem; letter-spacing:0.1em; text-transform:uppercase;
                   color:#475569; margin:10px 0 2px; font-weight:700; }
+        /* Confronto prima/dopo della lista del Coach */
+        .cmp-wrap { display:flex; gap:8px; margin-bottom:10px; align-items:stretch; }
+        .cmp-col { flex:1; min-width:0; border-radius:9px; padding:9px 10px; }
+        .cmp-col.before { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); }
+        .cmp-col.after  { background:rgba(99,102,241,0.09); border:1px solid rgba(99,102,241,0.28); }
+        .cmp-hd { font-size:0.5rem; text-transform:uppercase; letter-spacing:0.09em;
+                  font-weight:700; margin-bottom:7px; display:flex; align-items:center; gap:4px; }
+        .cmp-col.before .cmp-hd { color:#64748b; }
+        .cmp-col.after  .cmp-hd { color:#818cf8; }
+        .cmp-row { padding:5px 0; border-top:1px solid rgba(255,255,255,0.04); font-size:0.6rem; line-height:1.35; }
+        .cmp-row:first-of-type { border-top:none; }
+        .cmp-nm { color:#cbd5e1; word-break:break-word; }
+        .cmp-meta { color:#818cf8; font-weight:700; font-size:0.57rem; margin-top:1px; }
+        .cmp-row.added   { background:rgba(52,211,153,0.1);  margin:0 -6px; padding-left:6px; padding-right:6px; border-radius:5px; }
+        .cmp-row.removed { background:rgba(239,68,68,0.09);  margin:0 -6px; padding-left:6px; padding-right:6px; border-radius:5px; }
+        .cmp-row.removed .cmp-nm { color:#f87171; text-decoration:line-through; }
+        .cmp-row.added .cmp-nm { color:#6ee7b7; }
+        .cmp-row.changed .cmp-meta { color:#fbbf24; }
+        .cmp-tag { font-size:0.46rem; font-weight:800; letter-spacing:0.06em; padding:1px 4px;
+                   border-radius:3px; margin-left:4px; vertical-align:1px; }
+        .cmp-tag.n { background:rgba(52,211,153,0.2); color:#6ee7b7; }
+        .cmp-tag.r { background:rgba(239,68,68,0.18); color:#f87171; }
+        .cmp-tag.c { background:rgba(245,158,11,0.18); color:#fbbf24; }
+        .cmp-none { font-size:0.6rem; color:#64748b; text-align:center; padding:10px 0; line-height:1.5; }
+        .cmp-legend { font-size:0.55rem; color:#64748b; text-align:center; margin-bottom:9px; line-height:1.5; }
         /* Protocol exercise editor (separate box below main plan block) */
         .proto-editor-box { background:var(--card); border-radius:14px; padding:14px; margin-top:14px; border:1px solid rgba(99,102,241,0.25); animation:protoEditorIn 0.28s cubic-bezier(0.22,1,0.36,1); }
         @keyframes protoEditorIn { 0% { opacity:0; transform:translateY(-8px); } 100% { opacity:1; transform:translateY(0); } }
@@ -3702,7 +3727,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '161';
+const APP_VERSION = '162';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -6887,6 +6912,14 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
         attrezzaturaDesc = 'L\'utente ha accesso a palestra completa: bilanciere, manubri, macchine, cavi, lat machine, leg press, smith machine. Sono ammessi anche esercizi a corpo libero come accessori (dip, chin-up, push-up, plank, ecc.).';
     }
 
+    // Se l'utente ha modificato la scheda, la premessa sulla generazione
+    // automatica non vale piu': li' il Coach deve guardare col massimo scrupolo.
+    var draftModificato = !proto.exercises || proto.exercises.length !== draft.length ||
+        draft.some(function(e, i) {
+            var o = proto.exercises[i];
+            return !o || o.name !== e.name || o.sr !== e.sr || (o.baseWeight || 0) !== (e.baseWeight || 0);
+        });
+
     var exList = draft.map(function(e, i) {
         return (i+1) + '. ' + (e.name || '(senza nome)') + ' — ' + (e.sr || '?') + ' — ' + (e.baseWeight || 0) + 'kg';
     }).join('\n');
@@ -6908,13 +6941,17 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
 
     var prompt =
         'Sei un coach esperto. Analizza questo protocollo e rispondi SOLO in italiano.\n\n' +
-        (proto._awkGoal
+        (proto._awkGoal && !draftModificato
           ? 'Questa scheda e\' stata generata dal motore dell\'app secondo parametri\n' +
             'presi da letteratura peer-reviewed (ACSM 2009, Schoenfeld 2016/2017,\n' +
             'Grgic 2018), gia\' filtrati per il livello e l\'attrezzatura dell\'utente.\n' +
             'Serie, ripetizioni, recuperi e selezione degli esercizi sono quindi\n' +
             'gia\' coerenti: intervieni solo se trovi un errore concreto.\n\n'
-          : '') +
+          : (proto._awkGoal
+              ? 'Questa scheda nasce dal motore dell\'app ma e\' stata MODIFICATA a mano\n' +
+                'dall\'utente. Controllala con attenzione: le modifiche possono aver\n' +
+                'introdotto esercizi fuori target o incompatibili con l\'attrezzatura.\n\n'
+              : '')) +
         '━━ CONTESTO ━━\n' +
         'Nome protocollo: "' + proto.name + '"\n' +
         'Tipo: ' + tipoLabel + '\n' +
@@ -6936,12 +6973,16 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
         '5. Un esercizio a corpo libero con 0 kg e\' normale: non segnalarlo come dato mancante.\n\n' +
         'Struttura risposta:\n' +
         '⚠️ PUNTI CRITICI\n' +
-        'Elenca SOLO problemi reali e verificabili: un esercizio per un muscolo\n' +
-        'escluso, un attrezzo che l\'utente non possiede, un pattern di movimento\n' +
-        'mancante. Massimo 3. Se non ne trovi, scrivi esattamente\n' +
-        '"Nessun problema rilevato." e passa oltre: NON inventare rilievi per\n' +
-        'riempire la sezione, e NON segnalare come critico cio\' che le istruzioni\n' +
-        'sopra ti dicono di lasciare invariato.\n\n' +
+        'Verifica una per una queste quattro cose, e segnala solo quelle che\n' +
+        'risultano davvero sbagliate (massimo 3):\n' +
+        'a) un esercizio che allena un muscolo ESCLUSO da questa scheda;\n' +
+        'b) un esercizio che richiede attrezzatura non presente nell\'elenco sopra;\n' +
+        'c) un muscolo TARGET rimasto senza nessun esercizio;\n' +
+        'd) uno stesso movimento ripetuto piu\' volte senza motivo.\n' +
+        'Se tutti e quattro i controlli passano, scrivi esattamente\n' +
+        '"Nessun problema rilevato." NON inventare rilievi per riempire la sezione,\n' +
+        'e NON segnalare come critico cio\' che le istruzioni sopra ti dicono di\n' +
+        'lasciare invariato (serie, ripetizioni, secondi degli isometrici, 0 kg).\n\n' +
         '✅ COSA VA BENE\n(max 2)\n\n' +
         '💡 CONSIGLIO\n(una frase)\n\n' +
         '📋 LISTA DEFINITIVA\n' +
@@ -7004,23 +7045,52 @@ function protoEditorShowCoachResult(proto, draft, weekIdx, saveBtn, coachBox, co
     textDiv.textContent = displayText;
     coachBox.appendChild(textDiv);
 
-    // Anteprima lista (sempre mostrata se abbiamo esercizi)
+    // Confronto affiancato: a sinistra la lista attuale, a destra quella del
+    // Coach. Cosi' si vede cosa cambierebbe prima di premere "Applica".
     if (suggestedExercises.length > 0) {
-        var previewDiv = document.createElement('div');
-        previewDiv.style.cssText = 'background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);border-radius:9px;padding:10px 12px;margin-bottom:10px;';
-        var previewTitle = document.createElement('div');
-        previewTitle.style.cssText = 'font-size:0.52rem;color:#6366f1;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-bottom:6px;';
-        previewTitle.textContent = '📋 Lista definitiva del Coach (' + suggestedExercises.length + ' esercizi)';
-        previewDiv.appendChild(previewTitle);
-        suggestedExercises.forEach(function(e) {
-            var row = document.createElement('div');
-            row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.62rem;';
-            row.innerHTML = '<span style="color:#cbd5e1;flex:1;">' + escapeHTML(e.name) + '</span>' +
-                '<span style="color:#818cf8;font-weight:700;margin-left:8px;">' + escapeHTML(e.sr) + '</span>' +
-                '<span style="color:#00ff88;font-weight:700;margin-left:8px;">' + (e.baseWeight || '—') + (e.baseWeight ? 'kg' : '') + '</span>';
-            previewDiv.appendChild(row);
-        });
-        coachBox.appendChild(previewDiv);
+        var norm = function(x){ return (x || '').toString().trim().toLowerCase(); };
+        var beforeList = draft.filter(function(e){ return e.name && e.name.trim(); });
+        var afterList  = suggestedExercises;
+
+        var afterByName = {};
+        afterList.forEach(function(e){ afterByName[norm(e.name)] = e; });
+        var beforeByName = {};
+        beforeList.forEach(function(e){ beforeByName[norm(e.name)] = e; });
+
+        var nAdd = 0, nDel = 0, nChg = 0;
+        var mkRow = function(e, cls, tag){
+            var kg = e.baseWeight ? e.baseWeight + ' kg' : 'CL';
+            return '<div class="cmp-row ' + cls + '"><div class="cmp-nm">' + escapeHTML(e.name) +
+                   (tag ? '<span class="cmp-tag ' + tag.c + '">' + tag.t + '</span>' : '') +
+                   '</div><div class="cmp-meta">' + escapeHTML(e.sr || '?') + ' \u00b7 ' + kg + '</div></div>';
+        };
+
+        var beforeHtml = beforeList.map(function(e){
+            var m = afterByName[norm(e.name)];
+            if (!m) { nDel++; return mkRow(e, 'removed', {c:'r', t:'RIMOSSO'}); }
+            return mkRow(e, '', null);
+        }).join('') || '<div class="cmp-none">Nessun esercizio</div>';
+
+        var afterHtml = afterList.map(function(e){
+            var m = beforeByName[norm(e.name)];
+            if (!m) { nAdd++; return mkRow(e, 'added', {c:'n', t:'NUOVO'}); }
+            var diverso = norm(m.sr) !== norm(e.sr) || (m.baseWeight || 0) !== (e.baseWeight || 0);
+            if (diverso) { nChg++; return mkRow(e, 'changed', {c:'c', t:'MODIF.'}); }
+            return mkRow(e, '', null);
+        }).join('') || '<div class="cmp-none">Nessun esercizio</div>';
+
+        var cmp = document.createElement('div');
+        var riepilogo = (nAdd || nDel || nChg)
+            ? [nAdd ? nAdd + ' aggiunti' : '', nDel ? nDel + ' rimossi' : '', nChg ? nChg + ' modificati' : '']
+                .filter(Boolean).join(' \u00b7 ')
+            : 'Nessuna differenza: il Coach lascerebbe la scheda com\'e\'.';
+        cmp.innerHTML =
+            '<div class="cmp-legend">' + riepilogo + '</div>' +
+            '<div class="cmp-wrap">' +
+              '<div class="cmp-col before"><div class="cmp-hd">\uD83D\uDCCB La tua lista</div>' + beforeHtml + '</div>' +
+              '<div class="cmp-col after"><div class="cmp-hd">\u2728 Con i consigli</div>' + afterHtml + '</div>' +
+            '</div>';
+        coachBox.appendChild(cmp);
     }
 
     // ── Bottoni scelta ──
