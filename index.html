@@ -1990,6 +1990,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .plan-bnd-sep { font-size:0.5rem; letter-spacing:0.1em; text-transform:uppercase;
                         color:#475569; margin:8px 0 4px; font-weight:700; }
         .plan-bnd-sub { font-size:0.48rem; color:#64748b; margin-top:1px; }
+        /* Selettore del piano in uso: uno solo alla volta, come un radio */
+        .plan-bnd-radio { width:15px; height:15px; border-radius:50%; border:1.5px solid #475569;
+                          flex-shrink:0; display:flex; align-items:center; justify-content:center;
+                          transition:0.15s; margin-top:1px; }
+        .plan-bnd-radio.on { border-color:var(--primary); background:rgba(52,211,153,0.15); }
+        .plan-bnd-radio.on:after { content:''; width:7px; height:7px; border-radius:50%; background:var(--primary); }
+        /* La freccia e' l'unico punto che apre e chiude l'elenco */
+        .plan-bnd-ar { padding:3px 4px; margin:-3px -4px; }
         .plan-bnd.focused { box-shadow:0 0 0 2px rgba(99,102,241,0.35); }
         .plan-proto-item.focused { border-color:var(--accent); background:rgba(99,102,241,0.12); color:#c7d2fe; }
         /* Filtro attivo: i giorni estranei alla selezione si spengono */
@@ -3694,7 +3702,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '158';
+const APP_VERSION = '159';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -5656,6 +5664,24 @@ function planFocusDays(w){
   return out;
 }
 function planClearFocus(){ planFocus = null; renderPlanPage(APP.selectedViewWeek || 0); }
+
+/* Rende "in uso" un intero bundle. Il protocollo che diventa corrente e' quello
+   assegnato a oggi; se oggi e' riposo, il primo giorno occupato dal gruppo;
+   se il gruppo non ha giorni, il suo primo protocollo. */
+function planActivateBundle(bundle){
+  if (!bundle || !bundle.protos || !bundle.protos.length) return;
+  const w = APP.selectedViewWeek || 0;
+  const todayIdx = (new Date().getDay() + 6) % 7;   // 0 = lunedi'
+  const row = (APP.dayAssignments && APP.dayAssignments[w]) || {};
+  const inBundle = function(id){ return bundle.protos.find(function(p){ return p.id === id; }) || null; };
+  let target = null;
+  if (row[todayIdx]) target = inBundle(row[todayIdx].protoId);
+  for (let d = 0; d < 7 && !target; d++){ if (row[d]) target = inBundle(row[d].protoId); }
+  if (!target) target = bundle.protos[0];
+  planFocus = { type:'b', id: bundle.id };
+  activateProtocol(target.id, true);
+  renderPlanPage(w);
+}
 /* Il filtro non deve puntare a un protocollo o a un bundle sparito. */
 function planValidateFocus(){
   if (!planFocus) return;
@@ -5949,14 +5975,9 @@ function renderPlanPage(w) {
         const grouped = planGroupProtocols(APP.savedProtocols);
 
         // Prima apertura: si apre il bundle del protocollo attivo
-        if (planOpenBundles === null) {
-            planOpenBundles = {};
-            const act = APP.savedProtocols.find(p => p.id === APP.activeProtocolId);
-            if (act && act._splitGroup) {
-                planOpenBundles[act._splitGroup] = true;
-                if (!planFocus) planFocus = { type:'b', id:act._splitGroup };
-            }
-        }
+        // L'elenco resta chiuso: si apre solo dalla freccia. Il bundle in uso
+        // resta riconoscibile dal pallino pieno.
+        if (planOpenBundles === null) planOpenBundles = {};
 
         // Crea la riga di un singolo protocollo (trascinabile sui giorni)
         const makeProtoRow = (proto) => {
@@ -5988,6 +6009,7 @@ function renderPlanPage(w) {
             const head = document.createElement('div');
             head.className = 'plan-bnd' + (hasActive ? ' active-bnd' : '') + (isOpen ? ' open' : '') + (isFocB ? ' focused' : '');
             head.innerHTML =
+                '<div class="plan-bnd-radio' + (hasActive ? ' on' : '') + '"></div>' +
                 '<div style="flex:1; min-width:0;">' +
                   '<div class="plan-bnd-nm">' + escapeHTML(bundle.name) + '</div>' +
                   (bundle.showDate ? '<div class="plan-bnd-sub">creato il ' + escapeHTML(bundle.date) + '</div>' : '') +
@@ -5996,11 +6018,18 @@ function renderPlanPage(w) {
                   '</div>' +
                 '</div>' +
                 '<span class="plan-bnd-ct">' + bundle.protos.length + '</span>' +
-                '<span class="plan-bnd-ar">›</span>';
+                '<span class="plan-bnd-ar" title="Mostra i protocolli">›</span>';
+
+            // Selezionare il bundle lo mette in uso senza aprirne l'elenco:
+            // sfogliare e attivare restano due gesti distinti.
             head.addEventListener('click', () => {
-                // Apertura e selezione sono la stessa cosa: un tocco mostra i
-                // protocolli del bundle e filtra la vista, un altro li richiude.
-                if (isOpen) { planOpenBundles = {}; planFocus = null; }
+                if (hasActive) { planFocus = isFocB ? null : { type:'b', id:bundle.id }; renderPlanPage(w); return; }
+                planActivateBundle(bundle);
+            });
+            // L'elenco dei protocolli si apre e si chiude solo dalla freccia
+            head.querySelector('.plan-bnd-ar').addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                if (isOpen) { planOpenBundles = {}; if (isFocB) planFocus = null; }
                 else { planOpenBundles = {}; planOpenBundles[bundle.id] = true; planFocus = { type:'b', id:bundle.id }; }
                 renderPlanPage(w);
             });
