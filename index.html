@@ -2040,6 +2040,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .cmp-tag.c { background:rgba(245,158,11,0.18); color:#fbbf24; }
         .cmp-none { font-size:0.6rem; color:#64748b; text-align:center; padding:10px 0; line-height:1.5; }
         .cmp-legend { font-size:0.55rem; color:#64748b; text-align:center; margin-bottom:9px; line-height:1.5; }
+        /* Esito della verifica automatica sulla lista del Coach */
+        .coach-verif { background:rgba(245,158,11,0.07); border:1px solid rgba(245,158,11,0.22);
+                       border-radius:9px; padding:9px 11px; margin-bottom:10px; }
+        .cv-hd { font-size:0.5rem; letter-spacing:0.09em; text-transform:uppercase;
+                 color:#fbbf24; font-weight:700; margin-bottom:6px; }
+        .cv-row { font-size:0.6rem; line-height:1.45; padding:3px 0; color:#cbd5e1; }
+        .cv-row b { color:#e2e8f0; }
+        .cv-out b { color:#f87171; text-decoration:line-through; }
+        .cv-fix b { color:#fbbf24; }
+        .cv-note { font-size:0.53rem; color:#64748b; margin-top:6px; line-height:1.45; }
         /* Protocol exercise editor (separate box below main plan block) */
         .proto-editor-box { background:var(--card); border-radius:14px; padding:14px; margin-top:14px; border:1px solid rgba(99,102,241,0.25); animation:protoEditorIn 0.28s cubic-bezier(0.22,1,0.36,1); }
         @keyframes protoEditorIn { 0% { opacity:0; transform:translateY(-8px); } 100% { opacity:1; transform:translateY(0); } }
@@ -3727,7 +3737,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '163';
+const APP_VERSION = '165';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -6644,6 +6654,11 @@ function buildProtoEditorBox(proto, weekIdx) {
     }
     rerenderList();
 
+    // Applicando la lista del Coach il draft viene riscritto altrove: qui si
+    // ridisegnano le righe. Senza questo ascoltatore i dati cambiavano ma la
+    // schermata restava quella di prima.
+    list.addEventListener('coach-applied', function() { rerenderList(); });
+
     // ── Riga Aggiungi + Salva affiancati ──
     var topBtnRow = document.createElement('div');
     topBtnRow.style.cssText = 'display:flex;gap:8px;margin-top:10px;';
@@ -6926,6 +6941,18 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
 
     // L'esempio serve solo a mostrare il formato: con attrezzatura ridotta non
     // deve suggerire macchine, altrimenti contraddice il vincolo appena dato.
+    // Elenco chiuso di esercizi ammessi: sono gli unici che l'app sa verificare
+    // per attrezzatura e parametri. Tutto il resto verrebbe scartato.
+    var catalogoTxt = '';
+    try {
+        if (typeof awkCatalogFor === 'function') {
+            var invCat = Array.isArray(proto._awkEquip) ? proto._awkEquip
+                       : (env === 'palestra' ? AWK_EQUIP_FULL : (env === 'corpolibero' ? [] : ['manubri','panca','appoggio']));
+            var nomiCat = awkCatalogFor(invCat).map(function(x){ return x.name; }).sort();
+            if (nomiCat.length) catalogoTxt = nomiCat.join(', ');
+        }
+    } catch (e) { catalogoTxt = ''; }
+
     var esempioRiga;
     if (env === 'corpolibero') {
         esempioRiga = 'Trazioni alla Sbarra | 4 x 6 | CL\nPush-up | 3 x 12 | CL';
@@ -6978,27 +7005,35 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
         '   "aggiungi un calf raise", quel calf raise deve essere nella lista.\n' +
         '   Se invece la scheda va bene cosi\', riporta la lista identica e non\n' +
         '   proporre aggiunte.\n\n' +
-        'Struttura risposta:\n' +
+        'Struttura risposta. Scrivi come parleresti a un atleta che hai davanti:\n' +
+        'dagli del tu, frasi intere, tono diretto e caldo. Niente elenchi telegrafici,\n' +
+        'niente linguaggio da referto. Spiega sempre il PERCHE\', non solo il cosa.\n\n' +
         '⚠️ PUNTI CRITICI\n' +
-        'Verifica una per una queste quattro cose, e segnala solo quelle che\n' +
-        'risultano davvero sbagliate (massimo 3):\n' +
+        'Controlla queste quattro cose e parlagliene solo se sono davvero sbagliate:\n' +
         'a) un esercizio che allena un muscolo ESCLUSO da questa scheda;\n' +
-        'b) un esercizio che richiede attrezzatura non presente nell\'elenco sopra;\n' +
+        'b) un esercizio che richiede attrezzatura che non ha;\n' +
         'c) un muscolo TARGET rimasto senza nessun esercizio;\n' +
         'd) uno stesso movimento ripetuto piu\' volte senza motivo.\n' +
-        'Se tutti e quattro i controlli passano, NON scrivere solo "nessun problema":\n' +
-        'spiega in una frase perche\' la scheda regge, citando i controlli fatti.\n' +
-        'Esempio: "Nessun problema. Gli esercizi coprono tutti i muscoli target,\n' +
-        'nessuno richiede attrezzatura che non hai e non ci sono movimenti ripetuti."\n' +
+        'Massimo 3, e per ognuno digli cosa hai cambiato e perche\' conta per lui.\n' +
+        'Esempio del tono: "Ho notato che i polpacci restavano scoperti: sono un\n' +
+        'gruppo che nel Lower Body vale la pena chiudere, cosi\' ho aggiunto un calf\n' +
+        'raise in fondo alla seduta."\n' +
+        'Se i quattro controlli passano tutti, NON scrivere solo "nessun problema":\n' +
+        'rassicuralo spiegandogli cosa hai guardato. Esempio: "Ho ricontrollato la\n' +
+        'scheda e mi convince: ogni gruppo che volevi allenare ha il suo esercizio,\n' +
+        'tutto e\' fattibile con quello che hai in casa e non ci sono doppioni."\n' +
         'NON inventare rilievi per riempire la sezione, e NON segnalare come critico\n' +
         'cio\' che le istruzioni sopra ti dicono di lasciare invariato (serie,\n' +
         'ripetizioni, secondi degli isometrici, 0 kg).\n\n' +
-        '✅ COSA VA BENE\n(max 2)\n\n' +
+        '✅ COSA VA BENE\n' +
+        'Una o due cose che ha fatto bene, dette come un complimento sincero e\n' +
+        'motivato, non come una voce di lista. Esempio: "La scelta dei compound e\'\n' +
+        'solida: con questi tre copri gia\' gran parte della catena posteriore."\n\n' +
         '💡 CONSIGLIO\n' +
-        'Una frase su come sfruttare al meglio la scheda COSI\' COM\'E\' nella\n' +
-        'lista qui sotto: esecuzione, progressione, ordine degli esercizi.\n' +
-        'NON proporre aggiunte o rimozioni: quelle vanno gia\' applicate nella\n' +
-        'lista definitiva.\n\n' +
+        'Un consiglio pratico su come affrontare la scheda COSI\' COM\'E\' nella lista\n' +
+        'qui sotto: esecuzione, respirazione, ordine, come progredire nelle settimane.\n' +
+        'Parlagli come farebbe un coach a fine allenamento. NON proporre aggiunte o\n' +
+        'rimozioni: quelle vanno gia\' applicate nella lista definitiva.\n\n' +
         '📋 LISTA DEFINITIVA\n' +
         'Lista completa e definitiva. Formato — un esercizio per riga:\n' +
         'NOME | SERIE x RIP | KG\n' +
@@ -7006,6 +7041,20 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
         'con la "s" finale e scrivi CL al posto dei kg: NOME | 3 x 45s | CL\n' +
         'Usa CL anche per gli altri esercizi a corpo libero senza zavorra.\n' +
         'Esempio:\n' + esempioRiga + '\nPlank | 3 x 45s | CL\n\n' +
+        (catalogoTxt
+          ? '\n━━ ESERCIZI AMMESSI ━━\n' +
+            'Puoi usare SOLO esercizi presenti in questo elenco, scritti esattamente\n' +
+            'come sono scritti qui. Qualsiasi altro nome verra\' scartato automaticamente\n' +
+            'e non arrivera\' all\'atleta.\n' + catalogoTxt + '\n'
+          : '') +
+        '\n━━ LIMITI DI CIO\' CHE PUOI AFFERMARE ━━\n' +
+        'Questa app viene usata da atleti e preparatori: non puo\' contenere\n' +
+        'affermazioni non verificabili. Quindi NON citare studi, autori, anni,\n' +
+        'percentuali, tempi di recupero in minuti, soglie o meccanismi fisiologici.\n' +
+        'NON scrivere frasi come "la ricerca dimostra" o "e\' scientificamente provato".\n' +
+        'Le fonti le mostra gia\' l\'app accanto a ogni esercizio: il tuo compito e\' parlare\n' +
+        'di questa scheda e di come eseguirla, non di letteratura scientifica.\n' +
+        'Se non sei certo di qualcosa, non dirlo.\n\n' +
         'Max 300 parole totali.';
 
     var AI_COACH_URL = 'https://trojbppshlfhrsimyxjl.supabase.co/functions/v1/ai-coach';
@@ -7048,6 +7097,14 @@ function protoEditorShowCoachResult(proto, draft, weekIdx, saveBtn, coachBox, co
 
     // Parsing della lista dal testo del Coach
     var suggestedExercises = protoEditorParseCoachList(coachText);
+    // Ogni esercizio proposto viene ricondotto al catalogo verificato: quello
+    // che non c'e' o non e' compatibile viene scartato, e i parametri vengono
+    // dalle tabelle dell'app, non dal modello.
+    var _verif = { scartati: [], corretti: [] };
+    if (typeof awkVerifyCoachList === 'function' && suggestedExercises.length) {
+        _verif = awkVerifyCoachList(suggestedExercises, draft, proto);
+        suggestedExercises = _verif.list;
+    }
     console.log('[Coach Parser] testo ricevuto:', coachText.substring(0, 300));
     console.log('[Coach Parser] esercizi estratti:', suggestedExercises);
 
@@ -7061,6 +7118,22 @@ function protoEditorShowCoachResult(proto, draft, weekIdx, saveBtn, coachBox, co
 
     // Confronto affiancato: a sinistra la lista attuale, a destra quella del
     // Coach. Cosi' si vede cosa cambierebbe prima di premere "Applica".
+    // Trasparenza: l'atleta deve vedere cosa e' stato scartato e perche'
+    if ((_verif.scartati && _verif.scartati.length) || (_verif.corretti && _verif.corretti.length)) {
+        var vBox = document.createElement('div');
+        vBox.className = 'coach-verif';
+        var righe = '';
+        (_verif.scartati || []).forEach(function(x){
+            righe += '<div class="cv-row cv-out"><b>' + escapeHTML(x.name) + '</b> \u2014 scartato: ' + x.motivo + '</div>';
+        });
+        (_verif.corretti || []).forEach(function(x){
+            righe += '<div class="cv-row cv-fix"><b>' + escapeHTML(x.name) + '</b> \u2014 ' + x.motivo + '</div>';
+        });
+        vBox.innerHTML = '<div class="cv-hd">\uD83D\uDD0E Verifica automatica</div>' + righe +
+            '<div class="cv-note">I parametri mostrati provengono dalle tabelle dell\'app, non dal Coach.</div>';
+        coachBox.appendChild(vBox);
+    }
+
     var nessunaDifferenza = false;
     if (suggestedExercises.length > 0) {
         var norm = function(x){ return (x || '').toString().trim().toLowerCase(); };
@@ -7150,6 +7223,124 @@ function protoEditorShowCoachResult(proto, draft, weekIdx, saveBtn, coachBox, co
 }
 
 // ── Parsing della lista dalla risposta del Coach ──
+
+/* ═══════════════════════════════════════════════════════════════
+   VERIFICA DELLA LISTA DEL COACH
+   Il Coach puo' proporre esercizi, ma non puo' introdurre dati non
+   verificati. Ogni esercizio che restituisce viene ricondotto al
+   catalogo dell'app: se non c'e', viene scartato; se c'e', serie,
+   ripetizioni e carico vengono riscritti dalle tabelle di parametri.
+   Cosi' nessun numero mostrato all'atleta e' inventato dal modello.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Ruolo associato a ogni famiglia di esercizi del catalogo. */
+const AWK_POOL_ROLE = {
+  SQUAT:'sec', HINGE:'sec', HPUSH:'sec', HPUSH2:'sec', VPUSH:'sec',
+  HPULL:'sec', VPULL:'sec',
+  C_PUSH:'sec', C_PUSH2:'sec', C_VPUSH:'sec', C_PULL:'sec', C_PULL2:'sec',
+  C_ROW:'sec', C_LEG:'sec', C_LEG2:'sec',
+  QUAD:'iso', HAM:'iso', CALF:'iso', CHESTISO:'iso', LATDELT:'iso',
+  REARDELT:'iso', BIC:'iso', TRI:'iso',
+  CORE:'core', C_CORE:'core', C_CORE2:'core'
+};
+
+let _awkCatalogIndex = null;
+function awkCatalogIndex(){
+  if (_awkCatalogIndex) return _awkCatalogIndex;
+  _awkCatalogIndex = {};
+  Object.keys(AWK_POOL).forEach(function(k){
+    AWK_POOL[k].forEach(function(ex){
+      const key = ex.n.trim().toLowerCase();
+      if (!_awkCatalogIndex[key]) {
+        _awkCatalogIndex[key] = { name: ex.n, eq: ex.eq, hold: !!ex.hold, role: AWK_POOL_ROLE[k] || 'iso' };
+      }
+    });
+  });
+  return _awkCatalogIndex;
+}
+
+/* Esercizi del catalogo compatibili con l'attrezzatura indicata. */
+function awkCatalogFor(equip){
+  const exp = awkExpandEquip(equip || []);
+  const idx = awkCatalogIndex();
+  const out = [];
+  Object.keys(idx).forEach(function(k){
+    const e = idx[k];
+    if (e.eq.every(function(r){ return exp.indexOf(r) >= 0; })) out.push(e);
+  });
+  return out;
+}
+
+/* Parametri ufficiali per un ruolo, dato il protocollo. */
+function awkParamsFor(proto, role){
+  const goal = proto._awkGoal || (proto.goal === 'forza' ? 'full_forza' : 'full_ipertrofia');
+  const pg = goal === 'full_forza' ? 'forza' : goal === 'calisthenic' ? 'calisthenic' : 'ipertrofia';
+  const lvl = proto._awkLevel || 'intermedio';
+  const tab = AWK_PARAMS[pg] && AWK_PARAMS[pg][lvl];
+  return tab ? tab[role] : null;
+}
+
+/* Riconduce la lista del Coach a dati verificabili.
+   - esercizi gia' presenti nella scheda: serie, ripetizioni e carico
+     restano quelli originali (il Coach non li puo' cambiare);
+   - esercizi nuovi: devono esistere nel catalogo ed essere compatibili
+     con l'attrezzatura, e i loro parametri vengono dalle tabelle;
+   - tutto il resto viene scartato e mostrato all'atleta. */
+function awkVerifyCoachList(suggested, draft, proto){
+  const norm = function(x){ return (x || '').toString().trim().toLowerCase(); };
+  const idx = awkCatalogIndex();
+  const equip = Array.isArray(proto._awkEquip) ? proto._awkEquip : null;
+  const exp = equip ? awkExpandEquip(equip) : null;
+
+  const originali = {};
+  (draft || []).forEach(function(e){ if (e && e.name) originali[norm(e.name)] = e; });
+
+  const out = [], scartati = [], corretti = [];
+
+  (suggested || []).forEach(function(e){
+    const k = norm(e.name);
+    if (!k) return;
+
+    // 1. Esercizio gia' nella scheda: si conserva com'era
+    if (originali[k]) {
+      const o = originali[k];
+      if (norm(o.sr) !== norm(e.sr) || (o.baseWeight || 0) !== (e.baseWeight || 0)) {
+        corretti.push({ name: o.name, motivo: 'parametri riportati a quelli del protocollo' });
+      }
+      out.push({ name: o.name, sr: o.sr, baseWeight: o.baseWeight, _type: o._type, _role: o._role, _zone: o._zone });
+      return;
+    }
+
+    // 2. Esercizio nuovo: deve esistere nel catalogo dell'app
+    const cat = idx[k];
+    if (!cat) {
+      scartati.push({ name: e.name, motivo: 'non presente nel catalogo verificato' });
+      return;
+    }
+    // 3. ...e deve essere compatibile con l'attrezzatura dichiarata
+    if (exp && !cat.eq.every(function(r){ return exp.indexOf(r) >= 0; })) {
+      scartati.push({ name: cat.name, motivo: 'richiede attrezzatura che non hai' });
+      return;
+    }
+    // 4. Parametri e carico presi dalle tabelle, non dal modello
+    const p = awkParamsFor(proto, cat.role);
+    const asTime = !!cat.hold && p && p.t === 'time';
+    const reps = p ? (asTime ? p.r : (cat.role === 'core' ? (p.rDyn || p.r) : p.r)) : null;
+    const sr = p ? (p.s + ' x ' + reps + (asTime ? 's' : '')) : e.sr;
+    const kg = asTime ? 0 : awkDefaultKg(cat.name, proto._awkLevel || 'intermedio');
+    if (p && (norm(sr) !== norm(e.sr) || kg !== (e.baseWeight || 0))) {
+      corretti.push({ name: cat.name, motivo: 'serie, ripetizioni e carico allineati ai parametri dell\'app' });
+    }
+    out.push({
+      name: cat.name, sr: sr, baseWeight: kg,
+      _type: asTime ? 'time' : 'reps', _role: cat.role,
+      _zone: p ? (asTime ? p.z : (cat.role === 'core' ? (p.zDyn || p.z) : p.z)) : undefined
+    });
+  });
+
+  return { list: out, scartati: scartati, corretti: corretti };
+}
+
 function protoEditorParseCoachList(text) {
     var result = [];
     if (!text) return result;
@@ -7207,7 +7398,9 @@ function protoEditorParseCoachList(text) {
         // Parte 2: kg (opzionale)
         var kg = 0;
         if (parts[2]) {
-            kg = parseFloat(parts[2].replace(/[^0-9.]/g, '')) || 0;
+            // La virgola decimale va convertita, non eliminata: senza questo
+            // "36,5" diventava 365 kg.
+            kg = parseFloat(parts[2].replace(/,/g, '.').replace(/[^0-9.]/g, '')) || 0;
         }
 
         // Rete di sicurezza: se il Coach scrive comunque un range, lo riportiamo
