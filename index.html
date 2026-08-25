@@ -1989,6 +1989,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .plan-bnd-kids { margin:0 0 4px 0; padding-left:9px; border-left:1.5px solid rgba(99,102,241,0.25); }
         .plan-bnd-sep { font-size:0.5rem; letter-spacing:0.1em; text-transform:uppercase;
                         color:#475569; margin:8px 0 4px; font-weight:700; }
+        .plan-bnd-sub { font-size:0.48rem; color:#64748b; margin-top:1px; }
+        .plan-bnd.focused { box-shadow:0 0 0 2px rgba(99,102,241,0.35); }
+        .plan-proto-item.focused { border-color:var(--accent); background:rgba(99,102,241,0.12); color:#c7d2fe; }
+        /* Filtro attivo: i giorni estranei alla selezione si spengono */
+        .plan-chip.dimmed, .plan-sched-row.dimmed { opacity:0.22; }
+        .plan-sched-row.focus-hit .plan-sched-proto { color:#fff; font-weight:600; }
+        .plan-focus-bar { display:flex; align-items:center; gap:7px; background:rgba(99,102,241,0.12);
+                          border:1px solid rgba(99,102,241,0.3); border-radius:8px; padding:7px 9px;
+                          margin-bottom:8px; font-size:0.62rem; color:#c7d2fe; }
+        .plan-focus-bar b { flex:1; font-weight:700; min-width:0; word-break:break-word; }
+        .plan-focus-bar span { cursor:pointer; color:#818cf8; font-weight:700; white-space:nowrap; }
         /* Protocol exercise editor (separate box below main plan block) */
         .proto-editor-box { background:var(--card); border-radius:14px; padding:14px; margin-top:14px; border:1px solid rgba(99,102,241,0.25); animation:protoEditorIn 0.28s cubic-bezier(0.22,1,0.36,1); }
         @keyframes protoEditorIn { 0% { opacity:0; transform:translateY(-8px); } 100% { opacity:1; transform:translateY(0); } }
@@ -3676,7 +3687,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '156';
+const APP_VERSION = '157';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -3880,7 +3891,14 @@ async function saveProtocolToSupabase(proto) {
             totalWorkouts: proto.totalWorkouts,
             _splitGroup: proto._splitGroup,
             _splitSlot: proto._splitSlot,
-            _env: proto._env || null
+            _env: proto._env || null,
+            // Senza questi il bundle perde obiettivo e livello al primo ricarico:
+            // il nome ricadeva sul goal del singolo protocollo (una seduta di
+            // ipertrofia dentro un piano Hybrid diventava "Ipertrofia \u00b7 Casa").
+            _awkGoal: proto._awkGoal || null,
+            _awkLevel: proto._awkLevel || null,
+            _awkEquip: proto._awkEquip || null,
+            createdAt: proto.createdAt || null
         };
         const payload = { id: proto.id, user_id: user.id, name: proto.name, goal: proto.goal, exercises_json };
         // Try upsert first; if it fails (RLS/constraint), try insert then update
@@ -5469,7 +5487,10 @@ async function onLoginSuccess(user, usernameOverride = null) {
                 totalWorkouts: meta.totalWorkouts || 0,
                 _splitGroup: meta._splitGroup || null,
                 _splitSlot: meta._splitSlot || null,
-                _env: meta._env || null
+                _env: meta._env || null,
+                _awkGoal: meta._awkGoal || null,
+                _awkLevel: meta._awkLevel || null,
+                _awkEquip: meta._awkEquip || null
             };
         });
     }
@@ -5605,17 +5626,108 @@ let planExpandedProto = null;
 /* Bundle aperti nella lista protocolli. Al primo render si apre da solo
    quello che contiene il protocollo attivo. */
 let planOpenBundles = null;
+/* Selezione corrente: {type:'b'|'p', id}. Filtra chips e pianificazione. */
+let planFocus = null;
+
+/* Giorni della settimana appartenenti alla selezione, o null se nessun filtro. */
+function planFocusDays(w){
+  if (!planFocus) return null;
+  const row = (APP.dayAssignments && APP.dayAssignments[w]) || {};
+  const ids = {};
+  if (planFocus.type === 'p') ids[planFocus.id] = 1;
+  else {
+    const grouped = planGroupProtocols(APP.savedProtocols);
+    const b = grouped.bundles.find(function(x){ return x.id === planFocus.id; });
+    if (!b) return null;
+    b.protos.forEach(function(p){ ids[p.id] = 1; });
+  }
+  const out = [];
+  for (let d = 0; d < 7; d++){
+    const a = row[d];
+    if (a && ids[a.protoId]) out.push(d);
+  }
+  return out;
+}
+function planFocusName(){
+  if (!planFocus) return '';
+  if (planFocus.type === 'p'){
+    const p = (APP.savedProtocols || []).find(function(x){ return x.id === planFocus.id; });
+    return p ? p.name : '';
+  }
+  const b = planGroupProtocols(APP.savedProtocols).bundles.find(function(x){ return x.id === planFocus.id; });
+  return b ? b.name : '';
+}
+function planClearFocus(){ planFocus = null; renderPlanPage(APP.selectedViewWeek || 0); }
+/* Il filtro non deve puntare a un protocollo o a un bundle sparito. */
+function planValidateFocus(){
+  if (!planFocus) return;
+  if (planFocus.type === 'p'){
+    if (!(APP.savedProtocols || []).some(function(p){ return p.id === planFocus.id; })) planFocus = null;
+  } else {
+    const b = planGroupProtocols(APP.savedProtocols).bundles;
+    if (!b.some(function(x){ return x.id === planFocus.id; })) planFocus = null;
+  }
+}
 
 const AWK_GOAL_LABEL = { full_ipertrofia:'Full Ipertrofia', full_forza:'Full Forza',
                          hybrid:'Hybrid', calisthenic:'Calisthenic',
                          ipertrofia:'Ipertrofia', forza:'Forza' };
 const AWK_ENV_LABEL  = { palestra:'Palestra', casa:'Casa', corpolibero:'Corpo libero' };
 
+/* I protocolli creati prima del nuovo wizard non hanno i metadati di piano,
+   ma il loro nome li contiene: "Hybrid - Casa - Push". Qui si recuperano. */
+const AWK_NAME_GOALS = [
+  [/\bhybrid\b/i, 'hybrid'], [/\bcalisthenic/i, 'calisthenic'],
+  [/\bipertrofia\b/i, 'ipertrofia'], [/\bforza\b/i, 'forza']
+];
+const AWK_NAME_ENVS = [
+  [/corpo\s*libero/i, 'corpolibero'], [/\bpalestra\b/i, 'palestra'], [/\bcasa\b/i, 'casa']
+];
+function planInferMeta(proto){
+  const nm = proto.name || '';
+  let goal = proto._awkGoal || null, env = proto._env || null;
+  if (!goal) { const m = AWK_NAME_GOALS.find(function(r){ return r[0].test(nm); }); if (m) goal = m[1]; }
+  if (!env)  { const m = AWK_NAME_ENVS.find(function(r){ return r[0].test(nm); });  if (m) env  = m[1]; }
+  if (!goal) goal = proto.goal || null;
+  return { goal: goal, env: env };
+}
+
 /* Nome leggibile del bundle: "Hybrid \u00B7 Casa". */
 function planBundleName(proto){
-  const g = AWK_GOAL_LABEL[proto._awkGoal] || AWK_GOAL_LABEL[proto.goal] || 'Protocollo';
-  const e = AWK_ENV_LABEL[proto._env];
+  const m = planInferMeta(proto);
+  const g = AWK_GOAL_LABEL[m.goal] || 'Protocollo';
+  const e = AWK_ENV_LABEL[m.env];
   return e ? (g + ' \u00B7 ' + e) : g;
+}
+
+/* Il nome del gruppo non puo\' dipendere dal primo elemento dell'array: da
+   Supabase i protocolli tornano in ordine arbitrario, e per un piano Hybrid
+   il primo poteva essere una seduta di ipertrofia. Vince l'obiettivo di piano
+   dichiarato; in mancanza, quello piu\' frequente nel gruppo. */
+function planBundleNameFor(protos){
+  const withMeta = protos.find(function(p){ return p._awkGoal; });
+  if (withMeta) return planBundleName(withMeta);
+  const tally = {};
+  protos.forEach(function(p){
+    const k = planBundleName(p);
+    tally[k] = (tally[k] || 0) + 1;
+  });
+  let best = null, bn = 0;
+  Object.keys(tally).forEach(function(k){ if (tally[k] > bn) { bn = tally[k]; best = k; } });
+  return best || 'Protocollo';
+}
+
+/* Data di creazione piu\' vecchia del gruppo, usata per distinguere omonimi. */
+function planBundleDate(protos){
+  let t = null;
+  protos.forEach(function(p){
+    const d = p.createdAt ? new Date(p.createdAt).getTime() : null;
+    if (d && !isNaN(d) && (t === null || d < t)) t = d;
+  });
+  if (t === null) return '';
+  try {
+    return new Date(t).toLocaleDateString('it-IT', { day:'numeric', month:'short' });
+  } catch(e){ return ''; }
 }
 
 /* Raggruppa i protocolli per _splitGroup. Quelli senza gruppo, o soli nel
@@ -5623,16 +5735,27 @@ function planBundleName(proto){
 function planGroupProtocols(list){
   const map = {}, order = [];
   (list || []).forEach(function(p){
-    const k = p._splitGroup || ('__solo_' + p.id);
+    // Chi non ha un codice di gruppo viene raccolto per obiettivo + attrezzatura,
+    // cosi\' anche i piani creati prima del wizard finiscono in un bundle.
+    let k = p._splitGroup;
+    if (!k) {
+      const m = planInferMeta(p);
+      k = (m.goal && m.env) ? ('__inf_' + m.goal + '_' + m.env) : ('__solo_' + p.id);
+    }
     if (!map[k]) { map[k] = []; order.push(k); }
     map[k].push(p);
   });
   const bundles = [], singles = [];
   order.forEach(function(k){
     const grp = map[k];
-    if (grp.length > 1) bundles.push({ id:k, name:planBundleName(grp[0]), protos:grp });
+    if (grp.length > 1) bundles.push({ id:k, name:planBundleNameFor(grp), date:planBundleDate(grp), protos:grp });
     else singles.push(grp[0]);
   });
+  // Due bundle possono chiamarsi allo stesso modo (stesso obiettivo, stessa
+  // attrezzatura, creati in momenti diversi): li distingue la data.
+  const seen = {};
+  bundles.forEach(function(b){ seen[b.name] = (seen[b.name] || 0) + 1; });
+  bundles.forEach(function(b){ b.showDate = seen[b.name] > 1 && !!b.date; });
   return { bundles: bundles, singles: singles };
 }
 
@@ -5753,11 +5876,14 @@ function renderPlanPage(w) {
     const chipsEl = document.createElement('div');
     chipsEl.className = 'plan-chips';
     chipsEl.id = `plan-pw-${w}`;
+    planValidateFocus();
+    const focusDays = planFocusDays(w);
     DAYS_SHORT.forEach((d, di) => {
         const chip = document.createElement('div');
         const st = APP.chipStates[w][di];
         const hasA = !!APP.dayAssignments[w][di];
-        chip.className = 'plan-chip ' + (st==='done' ? 'done' : hasA ? 'assigned' : '');
+        chip.className = 'plan-chip ' + (st==='done' ? 'done' : hasA ? 'assigned' : '')
+                       + (focusDays && focusDays.indexOf(di) < 0 ? ' dimmed' : '');
         chip.textContent = st==='done' ? '✓' : d;
         chip.dataset.week = w; chip.dataset.day = di;
         if (isUnlocked) {
@@ -5831,15 +5957,28 @@ function renderPlanPage(w) {
             if (act && act._splitGroup) planOpenBundles[act._splitGroup] = true;
         }
 
+        // Barra che ricorda quale piano sta filtrando la vista
+        if (planFocus) {
+            const fb = document.createElement('div');
+            fb.className = 'plan-focus-bar';
+            fb.innerHTML = '<b>' + escapeHTML(planFocusName()) + '</b><span>mostra tutto</span>';
+            fb.querySelector('span').addEventListener('click', (ev) => { ev.stopPropagation(); planClearFocus(); });
+            protoCol.appendChild(fb);
+        }
+
         // Crea la riga di un singolo protocollo (trascinabile sui giorni)
         const makeProtoRow = (proto) => {
             const item = document.createElement('div');
             const isExp = planExpandedProto === proto.id;
-            item.className = 'plan-proto-item' + (proto.id === APP.activeProtocolId ? ' active-item' : '') + (isExp ? ' expanded' : '');
+            const isFoc = planFocus && planFocus.type === 'p' && planFocus.id === proto.id;
+            item.className = 'plan-proto-item' + (proto.id === APP.activeProtocolId ? ' active-item' : '') + (isExp ? ' expanded' : '') + (isFoc ? ' focused' : '');
             item.title = proto.id === APP.activeProtocolId ? 'Protocollo attivo (usato in workout)' : '';
             item.innerHTML = `<span class="plan-proto-item-name">${escapeHTML(proto.name)}</span><span class="plan-proto-drag-icon" style="transform:rotate(${isExp?'90':'0'}deg)">›</span>`;
             item.addEventListener('click', () => {
+                // Il tocco apre l'editor e insieme punta il filtro su questo protocollo
+                const wasFocus = planFocus && planFocus.type === 'p' && planFocus.id === proto.id;
                 planExpandedProto = planExpandedProto === proto.id ? null : proto.id;
+                planFocus = wasFocus ? null : { type:'p', id:proto.id };
                 renderPlanPage(w);
             });
             if (isUnlocked) planSetupDrag(item, proto.id, proto.name);
@@ -5851,11 +5990,13 @@ function renderPlanPage(w) {
             const hasActive = bundle.protos.some(p => p.id === APP.activeProtocolId);
             const days = planBundleDays(bundle, w);
 
+            const isFocB = planFocus && planFocus.type === 'b' && planFocus.id === bundle.id;
             const head = document.createElement('div');
-            head.className = 'plan-bnd' + (hasActive ? ' active-bnd' : '') + (isOpen ? ' open' : '');
+            head.className = 'plan-bnd' + (hasActive ? ' active-bnd' : '') + (isOpen ? ' open' : '') + (isFocB ? ' focused' : '');
             head.innerHTML =
                 '<div style="flex:1; min-width:0;">' +
                   '<div class="plan-bnd-nm">' + escapeHTML(bundle.name) + '</div>' +
+                  (bundle.showDate ? '<div class="plan-bnd-sub">creato il ' + escapeHTML(bundle.date) + '</div>' : '') +
                   '<div class="plan-bnd-days">' +
                     DAYS_SHORT.map((d, i) => '<i class="' + (days.indexOf(i) >= 0 ? 'a' : '') + '">' + d.charAt(0) + '</i>').join('') +
                   '</div>' +
@@ -5864,6 +6005,7 @@ function renderPlanPage(w) {
                 '<span class="plan-bnd-ar">›</span>';
             head.addEventListener('click', () => {
                 planOpenBundles[bundle.id] = !planOpenBundles[bundle.id];
+                planFocus = isFocB ? null : { type:'b', id:bundle.id };
                 renderPlanPage(w);
             });
             protoCol.appendChild(head);
@@ -5902,6 +6044,7 @@ function renderPlanPage(w) {
         row.dataset.day = di;
         const a = APP.dayAssignments[w][di];
         const isDone = APP.chipStates[w][di] === 'done';
+        if (focusDays) row.className += (focusDays.indexOf(di) >= 0 ? ' focus-hit' : ' dimmed');
         row.innerHTML = `<span class="plan-sched-day">${d}</span>
             <span class="plan-sched-proto ${a ? '' : 'rest'}" style="${isDone ? 'text-decoration:line-through;opacity:0.5' : ''}">${a ? escapeHTML(a.protoName||a.name||'—') : '—'}</span>`;
         schedCol.appendChild(row);
@@ -6102,6 +6245,7 @@ function buildProtoEditorBox(proto, weekIdx) {
         // Scarta il draft e chiudi
         delete _protoEditorDrafts[proto.id];
         planExpandedProto = null;
+        if (planFocus && planFocus.type === 'p') planFocus = null;
         renderPlanPage(weekIdx);
     };
     head.appendChild(title);
@@ -15230,6 +15374,7 @@ function awkGenerateProtocols(){
   if (firstProtoId) activateProtocol(firstProtoId);
   // riazzera lo stato dei bundle: il nuovo gruppo deve aprirsi da solo
   planOpenBundles = null;
+  planFocus = null;
   onboarding.days = P.dayIdx.slice();
   showToast(P.sessions.length + ' protocolli creati su ' + P.days + ' giorni', 'success');
   return true;
