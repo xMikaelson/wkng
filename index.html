@@ -1995,11 +1995,18 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         /* Filtro attivo: i giorni estranei alla selezione si spengono */
         .plan-chip.dimmed, .plan-sched-row.dimmed { opacity:0.22; }
         .plan-sched-row.focus-hit .plan-sched-proto { color:#fff; font-weight:600; }
-        .plan-focus-bar { display:flex; align-items:center; gap:7px; background:rgba(99,102,241,0.12);
-                          border:1px solid rgba(99,102,241,0.3); border-radius:8px; padding:7px 9px;
-                          margin-bottom:8px; font-size:0.62rem; color:#c7d2fe; }
-        .plan-focus-bar b { flex:1; font-weight:700; min-width:0; word-break:break-word; }
-        .plan-focus-bar span { cursor:pointer; color:#818cf8; font-weight:700; white-space:nowrap; }
+        /* Bundle e protocolli del profilo */
+        .pm-bnd { display:flex; align-items:center; gap:8px; padding:8px 0;
+                  border-bottom:1px solid rgba(255,255,255,0.05); cursor:pointer; }
+        .pm-bnd-nm { flex:1; font-size:0.74rem; color:#c7d2fe; font-weight:700; min-width:0; word-break:break-word; }
+        .pm-bnd-sub { font-size:0.55rem; color:#64748b; font-weight:400; margin-top:1px; }
+        .pm-bnd-ct { font-size:0.5rem; color:#818cf8; background:rgba(99,102,241,0.2);
+                     border-radius:20px; padding:2px 6px; font-weight:700; flex-shrink:0; }
+        .pm-bnd-ar { font-size:0.7rem; color:#64748b; transition:transform 0.2s; flex-shrink:0; }
+        .pm-bnd.open .pm-bnd-ar { transform:rotate(90deg); }
+        .pm-kids { padding-left:10px; border-left:1.5px solid rgba(99,102,241,0.25); margin-bottom:4px; }
+        .pm-sep { font-size:0.5rem; letter-spacing:0.1em; text-transform:uppercase;
+                  color:#475569; margin:10px 0 2px; font-weight:700; }
         /* Protocol exercise editor (separate box below main plan block) */
         .proto-editor-box { background:var(--card); border-radius:14px; padding:14px; margin-top:14px; border:1px solid rgba(99,102,241,0.25); animation:protoEditorIn 0.28s cubic-bezier(0.22,1,0.36,1); }
         @keyframes protoEditorIn { 0% { opacity:0; transform:translateY(-8px); } 100% { opacity:1; transform:translateY(0); } }
@@ -3687,7 +3694,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '157';
+const APP_VERSION = '158';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -5648,15 +5655,6 @@ function planFocusDays(w){
   }
   return out;
 }
-function planFocusName(){
-  if (!planFocus) return '';
-  if (planFocus.type === 'p'){
-    const p = (APP.savedProtocols || []).find(function(x){ return x.id === planFocus.id; });
-    return p ? p.name : '';
-  }
-  const b = planGroupProtocols(APP.savedProtocols).bundles.find(function(x){ return x.id === planFocus.id; });
-  return b ? b.name : '';
-}
 function planClearFocus(){ planFocus = null; renderPlanPage(APP.selectedViewWeek || 0); }
 /* Il filtro non deve puntare a un protocollo o a un bundle sparito. */
 function planValidateFocus(){
@@ -5954,16 +5952,10 @@ function renderPlanPage(w) {
         if (planOpenBundles === null) {
             planOpenBundles = {};
             const act = APP.savedProtocols.find(p => p.id === APP.activeProtocolId);
-            if (act && act._splitGroup) planOpenBundles[act._splitGroup] = true;
-        }
-
-        // Barra che ricorda quale piano sta filtrando la vista
-        if (planFocus) {
-            const fb = document.createElement('div');
-            fb.className = 'plan-focus-bar';
-            fb.innerHTML = '<b>' + escapeHTML(planFocusName()) + '</b><span>mostra tutto</span>';
-            fb.querySelector('span').addEventListener('click', (ev) => { ev.stopPropagation(); planClearFocus(); });
-            protoCol.appendChild(fb);
+            if (act && act._splitGroup) {
+                planOpenBundles[act._splitGroup] = true;
+                if (!planFocus) planFocus = { type:'b', id:act._splitGroup };
+            }
         }
 
         // Crea la riga di un singolo protocollo (trascinabile sui giorni)
@@ -5975,10 +5967,12 @@ function renderPlanPage(w) {
             item.title = proto.id === APP.activeProtocolId ? 'Protocollo attivo (usato in workout)' : '';
             item.innerHTML = `<span class="plan-proto-item-name">${escapeHTML(proto.name)}</span><span class="plan-proto-drag-icon" style="transform:rotate(${isExp?'90':'0'}deg)">›</span>`;
             item.addEventListener('click', () => {
-                // Il tocco apre l'editor e insieme punta il filtro su questo protocollo
+                // Il tocco apre l'editor e stringe il filtro su questo protocollo.
+                // Ritoccandolo si torna al filtro del bundle che lo contiene.
                 const wasFocus = planFocus && planFocus.type === 'p' && planFocus.id === proto.id;
                 planExpandedProto = planExpandedProto === proto.id ? null : proto.id;
-                planFocus = wasFocus ? null : { type:'p', id:proto.id };
+                if (wasFocus) planFocus = proto._splitGroup ? { type:'b', id:proto._splitGroup } : null;
+                else planFocus = { type:'p', id:proto.id };
                 renderPlanPage(w);
             });
             if (isUnlocked) planSetupDrag(item, proto.id, proto.name);
@@ -6004,8 +5998,10 @@ function renderPlanPage(w) {
                 '<span class="plan-bnd-ct">' + bundle.protos.length + '</span>' +
                 '<span class="plan-bnd-ar">›</span>';
             head.addEventListener('click', () => {
-                planOpenBundles[bundle.id] = !planOpenBundles[bundle.id];
-                planFocus = isFocB ? null : { type:'b', id:bundle.id };
+                // Apertura e selezione sono la stessa cosa: un tocco mostra i
+                // protocolli del bundle e filtra la vista, un altro li richiude.
+                if (isOpen) { planOpenBundles = {}; planFocus = null; }
+                else { planOpenBundles = {}; planOpenBundles[bundle.id] = true; planFocus = { type:'b', id:bundle.id }; }
                 renderPlanPage(w);
             });
             protoCol.appendChild(head);
@@ -6245,7 +6241,9 @@ function buildProtoEditorBox(proto, weekIdx) {
         // Scarta il draft e chiudi
         delete _protoEditorDrafts[proto.id];
         planExpandedProto = null;
-        if (planFocus && planFocus.type === 'p') planFocus = null;
+        if (planFocus && planFocus.type === 'p') {
+            planFocus = proto._splitGroup ? { type:'b', id:proto._splitGroup } : null;
+        }
         renderPlanPage(weekIdx);
     };
     head.appendChild(title);
@@ -7804,71 +7802,112 @@ function renderProtoManager() {
         list.innerHTML = '<div style="color:#94a3b8;font-size:0.72rem;text-align:center;padding:8px">Nessun protocollo salvato</div>';
         return;
     }
-    APP.savedProtocols.forEach(function(proto, idx) {
+    if (!window._pmOpen) window._pmOpen = {};
+
+    // Riga di un singolo protocollo: rinomina + elimina
+    function protoRow(proto) {
         var row = document.createElement('div');
         row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);';
         var name = document.createElement('div');
-        name.style.cssText = 'flex:1;font-size:0.72rem;color:#e2e8f0;';
+        name.style.cssText = 'flex:1;font-size:0.7rem;color:#e2e8f0;min-width:0;word-break:break-word;';
         name.textContent = proto.name || 'Senza nome';
         var btnRename = document.createElement('button');
-        btnRename.textContent = '✏️';
-        btnRename.style.cssText = 'background:rgba(255,255,255,0.07);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:0.72rem;';
-        btnRename.onclick = function() {
+        btnRename.textContent = '\u270F\uFE0F';
+        btnRename.style.cssText = 'background:rgba(255,255,255,0.07);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:0.72rem;width:auto;text-transform:none;';
+        btnRename.onclick = function(ev) {
+            ev.stopPropagation();
             var newName = prompt('Rinomina protocollo:', proto.name);
             if (newName && newName.trim()) {
-                APP.savedProtocols[idx].name = newName.trim();
+                proto.name = newName.trim();
                 saveState();
-                if (typeof saveProtocolToSupabase === 'function') saveProtocolToSupabase(APP.savedProtocols[idx]);
-                renderProtoManager();
-                renderProtocolList();
+                if (typeof saveProtocolToSupabase === 'function') saveProtocolToSupabase(proto);
+                renderProtoManager(); renderProtocolList();
                 showToast('Protocollo rinominato', 'success');
             }
         };
         var btnDelete = document.createElement('button');
-        btnDelete.textContent = '🗑️';
-        btnDelete.style.cssText = 'background:rgba(239,68,68,0.15);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:0.72rem;';
-        btnDelete.onclick = function() {
+        btnDelete.textContent = '\uD83D\uDDD1\uFE0F';
+        btnDelete.style.cssText = 'background:rgba(239,68,68,0.15);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:0.72rem;width:auto;text-transform:none;';
+        btnDelete.onclick = function(ev) {
+            ev.stopPropagation();
             if (!confirm('Eliminare "' + proto.name + '"?')) return;
-            var protoId = proto.id;
-            APP.savedProtocols.splice(idx, 1);
-            // Rimuovi anche dagli assignment
-            APP.dayAssignments.forEach(function(week) {
-                week.forEach(function(a, di) {
-                    if (a && a.protoId === protoId) week[di] = null;
-                });
-            });
-            saveState();
-            if (typeof deleteProtocolFromSupabase === 'function') deleteProtocolFromSupabase(protoId);
-            renderProtoManager();
-            renderProtocolList();
-            showToast('Protocollo eliminato', 'success');
+            pmDeleteProtocols([proto]);
         };
-        row.appendChild(name);
-        row.appendChild(btnRename);
-        row.appendChild(btnDelete);
-        list.appendChild(row);
+        row.appendChild(name); row.appendChild(btnRename); row.appendChild(btnDelete);
+        return row;
+    }
+
+    var grouped = planGroupProtocols(APP.savedProtocols);
+
+    grouped.bundles.forEach(function(bundle) {
+        var isOpen = !!window._pmOpen[bundle.id];
+        var head = document.createElement('div');
+        head.className = 'pm-bnd' + (isOpen ? ' open' : '');
+        head.innerHTML =
+            '<div class="pm-bnd-nm">' + escapeHTML(bundle.name) +
+              (bundle.showDate ? '<div class="pm-bnd-sub">creato il ' + escapeHTML(bundle.date) + '</div>' : '') +
+            '</div>' +
+            '<span class="pm-bnd-ct">' + bundle.protos.length + '</span>' +
+            '<span class="pm-bnd-ar">\u203A</span>';
+        head.onclick = function() {
+            window._pmOpen[bundle.id] = !window._pmOpen[bundle.id];
+            renderProtoManager();
+        };
+        // Elimina l'intero bundle in un colpo solo
+        var del = document.createElement('button');
+        del.textContent = '\uD83D\uDDD1\uFE0F';
+        del.title = 'Elimina tutto il gruppo';
+        del.style.cssText = 'background:rgba(239,68,68,0.15);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:0.72rem;width:auto;text-transform:none;flex-shrink:0;';
+        del.onclick = function(ev) {
+            ev.stopPropagation();
+            if (!confirm('Eliminare "' + bundle.name + '" e tutti i suoi ' + bundle.protos.length + ' protocolli?')) return;
+            pmDeleteProtocols(bundle.protos.slice());
+        };
+        head.insertBefore(del, head.querySelector('.pm-bnd-ar'));
+        list.appendChild(head);
+
+        if (isOpen) {
+            var kids = document.createElement('div');
+            kids.className = 'pm-kids';
+            bundle.protos.forEach(function(p) { kids.appendChild(protoRow(p)); });
+            list.appendChild(kids);
+        }
     });
+
+    if (grouped.singles.length) {
+        if (grouped.bundles.length) {
+            var sep = document.createElement('div');
+            sep.className = 'pm-sep';
+            sep.textContent = 'Singoli';
+            list.appendChild(sep);
+        }
+        grouped.singles.forEach(function(p) { list.appendChild(protoRow(p)); });
+    }
 }
 
-// Database esercizi deload — solo compound fondamentali, 100% italiano
-var DELOAD_EXERCISES_DB = [
-    { pattern: 'Push', nome: 'Panca Piana',           desc: 'Petto, deltoide anteriore, tricipite' },
-    { pattern: 'Push', nome: 'Panca Inclinata',        desc: 'Petto superiore, deltoide anteriore' },
-    { pattern: 'Push', nome: 'Military Press',         desc: 'Deltoide, tricipite, trapezio' },
-    { pattern: 'Push', nome: 'Lento Avanti',           desc: 'Deltoide frontale e laterale, tricipite' },
-    { pattern: 'Push', nome: 'Dip alle Parallele',     desc: 'Petto basso, tricipite, deltoide' },
-    { pattern: 'Pull', nome: 'Trazioni alla Sbarra',   desc: 'Gran dorsale, bicipite, romboidi' },
-    { pattern: 'Pull', nome: 'Rematore con Bilanciere',desc: 'Gran dorsale, romboidi, bicipite' },
-    { pattern: 'Pull', nome: 'Rematore con Manubrio',  desc: 'Gran dorsale unilaterale, romboidi' },
-    { pattern: 'Pull', nome: 'Lat Machine',            desc: 'Gran dorsale, bicipite, romboidi' },
-    { pattern: 'Pull', nome: 'Face Pull',              desc: 'Deltoide posteriore, rotatori, trapezio' },
-    { pattern: 'Lower', nome: 'Squat',                 desc: 'Quadricipite, gluteo, femorali' },
-    { pattern: 'Lower', nome: 'Stacco da Terra',       desc: 'Femorali, gluteo, erettori spinali' },
-    { pattern: 'Lower', nome: 'Stacco Rumeno',         desc: 'Femorali, gluteo, erettori' },
-    { pattern: 'Lower', nome: 'Leg Press',             desc: 'Quadricipite, gluteo, femorali' },
-    { pattern: 'Lower', nome: 'Affondi',               desc: 'Quadricipite, gluteo, femorali — bilaterale' },
-    { pattern: 'Lower', nome: 'Hip Thrust',            desc: 'Gluteo massimo, femorali' }
-];
+/* Elimina uno o piu' protocolli, ripulendo assegnazioni e stato. */
+function pmDeleteProtocols(protos) {
+    var ids = {};
+    protos.forEach(function(p) { ids[p.id] = 1; });
+    APP.savedProtocols = APP.savedProtocols.filter(function(p) { return !ids[p.id]; });
+    (APP.dayAssignments || []).forEach(function(week) {
+        if (!week) return;
+        week.forEach(function(a, di) { if (a && ids[a.protoId]) week[di] = null; });
+    });
+    if (ids[APP.activeProtocolId]) {
+        APP.activeProtocolId = APP.savedProtocols.length ? APP.savedProtocols[0].id : null;
+    }
+    if (typeof planFocus !== 'undefined') planFocus = null;
+    if (typeof planOpenBundles !== 'undefined') planOpenBundles = null;
+    saveState();
+    if (typeof deleteProtocolFromSupabase === 'function') {
+        protos.forEach(function(p) { deleteProtocolFromSupabase(p.id); });
+    }
+    renderProtoManager();
+    renderProtocolList();
+    if (typeof renderPlanPage === 'function') renderPlanPage(APP.selectedViewWeek || 0);
+    showToast(protos.length > 1 ? protos.length + ' protocolli eliminati' : 'Protocollo eliminato', 'success');
+}
 
 function openDeloadManualForm() {
     var overlay = document.getElementById('deload-manual-overlay');
@@ -15776,31 +15815,30 @@ function finishOnboarding() {
 
     obSetVisible(false);
 
-    // Pre-assign selected days to protocols
-    if (APP.userName && onboarding.days.length > 0) {
+    // I giorni scelti dal wizard vengono riportati sul piano. Prima valevano
+    // solo per il Chapter 1 ed erano subordinati alla presenza di un nome
+    // utente: il bundle appariva senza giorni assegnati.
+    if (onboarding.days.length > 0) {
         const sortedDays = [...onboarding.days].sort((a, b) => a - b);
         const splitGroupProtos = APP.savedProtocols.filter(p => p._splitGroup === onboarding._splitGroupId);
+        const singleProto = APP.savedProtocols.find(p => p.id === APP.activeProtocolId);
 
-        if (splitGroupProtos.length > 1) {
-            // Multi-protocol split (hybrid, upperlower, ppl)
+        const assign = (wIdx) => {
+            if (!APP.chipStates[wIdx]) APP.chipStates[wIdx] = ['rest','rest','rest','rest','rest','rest','rest'];
+            if (!APP.dayAssignments[wIdx]) APP.dayAssignments[wIdx] = [null,null,null,null,null,null,null];
             sortedDays.forEach((dayIndex, i) => {
-                const protoIndex = i % splitGroupProtos.length;
-                const proto = splitGroupProtos[protoIndex];
-                if (proto) {
-                    APP.chipStates[0][dayIndex] = 'selected';
-                    APP.dayAssignments[0][dayIndex] = { protoId: proto.id, protoName: proto.name };
-                }
+                const proto = (splitGroupProtos.length > 1)
+                    ? splitGroupProtos[i % splitGroupProtos.length]
+                    : singleProto;
+                if (!proto) return;
+                // Un giorno gia' completato non va sovrascritto
+                if (APP.chipStates[wIdx][dayIndex] === 'done') return;
+                APP.chipStates[wIdx][dayIndex] = 'selected';
+                APP.dayAssignments[wIdx][dayIndex] = { protoId: proto.id, protoName: proto.name };
             });
-        } else if (APP.activeProtocolId) {
-            // Single protocol (fullbody)
-            const proto = APP.savedProtocols.find(p => p.id === APP.activeProtocolId);
-            sortedDays.forEach(dayIndex => {
-                APP.chipStates[0][dayIndex] = 'selected';
-                if (proto) {
-                    APP.dayAssignments[0][dayIndex] = { protoId: proto.id, protoName: proto.name };
-                }
-            });
-        }
+        };
+        for (let wi = 0; wi < N_WEEKS; wi++) assign(wi);
+
         initDashboard();
         restoreChipStates();
     }
