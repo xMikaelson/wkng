@@ -474,13 +474,28 @@
         .exchart { width:100%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:12px 8px 6px; }
         .exlg { display:flex; gap:12px; justify-content:center; margin-top:8px; font-size:0.45rem; color:#64748b; }
         .exlg i { display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:4px; vertical-align:middle; }
-        .hist-row { display:grid; grid-template-columns:66px 42px 1fr auto; gap:8px; align-items:center; padding:7px 2px; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.58rem; }
+        .hist-row { display:grid; grid-template-columns:58px 34px 1fr 92px; gap:8px; align-items:center; padding:8px 2px; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.58rem; }
+        /* v.168 — barra a lunghezza fissa: la soglia tratteggiata separa
+           "programma rispettato" da "programma superato". */
+        .hist-bar { position:relative; height:7px; border-radius:4px; background:rgba(255,255,255,0.06); overflow:hidden; }
+        .hist-bar i { position:absolute; top:0; height:100%; display:block; border-radius:4px 0 0 4px; }
+        .hist-bar i.base { left:0; width:75%; background:#64748b; }
+        .hist-bar i.g { left:0; width:80%; background:var(--primary); }
+        .hist-bar i.y { left:80%; width:20%; background:#fbbf24; border-radius:0 4px 4px 0; }
+        .hist-bar .cut { position:absolute; left:80%; top:0; height:100%; border-left:1px dashed rgba(15,23,42,0.85); }
+        .hist-row.dl .hist-bar i.base { background:#475569; }
+        .hist-kg span { display:block; font-size:0.48rem; font-weight:600; color:#64748b; letter-spacing:0.02em; }
+        .hist-kg.gold { color:#fbbf24; }
+        .exlg i.band { height:8px; border-radius:2px; background:rgba(148,163,184,0.3); }
+        .exlg i.dash { background:repeating-linear-gradient(90deg,#64748b 0 4px,transparent 4px 7px); }
+        .exlg i.dot { width:7px; height:7px; border-radius:50%; background:#fbbf24; }
+        .ex-advice { background:rgba(251,191,36,0.09); border:1px solid rgba(251,191,36,0.3); border-radius:11px;
+                     padding:11px 12px; font-size:0.62rem; color:#fde68a; line-height:1.6; margin-top:14px; }
+        .ex-advice b { color:#fff; }
         .hist-date { color:#94a3b8; }
         .hist-ch { font-size:0.42rem; font-weight:800; letter-spacing:0.05em; padding:2px 5px; border-radius:5px; background:rgba(var(--pr,52,211,153),0.12); color:var(--primary); text-align:center; }
         .hist-ch.dl { background:rgba(100,116,139,0.18); color:#94a3b8; }
-        .hist-bar { height:4px; background:rgba(255,255,255,0.05); border-radius:99px; overflow:hidden; }
-        .hist-bar i { display:block; height:100%; background:var(--primary); border-radius:99px; }
-        .hist-kg { font-weight:800; color:#e2e8f0; white-space:nowrap; }
+                        .hist-kg { font-weight:800; color:#e2e8f0; white-space:nowrap; }
         .fc-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 2px; border-bottom:1px solid rgba(255,255,255,0.05); }
         .fc-lab { font-size:0.6rem; color:#cbd5e1; }
         .fc-val { font-size:0.72rem; font-weight:800; color:#facc15; white-space:nowrap; }
@@ -3737,7 +3752,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '167';
+const APP_VERSION = '168';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -3784,7 +3799,10 @@ const APP = {
     // Motivational quotes per week - changes only when completing a workout
     motivationalQuotes: ['', '', '', '', ''],
     // Personal records: { 'ExerciseName': maxKg }
-    personalRecords: {}
+    personalRecords: {},
+    prMeta: {},          // dettaglio del record: carico usato, ripetizioni, data
+    prLegacy: null,      // archivio pre-v.168 (carichi prescritti), non compete
+    _prMigrated: false
 };
 
 const DAYS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
@@ -3823,6 +3841,24 @@ const MOTIVATIONAL_QUOTES = [
 // iterano N_WEEKS: senza padding, la settimana 5 mandava in TypeError
 // l'attivazione del protocollo (utente nuovo, logout, reset, eliminazione
 // dell'ultimo protocollo). Qui si integra ciò che manca, senza toccare i dati esistenti.
+// ── ARCHIVIO RECORD PRE-v.168 ─────────────────────────────
+// I record registrati fino alla v.167 erano il carico PRESCRITTO dall'app
+// (MTR x percentuale del capitolo), non una prestazione: il piu' alto era
+// sempre quello del Chapter 4, per tutti, in ogni ciclo. Non vengono
+// cancellati — restano consultabili in APP.prLegacy — ma escono dal
+// confronto, altrimenti resterebbero sopra ai record veri e impedirebbero
+// a un primato autentico di essere riconosciuto.
+function migrateLegacyPR() {
+    if (APP._prMigrated) return;
+    var cur = APP.personalRecords || {};
+    if (Object.keys(cur).length) {
+        APP.prLegacy = Object.assign({}, cur);
+        APP.personalRecords = {};
+        APP.prMeta = {};
+    }
+    APP._prMigrated = true;
+}
+
 function normalizeWeekState() {
     if (!Array.isArray(APP.chipStates)) APP.chipStates = [];
     while (APP.chipStates.length < N_WEEKS) APP.chipStates.push(['rest','rest','rest','rest','rest','rest','rest']);
@@ -3867,6 +3903,9 @@ function saveState() {
             activeProtocolId: APP.activeProtocolId, dayAssignments: APP.dayAssignments,
             motivationalQuotes: APP.motivationalQuotes,
             personalRecords: APP.personalRecords || {},
+            prMeta: APP.prMeta || {},
+            prLegacy: APP.prLegacy || null,
+            _prMigrated: !!APP._prMigrated,
             savedProtocols: APP.savedProtocols || [],
             mtrValues: APP.mtrValues || {},
             nutTemplates: APP.nutTemplates || [],
@@ -4074,6 +4113,10 @@ function loadState() {
 
         if (saved.goal) document.getElementById('goal').value = saved.goal;
         APP.personalRecords = saved.personalRecords || {};
+        APP.prMeta      = saved.prMeta || {};
+        APP.prLegacy    = saved.prLegacy || null;
+        APP._prMigrated = !!saved._prMigrated;
+        migrateLegacyPR();
         APP.mtrValues = saved.mtrValues || {};
         APP.nutTemplates = saved.nutTemplates || [];
         APP.nutFavorites = saved.nutFavorites || [];
@@ -5519,6 +5562,9 @@ async function onLoginSuccess(user, usernameOverride = null) {
         if (s.mtrValues) {
             APP.mtrValues = Object.assign({}, s.mtrValues, APP.mtrValues || {});
         }
+        if (s.prMeta)   APP.prMeta   = Object.assign({}, s.prMeta, APP.prMeta || {});
+        if (s.prLegacy && !APP.prLegacy) APP.prLegacy = s.prLegacy;
+        if (s._prMigrated) APP._prMigrated = true;
         if (s.personalRecords) {
             APP.personalRecords = Object.assign({}, s.personalRecords, APP.personalRecords || {});
         }
@@ -7693,6 +7739,54 @@ function mtrRepsSet(name, reps) {
 
 // Un esercizio isometrico ha lo schema "3 x 45s": la "s" finale marca la durata.
 // Non ha ripetizioni, non ha MTR e non entra nei record.
+
+// ── CARICO EQUIVALENTE (v.168) ────────────────────────────
+// Fino alla v.167 il "record" registrava il carico che l'app aveva gia'
+// calcolato da sola (MTR x percentuale del capitolo): un numero che non
+// descriveva nessuna prestazione. Da qui in avanti il record nasce solo
+// quando la prestazione reale supera quella prevista dal programma.
+//
+// Le due valute — piu' peso oppure piu' ripetizioni — vengono ricondotte a
+// una sola: il carico che avresti sollevato facendo le ripetizioni previste.
+// La conversione usa Epley, gia' presente nell'app per tradurre l'MTR fra
+// basi di ripetizioni diverse. La stima e' attendibile entro le ~10
+// ripetizioni e presuppone una serie vicina al limite tecnico: per questo la
+// domanda compare solo sull'ultima serie e mai sopra le 10 ripetizioni.
+var REPS_ASK_MAX = 10;
+
+function woEquivalentLoad(kg, reps, targetReps) {
+    kg = parseFloat(kg) || 0;
+    reps = parseInt(reps) || 0;
+    targetReps = parseInt(targetReps) || 0;
+    if (!kg || !reps || !targetReps || reps === targetReps) return kg;
+    var e1 = kg * (1 + reps / 30);
+    return Math.round((e1 / (1 + targetReps / 30)) * 10) / 10;
+}
+
+// Una riga di storico e' "oltre il programma" quando il carico equivalente
+// supera quello previsto. Il Deload non conta mai: superare il programma
+// durante lo scarico contraddice la logica del taper (Bosquet et al. 2007;
+// Mujika & Padilla 2003) su cui e' costruito il Chapter 5.
+function woRowBeat(e) {
+    if (!e || e.w === DELOAD_WEEK) return false;
+    var prev = (typeof e.p === 'number') ? e.p : e.kg;
+    var eq   = (typeof e.eq === 'number') ? e.eq : e.kg;
+    return !!(prev > 0 && eq > prev + 0.05);
+}
+
+// Regola 2-per-2 (Baechle & Earle, NSCA Essentials 3a ed. 2008): il carico
+// va aumentato quando l'atleta chiude due o piu' ripetizioni oltre il target
+// in due sedute consecutive. E' un dato oggettivo e ha la precedenza sulla
+// risposta soggettiva di fine Chapter 4.
+function woTwoForTwo(name) {
+    var rows = (APP.loadHistory || []).filter(function(e) {
+        return e && e.ex && exSameExercise(e.ex, name) && e.w !== DELOAD_WEEK && typeof e.r === 'number';
+    }).sort(function(a, b) { return a.d < b.d ? -1 : (a.d > b.d ? 1 : 0); });
+    if (rows.length < 2) return false;
+    var last2 = rows.slice(-2);
+    return last2.every(function(e) { return e.tr > 0 && e.r >= e.tr + 2; });
+}
+
 function srIsTime(sr) {
     // Riconosce sia "3 x 45s" sia un eventuale intervallo ereditato "3 x 40-60s",
     // altrimenti prima della migrazione 40 secondi verrebbero letti come 40 ripetizioni.
@@ -9364,7 +9458,13 @@ function _exSeries(name) {
     (APP.loadHistory || []).forEach(function(e) {
         if (!e || !e.ex) return;
         if (!exSameExercise(e.ex, name)) return;
-        out.push({ d: e.d, w: e.w, kg: e.kg, recon: false });
+        out.push({
+            d: e.d, w: e.w, kg: e.kg, recon: false,
+            p:  (typeof e.p  === 'number') ? e.p  : e.kg,   // righe pre-v.168: previsto = usato
+            eq: (typeof e.eq === 'number') ? e.eq : e.kg,
+            r:  (typeof e.r  === 'number') ? e.r  : null,
+            tr: (typeof e.tr === 'number') ? e.tr : null
+        });
     });
     out.sort(function(a, b) { return a.d < b.d ? -1 : (a.d > b.d ? 1 : 0); });
     if (out.length >= 2) return _exTagCycles(out);
@@ -9397,7 +9497,9 @@ function _exSeries(name) {
             var dt = new Date(start.getTime() + w * 7 * 86400000);
             iso = dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0');
         }
-        rec.push({ d: iso, w: w, kg: kg, recon: true });
+        // Ricostruzione senza storico: previsto e sollevato coincidono per
+        // definizione, quindi nessun superamento e nessun record.
+        rec.push({ d: iso, w: w, kg: kg, p: kg, eq: kg, r: null, tr: null, recon: true });
     }
     return _exTagCycles(rec.length > out.length ? rec : out);
 }
@@ -9421,41 +9523,66 @@ function _exSvg(pts) {
                '<div style="font-size:0.55rem;color:#64748b;margin-top:6px;">' + _fmtDay(pts[0].d) +
                ' \u00b7 un solo rilevamento: servono almeno due sedute per tracciare una linea</div></div>';
     }
-    var W = 300, H = 132, L = 26, R = 6, T = 10, B = 24;
-    var kgs = pts.map(function(p) { return p.kg; });
-    var mn = Math.min.apply(null, kgs), mx = Math.max.apply(null, kgs);
+    // v.168: due tracciati. Tratteggiato = carico previsto dal programma
+    // (MTR x percentuale del capitolo). Pieno = carico equivalente, cioe' la
+    // prestazione reale riportata alle ripetizioni previste. Finche' segui il
+    // programma i due coincidono; dove il pieno sale sopra, hai superato.
+    var W = 300, H = 142, L = 26, R = 8, T = 20, B = 24;
+    var pred = pts.map(function(p) { return (typeof p.p === 'number' && p.p > 0) ? p.p : p.kg; });
+    var act  = pts.map(function(p) { return (typeof p.eq === 'number' && p.eq > 0) ? p.eq : p.kg; });
+    var vals = pred.concat(act);
+    var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
     var pad = (mx - mn) * 0.2 || 2;
     mn = Math.max(0, mn - pad); mx = mx + pad;
     var X = function(i) { return L + i * ((W - L - R) / Math.max(pts.length - 1, 1)); };
     var Y = function(v) { return T + (1 - (v - mn) / (mx - mn)) * (H - T - B); };
-    var d = '', dots = '', labs = '', grid = '';
+
+    var grid = '';
     [0, 0.5, 1].forEach(function(f) {
         var v = mn + (mx - mn) * f, yy = Y(v);
         grid += '<line x1="' + L + '" y1="' + yy.toFixed(1) + '" x2="' + (W - R) + '" y2="' + yy.toFixed(1) + '" stroke="rgba(255,255,255,0.06)" stroke-width="0.7"/>';
         grid += '<text x="' + (L - 4) + '" y="' + (yy + 2).toFixed(1) + '" fill="#64748b" font-size="6.5" text-anchor="end">' + Math.round(v) + '</text>';
     });
+
+    var dPred = '', dAct = '', conn = '', dots = '', trof = '', labs = '';
     var step = Math.ceil(pts.length / 6);
+    var anyBeat = false;
     pts.forEach(function(p, i) {
-        d += (i ? ' L' : 'M') + X(i).toFixed(1) + ' ' + Y(p.kg).toFixed(1);
+        dPred += (i ? ' L' : 'M') + X(i).toFixed(1) + ' ' + Y(pred[i]).toFixed(1);
+        dAct  += (i ? ' L' : 'M') + X(i).toFixed(1) + ' ' + Y(act[i]).toFixed(1);
         var dl = (p.w === DELOAD_WEEK);
-        dots += '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(p.kg).toFixed(1) + '" r="' + (dl ? 2.4 : 3.2) +
-                '" fill="' + (dl ? '#64748b' : 'var(--primary)') + '" stroke="#0f172a" stroke-width="1.2"/>';
+        var beat = !dl && act[i] > pred[i] + 0.05;
+        if (beat) {
+            anyBeat = true;
+            conn += '<line x1="' + X(i).toFixed(1) + '" y1="' + Y(pred[i]).toFixed(1) + '" x2="' + X(i).toFixed(1) +
+                    '" y2="' + Y(act[i]).toFixed(1) + '" stroke="#fbbf24" stroke-width="1" stroke-dasharray="2 2"/>';
+            dots += '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(act[i]).toFixed(1) + '" r="3.4" fill="#fbbf24" stroke="#0f172a" stroke-width="1.2"/>';
+            trof += '<text x="' + X(i).toFixed(1) + '" y="' + (Y(act[i]) - 6.5).toFixed(1) + '" font-size="9" text-anchor="middle">\uD83C\uDFC6</text>';
+        } else {
+            dots += '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(act[i]).toFixed(1) + '" r="' + (dl ? 2.2 : 2.6) +
+                    '" fill="' + (dl ? '#64748b' : 'var(--primary)') + '" stroke="#0f172a" stroke-width="1.1"/>';
+        }
         if (i % step === 0 || i === pts.length - 1) {
             labs += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 10) + '" fill="#64748b" font-size="6.5" text-anchor="middle">' + _fmtDay(p.d) + '</text>';
         }
     });
-    var area = d + ' L' + X(pts.length - 1).toFixed(1) + ' ' + (H - B) + ' L' + X(0).toFixed(1) + ' ' + (H - B) + ' Z';
-    return '<div class="exchart"><svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block">' +
-        '<defs><linearGradient id="exg" x1="0" y1="0" x2="0" y2="1">' +
-        '<stop offset="0%" stop-color="rgba(var(--pr,52,211,153),0.28)"/>' +
-        '<stop offset="100%" stop-color="rgba(var(--pr,52,211,153),0)"/></linearGradient></defs>' +
-        grid + '<path d="' + area + '" fill="url(#exg)"/>' +
-        '<path d="' + d + '" fill="none" stroke="var(--primary)" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>' +
-        dots + labs + '</svg></div>' +
-        '<div class="exlg"><span><i style="background:var(--primary)"></i>capitoli di carico</span>' +
-        '<span><i style="background:#64748b"></i>deload</span></div>';
-}
+    var band = dPred + ' L' + X(pts.length - 1).toFixed(1) + ' ' + (H - B) + ' L' + X(0).toFixed(1) + ' ' + (H - B) + ' Z';
 
+    var lg = '<div class="exlg"><span><i class="band"></i>zona del programma</span>' +
+             '<span><i class="dash"></i>previsto</span>' +
+             '<span><i style="background:var(--primary)"></i>carico equivalente</span>';
+    // La voce "record" compare solo se ce n'e' almeno uno: altrimenti la
+    // legenda spiegherebbe un simbolo che nel grafico non esiste.
+    if (anyBeat) lg += '<span><i class="dot"></i>record</span>';
+    lg += '<span><i style="background:#64748b"></i>deload</span></div>';
+
+    return '<div class="exchart"><svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block">' +
+        grid + '<path d="' + band + '" fill="rgba(148,163,184,0.13)"/>' +
+        '<path d="' + dPred + '" fill="none" stroke="#64748b" stroke-width="1.2" stroke-dasharray="3 2.5"/>' +
+        conn +
+        '<path d="' + dAct + '" fill="none" stroke="var(--primary)" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>' +
+        dots + trof + labs + '</svg></div>' + lg;
+}
 function setExFilter(f) {
     _exChartFilter = f;
     renderExChartBody();
@@ -9538,19 +9665,49 @@ function renderExChartBody() {
 
     // ── storico: data, ciclo, capitolo, carico ──
     h += '<div class="m-sec-title">Storico</div>';
-    var mxKg = Math.max.apply(null, pts.map(function(p) { return p.kg; }));
+    // v.168: la barra non è più proporzionale al carico ma sempre della
+    // stessa lunghezza, e racconta il rapporto con il programma:
+    //   grigia fino al 75%  → programma rispettato
+    //   verde fino all'80% + giallo il restante → programma superato
+    // Il verde e il giallo arrivano insieme: il colore segnala il traguardo,
+    // il giallo di quanto si è usciti. Nel Deload la barra resta grigia.
     pts.slice().reverse().forEach(function(p) {
-        h += '<div class="hist-row">' +
+        var beat = woRowBeat(p);
+        var eq   = (typeof p.eq === 'number') ? p.eq : p.kg;
+        var viaReps = beat && p.r && p.tr && p.r > p.tr;
+        var sub = _fmtKg(p.kg) + ' \u00d7 ' + (p.r || p.tr || '\u2014') + (viaReps ? ' equivalenti' : '');
+        h += '<div class="hist-row' + (p.w === DELOAD_WEEK ? ' dl' : '') + '">' +
              '<div class="hist-date">' + (p.d ? _fmtDay(p.d) : '\u2014') +
                 (nCycles > 1 ? '<span class="hist-cy">C' + p.c + '</span>' : '') + '</div>' +
              '<div class="hist-ch' + (p.w === DELOAD_WEEK ? ' dl' : '') + '">' + (CH_LABELS[p.w] || ('Ch' + (p.w + 1))) + '</div>' +
-             '<div class="hist-bar"><i style="width:' + (p.kg / mxKg * 100) + '%"></i></div>' +
-             '<div class="hist-kg">' + p.kg + ' kg</div></div>';
+             '<div class="hist-bar"><i class="' + (beat ? 'g' : 'base') + '"></i>' +
+                (beat ? '<i class="y"></i>' : '') + '<span class="cut"></span></div>' +
+             '<div class="hist-kg' + (beat ? ' gold' : '') + '">' +
+                (beat ? _fmtKg(eq) + ' kg \uD83C\uDFC6' : _fmtKg(p.kg) + ' kg') +
+                '<span>' + sub + '</span></div></div>';
     });
     if (!dated.length) {
         h += '<div class="m-note">Le date compariranno dal primo allenamento completato con questa versione: ' +
              'prima non veniva registrata la data delle sedute.</div>';
     }
+
+    // Consiglio dalla regola 2-per-2, se il dato lo soddisfa.
+    if (woTwoForTwo(name)) {
+        var _mtrNow = parseFloat(mtrGet(name));
+        var _low = (typeof woIsLowerBody === 'function') ? woIsLowerBody(name) : false;
+        var _pct = _low ? OVL_STEP.margine.low : OVL_STEP.margine.up;
+        if (_mtrNow > 0) {
+            h += '<div class="ex-advice">\uD83C\uDFC6 <b>Due sedute di fila oltre il programma.</b><br>' +
+                 'Alla fine del ciclo il carico di riferimento sale da ' + _fmtKg(_mtrNow) + ' a ' +
+                 _fmtKg(Math.round(_mtrNow * (1 + _pct) * 2) / 2) + ' kg (+' + Math.round(_pct * 100) + '%). ' +
+                 'L\'aumento non viene applicato prima: cambiare l\'MTR a metà ciclo spezzerebbe la scala dei carichi.</div>';
+        }
+    }
+    h += '<div class="m-note">La barra è sempre lunga uguale: si ferma alla soglia quando hai seguito il programma, ' +
+         'e si riempie oltre quando l\'hai superato — con più carico, con più ripetizioni o entrambi. ' +
+         'Le ripetizioni in più diventano il <b>carico equivalente</b> che avresti sollevato facendo quelle previste ' +
+         '(formula di Epley, attendibile entro le ~10 ripetizioni e su serie vicine al limite tecnico). ' +
+         'Nel Deload non si registrano superamenti: lo scarico serve a recuperare.</div>';
 
     // ── proiezione ──
     var mtr = mtrGet(name);
@@ -13430,6 +13587,10 @@ function woStartWorkout() {
     const exData = APP.exerciseData || [];
     if (exData.length === 0) return;
 
+    // Le prestazioni sono per-sessione: senza azzeramento le ripetizioni di
+    // ieri verrebbero riusate per la riga di storico di oggi.
+    exData.forEach(function(e) { delete e._sessionReps; delete e._sessionTargetReps; });
+
     // Nasconde il footer azioni del riscaldamento SENZA distruggerlo: vive
     // dentro la card, e fra poco prevList.innerHTML viene riscritto.
     // woShowActionFooter(false) lo riporta in #wo-panel-train, al sicuro.
@@ -13700,10 +13861,10 @@ function woKgChanged(val) {
     const badge = document.getElementById('wo-pr-badge');
     if (badge) {
         if (pr > 0 && kg > pr) {
-            badge.textContent = '🏆 Nuovo PR se completi la serie!';
+            badge.textContent = '🏆 Sei sopra il tuo record';
             badge.style.color = 'var(--primary)';
         } else if (pr > 0) {
-            badge.textContent = 'PR attuale: ' + pr + ' kg';
+            badge.textContent = 'Record: ' + _fmtKg(pr) + ' kg';
             badge.style.color = '#64748b';
         } else {
             badge.textContent = '';
@@ -13712,46 +13873,26 @@ function woKgChanged(val) {
 }
 
 function _woCheckPR(exName, kg) {
-    const pr = APP.personalRecords[exName] || 0;
-    const badge = document.getElementById('wo-pr-badge');
-
-    if (kg > pr) {
-        // Nuovo PR — registra
-        APP.personalRecords[exName] = kg;
-        saveState();
-        updateProgressPage();
-        if (badge) {
-            badge.textContent = '🏆 Nuovo PR!';
-            badge.style.color = 'var(--primary)';
-            badge.style.animation = 'prPop 0.4s cubic-bezier(0.34,1.56,0.64,1)';
-            setTimeout(() => { if (badge) badge.style.animation = ''; }, 500);
-        }
-        showToast(`🏆 Personal Record: ${exName} — ${kg} kg!`, 'success');
-        woRenderExList();
+    // v.168 — questa funzione non registra più nulla.
+    // Veniva chiamata con il carico PRESCRITTO dall'app, quindi il "record"
+    // che scriveva era MTR × percentuale del capitolo: un numero calcolato
+    // dall'app stessa, che non descriveva nessuna prestazione e che cadeva
+    // sempre sul Chapter 4. La registrazione vive ora in woRecordSessionReps,
+    // dove nasce dal confronto fra prestazione reale e prestazione prevista.
+    // Qui resta solo l'aggiornamento del badge.
+    var pr = APP.personalRecords[exName] || 0;
+    var badge = document.getElementById('wo-pr-badge');
+    if (!badge) return;
+    if (pr > 0 && parseFloat(kg) > pr) {
+        badge.textContent = '\uD83C\uDFC6 Nuovo record se superi le ripetizioni previste!';
+        badge.style.color = 'var(--primary)';
+    } else if (pr > 0) {
+        badge.textContent = 'Record: ' + _fmtKg(pr) + ' kg';
+        badge.style.color = '#94a3b8';
     } else {
-        // NON riscrivere qui baseWeight né loads. Il ramo precedente faceva
-        //   exEntry.baseWeight = kg;  exD.loads = WEEK_LOADS.map(p => kg*p);
-        // prendendo il carico della settimana corrente — che la scala l'ha
-        // GIÀ applicata — e riusandolo come base: la scala finiva applicata
-        // due volte e i carichi del protocollo si erodevano a ogni serie
-        // (un Ch3 da 67,5 diventava la base, e il Ch4 scendeva a 60,75
-        // invece di 72). I carichi devono derivare solo dall'MTR.
-        if (badge) {
-            badge.textContent = pr > 0 ? ('PR attuale: ' + pr + ' kg') : '';
-            badge.style.color = '#94a3b8';
-        }
+        badge.textContent = '';
     }
 }
-
-
-// ── Momento 2: domanda a fine esercizio nella settimana Overload ──
-// Soglia in ripetizioni ASSOLUTE (2), non proporzionale allo schema:
-// è così che la formulano Baechle & Earle (NSCA, 3ª ed. 2008) e l'ACSM
-// (Kraemer et al. 2009), senza distinguere fra schemi di forza e di massa.
-var OVL_RANK = { fatica: 0, esatte: 1, margine: 2 };
-
-// Se lo stesso esercizio ricorre più volte nella settimana con schemi diversi,
-// vince la risposta PEGGIORE: un buon 4x10 non cancella una fatica sul 5x5.
 function woOverloadRecord(exName, answer) {
     if (!exName || !OVL_RANK.hasOwnProperty(answer)) return;
     if (!APP.overloadAnswers) APP.overloadAnswers = {};
@@ -13764,6 +13905,140 @@ function woOverloadRecord(exName, answer) {
         APP.progressionPending = true;
     }
     saveState();
+}
+
+
+// ── DOMANDA RIPETIZIONI (v.168) ───────────────────────────
+// Compare sull'ultima serie: e' l'unica vicina al limite tecnico, sulle
+// serie iniziali restano ripetizioni di riserva e la conversione
+// sottostimerebbe. Non compare nel Deload, sugli esercizi a tempo, su quelli
+// senza carico (a corpo libero la conversione non avrebbe un asse su cui
+// salire) e sopra le 10 ripetizioni previste, dove Epley perde affidabilita'.
+function woShouldAskReps(ex, wIdx, targetReps, usedKg) {
+    if (!ex || wIdx === DELOAD_WEEK) return false;
+    if (srIsTime(ex.sr)) return false;
+    if (!(targetReps > 0) || targetReps > REPS_ASK_MAX) return false;
+    if (!(parseFloat(usedKg) > 0)) return false;
+    return true;
+}
+
+function woAskExtraReps(exName, targetReps, usedKg, onDone) {
+    var old = document.getElementById('wo-reps-ask-overlay');
+    if (old) old.remove();
+
+    var done = false;
+    function finish(reps) {
+        if (done) return; done = true;
+        var ovEl = document.getElementById('wo-reps-ask-overlay');
+        if (ovEl) ovEl.remove();
+        if (reps) woRecordSessionReps(exName, reps, targetReps, usedKg);
+        if (typeof onDone === 'function') onDone();
+    }
+
+    var ov = document.createElement('div');
+    ov.id = 'wo-reps-ask-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(6,13,26,0.94);z-index:9300;' +
+        'display:flex;align-items:center;justify-content:center;' +
+        'padding:max(env(safe-area-inset-top),44px) 18px calc(24px + env(safe-area-inset-bottom,0px));' +
+        'box-sizing:border-box;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);';
+
+    var box = document.createElement('div');
+    box.style.cssText = 'background:#0f172a;border:1px solid rgba(255,255,255,0.09);border-radius:16px;' +
+        'max-width:420px;width:100%;max-height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;' +
+        'padding:20px 18px;box-sizing:border-box;';
+
+    var h = '<div style="font-size:0.52rem;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">Ultima serie</div>' +
+        '<div style="font-size:0.95rem;font-weight:800;color:#e2e8f0;margin:4px 0 3px;">' + exName + '</div>' +
+        '<div style="font-size:0.7rem;color:#cbd5e1;line-height:1.6;margin-bottom:14px;">Hai chiuso piu\u0027 delle <b style="color:#e2e8f0;">' +
+        targetReps + ' ripetizioni</b> previste con ' + _fmtKg(usedKg) + ' kg?</div>' +
+        '<div id="wo-reps-chips" style="display:flex;gap:6px;margin-bottom:10px;"></div>' +
+        '<button type="button" class="wo-ovl-opt skip" id="wo-reps-skip">Preferisco non rispondere<small>Non viene registrato nulla</small></button>';
+    box.innerHTML = h;
+
+    var chips = box.querySelector('#wo-reps-chips');
+    var opts = [
+        { r: targetReps, lab: 'No, ' + targetReps },
+        { r: targetReps + 1, lab: '+1' },
+        { r: targetReps + 2, lab: '+2' },
+        { r: targetReps + 3, lab: '+3 o piu\u0027' }
+    ];
+    opts.forEach(function(o) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        // La regola globale button{width:100%} sfonderebbe la riga flex.
+        b.style.cssText = 'flex:1;width:auto;padding:12px 4px;border-radius:10px;text-transform:none;' +
+            'background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);' +
+            'color:#cbd5e1;font-size:0.68rem;font-weight:800;font-family:inherit;cursor:pointer;';
+        b.textContent = o.lab;
+        b.onclick = function() { finish(o.r); };
+        chips.appendChild(b);
+    });
+    box.querySelector('#wo-reps-skip').onclick = function() { finish(0); };
+
+    ov.appendChild(box);
+    document.body.appendChild(ov);
+}
+
+function _fmtKg(v) {
+    var n = parseFloat(v) || 0;
+    return (Math.round(n * 10) / 10).toString().replace('.', ',');
+}
+
+// Salva la prestazione della sessione sull'esercizio e, se supera la
+// previsione, registra il record. L'aumento del carico NON viene applicato
+// qui: alzare l'MTR a meta' ciclo spezzerebbe la scala 72/78/85/90% e con
+// essa la periodizzazione. Confluisce nella progressione di fine Chapter 4.
+function woRecordSessionReps(exName, reps, targetReps, usedKg) {
+    var ex = (APP.exerciseData || []).find(function(x) { return exSameExercise(x.name, exName); });
+    if (ex) {
+        ex._sessionReps = reps; ex._sessionTargetReps = targetReps;
+        // Sull'ultimo esercizio della sessione lo storico viene scritto prima
+        // che la domanda riceva risposta: aggiorna la riga se esiste gia'.
+        _lhUpsert(ex, APP.selectedViewWeek || 0, true);
+    }
+
+    var wIdx = APP.selectedViewWeek || 0;
+    var prevKg = ex && ex.loads ? (ex.loads[wIdx] || ex.baseWeight || 0) : (ex ? (ex.baseWeight || 0) : 0);
+    var eq = woEquivalentLoad(usedKg, reps, targetReps);
+    if (!(prevKg > 0) || wIdx === DELOAD_WEEK) { saveState(); return; }
+    if (eq <= prevKg + 0.05) { saveState(); return; }
+
+    _woRegisterRecord(exName, eq, usedKg, reps, targetReps, wIdx);
+}
+
+// Registra il record solo se il carico equivalente supera il precedente.
+// I record archiviati prima della v.168 sono carichi prescritti: vivono in
+// APP.prLegacy e non competono mai con questi.
+function _woRegisterRecord(exName, eq, usedKg, reps, targetReps, wIdx) {
+    var prev = APP.personalRecords[exName] || 0;
+    var isNew = eq > prev + 0.05;
+    if (isNew) {
+        APP.personalRecords[exName] = eq;
+        if (!APP.prMeta) APP.prMeta = {};
+        var dt = new Date();
+        APP.prMeta[exName] = {
+            kg: parseFloat(usedKg) || 0, r: reps, tr: targetReps, w: wIdx,
+            d: dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0')
+        };
+    }
+    saveState();
+
+    var badge = document.getElementById('wo-pr-badge');
+    if (badge) {
+        badge.textContent = isNew ? '\uD83C\uDFC6 Nuovo record!' : ('Record: ' + _fmtKg(prev) + ' kg');
+        badge.style.color = isNew ? 'var(--primary)' : '#94a3b8';
+        if (isNew) {
+            badge.style.animation = 'prPop 0.4s cubic-bezier(0.34,1.56,0.64,1)';
+            setTimeout(function() { if (badge) badge.style.animation = ''; }, 500);
+        }
+    }
+    if (isNew) {
+        var viaReps = (reps > targetReps);
+        var msg = '\uD83C\uDFC6 Record \u00b7 ' + exName + ' \u2014 ' + _fmtKg(usedKg) + ' kg \u00d7 ' + reps +
+                  (viaReps ? ' equivale a ' + _fmtKg(eq) + ' kg sulle ' + targetReps + ' previste' : '');
+        showToast(msg, 'success');
+        if (typeof woRenderExList === 'function') woRenderExList();
+    }
 }
 
 function woAskOverloadFeedback(exName, targetReps) {
@@ -13830,16 +14105,31 @@ function woIsLowerBody(exName) {
 function woComputeProgression() {
     var out = [];
     var ans = APP.overloadAnswers || {};
-    Object.keys(ans).forEach(function(name) {
+    // v.168: gli esercizi che soddisfano la regola 2-per-2 entrano comunque,
+    // anche senza risposta soggettiva a fine Chapter 4.
+    var names = Object.keys(ans);
+    (APP.loadHistory || []).forEach(function(e) {
+        if (!e || !e.ex) return;
+        var dup = false;
+        names.forEach(function(n) { if (exSameExercise(n, e.ex)) dup = true; });
+        if (!dup && woTwoForTwo(e.ex)) names.push(e.ex);
+    });
+    names.forEach(function(name) {
         var cur = parseFloat(mtrGet(name));
         if (!cur || cur <= 0) return;
-        var step = OVL_STEP[ans[name]];
+        // Il dato oggettivo ha la precedenza sulla risposta soggettiva: due
+        // sedute consecutive oltre il target valgono "avevo margine" anche se
+        // a fine Chapter 4 l'atleta ha dichiarato di aver faticato.
+        var beat = woTwoForTwo(name);
+        var answer = beat ? 'margine' : ans[name];
+        var step = OVL_STEP[answer];
         if (!step) return;
         var lower = woIsLowerBody(name);
         var pct = lower ? step.low : step.up;
         out.push({
             name: name,
-            answer: ans[name],
+            answer: answer,
+            fromData: beat,
             lower: lower,
             pct: pct,
             oldMtr: cur,
@@ -13977,16 +14267,15 @@ function woCompleteSet() {
     const srParts = displaySr ? displaySr.match(/(\d+)\s*[xX×]\s*(\d+)/) : null;
     const totalSets = srParts ? parseInt(srParts[1]) : 3;
 
-    // ── PR: conferma solo alla PRIMA serie (setIndex === 0 prima dell'incremento) ──
+    // ── v.168: qui veniva registrato un "record" pari al carico PRESCRITTO,
+    // cioè MTR × percentuale del capitolo — un numero che l'app calcolava da
+    // sé e che non descriveva nessuna prestazione. La registrazione è stata
+    // spostata sull'ultima serie, dove nasce dal confronto fra prestazione
+    // reale e prestazione prevista (vedi woRecordSessionReps).
+    // Il badge continua ad aggiornarsi a ogni serie, senza scrivere nulla.
     if (woState.setIndex === 0) {
-        // L'id corretto è 'wo-kg-input' (creato in woRenderEx): 'wo-kg-val'
-        // non è mai esistito, quindi il controllo cadeva sempre e i record
-        // personali non venivano registrati.
-        const kgEl = document.getElementById('wo-kg-input');
-        if (kgEl) {
-            const kg = parseFloat(kgEl.value);
-            if (!isNaN(kg) && kg > 0) _woCheckPR(ex.name, kg);
-        }
+        const kgEl0 = document.getElementById('wo-kg-input');
+        if (kgEl0) woKgChanged(kgEl0.value);
     }
 
     woState.setIndex++;
@@ -13997,9 +14286,24 @@ function woCompleteSet() {
     // Momento 2: chiedi com'è andata l'ultima serie, subito, finché il dato è
     // fresco. Va PRIMA del ramo isLastEx, che esce con return: altrimenti
     // l'ultimo esercizio della sessione non verrebbe mai chiesto.
-    if (w === OVERLOAD_WEEK && isLastSet) {
+    if (isLastSet) {
         var _tgtReps = srParts ? parseInt(srParts[2]) : null;
-        woAskOverloadFeedback(ex.name, _tgtReps);
+        var _kgEl = document.getElementById('wo-kg-input');
+        var _usedKg = _kgEl ? parseFloat(_kgEl.value) : NaN;
+        if (isNaN(_usedKg) || _usedKg <= 0) {
+            _usedKg = (ex.loads ? (ex.loads[w] || ex.baseWeight || 0) : (ex.baseWeight || 0));
+        }
+        ex._sessionKg = _usedKg;
+        var _askOvl = function() {
+            if (w === OVERLOAD_WEEK) woAskOverloadFeedback(ex.name, _tgtReps);
+        };
+        // Le due domande non devono sovrapporsi: nel Chapter 4 la prestazione
+        // viene chiesta per prima, il feedback soggettivo subito dopo.
+        if (woShouldAskReps(ex, w, _tgtReps, _usedKg)) {
+            woAskExtraReps(ex.name, _tgtReps, _usedKg, _askOvl);
+        } else {
+            _askOvl();
+        }
     }
 
     if (isLastEx) {
@@ -17113,7 +17417,7 @@ function renderExerciseChart() {
 
     // Actual PR — we only have the global max PR, not per-chapter
     // Show the PR as a horizontal reference line if available
-    const prMax = (APP.personalRecords || {})[exName] || 0;
+    const prMax = parseFloat((APP.personalRecords || {})[exName]) || 0;
 
     // Chart dimensions
     const W = 320, H = 160;
@@ -18547,20 +18851,47 @@ const BADGES_CONFIG = [
 // Fino alla v.143 l'app non conservava nessuna traccia storica: si sapeva
 // il carico previsto oggi, non quello di un mese fa. Da qui in avanti ogni
 // sessione completata lascia una riga per esercizio.
+// v.168: la riga conserva tre valori invece di uno.
+//   p  = carico previsto dal programma (MTR × percentuale del capitolo)
+//   kg = carico realmente impostato dall'atleta
+//   r  = ripetizioni chiuse, tr = ripetizioni previste
+//   eq = carico equivalente (Epley), l'unico confrontabile con p
+// Fino alla v.167 veniva salvato solo il carico previsto, quindi lo storico
+// e la previsione erano lo stesso dato disegnato due volte. Le righe vecchie
+// restano senza p/r e vengono lette come "programma rispettato".
+function _lhIsoToday() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function _lhUpsert(ex, wIdx, onlyIfExists) {
+    if (!ex) return;
+    if (!Array.isArray(APP.loadHistory)) APP.loadHistory = [];
+    var prev = ex.loads ? (ex.loads[wIdx] || ex.baseWeight || 0) : (ex.baseWeight || 0);
+    if (!prev) return;
+    var used = (parseFloat(ex._sessionKg) > 0) ? parseFloat(ex._sessionKg) : prev;
+    var displaySr = (wIdx === DELOAD_WEEK) ? woDeloadSr(ex.sr) : ex.sr;
+    var tr = srReps(displaySr);
+    var r  = (typeof ex._sessionReps === 'number' && ex._sessionReps > 0) ? ex._sessionReps : null;
+    var eq = (r && tr) ? woEquivalentLoad(used, r, tr) : used;
+    var key = _lhIsoToday() + '|' + wIdx + '|' + ex.name;
+    var row = null;
+    for (var i = 0; i < APP.loadHistory.length; i++) {
+        if (APP.loadHistory[i] && APP.loadHistory[i].k === key) { row = APP.loadHistory[i]; break; }
+    }
+    if (!row) {
+        if (onlyIfExists) return;
+        row = { k: key, d: _lhIsoToday(), w: wIdx, ex: ex.name };
+        APP.loadHistory.push(row);
+    }
+    row.kg = used; row.p = prev; row.eq = eq;
+    if (tr) row.tr = tr;
+    if (r)  row.r  = r;
+}
+
 function logLoadHistory(wIdx) {
     if (!Array.isArray(APP.loadHistory)) APP.loadHistory = [];
-    var d = new Date();
-    var iso = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-    var existing = {};
-    APP.loadHistory.forEach(function(e) { if (e && e.k) existing[e.k] = 1; });
-    (APP.exerciseData || []).forEach(function(ex) {
-        var kg = ex.loads ? (ex.loads[wIdx] || ex.baseWeight || 0) : (ex.baseWeight || 0);
-        if (!kg) return;
-        var key = iso + '|' + wIdx + '|' + ex.name;
-        if (existing[key]) return;
-        existing[key] = 1;
-        APP.loadHistory.push({ k: key, d: iso, w: wIdx, ex: ex.name, kg: kg });
-    });
+    (APP.exerciseData || []).forEach(function(ex) { _lhUpsert(ex, wIdx, false); });
     if (APP.loadHistory.length > 800) APP.loadHistory = APP.loadHistory.slice(-800);
 }
 
