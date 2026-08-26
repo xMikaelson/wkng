@@ -3737,7 +3737,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '166';
+const APP_VERSION = '167';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -3761,6 +3761,7 @@ const APP = {
         ['rest','rest','rest','rest','rest','rest','rest'],
         ['rest','rest','rest','rest','rest','rest','rest'],
         ['rest','rest','rest','rest','rest','rest','rest'],
+        ['rest','rest','rest','rest','rest','rest','rest'],
         ['rest','rest','rest','rest','rest','rest','rest']
     ],
     _weekCelebrated: [false,false,false,false,false],
@@ -3772,15 +3773,16 @@ const APP = {
     currentSet: 1,
     savedProtocols: [],
     activeProtocolId: null,
-    // Which protocol is assigned to each day: 4 weeks x 7 days, stores {protoId, protoName} or null
+    // Which protocol is assigned to each day: N_WEEKS x 7 days, stores {protoId, protoName} or null
     dayAssignments: [
+        [null,null,null,null,null,null,null],
         [null,null,null,null,null,null,null],
         [null,null,null,null,null,null,null],
         [null,null,null,null,null,null,null],
         [null,null,null,null,null,null,null]
     ],
     // Motivational quotes per week - changes only when completing a workout
-    motivationalQuotes: ['', '', '', ''],
+    motivationalQuotes: ['', '', '', '', ''],
     // Personal records: { 'ExerciseName': maxKg }
     personalRecords: {}
 };
@@ -3814,6 +3816,36 @@ const MOTIVATIONAL_QUOTES = [
 ];
 
 // ============= PERSISTENCE (localStorage) =============
+// ── Normalizzazione settimane ──
+// Gli stati salvati prima della v.167 (localStorage o backup Supabase)
+// possono contenere array a 4 settimane, ereditati da quando il ciclo non
+// aveva ancora il Deload come Chapter 5. initDashboard e restoreChipStates
+// iterano N_WEEKS: senza padding, la settimana 5 mandava in TypeError
+// l'attivazione del protocollo (utente nuovo, logout, reset, eliminazione
+// dell'ultimo protocollo). Qui si integra ciò che manca, senza toccare i dati esistenti.
+function normalizeWeekState() {
+    if (!Array.isArray(APP.chipStates)) APP.chipStates = [];
+    while (APP.chipStates.length < N_WEEKS) APP.chipStates.push(['rest','rest','rest','rest','rest','rest','rest']);
+    APP.chipStates = APP.chipStates.map(function(w){
+        var row = Array.isArray(w) ? w.slice(0, 7) : [];
+        while (row.length < 7) row.push('rest');
+        return row;
+    });
+    if (!Array.isArray(APP.dayAssignments)) APP.dayAssignments = [];
+    while (APP.dayAssignments.length < N_WEEKS) APP.dayAssignments.push([null,null,null,null,null,null,null]);
+    APP.dayAssignments = APP.dayAssignments.map(function(w){
+        var row = Array.isArray(w) ? w.slice(0, 7) : [];
+        while (row.length < 7) row.push(null);
+        return row;
+    });
+    if (!Array.isArray(APP.motivationalQuotes)) APP.motivationalQuotes = [];
+    while (APP.motivationalQuotes.length < N_WEEKS) APP.motivationalQuotes.push('');
+    if (!Array.isArray(APP.completedWeeks)) APP.completedWeeks = [];
+    while (APP.completedWeeks.length < N_WEEKS) APP.completedWeeks.push(false);
+    if (!Array.isArray(APP._weekCelebrated)) APP._weekCelebrated = [];
+    while (APP._weekCelebrated.length < N_WEEKS) APP._weekCelebrated.push(false);
+}
+
 function saveState() {
     try {
         syncActiveProtocol();
@@ -4026,8 +4058,12 @@ function loadState() {
         ];
         
         // Carica le frasi motivazionali salvate
-        APP.motivationalQuotes = saved.motivationalQuotes || ['', '', '', ''];
-        
+        APP.motivationalQuotes = saved.motivationalQuotes || ['', '', '', '', ''];
+
+        // Gli stati salvati prima della v.167 possono avere 4 settimane:
+        // senza padding il loop qui sotto lancia sulla settimana Deload.
+        normalizeWeekState();
+
         // Inizializza le frasi mancanti per settimane con allenamenti completati
         for (let w = 0; w < N_WEEKS; w++) {
             const doneCount = APP.chipStates[w].filter(s => s === 'done').length;
@@ -5458,11 +5494,12 @@ async function onLoginSuccess(user, usernameOverride = null) {
         APP.overloadAnswers = Object.assign({}, s.overloadAnswers || {}, APP.overloadAnswers || {});
         APP.progressionPending = !!s.progressionPending || !!APP.progressionPending;
         APP.availableWeeks = s.availableWeeks || [0];
-        APP.chipStates = s.chipStates || [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']];
+        APP.chipStates = s.chipStates || [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']];
         APP.exerciseTracking = s.exerciseTracking || [];
         APP.currentExerciseIndex = s.currentExerciseIndex || 0;
-        APP.motivationalQuotes = s.motivationalQuotes || ['','','',''];
+        APP.motivationalQuotes = s.motivationalQuotes || ['','','','',''];
         APP.dayAssignments = s.dayAssignments || [[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null]];
+        normalizeWeekState(); // backup Supabase pre-v.167 a 4 settimane
         if (s.goal) document.getElementById('goal').value = s.goal;
         if (s.activeProtocolId) APP.activeProtocolId = s.activeProtocolId;
         // Restore cached protocols if Supabase hasn't loaded them yet
@@ -5505,7 +5542,7 @@ async function onLoginSuccess(user, usernameOverride = null) {
         if (!_ls || !_ls.savedProtocols || _ls.savedProtocols.length === 0) {
             // Davvero nessun protocollo: resetta
             APP.dayAssignments = [[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null]];
-            APP.chipStates = [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']];
+            APP.chipStates = [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']];
             APP.completedWeeks = [false,false,false,false,false];
             APP.availableWeeks = [0];
             APP.selectedViewWeek = 0;
@@ -5513,12 +5550,12 @@ async function onLoginSuccess(user, usernameOverride = null) {
             APP.exerciseData = [];
             APP.totalWorkouts = 0;
             APP.startDate = null;
-            APP.motivationalQuotes = ['','','',''];
+            APP.motivationalQuotes = ['','','','',''];
         }
         // else: stato già caricato da localStorage via stateSource sopra
     }
     if (protocols && protocols.length > 0) {
-        const DEF_CHIPS = () => [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']];
+        const DEF_CHIPS = () => [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']];
         APP.savedProtocols = protocols.map(p => {
             // Retrocompatibilità: il vecchio formato salvava exercises_json come ARRAY
             // (e i metadati venivano persi). Il nuovo formato è un oggetto.
@@ -10199,8 +10236,8 @@ async function awOfferSave(food) {
     toastEl.style.cssText = 'position:fixed;bottom:calc(var(--nav-h,70px) + 16px);left:50%;transform:translateX(-50%);background:#1e293b;border:1px solid rgba(52,211,153,0.3);border-radius:12px;padding:12px 16px;z-index:9999;display:flex;align-items:center;gap:12px;max-width:320px;box-shadow:0 4px 20px rgba(0,0,0,0.4);';
     toastEl.innerHTML =
         '<div style="font-size:0.75rem;color:#cbd5e1;flex:1;line-height:1.4;">Contribuisci <strong style="color:#e2e8f0;">' + food.name + '</strong> al database Awakening?</div>' +
-        '<button id="aw-yes-btn" style="padding:6px 12px;background:var(--primary);border:none;border-radius:8px;color:#000;font-size:0.7rem;font-weight:800;cursor:pointer;font-family:inherit;flex-shrink:0;">Sì</button>' +
-        '<button id="aw-no-btn" style="padding:6px 8px;background:none;border:none;color:#94a3b8;font-size:0.7rem;cursor:pointer;font-family:inherit;flex-shrink:0;">No</button>';
+        '<button id="aw-yes-btn" style="width:auto;padding:6px 12px;background:var(--primary);border:none;border-radius:8px;color:#000;font-size:0.7rem;font-weight:800;cursor:pointer;font-family:inherit;flex-shrink:0;">Sì</button>' +
+        '<button id="aw-no-btn" style="width:auto;padding:6px 8px;background:none;border:none;color:#94a3b8;font-size:0.7rem;cursor:pointer;font-family:inherit;flex-shrink:0;">No</button>';
     document.body.appendChild(toastEl);
 
     const cleanup = () => { if (toastEl.parentNode) toastEl.remove(); };
@@ -12934,7 +12971,7 @@ function aiFoodSearchManual(input, idx) {
                 newRow.dataset.product = prodJson;
                 const serving = aiFoodParseServing(p);
                 newRow.innerHTML = '<div style="flex:1;min-width:0;"><div style="font-size:0.7rem;font-weight:600;color:#e2e8f0;">' + p.name + '</div><div style="font-size:0.55rem;color:#94a3b8;">' + p._source + (serving?' · '+serving+'g':'') + '</div></div>' +
-                    '<button onclick="aiFoodSelectForComponent('+idx+',999,this.closest(\'[data-product]\').dataset.product)" style="margin-left:8px;background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);color:#34d399;border-radius:6px;padding:4px 8px;font-size:0.6rem;cursor:pointer;font-family:inherit;flex-shrink:0;">Usa</button>';
+                    '<button onclick="aiFoodSelectForComponent('+idx+',999,this.closest(\'[data-product]\').dataset.product)" style="width:auto;margin-left:8px;background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);color:#34d399;border-radius:6px;padding:4px 8px;font-size:0.6rem;cursor:pointer;font-family:inherit;flex-shrink:0;">Usa</button>';
                 el.appendChild(newRow);
                 resultsEl.style.display = 'none';
                 input.value = '';
@@ -14328,10 +14365,10 @@ function performLogout() {
     localStorage.removeItem(STORAGE_KEY);
     APP.userName = null; APP.exerciseData = []; APP.totalWorkouts = 0; APP.startDate = null;
     APP.selectedViewWeek = 0; APP.completedWeeks = [false,false,false,false,false]; APP.availableWeeks = [0];
-    APP.chipStates = [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']];
+    APP.chipStates = [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']];
     APP.exerciseTracking = []; APP.currentExerciseIndex = 0; APP.activeProtocolId = null;
     APP.savedProtocols = []; APP.dayAssignments = [[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null]];
-    APP.motivationalQuotes = ['','','',''];
+    APP.motivationalQuotes = ['','','','',''];
     // 1. Rimuovi nav-mode e nascondi tutte le pagine
     document.body.classList.remove('nav-mode');
     document.getElementById('bottom-nav').classList.remove('visible');
@@ -14579,6 +14616,7 @@ function removeLastExFromProtocol(protoId) {
 
 // ============= DASHBOARD INIT =============
 function initDashboard() {
+    normalizeWeekState(); // qualunque percorso arrivi qui, le 5 settimane devono esistere
     const container = document.getElementById('week-selector-container');
     container.innerHTML = '';
 
@@ -15935,7 +15973,7 @@ function awkGenerateProtocols(){
                  _type: isTime ? 'time' : 'reps', _zone: e.zone };
       }),
       createdAt: new Date().toISOString(),
-      chipStates: [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']],
+      chipStates: [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']],
       completedWeeks: [false, false, false, false, false],
       availableWeeks: [0],
       selectedViewWeek: 0,
@@ -16493,7 +16531,7 @@ function generateSplitProtocols(baseName, goal, splitType) {
             goal: goal,
             exercises: exercises.map(e => ({ name: e.name, sr: sr, baseWeight: e.weight })),
             createdAt: new Date().toISOString(),
-            chipStates: [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']],
+            chipStates: [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']],
             completedWeeks: [false, false, false, false, false],
             availableWeeks: [0],
             selectedViewWeek: 0,
@@ -16540,7 +16578,7 @@ function generateHybridProtocols(baseName) {
             goal: slot.goal,
             exercises: exercises.map(e => ({ name: e.name, sr: e.sr || (slot.goal === 'forza' ? '5 x 5' : '4 x 10'), baseWeight: e.weight })),
             createdAt: new Date().toISOString(),
-            chipStates: [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']],
+            chipStates: [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']],
             completedWeeks: [false, false, false, false, false],
             availableWeeks: [0],
             selectedViewWeek: 0,
@@ -16636,9 +16674,11 @@ function autoSaveProtocol() {
         ['rest','rest','rest','rest','rest','rest','rest'],
         ['rest','rest','rest','rest','rest','rest','rest'],
         ['rest','rest','rest','rest','rest','rest','rest'],
+        ['rest','rest','rest','rest','rest','rest','rest'],
         ['rest','rest','rest','rest','rest','rest','rest']
     ];
     APP.dayAssignments = [
+        [null,null,null,null,null,null,null],
         [null,null,null,null,null,null,null],
         [null,null,null,null,null,null,null],
         [null,null,null,null,null,null,null],
@@ -16945,6 +16985,11 @@ function weightUpdateUI() {
 function weightRenderChart(log, goal) {
     const canvas = document.getElementById('weight-chart');
     if (!canvas) return;
+    // Chart.js arriva da CDN: se il caricamento fallisce (offline al primo
+    // avvio, CDN bloccato), il grafico si salta ma il resto della pagina
+    // Progressi — e la catena del toast PR che chiama updateProgressPage
+    // in modo sincrono — deve continuare a funzionare.
+    if (typeof Chart === 'undefined') return;
     const labels = log.map(e => weightFormatDate(e.date));
     const data   = log.map(e => e.kg);
     // Grafico vuoto: assi neutri
@@ -17167,6 +17212,9 @@ window.awakeDiag = async function() {
 function updateChart() {
     const canvas = document.getElementById('progressionChart');
     if (!canvas) return;
+    // Stessa protezione di weightRenderChart: senza Chart.js si salta il
+    // grafico, non la catena updateStats che arriva dal tap sui chip.
+    if (typeof Chart === 'undefined') return;
     const ctx = canvas.getContext('2d');
     if (APP.myChart) APP.myChart.destroy();
     if (APP.exerciseData.length === 0) return;
@@ -17195,7 +17243,7 @@ function updateChart() {
 
     APP.myChart = new Chart(ctx, {
         type: 'line',
-        data: { labels: ['Chapter 1', 'Chapter 2', 'Chapter 3', 'Chapter 4'], datasets },
+        data: { labels: ['Chapter 1', 'Chapter 2', 'Chapter 3', 'Chapter 4', 'Chapter 5'], datasets },
         options: {
             responsive: true,
             plugins: {
@@ -17800,9 +17848,11 @@ function deleteProtocol(protoId) {
                 ['rest','rest','rest','rest','rest','rest','rest'],
                 ['rest','rest','rest','rest','rest','rest','rest'],
                 ['rest','rest','rest','rest','rest','rest','rest'],
+                ['rest','rest','rest','rest','rest','rest','rest'],
                 ['rest','rest','rest','rest','rest','rest','rest']
             ];
             APP.dayAssignments = [
+                [null,null,null,null,null,null,null],
                 [null,null,null,null,null,null,null],
                 [null,null,null,null,null,null,null],
                 [null,null,null,null,null,null,null],
@@ -18358,9 +18408,11 @@ async function performFullReset() {
         ['rest','rest','rest','rest','rest','rest','rest'],
         ['rest','rest','rest','rest','rest','rest','rest'],
         ['rest','rest','rest','rest','rest','rest','rest'],
+        ['rest','rest','rest','rest','rest','rest','rest'],
         ['rest','rest','rest','rest','rest','rest','rest']
     ];
     APP.dayAssignments = [
+        [null,null,null,null,null,null,null],
         [null,null,null,null,null,null,null],
         [null,null,null,null,null,null,null],
         [null,null,null,null,null,null,null],
@@ -18368,7 +18420,7 @@ async function performFullReset() {
     ];
     APP.exerciseTracking = [];
     APP.currentExerciseIndex = 0;
-    APP.motivationalQuotes = ['','','',''];
+    APP.motivationalQuotes = ['','','','',''];
     APP.activeProtocolId = null;
     APP.workoutSeconds = 0;
 
