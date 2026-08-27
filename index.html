@@ -471,9 +471,44 @@
         .exf { flex:0 0 auto; width:auto; padding:5px 10px; border-radius:20px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); color:#94a3b8; font-size:0.55rem; font-weight:700; font-family:inherit; cursor:pointer; text-transform:none; letter-spacing:0.03em; }
         .exf.on { background:rgba(var(--pr,52,211,153),0.15); border-color:rgba(var(--pr,52,211,153),0.4); color:var(--primary); }
         .exf.off { opacity:0.35; }
-        .exchart { width:100%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:12px 8px 6px; }
-        .exlg { display:flex; gap:12px; justify-content:center; margin-top:8px; font-size:0.45rem; color:#64748b; }
-        .exlg i { display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:4px; vertical-align:middle; }
+                .exchart { width:100%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:12px 8px 6px; }
+        /* v.172 — grafico a schermo intero. Non è un .pmodal: occupa tutta la
+           finestra senza margini, così il tracciato guadagna l'altezza che su
+           telefono manca dentro al popup. */
+        #ex-fs { position:fixed; inset:0; z-index:9700; display:none; flex-direction:column;
+                 background:#0f172a;
+                 padding:max(env(safe-area-inset-top),34px) 12px calc(14px + env(safe-area-inset-bottom,0px)); }
+        #ex-fs.open { display:flex; }
+        .ex-fs-head { display:flex; align-items:center; gap:11px; padding:0 2px 12px; flex-shrink:0;
+                      border-bottom:1px solid rgba(255,255,255,0.07); }
+        .ex-fs-body { flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:14px 2px 0;
+                      display:flex; flex-direction:column; justify-content:center; }
+        .ex-fs-body .exchart { padding:14px 10px 8px; }
+        /* Pulsante a schermo intero sopra il grafico. width:auto obbligatorio:
+           la regola globale button{width:100%} lo stirerebbe. */
+        .exfs-btn { width:auto; padding:7px 12px; border-radius:9px; text-transform:none;
+                    background:rgba(99,102,241,0.14); border:1px solid rgba(99,102,241,0.4);
+                    color:#a5b4fc; font-size:0.56rem; font-weight:700; font-family:inherit; cursor:pointer;
+                    display:inline-flex; align-items:center; gap:5px; }
+        .exfs-bar { display:flex; justify-content:flex-end; margin-bottom:8px; }
+        /* v.172 — voci mai spezzate a metà, spaziatura uniforme e blocco centrato
+   anche quando vanno a capo. Prima le etichette lunghe si dividevano su due
+   righe ("zona del / programma") disallineando l'intera fila. */
+        .exlg { display:flex; flex-wrap:wrap; gap:7px 14px; justify-content:center; align-items:center;
+                margin-top:10px; font-size:0.45rem; color:#64748b; line-height:1; }
+        .exlg span { display:inline-flex; align-items:center; white-space:nowrap; }
+        .exlg.big { font-size:0.62rem; gap:9px 18px; margin-top:14px; }
+                /* Forma predefinita: pallino. */
+        .exlg i { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; flex-shrink:0; }
+        .exlg i.dot.pri  { background:var(--primary); }
+        .exlg i.dot.gold { background:#fbbf24; }
+        .exlg i.dot.grey { background:#64748b; }
+        /* Le due eccezioni: nel grafico non sono punti. */
+        .exlg i.band { width:14px; height:8px; border-radius:2px; background:rgba(148,163,184,0.3); }
+        .exlg i.dash { width:14px; height:0; border-radius:0; border-top:2px dashed #64748b; background:none; }
+        .exlg.big i { width:10px; height:10px; margin-right:7px; }
+        .exlg.big i.band { width:18px; height:10px; }
+        .exlg.big i.dash { width:18px; height:0; }
         .hist-row { display:grid; grid-template-columns:52px 32px 1fr 104px; gap:8px; align-items:center; padding:8px 2px; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.58rem; }
         /* v.168 — barra a lunghezza fissa: la soglia tratteggiata separa
            "programma rispettato" da "programma superato". */
@@ -486,9 +521,6 @@
         .hist-row.dl .hist-bar i.base { background:#475569; }
         .hist-kg span { display:block; font-size:0.48rem; font-weight:600; color:#64748b; letter-spacing:0.02em; }
         .hist-kg.gold { color:#fbbf24; }
-        .exlg i.band { height:8px; border-radius:2px; background:rgba(148,163,184,0.3); }
-        .exlg i.dash { background:repeating-linear-gradient(90deg,#64748b 0 4px,transparent 4px 7px); }
-        .exlg i.dot { width:7px; height:7px; border-radius:50%; background:#fbbf24; }
         .ex-advice { background:rgba(251,191,36,0.09); border:1px solid rgba(251,191,36,0.3); border-radius:11px;
                      padding:11px 12px; font-size:0.62rem; color:#fde68a; line-height:1.6; margin-top:14px; }
         .ex-advice b { color:#fff; }
@@ -3265,6 +3297,18 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
 </div>
 
+<!-- ══════════ GRAFICO A SCHERMO INTERO ══════════ -->
+<div id="ex-fs" aria-hidden="true">
+  <div class="ex-fs-head">
+    <button class="pmodal-back" type="button" onclick="closeExFullscreen()" aria-label="Indietro">&#8249;</button>
+    <div class="pmodal-titles">
+      <div class="pmodal-title" id="ex-fs-title">Esercizio</div>
+      <div class="pmodal-sub" id="ex-fs-sub"></div>
+    </div>
+  </div>
+  <div class="ex-fs-body" id="ex-fs-body"></div>
+</div>
+
 <!-- ══════════ PAGE: PROFILO ══════════ -->
 <div id="page-profile" class="page">
   <div class="profile-hero">
@@ -3760,7 +3804,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '171';
+const APP_VERSION = '172';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -9391,9 +9435,22 @@ var PROG_MENU_ITEMS = [
     {
         id: 'pesi', icon: '🏋️', label: 'Progressi nei Pesi',
         getValue: function() {
-            var prs = 0;
-            if (APP.exerciseData) APP.exerciseData.forEach(function(d){ if(d.isPR) prs++; });
-            return { value: prs+' PR', sub: 'record personali', progress: Math.min(100,prs*12), badge: false, detail: 'Record personali: '+prs+' \u00b7 Continua ad allenarti per superarli' };
+            // v.172 — si contano gli ESERCIZI che hanno un record, non quante
+            // volte un record è stato battuto: migliorare due volte lo stesso
+            // esercizio resta un record solo, quello attuale. Prima il conteggio
+            // leggeva d.isPR su exerciseData, un campo calcolato al volo nella
+            // schermata di allenamento e mai salvato: il valore era quasi
+            // sempre zero. La fonte giusta è APP.personalRecords.
+            var recs = APP.personalRecords || {};
+            var prs = Object.keys(recs).filter(function(k) { return parseFloat(recs[k]) > 0; }).length;
+            return {
+                value: prs + ' PR',
+                sub: prs === 1 ? 'esercizio con record' : 'esercizi con record',
+                progress: Math.min(100, prs * 12),
+                badge: false,
+                detail: 'Esercizi in cui hai superato il programma: ' + prs +
+                        (prs ? ' \u00b7 batterli di nuovo aggiorna il record, non ne aggiunge uno' : '')
+            };
         }
     },
     {
@@ -9743,7 +9800,10 @@ function _exTagCycles(pts) {
     return pts;
 }
 
-function _exSvg(pts) {
+// big = true: versione a schermo intero. Stessa logica, area di disegno più
+// alta e caratteri più grandi, così su telefono il grafico diventa leggibile
+// senza dover ruotare il dispositivo.
+function _exSvg(pts, big) {
     if (pts.length === 1) {
         return '<div class="exchart" style="text-align:center;padding:26px 10px;">' +
                '<div style="font-size:1.6rem;font-weight:800;color:var(--primary);">' + pts[0].kg + ' kg</div>' +
@@ -9754,7 +9814,15 @@ function _exSvg(pts) {
     // (MTR x percentuale del capitolo). Pieno = carico equivalente, cioe' la
     // prestazione reale riportata alle ripetizioni previste. Finche' segui il
     // programma i due coincidono; dove il pieno sale sopra, hai superato.
-    var W = 300, H = 142, L = 26, R = 8, T = 20, B = 24;
+    var W = big ? 340 : 300,
+        H = big ? 300 : 142,
+        L = big ? 34  : 26,
+        R = big ? 12  : 8,
+        T = big ? 30  : 20,
+        B = big ? 34  : 24;
+    var FS   = big ? 9.5 : 6.5;   // etichette assi
+    var FST  = big ? 14  : 9;     // trofeo
+    var RDOT = big ? 4.6 : 3.4;   // punto record
     var pred = pts.map(function(p) { return (typeof p.p === 'number' && p.p > 0) ? p.p : p.kg; });
     var act  = pts.map(function(p) { return (typeof p.eq === 'number' && p.eq > 0) ? p.eq : p.kg; });
     var vals = pred.concat(act);
@@ -9768,11 +9836,12 @@ function _exSvg(pts) {
     [0, 0.5, 1].forEach(function(f) {
         var v = mn + (mx - mn) * f, yy = Y(v);
         grid += '<line x1="' + L + '" y1="' + yy.toFixed(1) + '" x2="' + (W - R) + '" y2="' + yy.toFixed(1) + '" stroke="rgba(255,255,255,0.06)" stroke-width="0.7"/>';
-        grid += '<text x="' + (L - 4) + '" y="' + (yy + 2).toFixed(1) + '" fill="#64748b" font-size="6.5" text-anchor="end">' + Math.round(v) + '</text>';
+        grid += '<text x="' + (L - 4) + '" y="' + (yy + FS / 3).toFixed(1) + '" fill="#64748b" font-size="' + FS + '" text-anchor="end">' + Math.round(v) + '</text>';
     });
 
     var dPred = '', dAct = '', conn = '', dots = '', trof = '', labs = '';
-    var step = Math.ceil(pts.length / 6);
+    // A schermo intero c'è spazio per più date sull'asse.
+    var step = Math.ceil(pts.length / (big ? 10 : 6));
     var anyBeat = false;
     pts.forEach(function(p, i) {
         dPred += (i ? ' L' : 'M') + X(i).toFixed(1) + ' ' + Y(pred[i]).toFixed(1);
@@ -9783,31 +9852,36 @@ function _exSvg(pts) {
             anyBeat = true;
             conn += '<line x1="' + X(i).toFixed(1) + '" y1="' + Y(pred[i]).toFixed(1) + '" x2="' + X(i).toFixed(1) +
                     '" y2="' + Y(act[i]).toFixed(1) + '" stroke="#fbbf24" stroke-width="1" stroke-dasharray="2 2"/>';
-            dots += '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(act[i]).toFixed(1) + '" r="3.4" fill="#fbbf24" stroke="#0f172a" stroke-width="1.2"/>';
-            trof += '<text x="' + X(i).toFixed(1) + '" y="' + (Y(act[i]) - 6.5).toFixed(1) + '" font-size="9" text-anchor="middle">\uD83C\uDFC6</text>';
+            dots += '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(act[i]).toFixed(1) + '" r="' + RDOT + '" fill="#fbbf24" stroke="#0f172a" stroke-width="1.2"/>';
+            trof += '<text x="' + X(i).toFixed(1) + '" y="' + (Y(act[i]) - RDOT - 3).toFixed(1) + '" font-size="' + FST + '" text-anchor="middle">\uD83C\uDFC6</text>';
         } else {
-            dots += '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(act[i]).toFixed(1) + '" r="' + (dl ? 2.2 : 2.6) +
+            dots += '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(act[i]).toFixed(1) + '" r="' + (big ? (dl ? 3 : 3.6) : (dl ? 2.2 : 2.6)) +
                     '" fill="' + (dl ? '#64748b' : 'var(--primary)') + '" stroke="#0f172a" stroke-width="1.1"/>';
         }
         if (i % step === 0 || i === pts.length - 1) {
-            labs += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 10) + '" fill="#64748b" font-size="6.5" text-anchor="middle">' + _fmtDay(p.d) + '</text>';
+            labs += '<text x="' + X(i).toFixed(1) + '" y="' + (H - B + FS + 4) + '" fill="#64748b" font-size="' + FS + '" text-anchor="middle">' + _fmtDay(p.d) + '</text>';
         }
     });
     var band = dPred + ' L' + X(pts.length - 1).toFixed(1) + ' ' + (H - B) + ' L' + X(0).toFixed(1) + ' ' + (H - B) + ' Z';
 
-    var lg = '<div class="exlg"><span><i class="band"></i>zona del programma</span>' +
+    // v.172 — la legenda usa una sola forma, il pallino, per tutto ciò che
+    // nel grafico è un punto o una linea piena. Fanno eccezione i due simboli
+    // che nel grafico hanno davvero un'altra forma: la fascia rettangolare
+    // della zona del programma e il tratteggio della linea prevista.
+    var lg = '<div class="exlg' + (big ? ' big' : '') + '">' +
+             '<span><i class="band"></i>zona del programma</span>' +
              '<span><i class="dash"></i>previsto</span>' +
-             '<span><i style="background:var(--primary)"></i>carico equivalente</span>';
+             '<span><i class="dot pri"></i>carico equivalente</span>';
     // La voce "record" compare solo se ce n'e' almeno uno: altrimenti la
     // legenda spiegherebbe un simbolo che nel grafico non esiste.
-    if (anyBeat) lg += '<span><i class="dot"></i>record</span>';
-    lg += '<span><i style="background:#64748b"></i>deload</span></div>';
+    if (anyBeat) lg += '<span><i class="dot gold"></i>record</span>';
+    lg += '<span><i class="dot grey"></i>deload</span></div>';
 
     return '<div class="exchart"><svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block">' +
         grid + '<path d="' + band + '" fill="rgba(148,163,184,0.13)"/>' +
         '<path d="' + dPred + '" fill="none" stroke="#64748b" stroke-width="1.2" stroke-dasharray="3 2.5"/>' +
         conn +
-        '<path d="' + dAct + '" fill="none" stroke="var(--primary)" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>' +
+        '<path d="' + dAct + '" fill="none" stroke="var(--primary)" stroke-width="' + (big ? 2.4 : 1.8) + '" stroke-linejoin="round" stroke-linecap="round"/>' +
         dots + trof + labs + '</svg></div>' + lg;
 }
 function setExFilter(f) {
@@ -9878,6 +9952,12 @@ function renderExChartBody() {
         return;
     }
 
+    // Il grafico dentro al popup è alto poco più di un centimetro: il
+    // pulsante apre la stessa serie a schermo intero.
+    if (pts.length > 1) {
+        h += '<div class="exfs-bar"><button type="button" class="exfs-btn" onclick="openExFullscreen()">' +
+             '\u26F6 Schermo intero</button></div>';
+    }
     h += _exSvg(pts);
 
     var first = pts[0].kg, last = pts[pts.length - 1].kg;
@@ -9982,7 +10062,46 @@ function openExChart(name) {
     document.getElementById('ex-modal').classList.add('open');
 }
 
+// ── GRAFICO A SCHERMO INTERO (v.172) ──────────────────────
+// Ridisegna la stessa serie con l'area di disegno più alta. Non duplica
+// nulla: usa _exSvg con big=true, quindi ogni modifica al grafico vale per
+// entrambe le viste. I filtri attivi (ciclo, capitolo) restano quelli scelti
+// nel popup, perché la serie viene ricalcolata da _exSeries al momento.
+function openExFullscreen() {
+    var fs = document.getElementById('ex-fs');
+    if (!fs || !_exChartName) return;
+    var pts = _exSeries(_exChartName);
+    if (_exChartCycle !== 'all') pts = pts.filter(function(p) { return String(p.c) === String(_exChartCycle); });
+    if (_exChartFilter !== 'all') pts = pts.filter(function(p) { return p.w === parseInt(_exChartFilter); });
+    if (pts.length < 2) { showToast('Servono almeno due rilevamenti', 'error'); return; }
+
+    var t = document.getElementById('ex-fs-title');
+    var s = document.getElementById('ex-fs-sub');
+    if (t) t.textContent = _exChartName;
+    if (s) {
+        var mtr = mtrGet(_exChartName);
+        var scopeCh = (_exChartFilter === 'all') ? 'tutti i capitoli' : ('solo ' + CH_LABELS[parseInt(_exChartFilter)]);
+        s.textContent = pts.length + ' rilevamenti \u00b7 ' + scopeCh + (mtr ? ' \u00b7 MTR ' + mtr + ' kg' : '');
+    }
+    var b = document.getElementById('ex-fs-body');
+    if (b) b.innerHTML = _exSvg(pts, true);
+    fs.classList.add('open');
+    fs.setAttribute('aria-hidden', 'false');
+}
+
+function closeExFullscreen() {
+    var fs = document.getElementById('ex-fs');
+    if (!fs) return;
+    fs.classList.remove('open');
+    fs.setAttribute('aria-hidden', 'true');
+    var b = document.getElementById('ex-fs-body');
+    if (b) b.innerHTML = '';
+}
+
 function closeExChart() {
+    // Se il grafico è aperto a schermo intero, va chiuso con lui: altrimenti
+    // resterebbe sospeso su una schermata che non esiste più.
+    closeExFullscreen();
     var m = document.getElementById('ex-modal');
     if (m) m.classList.remove('open');
     var b = document.getElementById('ex-modal-body');
