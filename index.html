@@ -3752,7 +3752,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '168';
+const APP_VERSION = '169';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -5361,7 +5361,40 @@ function generateUUID() {
 // ============= SUPABASE AUTH =============
 const SUPABASE_URL = 'https://trojbppshlfhrsimyxjl.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyb2picHBzaGxmaHJzaW15eGpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0MzgzNTgsImV4cCI6MjA4NzAxNDM1OH0.rKKyXa7N5XoBnN2kmVZGS4Lr2kax1NuodbyHD_wGjK8';
-const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Il client arriva da un CDN esterno, non incluso nel precache del service
+// worker. Se quello script non carica (rete assente al primo avvio, CDN
+// bloccato) questa riga lanciava e portava giù l'intera app: schermata
+// bianca, nessun allenamento, nemmeno i dati già salvati in locale.
+// Con il sostituto qui sotto l'app resta usabile in sola modalità locale:
+// ogni chiamata risponde "nessun dato" invece di esplodere, e i 46 punti che
+// usano sbClient non hanno bisogno di un controllo ciascuno.
+function _sbOfflineClient() {
+    var noData = function() { return Promise.resolve({ data: null, error: { message: 'offline' } }); };
+    var q = {};
+    ['select','insert','update','upsert','delete','eq','neq','ilike','in','gte','order','limit']
+        .forEach(function(m) { q[m] = function() { return q; }; });
+    q.single = noData; q.maybeSingle = noData;
+    // Il builder è "thenable": await sbClient.from(...).select(...) funziona.
+    q.then = function(res, rej) { return noData().then(res, rej); };
+    q.catch = function(f) { return noData().catch(f); };
+    return {
+        _offline: true,
+        from: function() { return q; },
+        auth: {
+            getUser: function() { return Promise.resolve({ data: { user: null }, error: null }); },
+            getSession: function() { return Promise.resolve({ data: { session: null }, error: null }); },
+            signOut: function() { return Promise.resolve({ error: null }); },
+            signUp: noData, signInWithPassword: noData, resetPasswordForEmail: noData,
+            onAuthStateChange: function() { return { data: { subscription: { unsubscribe: function() {} } } }; }
+        },
+        functions: { invoke: noData }
+    };
+}
+
+const sbClient = (window.supabase && typeof window.supabase.createClient === 'function')
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+    : _sbOfflineClient();
+if (sbClient._offline) console.warn('Supabase non disponibile: l\'app funziona in modalità locale.');
 
 function openLogin() {
     const m = document.getElementById('login-modal');
@@ -6080,13 +6113,19 @@ function renderPlanPage(w) {
             chip.onclick = () => {
                 if (!APP.dayAssignments[w][di] && st!=='done') return;
                 if (chip.classList.contains('done')) {
-                    // done → rest: libera il giorno, così si può assegnare un nuovo protocollo
-                    APP.chipStates[w][di] = 'rest';
-                    APP.dayAssignments[w][di] = null;
+                    // done → assegnato. Prima il tap cancellava anche
+                    // dayAssignments: un tocco accidentale toglieva il
+                    // protocollo dal piano oltre a de-completare la sessione,
+                    // senza modo di annullare. Il giorno resta assegnato e
+                    // torna semplicemente da svolgere; per liberarlo davvero
+                    // si cambia il giorno del protocollo, che è il posto in
+                    // cui l'assegnazione viene decisa.
+                    var hadAssign = !!APP.dayAssignments[w][di];
+                    APP.chipStates[w][di] = hadAssign ? 'selected' : 'rest';
                     APP.totalWorkouts = Math.max(0, APP.totalWorkouts-1);
                     APP.completedWeeks[w] = false;
                     APP._weekCelebrated[w] = false;
-                    chip.className = 'plan-chip';
+                    chip.className = 'plan-chip' + (hadAssign ? ' assigned' : '');
                     chip.textContent = d;
                 } else {
                     APP.chipStates[w][di] = 'done';
@@ -18606,11 +18645,19 @@ function restartCycle() {
     APP.completedWeeks = [false, false, false, false, false];
     APP.availableWeeks = [0];
     APP._weekCelebrated = [false, false, false, false, false];
-    // I giorni tornano da svolgere, ma lo schema settimanale resta:
-    // 'done' → 'workout', il resto invariato.
+    // I giorni tornano da svolgere, ma lo schema settimanale resta.
+    // Fino alla v.168 qui veniva scritto lo stato 'workout', che nessun'altra
+    // parte del codice riconosce: i chip risultavano né assegnati né
+    // completati e deleteProtocol, che ripulisce solo 'selected', li lasciava
+    // orfani nell'array. Lo stato giusto per "assegnato da svolgere" è
+    // 'selected'; un giorno senza protocollo torna a 'rest'.
     if (APP.chipStates) {
-        APP.chipStates = APP.chipStates.map(function(week) {
-            return (week || []).map(function(st) { return st === 'done' ? 'workout' : st; });
+        APP.chipStates = APP.chipStates.map(function(week, wi) {
+            return (week || []).map(function(st, di) {
+                if (st !== 'done') return st;
+                var assigned = APP.dayAssignments && APP.dayAssignments[wi] && APP.dayAssignments[wi][di];
+                return assigned ? 'selected' : 'rest';
+            });
         });
     }
     APP.overloadNoticeSeen = false;
