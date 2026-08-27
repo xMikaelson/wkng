@@ -471,26 +471,41 @@
         .exf { flex:0 0 auto; width:auto; padding:5px 10px; border-radius:20px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); color:#94a3b8; font-size:0.55rem; font-weight:700; font-family:inherit; cursor:pointer; text-transform:none; letter-spacing:0.03em; }
         .exf.on { background:rgba(var(--pr,52,211,153),0.15); border-color:rgba(var(--pr,52,211,153),0.4); color:var(--primary); }
         .exf.off { opacity:0.35; }
-                .exchart { width:100%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:12px 8px 6px; }
-        /* v.172 — grafico a schermo intero. Non è un .pmodal: occupa tutta la
-           finestra senza margini, così il tracciato guadagna l'altezza che su
-           telefono manca dentro al popup. */
-        #ex-fs { position:fixed; inset:0; z-index:9700; display:none; flex-direction:column;
-                 background:#0f172a;
-                 padding:max(env(safe-area-inset-top),34px) 12px calc(14px + env(safe-area-inset-bottom,0px)); }
-        #ex-fs.open { display:flex; }
-        .ex-fs-head { display:flex; align-items:center; gap:11px; padding:0 2px 12px; flex-shrink:0;
+                .m-list-pr { font-size:0.72rem; line-height:1; margin-right:1px; }
+        .exchart { position:relative; width:100%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:12px 8px 6px; }
+        /* v.173 — grafico in orizzontale. iOS Safari non permette di forzare
+           la rotazione del dispositivo, quindi è il contenuto a ruotare di 90°:
+           il telefono resta in verticale in mano e il grafico si legge girandolo.
+           Se il dispositivo è già in orizzontale la rotazione non serve e viene
+           disattivata dalla media query. */
+        #ex-fs { position:fixed; inset:0; z-index:9700; display:none; background:#0f172a; overflow:hidden; }
+        #ex-fs.open { display:block; }
+        .ex-fs-rot { position:absolute; top:50%; left:50%;
+                     width:100vw; height:100vh; width:100dvw; height:100dvh;
+                     transform:translate(-50%,-50%);
+                     display:flex; flex-direction:column;
+                     padding:16px 18px calc(12px + env(safe-area-inset-bottom,0px));
+                     box-sizing:border-box; }
+        @media (orientation: portrait) {
+            /* larghezza e altezza si scambiano perché il blocco è ruotato */
+            .ex-fs-rot { width:100vh; height:100vw; width:100dvh; height:100dvw;
+                         transform:translate(-50%,-50%) rotate(90deg);
+                         padding:16px 22px; }
+        }
+        .ex-fs-head { display:flex; align-items:center; gap:11px; padding:0 2px 10px; flex-shrink:0;
                       border-bottom:1px solid rgba(255,255,255,0.07); }
-        .ex-fs-body { flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:14px 2px 0;
+        .ex-fs-body { flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:10px 2px 0;
                       display:flex; flex-direction:column; justify-content:center; }
-        .ex-fs-body .exchart { padding:14px 10px 8px; }
-        /* Pulsante a schermo intero sopra il grafico. width:auto obbligatorio:
-           la regola globale button{width:100%} lo stirerebbe. */
-        .exfs-btn { width:auto; padding:7px 12px; border-radius:9px; text-transform:none;
-                    background:rgba(99,102,241,0.14); border:1px solid rgba(99,102,241,0.4);
-                    color:#a5b4fc; font-size:0.56rem; font-weight:700; font-family:inherit; cursor:pointer;
-                    display:inline-flex; align-items:center; gap:5px; }
-        .exfs-bar { display:flex; justify-content:flex-end; margin-bottom:8px; }
+        .ex-fs-body .exchart { padding:10px 10px 6px; }
+        /* Pulsante schermo intero: solo icona, dentro al riquadro del grafico
+           in alto a destra. width:auto obbligatorio, altrimenti la regola
+           globale button{width:100%} lo stira per tutta la larghezza. */
+        .exfs-btn { position:absolute; top:7px; right:7px; z-index:2;
+                    width:26px; height:26px; padding:0; border-radius:8px; text-transform:none;
+                    background:rgba(99,102,241,0.16); border:1px solid rgba(99,102,241,0.4);
+                    color:#a5b4fc; font-size:12px; line-height:1; font-family:inherit; cursor:pointer;
+                    display:flex; align-items:center; justify-content:center; }
+        .exfs-btn:active { background:rgba(99,102,241,0.3); }
         /* v.172 — voci mai spezzate a metà, spaziatura uniforme e blocco centrato
    anche quando vanno a capo. Prima le etichette lunghe si dividevano su due
    righe ("zona del / programma") disallineando l'intera fila. */
@@ -3299,14 +3314,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 <!-- ══════════ GRAFICO A SCHERMO INTERO ══════════ -->
 <div id="ex-fs" aria-hidden="true">
-  <div class="ex-fs-head">
-    <button class="pmodal-back" type="button" onclick="closeExFullscreen()" aria-label="Indietro">&#8249;</button>
-    <div class="pmodal-titles">
-      <div class="pmodal-title" id="ex-fs-title">Esercizio</div>
-      <div class="pmodal-sub" id="ex-fs-sub"></div>
+  <div class="ex-fs-rot">
+    <div class="ex-fs-head">
+      <button class="pmodal-back" type="button" onclick="closeExFullscreen()" aria-label="Indietro">&#8249;</button>
+      <div class="pmodal-titles">
+        <div class="pmodal-title" id="ex-fs-title">Esercizio</div>
+        <div class="pmodal-sub" id="ex-fs-sub"></div>
+      </div>
     </div>
+    <div class="ex-fs-body" id="ex-fs-body"></div>
   </div>
-  <div class="ex-fs-body" id="ex-fs-body"></div>
 </div>
 
 <!-- ══════════ PAGE: PROFILO ══════════ -->
@@ -3804,7 +3821,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '172';
+const APP_VERSION = '173';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -9708,16 +9725,28 @@ function _pmPesiHtml() {
                         (dp > 0 ? '+' : '') + dp.toFixed(1) + '%</span>';
             }
         }
+        // v.173 — sintesi dei record direttamente nell'elenco: il trofeo
+        // precede la percentuale sugli esercizi in cui hai superato il
+        // programma, così si vedono a colpo d'occhio senza aprirli uno a uno.
+        var prVal = parseFloat(prs[n]);
+        if (!isFinite(prVal) || prVal <= 0) {
+            Object.keys(prs).forEach(function(k) {
+                if (exSameExercise(k, n)) { var pv = parseFloat(prs[k]); if (isFinite(pv) && pv > 0) prVal = pv; }
+            });
+        }
+        var prIcon = (isFinite(prVal) && prVal > 0)
+            ? '<span class="m-list-pr" title="Record: ' + _fmtKg(prVal) + ' kg">\uD83C\uDFC6</span>' : '';
         h += '<div class="m-list-row" onclick="openExChart(' + JSON.stringify(n).replace(/"/g, '&quot;') + ')">' +
                 '<div><div class="m-list-name">' + escapeHTML(n) + '</div>' +
                 '<div class="m-list-meta">' + (lower ? 'arti inferiori' : 'parte superiore') + '</div></div>' +
-                '<div class="m-list-right">' + trend +
+                '<div class="m-list-right">' + prIcon + trend +
                     '<span class="m-list-val">' + (v != null ? v + ' kg' : '\u2014') + '</span>' +
                     '<span class="chev">\u203a</span>' +
                 '</div>' +
              '</div>';
     });
-    h += '<div class="m-note">Tocca un esercizio per vedere l\'andamento del carico nel tempo.<br><br>' +
+    h += '<div class="m-note">\uD83C\uDFC6 segnala gli esercizi in cui hai superato il programma. ' +
+         'Tocca un esercizio per vedere l\'andamento del carico nel tempo.<br><br>' +
          'L\'MTR e\' il massimo tecnico di riferimento: da qui derivano tutti i carichi del ciclo ' +
          '(72\u201390% del training max). Si aggiorna alla fine del Chapter 4.</div>';
     return h;
@@ -9800,9 +9829,9 @@ function _exTagCycles(pts) {
     return pts;
 }
 
-// big = true: versione a schermo intero. Stessa logica, area di disegno più
-// alta e caratteri più grandi, così su telefono il grafico diventa leggibile
-// senza dover ruotare il dispositivo.
+// big = true: versione orizzontale a schermo intero. Stessa logica, ma
+// proporzioni larghe (3:1) perché il riquadro è ruotato di 90°: lo spazio
+// abbondante è quello dell'asse del tempo, non quello dei carichi.
 function _exSvg(pts, big) {
     if (pts.length === 1) {
         return '<div class="exchart" style="text-align:center;padding:26px 10px;">' +
@@ -9814,15 +9843,15 @@ function _exSvg(pts, big) {
     // (MTR x percentuale del capitolo). Pieno = carico equivalente, cioe' la
     // prestazione reale riportata alle ripetizioni previste. Finche' segui il
     // programma i due coincidono; dove il pieno sale sopra, hai superato.
-    var W = big ? 340 : 300,
-        H = big ? 300 : 142,
+    var W = big ? 600 : 300,
+        H = big ? 200 : 142,
         L = big ? 34  : 26,
-        R = big ? 12  : 8,
-        T = big ? 30  : 20,
-        B = big ? 34  : 24;
-    var FS   = big ? 9.5 : 6.5;   // etichette assi
-    var FST  = big ? 14  : 9;     // trofeo
-    var RDOT = big ? 4.6 : 3.4;   // punto record
+        R = big ? 16  : 8,
+        T = big ? 24  : 20,
+        B = big ? 28  : 24;
+    var FS   = big ? 8   : 6.5;   // etichette assi
+    var FST  = big ? 11  : 9;     // trofeo
+    var RDOT = big ? 4   : 3.4;   // punto record
     var pred = pts.map(function(p) { return (typeof p.p === 'number' && p.p > 0) ? p.p : p.kg; });
     var act  = pts.map(function(p) { return (typeof p.eq === 'number' && p.eq > 0) ? p.eq : p.kg; });
     var vals = pred.concat(act);
@@ -9840,8 +9869,8 @@ function _exSvg(pts, big) {
     });
 
     var dPred = '', dAct = '', conn = '', dots = '', trof = '', labs = '';
-    // A schermo intero c'è spazio per più date sull'asse.
-    var step = Math.ceil(pts.length / (big ? 10 : 6));
+    // In orizzontale l'asse del tempo è lungo il triplo: ci stanno molte più date.
+    var step = Math.ceil(pts.length / (big ? 14 : 6));
     var anyBeat = false;
     pts.forEach(function(p, i) {
         dPred += (i ? ' L' : 'M') + X(i).toFixed(1) + ' ' + Y(pred[i]).toFixed(1);
@@ -9877,7 +9906,12 @@ function _exSvg(pts, big) {
     if (anyBeat) lg += '<span><i class="dot gold"></i>record</span>';
     lg += '<span><i class="dot grey"></i>deload</span></div>';
 
-    return '<div class="exchart"><svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block">' +
+    // v.173 — il pulsante vive dentro al riquadro del grafico, in alto a
+    // destra, senza etichetta. Nella vista a schermo intero non serve.
+    var fsBtn = big ? '' :
+        '<button type="button" class="exfs-btn" onclick="openExFullscreen()" aria-label="Schermo intero">\u26F6</button>';
+
+    return '<div class="exchart">' + fsBtn + '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block">' +
         grid + '<path d="' + band + '" fill="rgba(148,163,184,0.13)"/>' +
         '<path d="' + dPred + '" fill="none" stroke="#64748b" stroke-width="1.2" stroke-dasharray="3 2.5"/>' +
         conn +
@@ -9952,12 +9986,6 @@ function renderExChartBody() {
         return;
     }
 
-    // Il grafico dentro al popup è alto poco più di un centimetro: il
-    // pulsante apre la stessa serie a schermo intero.
-    if (pts.length > 1) {
-        h += '<div class="exfs-bar"><button type="button" class="exfs-btn" onclick="openExFullscreen()">' +
-             '\u26F6 Schermo intero</button></div>';
-    }
     h += _exSvg(pts);
 
     var first = pts[0].kg, last = pts[pts.length - 1].kg;
@@ -10087,6 +10115,15 @@ function openExFullscreen() {
     if (b) b.innerHTML = _exSvg(pts, true);
     fs.classList.add('open');
     fs.setAttribute('aria-hidden', 'false');
+    // Suggerimento una tantum: senza, chi apre la vista con il telefono in
+    // verticale si trova il grafico coricato e non capisce di doverlo girare.
+    try {
+        if (!localStorage.getItem('aw_fs_hint') && window.matchMedia &&
+            window.matchMedia('(orientation: portrait)').matches) {
+            showToast('Gira il telefono per leggere il grafico', 'info');
+            localStorage.setItem('aw_fs_hint', '1');
+        }
+    } catch (e) {}
 }
 
 function closeExFullscreen() {
