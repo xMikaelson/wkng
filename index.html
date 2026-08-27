@@ -3318,6 +3318,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
              style="margin-bottom:10px; font-size:0.78rem; padding:9px 11px;">
       <div id="glossary-list"></div>
     </div>
+    <div class="settings-row" style="margin-top:4px" onclick="cheatLeveling()">
+      <div class="settings-row-left"><span class="settings-row-icon">🎮</span><span class="settings-row-label" style="color:#fbbf24;">Cheat Leveling <span style="font-size:0.55rem;color:#94a3b8;font-weight:400;">solo test</span></span></div>
+      <span class="settings-row-arrow">›</span>
+    </div>
     <div class="settings-row" style="margin-top:4px" onclick="toggleFontScalePanel()">
       <div class="settings-row-left"><span class="settings-row-icon">🔤</span><span class="settings-row-label">Dimensione Testo</span></div>
       <span class="settings-row-arrow" id="font-scale-arrow">›</span>
@@ -3752,7 +3756,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '169';
+const APP_VERSION = '170';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -9044,6 +9048,154 @@ function awFontScaleInitSlider() {
         awFontScaleApply(initial);
     } catch(e) {}
 })();
+
+// ═════════ CHEAT LEVELING (solo test) ═════════
+// Simula il completamento dell'intero ciclo (Ch.1 → Deload) senza dover
+// aspettare 5 settimane reali. Popola chipStates, loadHistory, PR e badge
+// come se l'utente avesse davvero fatto tutti gli allenamenti.
+//
+// - Se una settimana non ha giorni assegnati, ne assegna 3 di default
+//   (lun/mer/ven) al protocollo attivo, così anche i cicli appena creati
+//   sono simulabili senza dover assegnare manualmente prima.
+// - Le date sono cronologiche (5 settimane fa → oggi), non tutte lo stesso
+//   giorno: cosi' grafici e streak mostrano un andamento realistico.
+// - Ogni ~30% delle esecuzioni (esercizi con ripetizioni, no Deload) simula
+//   ripetizioni oltre il target per generare record sul grafico.
+// - Fa confirm() prima di eseguire: e' distruttivo (sovrascrive stato).
+function cheatLeveling() {
+    if (!APP.exerciseData || APP.exerciseData.length === 0) {
+        try { showToast('Serve un protocollo attivo per simulare il ciclo', 'error'); } catch(e) {}
+        return;
+    }
+    var ok = confirm('CHEAT LEVELING\n\nSimulare il completamento dell\'intero ciclo (Ch.1 → Deload) con date, PR e badge?\n\nSovrascrive lo stato attuale del ciclo. Usa "Reset Dati" per annullare.');
+    if (!ok) return;
+
+    var todayMs = Date.now();
+    var msPerDay = 86400000;
+    // Inizio: 35 giorni fa. Cosi' anche il badge "Un Mese" si sblocca.
+    var startMs = todayMs - 35 * msPerDay;
+    APP.startDate = new Date(startMs);
+
+    // Assicura assegnazioni: settimane senza giorni assegnati ricevono un
+    // default 3-per-settimana (lun/mer/ven) con il protocollo attivo o il
+    // primo salvato.
+    var protoRef = null;
+    if (APP.activeProtocolId && Array.isArray(APP.savedProtocols)) {
+        protoRef = APP.savedProtocols.find(function(p) { return p.id === APP.activeProtocolId; });
+    }
+    if (!protoRef && Array.isArray(APP.savedProtocols) && APP.savedProtocols.length) {
+        protoRef = APP.savedProtocols[0];
+    }
+    var protoStub = protoRef ? { protoId: protoRef.id, protoName: protoRef.name } : { protoId: 'cheat', protoName: 'Ciclo' };
+    if (!Array.isArray(APP.dayAssignments) || APP.dayAssignments.length !== N_WEEKS) {
+        APP.dayAssignments = [[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null]];
+    }
+    for (var w = 0; w < N_WEEKS; w++) {
+        if (!Array.isArray(APP.dayAssignments[w])) APP.dayAssignments[w] = [null,null,null,null,null,null,null];
+        var anyAssigned = APP.dayAssignments[w].some(function(a) { return a !== null; });
+        if (!anyAssigned) {
+            APP.dayAssignments[w][0] = protoStub;
+            APP.dayAssignments[w][2] = protoStub;
+            APP.dayAssignments[w][4] = protoStub;
+        }
+    }
+
+    // Reset dei campi che ricostruiamo. Svuotare esplicitamente evita che
+    // lanciare il cheat piu' volte accumuli righe duplicate in loadHistory
+    // o lasci PR di simulazioni precedenti a mescolarsi con questa.
+    APP.chipStates = [
+        ['rest','rest','rest','rest','rest','rest','rest'],
+        ['rest','rest','rest','rest','rest','rest','rest'],
+        ['rest','rest','rest','rest','rest','rest','rest'],
+        ['rest','rest','rest','rest','rest','rest','rest'],
+        ['rest','rest','rest','rest','rest','rest','rest']
+    ];
+    APP.loadHistory = [];
+    APP.personalRecords = {};
+    APP.prMeta = {};
+
+    // Helper: data ISO YYYY-MM-DD da timestamp ms
+    function isoFromMs(ms) {
+        var d = new Date(ms);
+        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    }
+
+    var prCount = 0;
+    var doneCount = 0;
+
+    for (var wIdx = 0; wIdx < N_WEEKS; wIdx++) {
+        var assignments = APP.dayAssignments[wIdx] || [];
+        for (var dIdx = 0; dIdx < 7; dIdx++) {
+            if (assignments[dIdx] === null || assignments[dIdx] === undefined) continue;
+
+            // Data cronologica per questo giorno
+            var dayMs = startMs + (wIdx * 7 + dIdx) * msPerDay;
+            if (dayMs > todayMs) dayMs = todayMs; // niente date future
+            var dayIso = isoFromMs(dayMs);
+
+            // Per ogni esercizio del protocollo: registra una riga di loadHistory
+            (APP.exerciseData || []).forEach(function(ex) {
+                if (!ex || !ex.name) return;
+                var prev = (ex.loads && typeof ex.loads[wIdx] === 'number') ? ex.loads[wIdx] : (ex.baseWeight || 0);
+                if (!(prev > 0)) return; // esercizio a corpo libero / senza carico: salta lo storico numerico
+
+                var displaySr = (wIdx === DELOAD_WEEK) ? woDeloadSr(ex.sr) : ex.sr;
+                var tr = srReps(displaySr); // null se a tempo
+                var usedKg = prev;
+                var reps = tr;
+                var eq = prev;
+
+                // Simula sforamento del target (crea PR) ~30% delle volte,
+                // ma MAI in Deload e MAI su esercizi a tempo. Non si sforano
+                // troppe ripetizioni (max +3) per restare in un range plausibile.
+                var canBeat = (wIdx !== DELOAD_WEEK) && (tr !== null) && (tr > 0) && (tr <= 10);
+                if (canBeat && Math.random() < 0.30) {
+                    reps = tr + 1 + Math.floor(Math.random() * 3); // +1..+3
+                    eq = woEquivalentLoad(usedKg, reps, tr);
+                    // Aggiorna PR se supera il record precedente
+                    var prevPr = APP.personalRecords[ex.name] || 0;
+                    if (eq > prevPr + 0.05) {
+                        APP.personalRecords[ex.name] = eq;
+                        APP.prMeta[ex.name] = { kg: usedKg, r: reps, tr: tr, w: wIdx, d: dayIso };
+                        prCount++;
+                    }
+                }
+
+                var row = { k: dayIso + '|' + wIdx + '|' + ex.name, d: dayIso, w: wIdx, ex: ex.name, kg: usedKg, p: prev, eq: eq };
+                if (tr) row.tr = tr;
+                if (reps && tr) row.r = reps;
+                APP.loadHistory.push(row);
+            });
+
+            APP.chipStates[wIdx][dIdx] = 'done';
+            doneCount++;
+        }
+    }
+
+    // Stato di completamento ciclo
+    APP.completedWeeks = [true, true, true, true, true];
+    APP._weekCelebrated = [true, true, true, true, true]; // niente popup a raffica al primo reload
+    APP.availableWeeks = [0, 1, 2, 3, 4];
+    APP.totalWorkouts = APP.chipStates.flat().filter(function(s) { return s === 'done'; }).length;
+    APP.progressionPending = true; // Ch.4 chiuso: la prossima entrata in Ch.1 applica progressione
+
+    // Trim loadHistory come fa logLoadHistory (max 800 righe)
+    if (APP.loadHistory.length > 800) APP.loadHistory = APP.loadHistory.slice(-800);
+
+    // Persist + sync + refresh UI a raggiera
+    saveState(); // include updateBadges() e updateStreakWidget()
+    if (typeof restoreChipStates === 'function') restoreChipStates();
+    if (typeof renderPlanPage === 'function') renderPlanPage(APP.selectedViewWeek || 0);
+    if (typeof updateStats === 'function') updateStats();
+    if (typeof updateProgressPage === 'function') updateProgressPage();
+    if (typeof updateChart === 'function') updateChart();
+    if (typeof updateStreakWidget === 'function') updateStreakWidget();
+    if (typeof updateBadges === 'function') updateBadges();
+
+    try {
+        showToast('\uD83C\uDFAE Ciclo completo simulato \u00b7 ' + doneCount + ' workout, ' + prCount + ' PR');
+    } catch(e) {}
+}
 
 function renderNotifDebug() {
     var list = document.getElementById('notif-debug-list');
