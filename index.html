@@ -474,7 +474,7 @@
         .exchart { width:100%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:12px 8px 6px; }
         .exlg { display:flex; gap:12px; justify-content:center; margin-top:8px; font-size:0.45rem; color:#64748b; }
         .exlg i { display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:4px; vertical-align:middle; }
-        .hist-row { display:grid; grid-template-columns:58px 34px 1fr 92px; gap:8px; align-items:center; padding:8px 2px; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.58rem; }
+        .hist-row { display:grid; grid-template-columns:52px 32px 1fr 104px; gap:8px; align-items:center; padding:8px 2px; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.58rem; }
         /* v.168 — barra a lunghezza fissa: la soglia tratteggiata separa
            "programma rispettato" da "programma superato". */
         .hist-bar { position:relative; height:7px; border-radius:4px; background:rgba(255,255,255,0.06); overflow:hidden; }
@@ -495,7 +495,11 @@
         .hist-date { color:#94a3b8; }
         .hist-ch { font-size:0.42rem; font-weight:800; letter-spacing:0.05em; padding:2px 5px; border-radius:5px; background:rgba(var(--pr,52,211,153),0.12); color:var(--primary); text-align:center; }
         .hist-ch.dl { background:rgba(100,116,139,0.18); color:#94a3b8; }
-                        .hist-kg { font-weight:800; color:#e2e8f0; white-space:nowrap; }
+        /* v.171 — il trofeo precede il carico; "equivalenti" lo segue nello
+           stesso colore e può andare a capo, quindi niente nowrap sulla cella. */
+        .hist-kg { font-weight:800; color:#e2e8f0; text-align:right; line-height:1.3; font-variant-numeric:tabular-nums; }
+        .hist-kg b { font-weight:800; white-space:nowrap; }
+        .hist-kg em { font-style:normal; font-weight:700; font-size:0.5rem; color:inherit; margin-left:4px; white-space:nowrap; }
         .fc-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 2px; border-bottom:1px solid rgba(255,255,255,0.05); }
         .fc-lab { font-size:0.6rem; color:#cbd5e1; }
         .fc-val { font-size:0.72rem; font-weight:800; color:#facc15; white-space:nowrap; }
@@ -3756,7 +3760,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '170';
+const APP_VERSION = '171';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -4106,6 +4110,7 @@ function loadState() {
         // Gli stati salvati prima della v.167 possono avere 4 settimane:
         // senza padding il loop qui sotto lancia sulla settimana Deload.
         normalizeWeekState();
+        sanitizeStoredLoads();
 
         // Inizializza le frasi mancanti per settimane con allenamenti completati
         for (let w = 0; w < N_WEEKS; w++) {
@@ -5580,6 +5585,7 @@ async function onLoginSuccess(user, usernameOverride = null) {
         APP.motivationalQuotes = s.motivationalQuotes || ['','','','',''];
         APP.dayAssignments = s.dayAssignments || [[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null],[null,null,null,null,null,null,null]];
         normalizeWeekState(); // backup Supabase pre-v.167 a 4 settimane
+        sanitizeStoredLoads();
         if (s.goal) document.getElementById('goal').value = s.goal;
         if (s.activeProtocolId) APP.activeProtocolId = s.activeProtocolId;
         // Restore cached protocols if Supabase hasn't loaded them yet
@@ -7797,6 +7803,36 @@ function mtrRepsSet(name, reps) {
 // domanda compare solo sull'ultima serie e mai sopra le 10 ripetizioni.
 var REPS_ASK_MAX = 10;
 
+// I carichi generati dall'app sono sempre multipli di mezzo chilo: è la
+// granularità con cui si carica un bilanciere e quella che tutte le formule
+// dell'app usano già (Math.round(x*2)/2). Alcuni dati salvati da versioni
+// precedenti contengono però il prodotto grezzo — 9 × 0,72 dà
+// 6,4799999999999995 in virgola mobile — che finiva a schermo così com'era.
+function awRoundKg(v) {
+    var n = parseFloat(v);
+    if (!isFinite(n)) return 0;
+    return Math.round(n * 2) / 2;
+}
+
+// Ripulisce i carichi già archiviati. Non tocca il carico equivalente, che è
+// una stima e conserva il decimale, né le ripetizioni.
+function sanitizeStoredLoads() {
+    function fixEx(ex) {
+        if (!ex) return;
+        if (Array.isArray(ex.loads)) ex.loads = ex.loads.map(function(v) {
+            return (typeof v === 'number') ? awRoundKg(v) : v;
+        });
+        if (typeof ex.baseWeight === 'number') ex.baseWeight = awRoundKg(ex.baseWeight);
+    }
+    (APP.exerciseData || []).forEach(fixEx);
+    (APP.savedProtocols || []).forEach(function(p) { (p.exercises || []).forEach(fixEx); });
+    (APP.loadHistory || []).forEach(function(e) {
+        if (!e) return;
+        if (typeof e.p  === 'number') e.p  = awRoundKg(e.p);
+        if (typeof e.kg === 'number') e.kg = awRoundKg(e.kg);
+    });
+}
+
 function woEquivalentLoad(kg, reps, targetReps) {
     kg = parseFloat(kg) || 0;
     reps = parseInt(reps) || 0;
@@ -9847,7 +9883,7 @@ function renderExChartBody() {
     var first = pts[0].kg, last = pts[pts.length - 1].kg;
     var delta = first > 0 ? ((last - first) / first * 100) : 0;
     h += '<div class="m-row2" style="margin-top:14px">' +
-         '<div class="m-stat"><div class="m-stat-lab">Carico iniziale</div><div class="m-stat-val">' + first +
+         '<div class="m-stat"><div class="m-stat-lab">Carico iniziale</div><div class="m-stat-val">' + _fmtKg(first) +
          '<span style="font-size:0.5rem">kg</span></div><div class="m-stat-sub">' +
          (pts[0].d ? _fmtDay(pts[0].d) : CH_LABELS[pts[0].w]) + '</div></div>' +
          '<div class="m-stat"><div class="m-stat-lab">Variazione</div><div class="m-stat-val" style="color:' +
@@ -9866,7 +9902,10 @@ function renderExChartBody() {
         var beat = woRowBeat(p);
         var eq   = (typeof p.eq === 'number') ? p.eq : p.kg;
         var viaReps = beat && p.r && p.tr && p.r > p.tr;
-        var sub = _fmtKg(p.kg) + ' \u00d7 ' + (p.r || p.tr || '\u2014') + (viaReps ? ' equivalenti' : '');
+        // Il trofeo sta a sinistra del carico e "equivalenti" lo segue nello
+        // stesso colore: il numero in oro è il carico equivalente, non quello
+        // messo sul bilanciere, che resta leggibile nella riga sotto.
+        var sub = _fmtKg(p.kg) + ' \u00d7 ' + (p.r || p.tr || '\u2014');
         h += '<div class="hist-row' + (p.w === DELOAD_WEEK ? ' dl' : '') + '">' +
              '<div class="hist-date">' + (p.d ? _fmtDay(p.d) : '\u2014') +
                 (nCycles > 1 ? '<span class="hist-cy">C' + p.c + '</span>' : '') + '</div>' +
@@ -9874,7 +9913,8 @@ function renderExChartBody() {
              '<div class="hist-bar"><i class="' + (beat ? 'g' : 'base') + '"></i>' +
                 (beat ? '<i class="y"></i>' : '') + '<span class="cut"></span></div>' +
              '<div class="hist-kg' + (beat ? ' gold' : '') + '">' +
-                (beat ? _fmtKg(eq) + ' kg \uD83C\uDFC6' : _fmtKg(p.kg) + ' kg') +
+                (beat ? '<b>\uD83C\uDFC6 ' + _fmtKg(eq) + ' kg</b>' + (viaReps ? '<em>equivalenti</em>' : '')
+                      : '<b>' + _fmtKg(p.kg) + ' kg</b>') +
                 '<span>' + sub + '</span></div></div>';
     });
     if (!dated.length) {
@@ -19066,9 +19106,9 @@ function _lhIsoToday() {
 function _lhUpsert(ex, wIdx, onlyIfExists) {
     if (!ex) return;
     if (!Array.isArray(APP.loadHistory)) APP.loadHistory = [];
-    var prev = ex.loads ? (ex.loads[wIdx] || ex.baseWeight || 0) : (ex.baseWeight || 0);
+    var prev = awRoundKg(ex.loads ? (ex.loads[wIdx] || ex.baseWeight || 0) : (ex.baseWeight || 0));
     if (!prev) return;
-    var used = (parseFloat(ex._sessionKg) > 0) ? parseFloat(ex._sessionKg) : prev;
+    var used = (parseFloat(ex._sessionKg) > 0) ? Math.round(parseFloat(ex._sessionKg) * 10) / 10 : prev;
     var displaySr = (wIdx === DELOAD_WEEK) ? woDeloadSr(ex.sr) : ex.sr;
     var tr = srReps(displaySr);
     var r  = (typeof ex._sessionReps === 'number' && ex._sessionReps > 0) ? ex._sessionReps : null;
