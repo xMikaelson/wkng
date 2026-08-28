@@ -477,6 +477,25 @@
            il telefono resta in verticale in mano e il grafico si legge girandolo.
            Se il dispositivo è già in orizzontale la rotazione non serve e viene
            disattivata dalla media query. */
+        /* ── Dialoghi dell'app (v.177) ── */
+        .aw-dlg { position:fixed; inset:0; z-index:9900; display:flex; align-items:center; justify-content:center;
+            background:rgba(6,13,26,0.94); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+            padding:max(env(safe-area-inset-top),44px) 18px calc(24px + env(safe-area-inset-bottom,0px)); }
+        .aw-dlg-box { background:#0f172a; border:1px solid rgba(255,255,255,0.09); border-radius:16px;
+            width:100%; max-width:400px; padding:20px 18px; max-height:100%; overflow-y:auto; }
+        .aw-dlg-title { font-size:0.86rem; font-weight:800; color:#e2e8f0; margin-bottom:8px; }
+        .aw-dlg-msg { font-size:0.66rem; color:#cbd5e1; line-height:1.75; }
+        .aw-dlg-input { width:100%; margin-top:13px; padding:12px 13px; border-radius:10px;
+            background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.14); color:#e2e8f0;
+            font-family:inherit; font-size:0.72rem; font-weight:700; outline:none; }
+        .aw-dlg-btns { display:flex; gap:8px; margin-top:16px; }
+        /* width:auto: la regola globale button{width:100%} romperebbe la riga */
+        .aw-dlg-btn { flex:1; width:auto; padding:12px 6px; border-radius:11px; text-transform:none;
+            font-family:inherit; font-size:0.68rem; font-weight:800; cursor:pointer; }
+        .aw-dlg-btn.cancel { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#94a3b8; }
+        .aw-dlg-btn.ok { background:linear-gradient(135deg,#059669,#4f46e5); border:none; color:#fff; }
+        .aw-dlg-btn.danger { background:rgba(248,113,113,0.15); border:1px solid rgba(248,113,113,0.4); color:#fca5a5; }
+
         /* ── Testi legali e accettazione (v.176) ── */
         #legal-modal, #legal-gate { position:fixed; inset:0; z-index:9800; display:none;
             background:rgba(6,13,26,0.95); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
@@ -505,6 +524,19 @@
         .legal-act.danger { background:rgba(248,113,113,0.12); border:1px solid rgba(248,113,113,0.35); color:#fca5a5; }
 
         .legal-gate-body { padding:20px 18px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+        .legal-gate-intro { font-size:0.62rem; color:#94a3b8; line-height:1.6; margin-bottom:12px; }
+        .legal-gate-links { margin-bottom:14px; }
+        /* width:auto obbligatorio: la regola globale button{width:100%} va bene
+           qui, ma servono padding e allineamento propri. */
+        .legal-lnk { width:100%; display:flex; align-items:center; justify-content:space-between;
+            gap:10px; text-align:left; text-transform:none; font-family:inherit;
+            background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
+            border-radius:11px; padding:13px 14px; margin-bottom:6px; cursor:pointer;
+            font-size:0.7rem; font-weight:700; color:#e2e8f0; }
+        .legal-lnk span { color:#64748b; font-size:0.72rem; font-weight:400; }
+        .legal-lnk:active { background:rgba(255,255,255,0.08); }
+        /* Esporta ed elimina hanno senso solo dal Profilo, non in accettazione. */
+        #legal-gate .legal-only-profile { display:none; }
         .legal-gate-eyebrow { font-size:0.5rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.12em; font-weight:700; }
         .legal-gate-title { font-size:0.95rem; font-weight:800; color:#e2e8f0; margin:5px 0 14px; }
         .legal-ck { width:100%; display:flex; gap:10px; align-items:flex-start; text-align:left;
@@ -3362,7 +3394,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 </div>
 
 <!-- ══════════ TESTI LEGALI (profilo + link dell'onboarding) ══════════ -->
-<div id="legal-modal" aria-hidden="true">
+<div id="legal-modal" role="dialog" aria-modal="true" aria-labelledby="legal-title" aria-hidden="true">
   <div class="legal-box">
     <div class="legal-head">
       <button class="pmodal-back" type="button" onclick="closeLegal()" aria-label="Indietro">&#8249;</button>
@@ -3376,25 +3408,28 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 </div>
 
 <!-- ══════════ ACCETTAZIONE AL PRIMO ALLENAMENTO ══════════ -->
-<div id="legal-gate" aria-hidden="true">
+<div id="legal-gate" role="dialog" aria-modal="true" aria-label="Informazioni importanti" aria-hidden="true">
   <div class="legal-box">
     <div class="legal-gate-body">
-      <div class="legal-gate-eyebrow">Un passaggio prima di iniziare</div>
-      <div class="legal-gate-title">Due cose da sapere</div>
-      <button type="button" class="legal-ck" id="legal-ck-1" onclick="legalToggle(1)">
-        <i></i><span>Ho letto l'<a onclick="event.stopPropagation();openLegal('salute')">avvertenza sulla salute</a>. Awakening non è un servizio medico: mi alleno sotto la mia responsabilità e mi fermo se sento dolore.</span>
+      <div class="legal-gate-eyebrow">Prima di iniziare</div>
+      <div class="legal-gate-title">Informazioni importanti</div>
+      <div class="legal-gate-intro">Tocca un titolo per leggerlo per intero.</div>
+      <div class="legal-gate-links">
+        <button type="button" class="legal-lnk" onclick="openLegal('salute')">⚕️ Salute e sicurezza<span>›</span></button>
+        <button type="button" class="legal-lnk" onclick="openLegal('privacy')">🔒 Privacy e dati<span>›</span></button>
+        <button type="button" class="legal-lnk" onclick="openLegal('termini')">📄 Termini di utilizzo<span>›</span></button>
+      </div>
+      <button type="button" class="legal-ck" id="legal-ck-1" role="checkbox" aria-checked="false" aria-pressed="false" onclick="legalToggle(1)" aria-label="Dichiaro di aver letto le informazioni">
+        <i></i><span>Dichiaro di aver letto <a onclick="event.stopPropagation();openLegal('salute')">salute e sicurezza</a>, <a onclick="event.stopPropagation();openLegal('privacy')">privacy e dati</a> e <a onclick="event.stopPropagation();openLegal('termini')">termini di utilizzo</a>.</span>
       </button>
-      <button type="button" class="legal-ck" id="legal-ck-2" onclick="legalToggle(2)">
-        <i></i><span>Ho letto <a onclick="event.stopPropagation();openLegal('privacy')">privacy</a> e <a onclick="event.stopPropagation();openLegal('termini')">termini</a>. Senza account i miei dati restano sul telefono.</span>
-      </button>
-      <button type="button" class="legal-gate-btn" id="legal-gate-btn" onclick="legalAccept()" disabled>Inizia l'allenamento</button>
-      <div class="legal-gate-note">Puoi rileggere questi testi quando vuoi dal Profilo.</div>
+      <button type="button" class="legal-gate-btn" id="legal-gate-btn" onclick="legalAccept()" disabled>Accetta e continua</button>
+      <div class="legal-gate-note">Potrai rileggerli quando vuoi dal Profilo.</div>
     </div>
   </div>
 </div>
 
 <!-- ══════════ GRAFICO A SCHERMO INTERO ══════════ -->
-<div id="ex-fs" aria-hidden="true">
+<div id="ex-fs" role="dialog" aria-modal="true" aria-labelledby="ex-fs-title" aria-hidden="true">
   <div class="ex-fs-rot">
     <div class="ex-fs-head">
       <button class="pmodal-back" type="button" onclick="closeExFullscreen()" aria-label="Indietro">&#8249;</button>
@@ -3485,23 +3520,23 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       </div>
     </div>
     <div class="settings-group-title" style="margin-top:18px">Informazioni</div>
-    <div class="settings-row" onclick="openLegal('salute')">
+    <div class="settings-row" role="button" tabindex="0" aria-label="Salute e sicurezza" onclick="openLegal('salute')">
       <div class="settings-row-left"><span class="settings-row-icon">⚕️</span><span class="settings-row-label">Salute e sicurezza</span></div>
       <span class="settings-row-arrow">›</span>
     </div>
-    <div class="settings-row" onclick="openLegal('privacy')">
+    <div class="settings-row" role="button" tabindex="0" aria-label="Privacy e dati" onclick="openLegal('privacy')">
       <div class="settings-row-left"><span class="settings-row-icon">🔒</span><span class="settings-row-label">Privacy e dati</span></div>
       <span class="settings-row-arrow">›</span>
     </div>
-    <div class="settings-row" onclick="openLegal('termini')">
+    <div class="settings-row" role="button" tabindex="0" aria-label="Termini di utilizzo" onclick="openLegal('termini')">
       <div class="settings-row-left"><span class="settings-row-icon">📄</span><span class="settings-row-label">Termini di utilizzo</span></div>
       <span class="settings-row-arrow">›</span>
     </div>
-    <div class="settings-row" onclick="exportUserData()">
+    <div class="settings-row" role="button" tabindex="0" aria-label="Esporta i miei dati" onclick="exportUserData()">
       <div class="settings-row-left"><span class="settings-row-icon">⬇️</span><span class="settings-row-label">Esporta i miei dati</span></div>
       <span class="settings-row-arrow">›</span>
     </div>
-    <div class="settings-row" onclick="deleteAccountFlow()">
+    <div class="settings-row" role="button" tabindex="0" aria-label="Elimina account e dati" onclick="deleteAccountFlow()">
       <div class="settings-row-left"><span class="settings-row-icon">🗑️</span><span class="settings-row-label" style="color:#fca5a5;">Elimina account e dati</span></div>
       <span class="settings-row-arrow">›</span>
     </div>
@@ -3523,8 +3558,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 </div>
 
 <!-- ══════════ BOTTOM NAV ══════════ -->
-<nav class="bottom-nav" id="bottom-nav">
-    <div class="nav-item active" id="nav-home" onclick="navSwitch('home')">
+<nav class="bottom-nav" id="bottom-nav" role="navigation" aria-label="Navigazione principale">
+    <div class="nav-item active" id="nav-home" role="button" tabindex="0" aria-label="Home" onclick="navSwitch('home')">
         <div class="nav-icon">🏠</div>
         <div class="nav-label">Home</div>
     </div>
@@ -3925,7 +3960,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '176';
+const APP_VERSION = '178';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -4081,6 +4116,7 @@ function saveState() {
             prMeta: APP.prMeta || {},
             mtrAdjusted: APP.mtrAdjusted || {},
             legalAccepted: APP.legalAccepted || null,
+            _weekCelebrated: APP._weekCelebrated || [],
             prLegacy: APP.prLegacy || null,
             _prMigrated: !!APP._prMigrated,
             savedProtocols: APP.savedProtocols || [],
@@ -4103,7 +4139,7 @@ function saveState() {
         // qui dentro lancia, lo stato non viene scritto e senza segnale
         // l'utente perde dati senza accorgersene.
         console.error('saveState fallito:', e);
-        try { showToast('Salvataggio non riuscito', 'error'); } catch(_) {}
+        try { showToast('Salvataggio non riuscito', 'error'); } catch(_){ awLog.warn("[saveState]", _ && _.message); }
     }
 }
 async function saveToSupabase(stateData) {
@@ -4122,7 +4158,7 @@ async function saveToSupabase(stateData) {
         const { error: upErr } = await sbClient.from('profiles')
             .update({ state_json: stateData, ...extraCols }).eq('id', user.id);
         if (upErr) {
-            console.warn('state_json update failed:', upErr.message, '— trying insert');
+            awLog.warn('state_json update failed:', upErr.message, '— trying insert');
             await sbClient.from('profiles').insert({ id: user.id, state_json: stateData, ...extraCols })
                 .then(({ error: insErr }) => { if (insErr) console.error('state_json insert failed:', insErr.message); });
         }
@@ -4149,7 +4185,7 @@ async function syncExtraToSupabase() {
             contributions: parseInt(localStorage.getItem('aw_contributions')   || '0') || 0,
             height_cm:     parseInt(localStorage.getItem('aw_height_cm'))      || null
         }).eq('id', user.id);
-    } catch(e) { console.warn('syncExtraToSupabase error:', e.message); }
+    } catch(e) { awLog.warn('syncExtraToSupabase error:', e.message); }
 }
 
 function syncProtocolStates() {
@@ -4171,7 +4207,7 @@ function syncProtocolStatesNow() {
 async function saveProtocolToSupabase(proto) {
     try {
         const { data: { user } } = await sbClient.auth.getUser();
-        if (!user) { console.warn('saveProtocol: no user'); return; }
+        if (!user) { awLog.warn('saveProtocol: no user'); return; }
         // Salva esercizi + metadati di stato dentro exercises_json.
         // IMPORTANTE: i metadati devono stare in un OGGETTO, non appesi a un array:
         // JSON.stringify su un array scarta le proprietà nominate, quindi la vecchia
@@ -4203,7 +4239,7 @@ async function saveProtocolToSupabase(proto) {
         // Try upsert first; if it fails (RLS/constraint), try insert then update
         let { data, error } = await sbClient.from('protocols').upsert(payload, { onConflict: 'id' });
         if (error) {
-            console.warn('Protocol upsert failed, trying insert:', error.message);
+            awLog.warn('Protocol upsert failed, trying insert:', error.message);
             const ins = await sbClient.from('protocols').insert(payload);
             if (ins.error) {
                 // Row might already exist — try update instead
@@ -4211,10 +4247,10 @@ async function saveProtocolToSupabase(proto) {
                     .update({ name: proto.name, goal: proto.goal, exercises_json })
                     .eq('id', proto.id).eq('user_id', user.id);
                 if (upd.error) { console.error('Protocol save failed entirely:', upd.error.message); return false; }
-                console.log('Protocol updated:', proto.name);
+                awLog.log('Protocol updated:', proto.name);
                 return true;
             }
-            console.log('Protocol inserted:', proto.name);
+            awLog.log('Protocol inserted:', proto.name);
             return true;
         }
         return true;
@@ -4226,7 +4262,7 @@ async function deleteProtocolFromSupabase(protoId) {
         const { data: { user } } = await sbClient.auth.getUser();
         if (!user) return;
         await sbClient.from('protocols').delete().eq('id', protoId).eq('user_id', user.id);
-    } catch(e) {}
+    } catch(e){ awLog.warn("[deleteProtocolFromSupabase]", e && e.message); }
 }
 
 
@@ -4294,6 +4330,8 @@ function loadState() {
         APP.prMeta      = saved.prMeta || {};
         APP.mtrAdjusted = saved.mtrAdjusted || {};
         APP.legalAccepted = saved.legalAccepted || null;
+        // Senza questo, l'animazione di settimana completata ripartiva a ogni riavvio.
+        APP._weekCelebrated = Array.isArray(saved._weekCelebrated) ? saved._weekCelebrated : [];
         APP.prLegacy    = saved.prLegacy || null;
         APP._prMigrated = !!saved._prMigrated;
         migrateLegacyPR();
@@ -4334,7 +4372,7 @@ function mtrSyncFromProtocols() {
 function migrateMtrLoads() {
     if (!APP.savedProtocols) return;
     // v.151: converte i range di ripetizioni ereditati in numeri secchi
-    try { awkMigrateSr(); } catch (e) { console.warn('migrazione sr:', e && e.message); }
+    try { awkMigrateSr(); } catch (e) { awLog.warn('migrazione sr:', e && e.message); }
     if (!APP.mtrValues) APP.mtrValues = {};
     var changed = mtrCanonicalizeDict();
     if (mtrSyncFromProtocols()) changed = true;
@@ -5569,7 +5607,7 @@ function _sbOfflineClient() {
 const sbClient = (window.supabase && typeof window.supabase.createClient === 'function')
     ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
     : _sbOfflineClient();
-if (sbClient._offline) console.warn('Supabase non disponibile: l\'app funziona in modalità locale.');
+if (sbClient._offline) awLog.warn('Supabase non disponibile: l\'app funziona in modalità locale.');
 
 function openLogin() {
     const m = document.getElementById('login-modal');
@@ -5774,6 +5812,7 @@ async function onLoginSuccess(user, usernameOverride = null) {
         if (s.prMeta)   APP.prMeta   = Object.assign({}, s.prMeta, APP.prMeta || {});
         if (s.mtrAdjusted) APP.mtrAdjusted = Object.assign({}, s.mtrAdjusted, APP.mtrAdjusted || {});
         if (s.legalAccepted && !APP.legalAccepted) APP.legalAccepted = s.legalAccepted;
+        if (Array.isArray(s._weekCelebrated)) APP._weekCelebrated = s._weekCelebrated;
         if (s.prLegacy && !APP.prLegacy) APP.prLegacy = s.prLegacy;
         if (s._prMigrated) APP._prMigrated = true;
         if (s.personalRecords) {
@@ -5923,7 +5962,7 @@ async function onLoginSuccess(user, usernameOverride = null) {
         const supabaseIds = new Set((protocols || []).map(p => p.id));
         const missing = APP.savedProtocols.filter(p => !supabaseIds.has(p.id));
         if (missing.length > 0) {
-            console.log(`Uploading ${missing.length} missing protocol(s)`);
+            awLog.log(`Uploading ${missing.length} missing protocol(s)`);
             missing.forEach(p => saveProtocolToSupabase(p));
         }
     }
@@ -7398,8 +7437,8 @@ function protoEditorShowCoachResult(proto, draft, weekIdx, saveBtn, coachBox, co
         _verif = awkVerifyCoachList(suggestedExercises, draft, proto);
         suggestedExercises = _verif.list;
     }
-    console.log('[Coach Parser] testo ricevuto:', coachText.substring(0, 300));
-    console.log('[Coach Parser] esercizi estratti:', suggestedExercises);
+    awLog.log('[Coach Parser] testo ricevuto:', coachText.substring(0, 300));
+    awLog.log('[Coach Parser] esercizi estratti:', suggestedExercises);
 
     var textDiv = document.createElement('div');
     textDiv.className = 'proto-coach-text';
@@ -7869,7 +7908,7 @@ function protoEditorCommit(proto, exercises, weekIdx, saveBtn, coachApplied) {
 function protoEditorPersist(proto) {
     saveState();
     if (typeof saveProtocolToSupabase === 'function') {
-        try { saveProtocolToSupabase(proto); } catch(e) { console.warn('saveProtocolToSupabase:', e); }
+        try { saveProtocolToSupabase(proto); } catch(e) { awLog.warn('saveProtocolToSupabase:', e); }
     }
     // Se è il protocollo attivo, aggiorna APP.exerciseData e i campi nella homepage
     if (proto.id === APP.activeProtocolId) {
@@ -8716,22 +8755,23 @@ function renderProtoManager() {
         btnRename.style.cssText = 'background:rgba(255,255,255,0.07);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:0.72rem;width:auto;text-transform:none;';
         btnRename.onclick = function(ev) {
             ev.stopPropagation();
-            var newName = prompt('Rinomina protocollo:', proto.name);
-            if (newName && newName.trim()) {
+            awPrompt('Nuovo nome del protocollo:', function(newName) {
+                if (!newName || !newName.trim()) return;
                 proto.name = newName.trim();
                 saveState();
                 if (typeof saveProtocolToSupabase === 'function') saveProtocolToSupabase(proto);
                 renderProtoManager(); renderProtocolList();
                 showToast('Protocollo rinominato', 'success');
-            }
+            }, { title: 'Rinomina protocollo', value: proto.name, okLabel: 'Rinomina' });
         };
         var btnDelete = document.createElement('button');
         btnDelete.textContent = '\uD83D\uDDD1\uFE0F';
         btnDelete.style.cssText = 'background:rgba(239,68,68,0.15);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:0.72rem;width:auto;text-transform:none;';
         btnDelete.onclick = function(ev) {
             ev.stopPropagation();
-            if (!confirm('Eliminare "' + proto.name + '"?')) return;
-            pmDeleteProtocols([proto]);
+            awConfirm('Eliminare "' + proto.name + '"?', function(ok) {
+                if (ok) pmDeleteProtocols([proto]);
+            }, { title: 'Elimina protocollo', okLabel: 'Elimina', danger: true });
         };
         row.appendChild(name); row.appendChild(btnRename); row.appendChild(btnDelete);
         return row;
@@ -8760,8 +8800,10 @@ function renderProtoManager() {
         del.style.cssText = 'background:rgba(239,68,68,0.15);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:0.72rem;width:auto;text-transform:none;flex-shrink:0;';
         del.onclick = function(ev) {
             ev.stopPropagation();
-            if (!confirm('Eliminare "' + bundle.name + '" e tutti i suoi ' + bundle.protos.length + ' protocolli?')) return;
-            pmDeleteProtocols(bundle.protos.slice());
+            var _bp = bundle.protos.slice();
+            awConfirm('Verranno eliminati "' + bundle.name + '" e tutti i suoi ' + _bp.length + ' protocolli.', function(ok) {
+                if (ok) pmDeleteProtocols(_bp);
+            }, { title: 'Elimina gruppo', okLabel: 'Elimina', danger: true });
         };
         head.insertBefore(del, head.querySelector('.pm-bnd-ar'));
         list.appendChild(head);
@@ -9448,7 +9490,7 @@ async function registerPushSubscription() {
         });
         await savePushSubscriptionToSupabase(subscription);
     } catch(e) {
-        console.warn('[Push] Errore registrazione:', e.message);
+        awLog.warn('[Push] Errore registrazione:', e.message);
     }
 }
 
@@ -9461,9 +9503,9 @@ async function savePushSubscriptionToSupabase(subscription) {
             subscription: subscription.toJSON(),
             updated_at: new Date().toISOString()
         }, { onConflict: 'user_id' });
-        if (res.error) console.warn('[Push] Errore Supabase:', res.error.message);
+        if (res.error) awLog.warn('[Push] Errore Supabase:', res.error.message);
     } catch(e) {
-        console.warn('[Push] Errore salvataggio:', e.message);
+        awLog.warn('[Push] Errore salvataggio:', e.message);
     }
 }
 
@@ -9502,7 +9544,7 @@ async function scheduleClientNotifications() {
                 var fired = {}; try { fired = JSON.parse(localStorage.getItem('aw_notif_fired') || '{}'); } catch(e) {}
                 fired[firedKey] = true;
                 localStorage.setItem('aw_notif_fired', JSON.stringify(fired));
-            } catch(e) { console.warn('[ClientNotif] Errore:', e); }
+            } catch(e) { awLog.warn('[ClientNotif] Errore:', e); }
         }, msUntil);
         _clientNotifTimers.push(timer);
     });
@@ -10187,6 +10229,102 @@ function openExChart(name) {
 }
 
 
+
+
+// ══════════ LOG DI DIAGNOSTICA (v.177) ══════════
+// I messaggi restano utili in sviluppo ma in produzione mostravano a chiunque
+// apra la console i nomi delle funzioni interne, la struttura dei dati e gli
+// errori di rete. Da qui in poi passano tutti da awLog: silenzioso di default,
+// si accende scrivendo  localStorage.setItem('aw_debug','1')  e ricaricando.
+var AW_DEBUG = (function() {
+    try { return localStorage.getItem('aw_debug') === '1'; } catch (e) { return false; }
+})();
+var awLog = {
+    log:  function() { if (AW_DEBUG) console.log.apply(console, arguments); },
+    warn: function() { if (AW_DEBUG) console.warn.apply(console, arguments); },
+    info: function() { if (AW_DEBUG) console.info.apply(console, arguments); },
+    // Gli errori veri restano visibili: se qualcosa si rompe deve potersi vedere.
+    error: function() { console.error.apply(console, arguments); }
+};
+
+// ══════════ DIALOGHI DELL'APP (v.177) ══════════
+// I dialoghi nativi del browser mostrano il dominio del sito, non si possono
+// vestire e in PWA su iOS spezzano l'estetica di tutto il resto. Questi hanno
+// la stessa forma degli altri overlay dell'app e accettano una callback,
+// perche' a differenza di confirm() non bloccano l'esecuzione.
+function _awDialog(opts) {
+    var old = document.getElementById('aw-dialog');
+    if (old) old.remove();
+
+    var ov = document.createElement('div');
+    ov.id = 'aw-dialog';
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-modal', 'true');
+    ov.className = 'aw-dlg';
+
+    var box = document.createElement('div');
+    box.className = 'aw-dlg-box';
+
+    var h = '<div class="aw-dlg-title">' + escapeHTML(opts.title || '') + '</div>';
+    if (opts.message) h += '<div class="aw-dlg-msg">' + escapeHTML(opts.message).split('\n').join('<br>') + '</div>';
+    if (opts.input) h += '<input type="text" class="aw-dlg-input" id="aw-dlg-input" autocomplete="off" autocapitalize="characters" spellcheck="false" value="' + escapeHTML(opts.value || '') + '">';
+    h += '<div class="aw-dlg-btns">' +
+         '<button type="button" class="aw-dlg-btn cancel" id="aw-dlg-no">' + escapeHTML(opts.cancelLabel || 'Annulla') + '</button>' +
+         '<button type="button" class="aw-dlg-btn ' + (opts.danger ? 'danger' : 'ok') + '" id="aw-dlg-yes">' + escapeHTML(opts.okLabel || 'Conferma') + '</button>' +
+         '</div>';
+    box.innerHTML = h;
+    ov.appendChild(box);
+    document.body.appendChild(ov);
+
+    var done = false;
+    function close(val) {
+        if (done) return; done = true;
+        var el = document.getElementById('aw-dialog');
+        if (el) el.remove();
+        if (typeof opts.onDone === 'function') opts.onDone(val);
+    }
+    var yes = box.querySelector('#aw-dlg-yes');
+    var no  = box.querySelector('#aw-dlg-no');
+    if (yes) yes.onclick = function() {
+        if (opts.input) {
+            var inp = document.getElementById('aw-dlg-input');
+            close(inp ? inp.value : '');
+        } else close(true);
+    };
+    if (no) no.onclick = function() { close(opts.input ? null : false); };
+    ov.onclick = function(e) { if (e.target === ov) close(opts.input ? null : false); };
+    if (opts.input) setTimeout(function() {
+        var inp = document.getElementById('aw-dlg-input');
+        if (inp) { inp.focus(); inp.select(); }
+    }, 60);
+}
+
+function awConfirm(message, onDone, opts) {
+    opts = opts || {};
+    _awDialog({
+        title: opts.title || 'Conferma',
+        message: message,
+        okLabel: opts.okLabel || 'Conferma',
+        cancelLabel: opts.cancelLabel || 'Annulla',
+        danger: !!opts.danger,
+        onDone: function(v) { if (typeof onDone === 'function') onDone(v === true); }
+    });
+}
+
+function awPrompt(message, onDone, opts) {
+    opts = opts || {};
+    _awDialog({
+        title: opts.title || 'Conferma',
+        message: message,
+        input: true,
+        value: opts.value || '',
+        okLabel: opts.okLabel || 'Conferma',
+        cancelLabel: opts.cancelLabel || 'Annulla',
+        danger: !!opts.danger,
+        onDone: function(v) { if (typeof onDone === 'function') onDone(v); }
+    });
+}
+
 // ══════════ TESTI LEGALI, CONSENSO, DATI (v.176) ══════════
 // I testi vivono qui in un unico posto e vengono mostrati sia dal Profilo sia
 // dai link dentro l'accettazione al primo allenamento: una sola versione da
@@ -10227,8 +10365,10 @@ var LEGAL_TEXTS = {
           '<p>L\u2019archiviazione e\u0300 affidata a Supabase, che ospita i dati per nostro conto. Le funzioni di intelligenza artificiale \u2014 il Coach e il riconoscimento dei pasti da foto \u2014 inviano il testo o l\u2019immagine ad Anthropic per generare la risposta; non vengono usati per addestrare modelli. Le informazioni sui prodotti alimentari arrivano da Open Food Facts, un archivio pubblico.</p>' +
           '<div class="legal-sec">I tuoi diritti</div>' +
           '<p>Puoi scaricare in qualsiasi momento una copia completa di quello che abbiamo, ed eliminare i tuoi dati dal server. La cancellazione e\u0300 definitiva: non teniamo copie.</p>' +
+          '<div class="legal-only-profile">' +
           '<button type="button" class="legal-act ghost" onclick="exportUserData()">\u2b07\ufe0f Esporta i miei dati</button>' +
           '<button type="button" class="legal-act danger" onclick="deleteAccountFlow()">\ud83d\uddd1\ufe0f Elimina account e dati</button>' +
+          '</div>' +
           '<p style="margin-top:14px;">Per qualsiasi domanda: <b>' + '__CONTACT__' + '</b>.</p>'
     },
     termini: {
@@ -10270,14 +10410,18 @@ function closeLegal() {
 // ── Accettazione al primo allenamento ──
 // Il Profilo raggiunge solo chi ci passa: qui l'avvertenza viene messa davanti
 // a tutti, una volta sola, nel momento in cui diventa concreta.
-var _legalChecks = { 1: false, 2: false };
+var _legalChecks = { 1: false };
 
 function legalToggle(n) {
     _legalChecks[n] = !_legalChecks[n];
     var el = document.getElementById('legal-ck-' + n);
-    if (el) el.classList.toggle('on', _legalChecks[n]);
+    if (el) {
+        el.classList.toggle('on', _legalChecks[n]);
+        el.setAttribute('aria-pressed', _legalChecks[n] ? 'true' : 'false');
+        el.setAttribute('aria-checked', _legalChecks[n] ? 'true' : 'false');
+    }
     var btn = document.getElementById('legal-gate-btn');
-    if (btn) btn.disabled = !(_legalChecks[1] && _legalChecks[2]);
+    if (btn) btn.disabled = !_legalChecks[1];
 }
 
 function legalNeedsAccept() {
@@ -10287,11 +10431,13 @@ function legalNeedsAccept() {
 function openLegalGate(onAccept) {
     var g = document.getElementById('legal-gate');
     if (!g) { if (typeof onAccept === 'function') onAccept(); return; }
-    _legalChecks = { 1: false, 2: false };
-    [1, 2].forEach(function(n) {
-        var el = document.getElementById('legal-ck-' + n);
-        if (el) el.classList.remove('on');
-    });
+    _legalChecks = { 1: false };
+    var el1 = document.getElementById('legal-ck-1');
+    if (el1) { el1.classList.remove('on'); el1.setAttribute('aria-pressed', 'false'); el1.setAttribute('aria-checked', 'false'); }
+
+    // Il popup resta breve: i tre testi si aprono dai titoli o dalle parole
+    // sottolineate, sopra a questo, e chiudendoli si torna qui. Cosi'
+    // l'apertura dell'app non viene sepolta sotto pagine di informativa.
     var btn = document.getElementById('legal-gate-btn');
     if (btn) btn.disabled = true;
     _legalOnAccept = onAccept || null;
@@ -10302,7 +10448,7 @@ function openLegalGate(onAccept) {
 var _legalOnAccept = null;
 
 function legalAccept() {
-    if (!(_legalChecks[1] && _legalChecks[2])) return;
+    if (!_legalChecks[1]) return;
     // Data e versione rendono dimostrabile cosa e' stato accettato e quando.
     APP.legalAccepted = { v: LEGAL_VERSION, d: new Date().toISOString() };
     saveState();
@@ -10367,10 +10513,15 @@ function exportUserData() {
 // Due conferme: la prima spiega, la seconda chiede di scrivere ELIMINA. Un
 // tocco accidentale non deve poter cancellare anni di allenamenti.
 function deleteAccountFlow() {
-    if (!confirm('Elimina definitivamente i tuoi dati dal server e da questo dispositivo.\n\nProtocolli, storico, record, peso e pasti andranno persi. Non teniamo copie e l\u2019operazione non si annulla.\n\nVuoi prima esportarli? Annulla ora e usa "Esporta i miei dati".')) return;
-    var w = prompt('Per confermare, scrivi ELIMINA in maiuscolo:');
-    if (!w || w.trim().toUpperCase() !== 'ELIMINA') { showToast('Eliminazione annullata', 'info'); return; }
-    _deleteAccountNow();
+    awConfirm(
+      'Protocolli, storico, record, peso e pasti verranno eliminati dal server e da questo dispositivo. Non teniamo copie e l\u2019operazione non si annulla.\n\nVuoi prima esportarli? Annulla e usa "Esporta i miei dati".',
+      function(ok) {
+        if (!ok) return;
+        awPrompt('Scrivi ELIMINA per confermare.', function(w) {
+            if (!w || w.trim().toUpperCase() !== 'ELIMINA') { showToast('Eliminazione annullata', 'info'); return; }
+            _deleteAccountNow();
+        }, { title: 'Conferma definitiva', okLabel: 'Elimina tutto', danger: true });
+      }, { title: 'Eliminare account e dati?', okLabel: 'Continua', danger: true });
 }
 
 async function _deleteAccountNow() {
@@ -10389,9 +10540,9 @@ async function _deleteAccountNow() {
         }
     } catch (e) {
         serverOk = false;
-        console.warn('Eliminazione lato server non riuscita:', e && e.message);
+        awLog.warn('Eliminazione lato server non riuscita:', e && e.message);
     }
-    try { await sbClient.auth.signOut(); } catch (e) {}
+    try { await sbClient.auth.signOut(); } catch(e){ awLog.warn("[_deleteAccountNow]", e && e.message); }
 
     // Pulizia locale completa: stato, log alimentari, preferenze.
     try {
@@ -10400,7 +10551,7 @@ async function _deleteAccountNow() {
             var k = localStorage.key(i);
             if (k && keep.indexOf(k) === -1) localStorage.removeItem(k);
         }
-    } catch (e) {}
+    } catch(e){ awLog.warn("[_deleteAccountNow]", e && e.message); }
 
     if (serverOk) {
         alert('Dati eliminati. L\u2019app si riavvia.');
@@ -11132,7 +11283,7 @@ async function awSaveProduct(food, userId) {
                 .eq(filterKey, filterVal)
                 .select();
             if (updateErr) {
-                console.warn('DB update error:', updateErr.message);
+                awLog.warn('DB update error:', updateErr.message);
             }
             // silenzioso in caso di successo
         } else {
@@ -12342,7 +12493,7 @@ async function _scanWithBarcodeDetector(meal) {
         }, 150);
 
     } catch(e) {
-        console.warn('BarcodeDetector failed:', e.message);
+        awLog.warn('BarcodeDetector failed:', e.message);
         if (hint) hint.textContent = 'Uso metodo alternativo...';
         _scanWithZXing(meal);
     }
@@ -12398,7 +12549,7 @@ function _scanWithZXing(meal) {
         );
         if (hint) hint.textContent = 'Inquadra il codice a barre';
     } catch(e) {
-        console.warn('ZXing failed:', e.message);
+        awLog.warn('ZXing failed:', e.message);
         if (hint) hint.textContent = 'Scanner non disponibile — usa il campo sotto';
     }
 }
@@ -12493,8 +12644,8 @@ async function novaEnrichFromOFF(food, barcode) {
                 additives_list: Array.isArray(food.additivesList) && food.additivesList.length
                                 ? food.additivesList.join(',') : null
             }).eq('barcode', barcode);
-        } catch(e) { console.warn('nova write-back failed:', e.message); }
-    } catch(e) { console.warn('novaEnrichFromOFF failed:', e.message); }
+        } catch(e) { awLog.warn('nova write-back failed:', e.message); }
+    } catch(e) { awLog.warn('novaEnrichFromOFF failed:', e.message); }
 }
 
 async function cameraFetchProduct(barcode, meal) {
@@ -12531,9 +12682,9 @@ async function cameraFetchProduct(barcode, meal) {
                 novaSource: awProd.nova_source || null,
                 additivesList: awProd.additives_list ? String(awProd.additives_list).split(',').filter(Boolean) : null
             };
-            console.log('Found in Awakening DB:', food.name);
+            awLog.log('Found in Awakening DB:', food.name);
         }
-    } catch(e) { console.warn('aw_products lookup error:', e.message); }
+    } catch(e) { awLog.warn('aw_products lookup error:', e.message); }
 
     // ── Step 1b: prodotto gia' nel DB ma senza NOVA/additivi -> deduci dagli ingredienti ──
     // Da ricalcolare: deduzione di una versione precedente, oppure valore presente
@@ -12632,7 +12783,7 @@ async function cameraFetchProduct(barcode, meal) {
                             break;
                         }
                     }
-                } catch(e) { console.warn('Name search failed:', e.message); }
+                } catch(e) { awLog.warn('Name search failed:', e.message); }
             }
 
             // Nutri-Score from OFF (A/B/C/D/E)
@@ -12708,7 +12859,7 @@ async function cameraFetchProduct(barcode, meal) {
             };
             break;
         } catch(e) {
-            console.warn('Endpoint failed:', new URL(url).hostname, e.message);
+            awLog.warn('Endpoint failed:', new URL(url).hostname, e.message);
             continue;
         }
     }
@@ -14218,12 +14369,6 @@ function woStartWorkout() {
     const exData = APP.exerciseData || [];
     if (exData.length === 0) return;
 
-    // v.176 — la prima volta che si passa da qui, l'avvertenza sulla salute
-    // viene mostrata e va accettata: e' il momento in cui diventa concreta.
-    if (typeof legalNeedsAccept === 'function' && legalNeedsAccept()) {
-        openLegalGate(function() { woStartWorkout(); });
-        return;
-    }
 
     // Le prestazioni sono per-sessione: senza azzeramento le ripetizioni di
     // ieri verrebbero riusate per la riga di storico di oggi.
@@ -14327,7 +14472,12 @@ function _woBeginWorkout() {
 }
 
 function woStop() {
-    if (!confirm("Terminare l'allenamento? I progressi non completati andranno persi.")) return;
+    awConfirm('I progressi non completati andranno persi.', function(ok) {
+        if (ok) _woEndWorkoutNow();
+    }, { title: "Terminare l'allenamento?", okLabel: 'Termina', danger: true });
+}
+
+function _woEndWorkoutNow() {
     if (woState.timer) { clearInterval(woState.timer); woState.timer = null; }
     woState.exIndex = 0; woState.setIndex = 0; woState.elapsed = 0;
     woState.restSecs = 0; woState.restRunning = false; woState.restTotal = 0;
@@ -14397,9 +14547,10 @@ function woRenderEx() {
         prBadgeEl.className = 'wo-pr-badge';
         prContainer.appendChild(prBadgeEl);
     }
-    prBadgeEl.textContent = '';
-    prBadgeEl.style.color = '#64748b';
-    // Il badge PR viene aggiornato dinamicamente da woKgChanged all'apertura
+    // v.177 — il badge veniva svuotato e riempito solo al cambio del carico:
+    // aprendo un esercizio senza toccare nulla restava vuoto anche con un
+    // record registrato. Ora viene calcolato subito.
+    woUpdatePrBadge(kg);
 
     // Sets
     const setsEl = document.getElementById('wo-sets-container');
@@ -14494,19 +14645,40 @@ function woKgChanged(val) {
     const ex = (APP.exerciseData || [])[woState.exIndex];
     if (!ex) return;
     ex._sessionKg = kg;
-    // Mostra feedback PR rispetto al PR registrato (non al carico pianificato)
-    const pr = APP.personalRecords[ex.name] || 0;
-    const badge = document.getElementById('wo-pr-badge');
-    if (badge) {
-        if (pr > 0 && kg > pr) {
-            badge.textContent = '🏆 Sei sopra il tuo record';
-            badge.style.color = 'var(--primary)';
-        } else if (pr > 0) {
-            badge.textContent = 'Record: ' + _fmtKg(pr) + ' kg';
-            badge.style.color = '#64748b';
-        } else {
-            badge.textContent = '';
-        }
+    woUpdatePrBadge(kg);
+}
+
+// v.177 — il badge confrontava il carico impostato con il record, ma dalla
+// v.168 il record e' un carico EQUIVALENTE (comprende le ripetizioni in piu'),
+// quindi due numeri non omogenei: un record da ripetizioni extra e' quasi
+// sempre piu' alto di qualunque carico, e il badge non si accendeva mai.
+// Il confronto giusto e' con il carico previsto per il capitolo: e' quello che
+// determina se la seduta finira' oltre il programma.
+function woUpdatePrBadge(kg) {
+    var badge = document.getElementById('wo-pr-badge');
+    if (!badge) return;
+    var ex = (APP.exerciseData || [])[woState.exIndex];
+    if (!ex) { badge.textContent = ''; return; }
+    var w = APP.selectedViewWeek || 0;
+    var prev = ex.loads ? (ex.loads[w] || ex.baseWeight || 0) : (ex.baseWeight || 0);
+    var rec  = parseFloat(APP.personalRecords[ex.name]) || 0;
+    kg = parseFloat(kg);
+    if (isNaN(kg)) kg = prev;
+
+    if (w === DELOAD_WEEK) {
+        // Nel Deload superare il programma non e' un traguardo.
+        badge.textContent = rec > 0 ? 'Record: ' + _fmtKg(rec) + ' kg' : '';
+        badge.style.color = '#64748b';
+        return;
+    }
+    if (prev > 0 && kg > prev + 0.05) {
+        badge.textContent = '\uD83C\uDFC6 Sopra il programma di ' + _fmtKg(kg - prev) + ' kg';
+        badge.style.color = 'var(--primary)';
+    } else if (rec > 0) {
+        badge.textContent = 'Record: ' + _fmtKg(rec) + ' kg';
+        badge.style.color = '#64748b';
+    } else {
+        badge.textContent = '';
     }
 }
 
@@ -14912,7 +15084,12 @@ function woApplyProgression() {
 }
 
 function woDeloadFullRest() {
-    if (!confirm('Segnare la settimana di Deload come completata con riposo totale?')) return;
+    awConfirm('La settimana di Deload verrà segnata come completata con riposo totale.', function(ok) {
+        if (ok) _woDeloadFullRestNow();
+    }, { title: 'Riposo totale', okLabel: 'Conferma' });
+}
+
+function _woDeloadFullRestNow() {
     var assigns = APP.dayAssignments[DELOAD_WEEK] || [];
     for (var di = 0; di < 7; di++) {
         if (assigns[di]) APP.chipStates[DELOAD_WEEK][di] = 'done';
@@ -15394,7 +15571,12 @@ function closeDashboard() {
 }
 
 function performLogout() {
-    if (!confirm('Vuoi disconnetterti?')) return;
+    awConfirm('I dati restano sul server e li ritrovi al prossimo accesso.', function(ok) {
+        if (ok) _performLogoutNow();
+    }, { title: 'Disconnettersi?', okLabel: 'Esci' });
+}
+
+function _performLogoutNow() {
     // Non chiamare closeDashboard() — farebbe navSwitch('home') rimettendo nav-mode
     sbClient.auth.signOut();
     localStorage.removeItem(STORAGE_KEY);
@@ -17898,20 +18080,20 @@ function weightRenderChart(log, goal) {
 
 // ── Diagnostic: call window.awakeDiag() from browser console to test Supabase ──
 window.awakeDiag = async function() {
-    console.log('=== Awakening Supabase Diagnostic ===');
+    awLog.log('=== Awakening Supabase Diagnostic ===');
     const { data: { user }, error: authErr } = await sbClient.auth.getUser();
-    console.log('Auth user:', user?.id || 'NOT LOGGED IN', authErr?.message || '');
+    awLog.log('Auth user:', user?.id || 'NOT LOGGED IN', authErr?.message || '');
     if (!user) return;
     const { data: profile, error: profErr } = await sbClient.from('profiles').select('id, username').eq('id', user.id).single();
-    console.log('Profile row:', profile, profErr?.message || '');
+    awLog.log('Profile row:', profile, profErr?.message || '');
     const { data: protos, error: protErr } = await sbClient.from('protocols').select('id, name').eq('user_id', user.id);
-    console.log('Protocols:', protos?.length || 0, protos?.map(p=>p.name), protErr?.message || '');
+    awLog.log('Protocols:', protos?.length || 0, protos?.map(p=>p.name), protErr?.message || '');
     // Test write
     const { error: writeErr } = await sbClient.from('profiles').update({ state_json: { _diag_test: Date.now() } }).eq('id', user.id);
-    console.log('Write test:', writeErr ? 'FAILED: '+writeErr.message : 'OK ✅');
-    console.log('localStorage totalWorkouts:', JSON.parse(localStorage.getItem('awakening_state') || '{}').totalWorkouts);
-    console.log('APP totalWorkouts:', APP.totalWorkouts);
-    console.log('=== End Diagnostic ===');
+    awLog.log('Write test:', writeErr ? 'FAILED: '+writeErr.message : 'OK ✅');
+    awLog.log('localStorage totalWorkouts:', JSON.parse(localStorage.getItem('awakening_state') || '{}').totalWorkouts);
+    awLog.log('APP totalWorkouts:', APP.totalWorkouts);
+    awLog.log('=== End Diagnostic ===');
 };
 // ============= CHART =============
 function updateChart() {
@@ -18360,7 +18542,14 @@ function deleteProtocol(protoId) {
     const proto = APP.savedProtocols.find(p => p.id === protoId);
     if (!proto) return;
 
-    if (!confirm(`Eliminare "${proto.name}"?`)) return;
+    awConfirm(`Eliminare "${proto.name}"?`, function(ok) {
+        if (ok) _deleteProtocolNow(protoId);
+    }, { title: 'Elimina protocollo', okLabel: 'Elimina', danger: true });
+}
+
+function _deleteProtocolNow(protoId) {
+    const proto = (APP.savedProtocols || []).find(p => p.id === protoId);
+    if (!proto) return;
 
     APP.savedProtocols = APP.savedProtocols.filter(p => p.id !== protoId);
     deleteProtocolFromSupabase(protoId);
@@ -18944,7 +19133,12 @@ function closeSettingsAndReset() {
     document.body.classList.remove('nav-mode');
     document.getElementById('settings-dropdown')?.classList.remove('open');
     document.getElementById('settings-btn')?.classList.remove('open');
-    if (!confirm('Sei sicuro? Verranno cancellati tutti i tuoi dati: protocolli, progressi, streak e achievements. Questa azione è irreversibile.')) return;
+    awConfirm('Verranno cancellati protocolli, progressi, streak e achievements. L\'azione è irreversibile.', function(ok) {
+        if (ok) _resetAllDataNow();
+    }, { title: 'Reset dati', okLabel: 'Cancella tutto', danger: true });
+}
+
+function _resetAllDataNow() {
     performFullReset();
 }
 
@@ -19004,7 +19198,7 @@ async function performFullReset() {
                 }).eq('id', session.user.id);
             }
         } catch (e) {
-            console.warn('Reset Supabase fallito (continuo comunque):', e && e.message);
+            awLog.warn('Reset Supabase fallito (continuo comunque):', e && e.message);
         }
     }
     APP.savedProtocols = [];
@@ -19536,7 +19730,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
     } catch(e) {
-        console.warn('Supabase non disponibile:', e.message);
+        awLog.warn('Supabase non disponibile:', e.message);
         const hasState = loadState();
         if (hasState) {
             migrateMtrLoads();
@@ -19550,6 +19744,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
     }
+    // v.177 — l'informativa viene proposta a ogni apertura finche' non e'
+    // accettata: e' l'unico momento in cui si e' certi che tutti la vedano.
+    // Una volta accettata non compare piu' e resta consultabile dal Profilo.
+    setTimeout(function() {
+        try { if (legalNeedsAccept()) openLegalGate(null); } catch(e) { awLog.warn('[Legal]', e && e.message); }
+    }, 600);
 });
 
 
@@ -19771,7 +19971,7 @@ function homeRefreshData() {
           modifications = JSON.parse(modMatch[1].trim());
           reply = reply.replace(/<ai_modifications>[\s\S]*?<\/ai_modifications>/, '').trim();
         } catch(e) {
-          console.warn('Could not parse modifications:', e);
+          awLog.warn('Could not parse modifications:', e);
           reply = reply.replace(/<ai_modifications>[\s\S]*?<\/ai_modifications>/, '').trim();
           reply += '\n\n⚠️ Risposta troncata — riprova la richiesta.';
         }
@@ -20241,7 +20441,7 @@ if ('serviceWorker' in navigator) {
         const swScope = window.location.pathname.replace(/\/[^/]*$/, '/') || '/';
         navigator.serviceWorker.register('./sw.js', { scope: swScope })
             .then(function(reg) {
-                console.log('SW registered:', reg.scope);
+                awLog.log('SW registered:', reg.scope);
 
                 // Se un nuovo SW resta "in attesa" (waiting), lo si sblocca
                 // subito invece di lasciarlo li' finche' l'app non viene
@@ -20267,7 +20467,7 @@ if ('serviceWorker' in navigator) {
             })
             .catch(err => {
                 // Non-critical — app works without SW
-                console.log('SW skipped:', err.message);
+                awLog.log('SW skipped:', err.message);
             });
     });
 }
