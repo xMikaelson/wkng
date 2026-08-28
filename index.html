@@ -10428,6 +10428,19 @@ function legalNeedsAccept() {
     return !(APP.legalAccepted && APP.legalAccepted.v === LEGAL_VERSION);
 }
 
+// Mostra l'informativa se serve. Protetta contro le doppie chiamate: lo
+// splash puo' cadere due volte se la scheda parte in background.
+function legalMaybeShow() {
+    try {
+        if (!legalNeedsAccept()) return;
+        var g = document.getElementById('legal-gate');
+        if (g && g.classList.contains('open')) return;
+        openLegalGate(null);
+    } catch (e) {
+        awLog.warn('[Legal]', e && e.message);
+    }
+}
+
 function openLegalGate(onAccept) {
     var g = document.getElementById('legal-gate');
     if (!g) { if (typeof onAccept === 'function') onAccept(); return; }
@@ -19744,12 +19757,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
     }
-    // v.177 — l'informativa viene proposta a ogni apertura finche' non e'
-    // accettata: e' l'unico momento in cui si e' certi che tutti la vedano.
-    // Una volta accettata non compare piu' e resta consultabile dal Profilo.
-    setTimeout(function() {
-        try { if (legalNeedsAccept()) openLegalGate(null); } catch(e) { awLog.warn('[Legal]', e && e.message); }
-    }, 600);
 });
 
 
@@ -19789,6 +19796,12 @@ function homeRefreshData() {
     // Fine dello splash iniziale (2950ms): i dati possono essere arrivati
     // da Supabase mentre il logo era ancora a schermo.
     setTimeout(homeRefreshData, 3050);
+
+    // v.178 — l'informativa compare subito dopo l'animazione di apertura.
+    // Prima era agganciata alla sequenza di avvio, che pero' esce con un
+    // return quando la sessione e' gia' attiva: chi era loggato non la vedeva
+    // mai. Qui il momento e' garantito, perche' lo splash cade sempre.
+    setTimeout(legalMaybeShow, 3200);
 })();
 
 
