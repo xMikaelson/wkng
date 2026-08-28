@@ -477,6 +477,54 @@
            il telefono resta in verticale in mano e il grafico si legge girandolo.
            Se il dispositivo è già in orizzontale la rotazione non serve e viene
            disattivata dalla media query. */
+        /* ── Testi legali e accettazione (v.176) ── */
+        #legal-modal, #legal-gate { position:fixed; inset:0; z-index:9800; display:none;
+            background:rgba(6,13,26,0.95); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+            padding:max(env(safe-area-inset-top),34px) 12px calc(14px + env(safe-area-inset-bottom,0px));
+            align-items:center; justify-content:center; }
+        #legal-modal.open, #legal-gate.open { display:flex; }
+        /* Il gate sta sopra i testi: da lì si aprono, e chiudendoli si torna al gate. */
+        #legal-gate { z-index:9790; }
+        .legal-box { background:#0f172a; border:1px solid rgba(255,255,255,0.09); border-radius:16px;
+            width:100%; max-width:460px; max-height:100%; display:flex; flex-direction:column; overflow:hidden; }
+        .legal-head { display:flex; align-items:center; gap:11px; padding:14px 14px 12px; flex-shrink:0;
+            border-bottom:1px solid rgba(255,255,255,0.07); }
+        .legal-body { padding:14px 16px 20px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+        .legal-body p { font-size:0.64rem; color:#cbd5e1; line-height:1.8; margin:0 0 11px; }
+        .legal-body p:last-child { margin-bottom:0; }
+        .legal-body b { color:#e2e8f0; }
+        .legal-sec { font-size:0.5rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.1em;
+            font-weight:700; margin:18px 0 8px; }
+        .legal-dl { display:grid; grid-template-columns:100px 1fr; gap:6px 10px; font-size:0.6rem; line-height:1.65; margin-bottom:11px; }
+        .legal-dl dt { color:#94a3b8; font-weight:700; }
+        .legal-dl dd { margin:0; color:#cbd5e1; }
+        /* width:auto: senza, la regola globale button{width:100%} sfonderebbe le righe */
+        .legal-act { width:100%; padding:12px; border-radius:11px; text-transform:none; font-family:inherit;
+            font-size:0.66rem; font-weight:800; cursor:pointer; margin-top:8px; }
+        .legal-act.ghost { background:rgba(99,102,241,0.14); border:1px solid rgba(99,102,241,0.4); color:#a5b4fc; }
+        .legal-act.danger { background:rgba(248,113,113,0.12); border:1px solid rgba(248,113,113,0.35); color:#fca5a5; }
+
+        .legal-gate-body { padding:20px 18px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+        .legal-gate-eyebrow { font-size:0.5rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.12em; font-weight:700; }
+        .legal-gate-title { font-size:0.95rem; font-weight:800; color:#e2e8f0; margin:5px 0 14px; }
+        .legal-ck { width:100%; display:flex; gap:10px; align-items:flex-start; text-align:left;
+            background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:11px;
+            padding:12px; margin-bottom:8px; font-family:inherit; text-transform:none; cursor:pointer; }
+        .legal-ck i { width:19px; height:19px; flex-shrink:0; border-radius:6px; margin-top:1px;
+            border:1.5px solid rgba(255,255,255,0.25); background:rgba(255,255,255,0.03);
+            display:flex; align-items:center; justify-content:center; font-style:normal;
+            font-size:0.66rem; font-weight:900; color:transparent; }
+        .legal-ck.on { border-color:rgba(52,211,153,0.45); background:rgba(52,211,153,0.07); }
+        .legal-ck.on i { border-color:var(--primary); background:rgba(52,211,153,0.18); color:var(--primary); }
+        .legal-ck.on i::after { content:'\2713'; }
+        .legal-ck span { font-size:0.62rem; color:#cbd5e1; line-height:1.7; }
+        .legal-ck a { color:#818cf8; font-weight:700; text-decoration:underline; text-underline-offset:2px; }
+        .legal-gate-btn { width:100%; padding:14px; border-radius:12px; border:none; font-family:inherit;
+            font-size:0.72rem; font-weight:800; text-transform:none; margin-top:6px; cursor:pointer;
+            background:linear-gradient(135deg,#059669,#4f46e5); color:#fff; }
+        .legal-gate-btn:disabled { background:rgba(255,255,255,0.05); color:#475569; cursor:default; }
+        .legal-gate-note { font-size:0.55rem; color:#64748b; line-height:1.6; margin-top:12px; text-align:center; }
+
         #ex-fs { position:fixed; inset:0; z-index:9700; display:none; background:#0f172a; overflow:hidden; }
         #ex-fs.open { display:block; }
         .ex-fs-rot { position:absolute; top:50%; left:50%;
@@ -3313,6 +3361,38 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
 </div>
 
+<!-- ══════════ TESTI LEGALI (profilo + link dell'onboarding) ══════════ -->
+<div id="legal-modal" aria-hidden="true">
+  <div class="legal-box">
+    <div class="legal-head">
+      <button class="pmodal-back" type="button" onclick="closeLegal()" aria-label="Indietro">&#8249;</button>
+      <div class="pmodal-titles">
+        <div class="pmodal-title" id="legal-title">Informazioni</div>
+        <div class="pmodal-sub" id="legal-sub"></div>
+      </div>
+    </div>
+    <div class="legal-body" id="legal-body"></div>
+  </div>
+</div>
+
+<!-- ══════════ ACCETTAZIONE AL PRIMO ALLENAMENTO ══════════ -->
+<div id="legal-gate" aria-hidden="true">
+  <div class="legal-box">
+    <div class="legal-gate-body">
+      <div class="legal-gate-eyebrow">Un passaggio prima di iniziare</div>
+      <div class="legal-gate-title">Due cose da sapere</div>
+      <button type="button" class="legal-ck" id="legal-ck-1" onclick="legalToggle(1)">
+        <i></i><span>Ho letto l'<a onclick="event.stopPropagation();openLegal('salute')">avvertenza sulla salute</a>. Awakening non è un servizio medico: mi alleno sotto la mia responsabilità e mi fermo se sento dolore.</span>
+      </button>
+      <button type="button" class="legal-ck" id="legal-ck-2" onclick="legalToggle(2)">
+        <i></i><span>Ho letto <a onclick="event.stopPropagation();openLegal('privacy')">privacy</a> e <a onclick="event.stopPropagation();openLegal('termini')">termini</a>. Senza account i miei dati restano sul telefono.</span>
+      </button>
+      <button type="button" class="legal-gate-btn" id="legal-gate-btn" onclick="legalAccept()" disabled>Inizia l'allenamento</button>
+      <div class="legal-gate-note">Puoi rileggere questi testi quando vuoi dal Profilo.</div>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════ GRAFICO A SCHERMO INTERO ══════════ -->
 <div id="ex-fs" aria-hidden="true">
   <div class="ex-fs-rot">
@@ -3404,7 +3484,30 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <button onclick="fontScaleReset()" style="width:auto; padding:5px 12px; background:rgba(255,255,255,0.06); border:0.5px solid rgba(255,255,255,0.12); border-radius:7px; color:#94a3b8; font-size:0.62rem; text-transform:none; cursor:pointer;">Ripristina</button>
       </div>
     </div>
-    <div class="settings-row" style="margin-top:12px" onclick="closeSettingsAndReset()">
+    <div class="settings-group-title" style="margin-top:18px">Informazioni</div>
+    <div class="settings-row" onclick="openLegal('salute')">
+      <div class="settings-row-left"><span class="settings-row-icon">⚕️</span><span class="settings-row-label">Salute e sicurezza</span></div>
+      <span class="settings-row-arrow">›</span>
+    </div>
+    <div class="settings-row" onclick="openLegal('privacy')">
+      <div class="settings-row-left"><span class="settings-row-icon">🔒</span><span class="settings-row-label">Privacy e dati</span></div>
+      <span class="settings-row-arrow">›</span>
+    </div>
+    <div class="settings-row" onclick="openLegal('termini')">
+      <div class="settings-row-left"><span class="settings-row-icon">📄</span><span class="settings-row-label">Termini di utilizzo</span></div>
+      <span class="settings-row-arrow">›</span>
+    </div>
+    <div class="settings-row" onclick="exportUserData()">
+      <div class="settings-row-left"><span class="settings-row-icon">⬇️</span><span class="settings-row-label">Esporta i miei dati</span></div>
+      <span class="settings-row-arrow">›</span>
+    </div>
+    <div class="settings-row" onclick="deleteAccountFlow()">
+      <div class="settings-row-left"><span class="settings-row-icon">🗑️</span><span class="settings-row-label" style="color:#fca5a5;">Elimina account e dati</span></div>
+      <span class="settings-row-arrow">›</span>
+    </div>
+
+    <div class="settings-group-title" style="margin-top:18px">Gestione</div>
+    <div class="settings-row" onclick="closeSettingsAndReset()">
       <div class="settings-row-left"><span class="settings-row-icon">🔄</span><span class="settings-row-label">Reset Dati</span></div>
       <span class="settings-row-arrow">›</span>
     </div>
@@ -3822,7 +3925,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '175';
+const APP_VERSION = '176';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -3872,6 +3975,7 @@ const APP = {
     personalRecords: {},
     prMeta: {},          // dettaglio del record: carico usato, ripetizioni, data
     mtrAdjusted: {},     // esercizi con riferimento gia' alzato in questo ciclo
+    legalAccepted: null, // { v: versione dei testi, d: data ISO }
     prLegacy: null,      // archivio pre-v.168 (carichi prescritti), non compete
     _prMigrated: false
 };
@@ -3976,6 +4080,7 @@ function saveState() {
             personalRecords: APP.personalRecords || {},
             prMeta: APP.prMeta || {},
             mtrAdjusted: APP.mtrAdjusted || {},
+            legalAccepted: APP.legalAccepted || null,
             prLegacy: APP.prLegacy || null,
             _prMigrated: !!APP._prMigrated,
             savedProtocols: APP.savedProtocols || [],
@@ -4188,6 +4293,7 @@ function loadState() {
         APP.personalRecords = saved.personalRecords || {};
         APP.prMeta      = saved.prMeta || {};
         APP.mtrAdjusted = saved.mtrAdjusted || {};
+        APP.legalAccepted = saved.legalAccepted || null;
         APP.prLegacy    = saved.prLegacy || null;
         APP._prMigrated = !!saved._prMigrated;
         migrateLegacyPR();
@@ -5667,6 +5773,7 @@ async function onLoginSuccess(user, usernameOverride = null) {
         }
         if (s.prMeta)   APP.prMeta   = Object.assign({}, s.prMeta, APP.prMeta || {});
         if (s.mtrAdjusted) APP.mtrAdjusted = Object.assign({}, s.mtrAdjusted, APP.mtrAdjusted || {});
+        if (s.legalAccepted && !APP.legalAccepted) APP.legalAccepted = s.legalAccepted;
         if (s.prLegacy && !APP.prLegacy) APP.prLegacy = s.prLegacy;
         if (s._prMigrated) APP._prMigrated = true;
         if (s.personalRecords) {
@@ -10079,6 +10186,230 @@ function openExChart(name) {
     document.getElementById('ex-modal').classList.add('open');
 }
 
+
+// ══════════ TESTI LEGALI, CONSENSO, DATI (v.176) ══════════
+// I testi vivono qui in un unico posto e vengono mostrati sia dal Profilo sia
+// dai link dentro l'accettazione al primo allenamento: una sola versione da
+// aggiornare, nessuna possibilità che le due copie divergano.
+var LEGAL_VERSION = '2026-08-27';
+var LEGAL_CONTACT = '[indirizzo email]';
+
+var LEGAL_TEXTS = {
+    salute: {
+        title: 'Salute e sicurezza',
+        sub: 'Leggi prima di allenarti',
+        html:
+          '<p><b>Awakening non e\u0301 un servizio medico.</b> I carichi, le ripetizioni e i consigli che leggi sono generati da regole di programmazione dell\u2019allenamento, non da una valutazione della tua persona. L\u2019app non ti conosce, non ti visita e non puo\u0300 accorgersi se qualcosa non va.</p>' +
+          '<p><b>Prima di iniziare, senti un medico</b> se hai o hai avuto problemi cardiaci, respiratori, articolari o alla schiena, se sei in gravidanza, se stai recuperando da un infortunio o da un intervento, se prendi farmaci che influenzano pressione o battito, o se sono anni che non ti alleni.</p>' +
+          '<p><b>Ferma la serie</b> se senti dolore acuto, se una ripetizione ti costringe a cambiare tecnica, se hai capogiri, nausea o dolore al petto. Il fastidio muscolare dello sforzo e\u0300 normale; il dolore articolare pungente no.</p>' +
+          '<p><b>La tecnica viene prima del carico.</b> Il massimo tecnico su cui l\u2019app costruisce tutto e\u0300 il peso piu\u0300 alto che gestisci con esecuzione pulita, non quello che riesci a spostare. Gonfiarlo non accelera i progressi: sposta solo il rischio su di te.</p>' +
+          '<p><b>Sotto i 16 anni serve la presenza di un adulto responsabile</b> e, per i carichi progressivi, il parere di un medico: uno scheletro in crescita non risponde come quello di un adulto.</p>' +
+          '<p>Ti alleni sotto la tua responsabilita\u0300. Chi ha realizzato Awakening non risponde di infortuni o danni derivanti dall\u2019uso dell\u2019app.</p>'
+    },
+    privacy: {
+        title: 'Privacy e dati',
+        sub: 'Aggiornato il 27 agosto 2026',
+        html:
+          '<div class="legal-sec">Cosa resta sul telefono</div>' +
+          '<p>Se usi l\u2019app senza registrarti, <b>tutto resta sul tuo dispositivo</b>: protocolli, carichi, storico, pasti, peso. Nessun dato esce dal telefono e nessuno puo\u0300 leggerli. Disinstallando l\u2019app spariscono.</p>' +
+          '<div class="legal-sec">Cosa viene salvato online</div>' +
+          '<p>Se crei un account, questi dati vengono copiati su un server per ritrovarli su altri dispositivi:</p>' +
+          '<dl class="legal-dl">' +
+            '<dt>Account</dt><dd>indirizzo email e password cifrata</dd>' +
+            '<dt>Allenamento</dt><dd>protocolli, carichi, storico delle sedute, record, streak</dd>' +
+            '<dt>Corpo</dt><dd>peso, altezza e obiettivo, se li inserisci</dd>' +
+            '<dt>Alimentazione</dt><dd>pasti registrati e prodotti scansionati, se usi la sezione</dd>' +
+          '</dl>' +
+          '<p>Peso e altezza sono dati sulla salute: <b>li salviamo online solo perche\u0301 ce lo chiedi tu creando un account</b>, e solo per farti ritrovare i tuoi progressi. Puoi usare tutta l\u2019app senza mai inserirli.</p>' +
+          '<div class="legal-sec">Cosa non facciamo</div>' +
+          '<p>Non vendiamo i tuoi dati. Non li cediamo a inserzionisti. Non ci sono pubblicita\u0300 ne\u0301 tracciatori pubblicitari nell\u2019app. Non profiliamo il tuo comportamento per scopi commerciali.</p>' +
+          '<div class="legal-sec">Chi li conserva</div>' +
+          '<p>L\u2019archiviazione e\u0300 affidata a Supabase, che ospita i dati per nostro conto. Le funzioni di intelligenza artificiale \u2014 il Coach e il riconoscimento dei pasti da foto \u2014 inviano il testo o l\u2019immagine ad Anthropic per generare la risposta; non vengono usati per addestrare modelli. Le informazioni sui prodotti alimentari arrivano da Open Food Facts, un archivio pubblico.</p>' +
+          '<div class="legal-sec">I tuoi diritti</div>' +
+          '<p>Puoi scaricare in qualsiasi momento una copia completa di quello che abbiamo, ed eliminare i tuoi dati dal server. La cancellazione e\u0300 definitiva: non teniamo copie.</p>' +
+          '<button type="button" class="legal-act ghost" onclick="exportUserData()">\u2b07\ufe0f Esporta i miei dati</button>' +
+          '<button type="button" class="legal-act danger" onclick="deleteAccountFlow()">\ud83d\uddd1\ufe0f Elimina account e dati</button>' +
+          '<p style="margin-top:14px;">Per qualsiasi domanda: <b>' + '__CONTACT__' + '</b>.</p>'
+    },
+    termini: {
+        title: 'Termini di utilizzo',
+        sub: 'Aggiornato il 27 agosto 2026',
+        html:
+          '<p><b>Cosa e\u0300 Awakening.</b> Un\u2019app che genera programmi di allenamento a partire dall\u2019obiettivo, dal livello e dall\u2019attrezzatura che dichiari, e ne segue l\u2019andamento nel tempo. E\u0300 uno strumento di supporto: le decisioni su cosa e quanto allenarti restano tue.</p>' +
+          '<p><b>Nessuna garanzia di risultato.</b> I progressi dipendono da riposo, alimentazione, costanza e caratteristiche personali che l\u2019app non puo\u0300 misurare. Non promettiamo un risultato specifico in un tempo specifico.</p>' +
+          '<p><b>I dati che inserisci sono tuoi</b> e la loro esattezza dipende da te: un massimo tecnico dichiarato piu\u0300 alto del reale produce carichi piu\u0300 alti del dovuto.</p>' +
+          '<p><b>Uso consentito.</b> Personale e non commerciale. Non e\u0300 consentito rivendere l\u2019app o i programmi generati, ne\u0301 usarli per erogare servizi di allenamento a terzi senza accordo.</p>' +
+          '<p><b>Disponibilita\u0300.</b> L\u2019app funziona anche senza rete, ma la sincronizzazione, il Coach e lo scanner richiedono una connessione e servizi esterni che possono essere temporaneamente indisponibili.</p>' +
+          '<p><b>Modifiche.</b> Questi termini possono cambiare con gli aggiornamenti; la data in cima indica l\u2019ultima revisione. Continuando a usare l\u2019app accetti la versione corrente.</p>' +
+          '<p>Contatto: <b>' + '__CONTACT__' + '</b>.</p>'
+    }
+};
+
+function openLegal(key) {
+    var t = LEGAL_TEXTS[key];
+    if (!t) return;
+    var m = document.getElementById('legal-modal');
+    if (!m) return;
+    var ttl = document.getElementById('legal-title');
+    var sub = document.getElementById('legal-sub');
+    var body = document.getElementById('legal-body');
+    if (ttl) ttl.textContent = t.title;
+    if (sub) sub.textContent = t.sub;
+    if (body) { body.innerHTML = t.html.split('__CONTACT__').join(LEGAL_CONTACT); body.scrollTop = 0; }
+    m.classList.add('open');
+    m.setAttribute('aria-hidden', 'false');
+}
+
+function closeLegal() {
+    var m = document.getElementById('legal-modal');
+    if (!m) return;
+    m.classList.remove('open');
+    m.setAttribute('aria-hidden', 'true');
+}
+
+// ── Accettazione al primo allenamento ──
+// Il Profilo raggiunge solo chi ci passa: qui l'avvertenza viene messa davanti
+// a tutti, una volta sola, nel momento in cui diventa concreta.
+var _legalChecks = { 1: false, 2: false };
+
+function legalToggle(n) {
+    _legalChecks[n] = !_legalChecks[n];
+    var el = document.getElementById('legal-ck-' + n);
+    if (el) el.classList.toggle('on', _legalChecks[n]);
+    var btn = document.getElementById('legal-gate-btn');
+    if (btn) btn.disabled = !(_legalChecks[1] && _legalChecks[2]);
+}
+
+function legalNeedsAccept() {
+    return !(APP.legalAccepted && APP.legalAccepted.v === LEGAL_VERSION);
+}
+
+function openLegalGate(onAccept) {
+    var g = document.getElementById('legal-gate');
+    if (!g) { if (typeof onAccept === 'function') onAccept(); return; }
+    _legalChecks = { 1: false, 2: false };
+    [1, 2].forEach(function(n) {
+        var el = document.getElementById('legal-ck-' + n);
+        if (el) el.classList.remove('on');
+    });
+    var btn = document.getElementById('legal-gate-btn');
+    if (btn) btn.disabled = true;
+    _legalOnAccept = onAccept || null;
+    g.classList.add('open');
+    g.setAttribute('aria-hidden', 'false');
+}
+
+var _legalOnAccept = null;
+
+function legalAccept() {
+    if (!(_legalChecks[1] && _legalChecks[2])) return;
+    // Data e versione rendono dimostrabile cosa e' stato accettato e quando.
+    APP.legalAccepted = { v: LEGAL_VERSION, d: new Date().toISOString() };
+    saveState();
+    var g = document.getElementById('legal-gate');
+    if (g) { g.classList.remove('open'); g.setAttribute('aria-hidden', 'true'); }
+    var cb = _legalOnAccept; _legalOnAccept = null;
+    if (typeof cb === 'function') cb();
+}
+
+// ── Esportazione ──
+// Un unico file leggibile con tutto cio' che l'app conserva sul dispositivo.
+function exportUserData() {
+    try {
+        var data = {
+            app: 'Awakening',
+            versione: (typeof APP_VERSION !== 'undefined' ? APP_VERSION : ''),
+            esportato: new Date().toISOString(),
+            profilo: {
+                nome: APP.userName || null,
+                inizio: APP.startDate || null,
+                altezza_cm: APP.height_cm || null,
+                obiettivo_peso: APP.weightGoal || null,
+                consenso: APP.legalAccepted || null
+            },
+            allenamento: {
+                protocolli: APP.savedProtocols || [],
+                protocolloAttivo: APP.activeProtocolId || null,
+                esercizi: APP.exerciseData || [],
+                settimaneCompletate: APP.completedWeeks || [],
+                settimaneDisponibili: APP.availableWeeks || [],
+                giorni: APP.dayAssignments || [],
+                statoGiorni: APP.chipStates || [],
+                sedute: APP.totalWorkouts || 0,
+                storicoCarichi: APP.loadHistory || [],
+                massimiTecnici: APP.mtrValues || {},
+                record: APP.personalRecords || {},
+                dettaglioRecord: APP.prMeta || {},
+                recordArchiviati: APP.prLegacy || null
+            },
+            corpo: { peso: APP.weightLog || [] },
+            traguardi: { badge: APP.badges || [], streak: APP.streak || 0, contributi: APP.contributions || 0 },
+            alimentazione: (typeof nutGetAllLogs === 'function') ? nutGetAllLogs() : null
+        };
+        var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'awakening-dati-' + new Date().toISOString().slice(0, 10) + '.json';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function() {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 500);
+        showToast('Dati esportati', 'success');
+    } catch (e) {
+        showToast('Esportazione non riuscita: ' + e.message, 'error');
+    }
+}
+
+// ── Cancellazione ──
+// Due conferme: la prima spiega, la seconda chiede di scrivere ELIMINA. Un
+// tocco accidentale non deve poter cancellare anni di allenamenti.
+function deleteAccountFlow() {
+    if (!confirm('Elimina definitivamente i tuoi dati dal server e da questo dispositivo.\n\nProtocolli, storico, record, peso e pasti andranno persi. Non teniamo copie e l\u2019operazione non si annulla.\n\nVuoi prima esportarli? Annulla ora e usa "Esporta i miei dati".')) return;
+    var w = prompt('Per confermare, scrivi ELIMINA in maiuscolo:');
+    if (!w || w.trim().toUpperCase() !== 'ELIMINA') { showToast('Eliminazione annullata', 'info'); return; }
+    _deleteAccountNow();
+}
+
+async function _deleteAccountNow() {
+    var serverOk = true;
+    try {
+        var res = await sbClient.auth.getUser();
+        var user = res && res.data ? res.data.user : null;
+        if (user) {
+            var r1 = await sbClient.from('protocols').delete().eq('user_id', user.id);
+            var r2 = await sbClient.from('profiles').delete().eq('id', user.id);
+            // Attenzione: qui user_id contiene lo username, non l'id di
+            // autenticazione (vedi il salvataggio della sottoscrizione push).
+            var r3 = { error: null };
+            if (APP.userName) r3 = await sbClient.from('push_subscriptions').delete().eq('user_id', APP.userName);
+            if ((r1 && r1.error) || (r2 && r2.error) || (r3 && r3.error)) serverOk = false;
+        }
+    } catch (e) {
+        serverOk = false;
+        console.warn('Eliminazione lato server non riuscita:', e && e.message);
+    }
+    try { await sbClient.auth.signOut(); } catch (e) {}
+
+    // Pulizia locale completa: stato, log alimentari, preferenze.
+    try {
+        var keep = [];
+        for (var i = localStorage.length - 1; i >= 0; i--) {
+            var k = localStorage.key(i);
+            if (k && keep.indexOf(k) === -1) localStorage.removeItem(k);
+        }
+    } catch (e) {}
+
+    if (serverOk) {
+        alert('Dati eliminati. L\u2019app si riavvia.');
+    } else {
+        alert('I dati su questo dispositivo sono stati eliminati, ma non e\u0300 stato possibile contattare il server.\n\nRiprova da connesso, oppure scrivi a ' + LEGAL_CONTACT + ' per la cancellazione completa.');
+    }
+    location.reload();
+}
+
 // ── GRAFICO A SCHERMO INTERO (v.172) ──────────────────────
 // Ridisegna la stessa serie con l'area di disegno più alta. Non duplica
 // nulla: usa _exSvg con big=true, quindi ogni modifica al grafico vale per
@@ -13886,6 +14217,13 @@ function _woBeep(freq, duration, type) {
 function woStartWorkout() {
     const exData = APP.exerciseData || [];
     if (exData.length === 0) return;
+
+    // v.176 — la prima volta che si passa da qui, l'avvertenza sulla salute
+    // viene mostrata e va accettata: e' il momento in cui diventa concreta.
+    if (typeof legalNeedsAccept === 'function' && legalNeedsAccept()) {
+        openLegalGate(function() { woStartWorkout(); });
+        return;
+    }
 
     // Le prestazioni sono per-sessione: senza azzeramento le ripetizioni di
     // ieri verrebbero riusate per la riga di storico di oggi.
