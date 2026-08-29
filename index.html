@@ -3516,6 +3516,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <div class="settings-row-left"><span class="settings-row-icon">🎮</span><span class="settings-row-label" style="color:#fbbf24;">Cheat Leveling <span style="font-size:0.55rem;color:#94a3b8;font-weight:400;">solo test</span></span></div>
       <span class="settings-row-arrow">›</span>
     </div>
+    <div class="settings-row" style="margin-top:4px" role="button" tabindex="0" aria-label="Reset termini, solo test" onclick="resetLegalConsent()">
+      <div class="settings-row-left"><span class="settings-row-icon">♻️</span><span class="settings-row-label" style="color:#fbbf24;">Reset termini <span style="font-size:0.55rem;color:#94a3b8;font-weight:400;">solo test</span></span></div>
+      <span class="settings-row-arrow">›</span>
+    </div>
     <div class="settings-row" style="margin-top:4px" onclick="toggleFontScalePanel()">
       <div class="settings-row-left"><span class="settings-row-icon">🔤</span><span class="settings-row-label">Dimensione Testo</span></div>
       <span class="settings-row-arrow" id="font-scale-arrow">›</span>
@@ -3973,7 +3977,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '179';
+const APP_VERSION = '180';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -10497,6 +10501,22 @@ function legalRenderProfileBadges() {
             el.className = 'settings-row-arrow legal-badge-todo';
         }
     });
+}
+
+// Solo per collaudo: azzera le accettazioni e rimostra subito il popup di
+// apertura, cosi' si puo' ripercorrere il flusso senza svuotare tutto lo
+// stato dell'app. Da togliere insieme al Cheat Leveling prima di pubblicare.
+function resetLegalConsent() {
+    awConfirm('Le tre informative torneranno da accettare e il popup ricomparira\u0300 subito. Non tocca allenamenti, protocolli o dati.',
+      function(ok) {
+        if (!ok) return;
+        APP.legalAccepted = {};
+        saveState();
+        legalRenderProfileBadges();
+        showToast('Consenso azzerato', 'success');
+        // Un attimo di respiro, altrimenti il popup si apre sopra il toast.
+        setTimeout(function() { legalMaybeShow(); }, 400);
+      }, { title: 'Reset termini', okLabel: 'Azzera', danger: true });
 }
 
 function legalFmtDate(iso) {
