@@ -3977,7 +3977,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '180';
+const APP_VERSION = '182';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -4559,8 +4559,9 @@ function woWarmupInfo() {
           '<div style="margin-top:8px;">Le ripetizioni calano mentre il carico sale: è quello che permette di avvicinarsi al peso di lavoro senza accumulare fatica.</div>') +
 
         H('MTR') +
-        P('Massimo Tecnico di Ripetizione: il carico più alto che sollevi per <b style="color:#e2e8f0;">1 ripetizione</b> mantenendo una tecnica impeccabile. ' +
-          'Non è il tuo massimale a tutti i costi — è il massimo che controlli davvero. Tutte le percentuali partono da lì.') +
+        P('Massimo Tecnico di Ripetizione: il carico più alto che chiudi <b style="color:#e2e8f0;">per le ripetizioni previste dallo schema</b> ' +
+          'mantenendo una tecnica pulita, senza arrivare al cedimento. Non è un massimale su singola ripetizione: ' +
+          'l\'MTR a 5 ripetizioni è diverso da quello a 10, e le percentuali del ciclo partono da lì.') +
 
         H('Quali esercizi vengono riscaldati') +
         P('Solo i compound, e solo il primo di ogni pattern di movimento: spinta orizzontale, spinta verticale, ' +
@@ -4752,13 +4753,21 @@ function renderWarmupBlock(exName, exercises, container) {
 
             if (!exMtr) {
                 // MTR non impostato — box centrato con input grande e bottone sotto
+                // v.181 — il testo chiedeva "il massimo per 1 ripetizione",
+                // cioe' un massimale. L'MTR e' invece il massimo tecnico sulle
+                // ripetizioni PREVISTE dallo schema, ed e' quel valore che la
+                // scala moltiplica per ricavare i carichi: chi inseriva un
+                // vero 1RM si ritrovava tutto il programma troppo pesante.
+                var _schemeReps = srReps((warmEx && warmEx.sr) || '') || null;
+                var _repsTxt = _schemeReps ? (_schemeReps + ' ripetizioni') : 'le ripetizioni previste';
                 var mtrBox = document.createElement('div');
                 mtrBox.className = 'wc-mtr-box joined';
                 mtrBox.innerHTML =
                     '<div class="wc-mtr-box-title">🎯 Imposta il Massimo Tecnico</div>' +
-                    '<div class="wc-mtr-box-desc">Il massimo che sollevi per 1 ripetizione con tecnica perfetta. Da qui derivano tutti i carichi del programma.</div>' +
+                    '<div class="wc-mtr-box-desc">Il carico piu\u0300 alto che chiudi per <b>' + _repsTxt +
+                    '</b> con tecnica pulita, senza arrivare al cedimento. Non e\u0300 un massimale: da questo valore derivano tutti i carichi del programma.</div>' +
                     '<input class="wc-mtr-box-input" type="number" placeholder="0" min="1" max="500" step="0.5" inputmode="decimal" id="wc-mtr-inp-' + exIdx + '">' +
-                    '<div class="wc-mtr-box-unit">kg — massimo tecnico</div>' +
+                    '<div class="wc-mtr-box-unit">kg' + (_schemeReps ? ' \u00d7 ' + _schemeReps + ' rip' : '') + ' — massimo tecnico</div>' +
                     '<button class="wc-mtr-box-btn" id="wc-mtr-btn-' + exIdx + '">✓ Conferma</button>';
 
                 var capturedEx = warmEx;
@@ -4773,6 +4782,10 @@ function renderWarmupBlock(exName, exercises, container) {
                             var val = parseFloat(inp.value);
                             if (!val || val <= 0) { showToast('Inserisci un valore valido', 'error'); return; }
                             mtrSet(capturedEx.name, val);
+                            // Senza la base, l'MTR e' un numero ambiguo: le
+                            // conversioni fra schemi diversi e i record non
+                            // saprebbero su quante ripetizioni e' misurato.
+                            if (_schemeReps) mtrRepsSet(capturedEx.name, _schemeReps);
                             APP.savedProtocols && APP.savedProtocols.forEach(function(p) {
                                 if (!p.exercises) return;
                                 var pSlot = (protoResolveSlot(p)||'').toLowerCase();
@@ -5033,6 +5046,13 @@ function stopWarmupRestTimer(el) {
 
 // Salta il riscaldamento e vai direttamente all'allenamento
 function woSkipWarmup() {
+    // Il controllo va fatto PRIMA di toccare l'interfaccia: nascondere "Salta"
+    // e sbloccare il pulsante, per poi fermarsi sul richiamo delle
+    // informative, lasciava la schermata in uno stato senza uscita.
+    if (!legalRequire(['salute'], 'Prima di allenarti',
+        'Devi ancora accettare l\u2019avvertenza su salute e sicurezza.',
+        function() { woSkipWarmup(); })) return;
+
     var skipLink = document.getElementById('wo-skip-warmup');
     if (skipLink) skipLink.style.display = 'none';
     var startBtn = document.getElementById('wo-start-btn');
@@ -8282,11 +8302,13 @@ function generateDeloadProtocol(mode) {
         return;
     }
 
+    // v.182 — allineato alla regola del Deload automatico: si dimezzano le
+    // SERIE e si mantengono ripetizioni e carico. Prima toglieva una serie
+    // sola, e in piu' il carico veniva dimezzato (vedi addCompound): due
+    // regole diverse per la stessa settimana, ed entrambe in contrasto con la
+    // logica del taper su cui il Chapter 5 e' costruito.
     function deloadSr(sr) {
-        if (!sr) return sr;
-        return sr.replace(/^(\d+)(×|\s*x\s*)(\d+.*)$/i, function(_, sets, sep, reps) {
-            return Math.max(3, parseInt(sets) - 1) + '×' + reps;
-        });
+        return woDeloadSr(sr);
     }
 
     function buildDeloadName() {
@@ -8296,18 +8318,28 @@ function generateDeloadProtocol(mode) {
     }
 
     if (mode === 'manual') {
-        // Logica manuale: prende tutti gli esercizi compound (primi 3-4 per protocollo), 50% peso, -1 serie
+        // Logica manuale: prende i compound (primi 3-4 per protocollo), mantiene
+        // il carico del ciclo e dimezza le serie, come il Deload automatico.
         var exercises = [];
         function addCompound(proto) {
             if (!proto || !proto.exercises) return;
             // Prende i primi 4 esercizi (solitamente i compound sono all'inizio)
             proto.exercises.slice(0, 4).forEach(function(ex) {
-                var base = Math.round((ex.baseWeight || 0) * 0.5 * 2) / 2;
+                // Il carico NON si dimezza: nel deload cala il volume, non
+                // l'intensita' (Bosquet et al. 2007; Mujika & Padilla 2003).
+                // Dimezzando il baseWeight e applicandoci sopra la scala si
+                // finiva al ~30% dell'MTR — detraining, non scarico — mentre
+                // il messaggio a schermo prometteva l'85%.
+                var base = awRoundKg(ex.baseWeight || 0);
+                var srcLoads = (Array.isArray(ex.loads) && ex.loads.length === WEEK_LOADS.length)
+                    ? ex.loads.slice()
+                    : WEEK_LOADS.map(function(p){ return awRoundKg(base * p); });
                 exercises.push({
                     name: ex.name,
                     sr: deloadSr(ex.sr),
                     baseWeight: base,
-                    loads: WEEK_LOADS.map(function(p){ return Math.round(base * p * 2) / 2; })
+                    mtrValue: ex.mtrValue,
+                    loads: srcLoads
                 });
             });
         }
@@ -8326,7 +8358,8 @@ function generateDeloadProtocol(mode) {
         if (typeof saveProtocolToSupabase === 'function') saveProtocolToSupabase(newProto);
         renderProtocolList();
         renderPlanPage(DELOAD_WEEK);
-        showToast('⚙️ Deload manuale creato con ' + exercises.length + ' esercizi all\'85% con volume dimezzato', 'success');
+        showToast('⚙️ Deload creato: ' + exercises.length + ' esercizi, serie dimezzate al ' +
+                  Math.round(WEEK_LOADS[DELOAD_WEEK] * 100) + '% del training max', 'success');
         return;
     }
 
@@ -8377,14 +8410,15 @@ function generateDeloadProtocol(mode) {
         '- 1 PULL: scegli il movimento di tirata principale (preferisci Trazioni o Rematore con Bilanciere)\n' +
         '- 1 LOWER: scegli il movimento di gambe principale (preferisci Squat o Stacco da Terra)\n' +
         'Se un pattern non è presente negli esercizi disponibili, scegli il più compound tra quelli esistenti.\n\n' +
-        'PARAMETRI DELOAD:\n' +
-        '- Carico: 50% del baseWeight originale (arrotonda a 0.5kg)\n' +
-        '- Serie: sottrai 1 dal formato originale (es. 4×8 → 3×8, minimo 3 serie)\n' +
+        'PARAMETRI DELOAD (nel deload cala il VOLUME, non l\'intensità):\n' +
+        '- Carico: lascia invariato il baseWeight originale. NON ridurlo: ci pensa la scala del ciclo.\n' +
+        '- Serie: dimezza il formato originale, minimo 2 (es. 4×8 → 2×8, 5×5 → 3×5)\n' +
+        '- Ripetizioni: invariate rispetto allo schema originale\n' +
         '- VIETATO: curl, lateral raise, alzate, leg curl, leg extension, calf raise, croci, fly, face pull, crunch, plank, qualsiasi isolamento\n' +
         '- Usa SOLO esercizi presenti nella lista ESERCIZI DISPONIBILI\n\n' +
         'ESERCIZI DISPONIBILI (già filtrati, solo compound):\n' + [upperList, lowerList].filter(function(s){ return s.includes('- '); }).join('\n\n') + '\n\n' +
         'Rispondi SOLO con array JSON puro, esattamente 3 elementi, nessun testo, nessun markdown:\n' +
-        '[{"name":"Nome","sr":"3×8","baseWeight":40},{"name":"Nome","sr":"3×8","baseWeight":60},{"name":"Nome","sr":"3×8","baseWeight":80}]';
+        '[{"name":"Nome","sr":"2×8","baseWeight":40},{"name":"Nome","sr":"2×8","baseWeight":60},{"name":"Nome","sr":"3×5","baseWeight":80}]';
 
     var AI_COACH_URL = 'https://trojbppshlfhrsimyxjl.supabase.co/functions/v1/ai-coach';
     var ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyb2picHBzaGxmaHJzaW15eGpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0MzgzNTgsImV4cCI6MjA4NzAxNDM1OH0.rKKyXa7N5XoBnN2kmVZGS4Lr2kax1NuodbyHD_wGjK8';
@@ -8896,14 +8930,17 @@ function openDeloadManualForm() {
     // Info box
     var info = document.createElement('div');
     info.style.cssText = 'background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);border-radius:12px;padding:11px 14px;font-size:0.67rem;color:#cbd5e1;line-height:1.7;margin-bottom:20px;';
+    // v.182 — il carico dichiarato qui non corrispondeva a quello applicato:
+    // il codice prendeva il 50% dell'MTR e ci applicava sopra la scala del
+    // ciclo, arrivando al ~42%. Ora il valore mostrato e quello usato coincidono.
     info.innerHTML = '<div style="font-weight:700;color:#818cf8;margin-bottom:5px;">Regole scientifiche del Deload</div>' +
         '<div style="display:grid;grid-template-columns:56px 1fr;gap:1px 10px;">' +
         '<span style="color:#94a3b8;">Esercizi</span><span><strong style="color:#e2e8f0;">3 totali</strong> — 1 Push · 1 Pull · 1 Lower</span>' +
-        '<span style="color:#94a3b8;">Serie</span><span>3 (fisse)</span>' +
+        '<span style="color:#94a3b8;">Serie</span><span>3 (fisse) — volume ridotto</span>' +
         '<span style="color:#94a3b8;">Reps</span><span>8-10 per set</span>' +
-        '<span style="color:#94a3b8;">Carico</span><span>85% dell’MTR</span>' +
+        '<span style="color:#94a3b8;">Carico</span><span>' + Math.round(WEEK_LOADS[DELOAD_WEEK] * 100) + '% dell’MTR — intensità mantenuta</span>' +
         '</div>' +
-        '<div style="margin-top:8px;font-size:0.62rem;color:#94a3b8;">Seleziona il tuo esercizio principale per ciascun pattern. Non di più.</div>';
+        '<div style="margin-top:8px;font-size:0.62rem;color:#94a3b8;">Nello scarico si riduce il volume e si mantiene l\'intensità: è così che si smaltisce la fatica senza perdere gli adattamenti.</div>';
     content.appendChild(info);
 
     // Lista esercizi selezionati
@@ -8933,7 +8970,8 @@ function openDeloadManualForm() {
             var info2 = document.createElement('div');
             info2.style.cssText = 'flex:1;min-width:0;';
             info2.innerHTML = '<div style="font-size:0.75rem;font-weight:700;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + ex.name + '</div>' +
-                '<div style="font-size:0.62rem;color:#94a3b8;margin-top:1px;">3\u00d78-10 \u00b7 <strong style="color:#cbd5e1;">' + ex.baseWeight + 'kg</strong> (50% di ' + ex.max + 'kg)</div>';
+                '<div style="font-size:0.62rem;color:#94a3b8;margin-top:1px;">3\u00d78-10 \u00b7 <strong style="color:#cbd5e1;">' +
+                _fmtKg((ex.loads && ex.loads[DELOAD_WEEK]) || ex.baseWeight) + ' kg</strong> nel Deload \u00b7 MTR ' + _fmtKg(ex.max) + ' kg</div>';
             var btnDel = document.createElement('button');
             btnDel.textContent = '\u2715';
             btnDel.style.cssText = 'background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.2);border-radius:6px;width:28px;height:28px;color:#f87171;cursor:pointer;font-size:0.72rem;flex-shrink:0;display:flex;align-items:center;justify-content:center;';
@@ -8978,7 +9016,7 @@ function openDeloadManualForm() {
 
             var inputMax = document.createElement('input');
             inputMax.type = 'number';
-            inputMax.placeholder = 'Max kg';
+            inputMax.placeholder = 'MTR kg';
             inputMax.style.cssText = 'width:68px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:7px;padding:5px 8px;color:#e2e8f0;font-size:0.72rem;text-align:center;outline:none;flex-shrink:0;';
 
             var btnAdd = document.createElement('button');
@@ -8989,9 +9027,13 @@ function openDeloadManualForm() {
             btnAdd.onclick = function() {
                 if (alreadyAdded) return;
                 var max = parseFloat(inputMax.value);
-                if (!max || max <= 0) { showToast('Inserisci il massimale per ' + ex.nome, 'error'); inputMax.focus(); return; }
-                var base = Math.round(max * 0.5 * 2) / 2;
-                exercises.push({ name: ex.nome, max: max, baseWeight: base, sr: '3\u00d78-10', loads: WEEK_LOADS.map(function(p){ return Math.round(base*p*2)/2; }) });
+                if (!max || max <= 0) { showToast('Inserisci l\'MTR per ' + ex.nome, 'error'); inputMax.focus(); return; }
+                // Il valore inserito e' l'MTR dell'esercizio: la scala del
+                // ciclo si applica direttamente a quello, come ovunque nell'app.
+                // Prima veniva prima dimezzato e poi scalato, per cui nel
+                // Deload si finiva al ~42% invece dell'85% dichiarato.
+                var loadsA = WEEK_LOADS.map(function(p){ return awRoundKg(max * p); });
+                exercises.push({ name: ex.nome, max: max, mtrValue: max, baseWeight: loadsA[0], sr: '3\u00d78-10', loads: loadsA });
                 refreshExList();
                 // Ricostruisce la griglia aggiornando lo stato
                 renderPatternGrid();
@@ -9026,7 +9068,7 @@ function openDeloadManualForm() {
                 ci2.innerHTML = '<div style="font-size:0.75rem;font-weight:700;color:' + (alreadyAdded ? '#64748b' : '#e2e8f0') + ';">' + ex.nome + '</div>' +
                     '<div style="font-size:0.62rem;color:#94a3b8;margin-top:1px;">' + ex.desc + '</div>';
                 var inp2 = document.createElement('input');
-                inp2.type = 'number'; inp2.placeholder = 'Max kg';
+                inp2.type = 'number'; inp2.placeholder = 'MTR kg';
                 inp2.style.cssText = 'width:68px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:7px;padding:5px 8px;color:#e2e8f0;font-size:0.72rem;text-align:center;outline:none;flex-shrink:0;';
                 var patternAlreadyCovered = exercises.some(function(e){
                     return DELOAD_EXERCISES_DB.some(function(db){ return db.nome === e.name && db.pattern === pat.key; });
@@ -9039,9 +9081,9 @@ function openDeloadManualForm() {
                 if (!alreadyAdded && !patternAlreadyCovered) {
                     btn2.onclick = function() {
                         var max2 = parseFloat(inp2.value);
-                        if (!max2 || max2 <= 0) { showToast('Inserisci il massimale per ' + ex.nome, 'error'); inp2.focus(); return; }
-                        var base2 = Math.round(max2 * 0.5 * 2) / 2;
-                        exercises.push({ name: ex.nome, max: max2, baseWeight: base2, sr: '3\u00d78-10', loads: WEEK_LOADS.map(function(p){ return Math.round(base2*p*2)/2; }) });
+                        if (!max2 || max2 <= 0) { showToast('Inserisci l\'MTR per ' + ex.nome, 'error'); inp2.focus(); return; }
+                        var loadsB = WEEK_LOADS.map(function(p){ return awRoundKg(max2 * p); });
+                        exercises.push({ name: ex.nome, max: max2, mtrValue: max2, baseWeight: loadsB[0], sr: '3\u00d78-10', loads: loadsB });
                         refreshExList();
                         renderPatternGrid();
                         content.scrollTop = 0;
@@ -10606,11 +10648,16 @@ function legalLater() {
     legalCloseGate(false);
 }
 
-// Richiamo mirato prima di un'azione. Se le informative richieste sono gia'
-// state accettate l'azione parte subito e l'utente non vede nulla.
+// Richiamo mirato prima di un'azione.
+// Restituisce true quando si puo' proseguire: in quel caso NON esegue la
+// callback, perche' il chiamante prosegue da solo subito dopo il controllo.
+// Eseguirla qui significava far partire l'azione due volte e, dato che la
+// callback e' tipicamente la funzione chiamante stessa, entrare in ricorsione
+// infinita: era questo a impedire l'avvio dell'allenamento.
+// La callback serve solo al ritorno dal richiamo, quando l'utente accetta.
 function legalRequire(keys, title, intro, onOk) {
     var missing = keys.filter(function(k) { return !legalIsAccepted(k); });
-    if (!missing.length) { if (typeof onOk === 'function') onOk(); return true; }
+    if (!missing.length) return true;
     openLegalGate(onOk, missing, title, intro);
     return false;
 }
