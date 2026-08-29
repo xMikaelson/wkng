@@ -533,8 +533,25 @@
             background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
             border-radius:11px; padding:13px 14px; margin-bottom:6px; cursor:pointer;
             font-size:0.7rem; font-weight:700; color:#e2e8f0; }
-        .legal-lnk span { color:#64748b; font-size:0.72rem; font-weight:400; }
         .legal-lnk:active { background:rgba(255,255,255,0.08); }
+        .legal-lnk.done { border-color:rgba(52,211,153,0.35); background:rgba(52,211,153,0.06); }
+        .legal-ok { color:var(--primary); font-size:0.78rem; font-weight:800; flex-shrink:0; }
+        .legal-todo { color:#fbbf24; font-size:0.46rem; font-weight:800; text-transform:uppercase;
+            letter-spacing:0.06em; flex-shrink:0; }
+        .legal-gate-btns { display:flex; gap:8px; margin-top:12px; }
+        .legal-gate-btns .legal-gate-btn { margin-top:0; }
+        .legal-gate-btn.later { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12);
+            color:#94a3b8; flex:0 0 auto; padding-left:16px; padding-right:16px; width:auto; }
+        .legal-gate-btns #legal-gate-btn { flex:1; }
+        /* Accettazione in fondo al testo. */
+        .legal-accept-bar { border-top:1px solid rgba(255,255,255,0.08); margin-top:16px; padding-top:14px; }
+        .legal-act.accept { background:rgba(52,211,153,0.14); border:1px solid rgba(52,211,153,0.4); color:var(--primary); }
+        .legal-act.accepted { background:rgba(52,211,153,0.07); border:1px solid rgba(52,211,153,0.22);
+            color:var(--primary); opacity:0.85; }
+        /* Stato nelle voci del Profilo. */
+        .legal-badge-ok { font-size:0.8rem; }
+        .legal-badge-todo { font-size:0.46rem; font-weight:800; letter-spacing:0.07em; text-transform:uppercase;
+            color:#fbbf24; background:rgba(251,191,36,0.13); border-radius:5px; padding:3px 6px; }
         /* Esporta ed elimina hanno senso solo dal Profilo, non in accettazione. */
         #legal-gate .legal-only-profile { display:none; }
         .legal-gate-eyebrow { font-size:0.5rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.12em; font-weight:700; }
@@ -3411,19 +3428,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <div id="legal-gate" role="dialog" aria-modal="true" aria-label="Informazioni importanti" aria-hidden="true">
   <div class="legal-box">
     <div class="legal-gate-body">
-      <div class="legal-gate-eyebrow">Prima di iniziare</div>
-      <div class="legal-gate-title">Informazioni importanti</div>
-      <div class="legal-gate-intro">Tocca un titolo per leggerlo per intero.</div>
-      <div class="legal-gate-links">
-        <button type="button" class="legal-lnk" onclick="openLegal('salute')">⚕️ Salute e sicurezza<span>›</span></button>
-        <button type="button" class="legal-lnk" onclick="openLegal('privacy')">🔒 Privacy e dati<span>›</span></button>
-        <button type="button" class="legal-lnk" onclick="openLegal('termini')">📄 Termini di utilizzo<span>›</span></button>
+      <div class="legal-gate-eyebrow" id="legal-gate-eyebrow">Prima di iniziare</div>
+      <div class="legal-gate-title" id="legal-gate-title">Informazioni importanti</div>
+      <div class="legal-gate-intro" id="legal-gate-intro"></div>
+      <div class="legal-gate-links" id="legal-gate-links"></div>
+      <div class="legal-gate-btns">
+        <button type="button" class="legal-gate-btn later" onclick="legalLater()">Leggo dopo</button>
+        <button type="button" class="legal-gate-btn" id="legal-gate-btn" onclick="legalCloseGate(false)" disabled>Accetta e continua</button>
       </div>
-      <button type="button" class="legal-ck" id="legal-ck-1" role="checkbox" aria-checked="false" aria-pressed="false" onclick="legalToggle(1)" aria-label="Dichiaro di aver letto le informazioni">
-        <i></i><span>Dichiaro di aver letto <a onclick="event.stopPropagation();openLegal('salute')">salute e sicurezza</a>, <a onclick="event.stopPropagation();openLegal('privacy')">privacy e dati</a> e <a onclick="event.stopPropagation();openLegal('termini')">termini di utilizzo</a>.</span>
-      </button>
-      <button type="button" class="legal-gate-btn" id="legal-gate-btn" onclick="legalAccept()" disabled>Accetta e continua</button>
-      <div class="legal-gate-note">Potrai rileggerli quando vuoi dal Profilo.</div>
+      <div class="legal-gate-note" id="legal-gate-note">Il pulsante si attiva quando li hai accettati tutti e tre.</div>
     </div>
   </div>
 </div>
@@ -3960,7 +3973,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '178';
+const APP_VERSION = '179';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -10334,6 +10347,7 @@ var LEGAL_CONTACT = '[indirizzo email]';
 
 var LEGAL_TEXTS = {
     salute: {
+        icon: '\u2695\ufe0f',
         title: 'Salute e sicurezza',
         sub: 'Leggi prima di allenarti',
         html:
@@ -10341,10 +10355,11 @@ var LEGAL_TEXTS = {
           '<p><b>Prima di iniziare, senti un medico</b> se hai o hai avuto problemi cardiaci, respiratori, articolari o alla schiena, se sei in gravidanza, se stai recuperando da un infortunio o da un intervento, se prendi farmaci che influenzano pressione o battito, o se sono anni che non ti alleni.</p>' +
           '<p><b>Ferma la serie</b> se senti dolore acuto, se una ripetizione ti costringe a cambiare tecnica, se hai capogiri, nausea o dolore al petto. Il fastidio muscolare dello sforzo e\u0300 normale; il dolore articolare pungente no.</p>' +
           '<p><b>La tecnica viene prima del carico.</b> Il massimo tecnico su cui l\u2019app costruisce tutto e\u0300 il peso piu\u0300 alto che gestisci con esecuzione pulita, non quello che riesci a spostare. Gonfiarlo non accelera i progressi: sposta solo il rischio su di te.</p>' +
-          '<p><b>Sotto i 16 anni serve la presenza di un adulto responsabile</b> e, per i carichi progressivi, il parere di un medico: uno scheletro in crescita non risponde come quello di un adulto.</p>' +
+          '<p><b>Awakening \u00e8 riservata ai maggiorenni.</b> Il programma applica carichi progressivi calcolati su un massimale dichiarato: su uno scheletro ancora in crescita queste scelte vanno prese da un professionista che segua la persona, non da un\u2019app. Se hai meno di 18 anni non utilizzare l\u2019app.</p>' +
           '<p>Ti alleni sotto la tua responsabilita\u0300. Chi ha realizzato Awakening non risponde di infortuni o danni derivanti dall\u2019uso dell\u2019app.</p>'
     },
     privacy: {
+        icon: '\ud83d\udd12',
         title: 'Privacy e dati',
         sub: 'Aggiornato il 27 agosto 2026',
         html:
@@ -10372,12 +10387,14 @@ var LEGAL_TEXTS = {
           '<p style="margin-top:14px;">Per qualsiasi domanda: <b>' + '__CONTACT__' + '</b>.</p>'
     },
     termini: {
+        icon: '\ud83d\udcc4',
         title: 'Termini di utilizzo',
         sub: 'Aggiornato il 27 agosto 2026',
         html:
           '<p><b>Cosa e\u0300 Awakening.</b> Un\u2019app che genera programmi di allenamento a partire dall\u2019obiettivo, dal livello e dall\u2019attrezzatura che dichiari, e ne segue l\u2019andamento nel tempo. E\u0300 uno strumento di supporto: le decisioni su cosa e quanto allenarti restano tue.</p>' +
           '<p><b>Nessuna garanzia di risultato.</b> I progressi dipendono da riposo, alimentazione, costanza e caratteristiche personali che l\u2019app non puo\u0300 misurare. Non promettiamo un risultato specifico in un tempo specifico.</p>' +
           '<p><b>I dati che inserisci sono tuoi</b> e la loro esattezza dipende da te: un massimo tecnico dichiarato piu\u0300 alto del reale produce carichi piu\u0300 alti del dovuto.</p>' +
+          '<p><b>Et\u00e0 minima.</b> L\u2019uso di Awakening \u00e8 riservato a chi ha compiuto 18 anni. Accettando questi termini dichiari di essere maggiorenne.</p>' +
           '<p><b>Uso consentito.</b> Personale e non commerciale. Non e\u0300 consentito rivendere l\u2019app o i programmi generati, ne\u0301 usarli per erogare servizi di allenamento a terzi senza accordo.</p>' +
           '<p><b>Disponibilita\u0300.</b> L\u2019app funziona anche senza rete, ma la sincronizzazione, il Coach e lo scanner richiedono una connessione e servizi esterni che possono essere temporaneamente indisponibili.</p>' +
           '<p><b>Modifiche.</b> Questi termini possono cambiare con gli aggiornamenti; la data in cima indica l\u2019ultima revisione. Continuando a usare l\u2019app accetti la versione corrente.</p>' +
@@ -10395,7 +10412,17 @@ function openLegal(key) {
     var body = document.getElementById('legal-body');
     if (ttl) ttl.textContent = t.title;
     if (sub) sub.textContent = t.sub;
-    if (body) { body.innerHTML = t.html.split('__CONTACT__').join(LEGAL_CONTACT); body.scrollTop = 0; }
+    if (body) {
+        var ok = legalIsAccepted(key);
+        // Il pulsante chiude il testo: e' il gesto che registra il consenso,
+        // e sta in fondo perche' ci si arrivi dopo aver scorso il documento.
+        var bar = '<div class="legal-accept-bar">' + (ok
+            ? '<button type="button" class="legal-act accepted" disabled>\u2713 Accettato il ' + legalFmtDate((APP.legalAccepted[key] || {}).d) + '</button>'
+            : '<button type="button" class="legal-act accept" onclick="legalAcceptOne(\'' + key + '\')">Ho letto e accetto</button>') +
+            '</div>';
+        body.innerHTML = t.html.split('__CONTACT__').join(LEGAL_CONTACT) + bar;
+        body.scrollTop = 0;
+    }
     m.classList.add('open');
     m.setAttribute('aria-hidden', 'false');
 }
@@ -10410,65 +10437,176 @@ function closeLegal() {
 // ── Accettazione al primo allenamento ──
 // Il Profilo raggiunge solo chi ci passa: qui l'avvertenza viene messa davanti
 // a tutti, una volta sola, nel momento in cui diventa concreta.
-var _legalChecks = { 1: false };
+// ── CONSENSO PER SINGOLO TESTO (v.179) ────────────────────
+// Ogni informativa ha una sua accettazione con la propria data. Serve perche'
+// i richiami sono mirati — allenarsi riguarda la salute, non la privacy — e
+// perche' il giorno in cui cambiera' una sola informativa dovra' essere
+// riaccettata quella, non tutte e tre.
+var LEGAL_KEYS = ['salute', 'privacy', 'termini'];
 
-function legalToggle(n) {
-    _legalChecks[n] = !_legalChecks[n];
-    var el = document.getElementById('legal-ck-' + n);
-    if (el) {
-        el.classList.toggle('on', _legalChecks[n]);
-        el.setAttribute('aria-pressed', _legalChecks[n] ? 'true' : 'false');
-        el.setAttribute('aria-checked', _legalChecks[n] ? 'true' : 'false');
+// Gli stati salvati fino alla v.178 avevano un unico { v, d } per tutto:
+// vengono letti come "tutte e tre accettate" con quella data e versione.
+function legalMigrate() {
+    var a = APP.legalAccepted;
+    if (!a || typeof a !== 'object') { APP.legalAccepted = {}; return; }
+    if (a.v && !a.salute && !a.privacy && !a.termini) {
+        var old = { v: a.v, d: a.d || null };
+        APP.legalAccepted = { salute: old, privacy: old, termini: old };
     }
-    var btn = document.getElementById('legal-gate-btn');
-    if (btn) btn.disabled = !_legalChecks[1];
+}
+
+function legalIsAccepted(key) {
+    legalMigrate();
+    var e = APP.legalAccepted[key];
+    return !!(e && e.v === LEGAL_VERSION);
+}
+
+function legalAcceptedCount() {
+    return LEGAL_KEYS.filter(legalIsAccepted).length;
 }
 
 function legalNeedsAccept() {
-    return !(APP.legalAccepted && APP.legalAccepted.v === LEGAL_VERSION);
+    return legalAcceptedCount() < LEGAL_KEYS.length;
 }
 
-// Mostra l'informativa se serve. Protetta contro le doppie chiamate: lo
-// splash puo' cadere due volte se la scheda parte in background.
+function legalAcceptOne(key) {
+    if (LEGAL_KEYS.indexOf(key) === -1) return;
+    legalMigrate();
+    APP.legalAccepted[key] = { v: LEGAL_VERSION, d: new Date().toISOString() };
+    saveState();
+    legalRenderProfileBadges();
+    legalRenderGate();
+    var t = LEGAL_TEXTS[key];
+    showToast((t ? t.title : 'Informativa') + ' accettata', 'success');
+    closeLegal();
+    // Se era l'ultima che mancava per il motivo del richiamo, il richiamo
+    // sparisce e l'azione interrotta riprende da sola.
+    if (_legalGateNeed && _legalGateNeed.every(legalIsAccepted)) legalCloseGate(true);
+}
+
+// Nel Profilo ogni voce mostra il proprio stato: spuntata oppure da accettare.
+function legalRenderProfileBadges() {
+    LEGAL_KEYS.forEach(function(k) {
+        var el = document.getElementById('legal-badge-' + k);
+        if (!el) return;
+        if (legalIsAccepted(k)) {
+            el.innerHTML = '\u2705';
+            el.className = 'settings-row-arrow legal-badge-ok';
+        } else {
+            el.innerHTML = 'da accettare';
+            el.className = 'settings-row-arrow legal-badge-todo';
+        }
+    });
+}
+
+function legalFmtDate(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+}
+
+// Riga cliccabile con lo stato: spuntata oppure "da leggere".
+function legalRowHtml(key) {
+    var t = LEGAL_TEXTS[key];
+    if (!t) return '';
+    var ok = legalIsAccepted(key);
+    return '<button type="button" class="legal-lnk' + (ok ? ' done' : '') + '" onclick="openLegal(\'' + key + '\')"' +
+           ' aria-label="' + t.title + (ok ? ', accettata' : ', da leggere') + '">' +
+           '<span>' + t.icon + ' ' + t.title + '</span>' +
+           (ok ? '<span class="legal-ok">\u2713</span>' : '<span class="legal-todo">da leggere</span>') +
+           '</button>';
+}
+
+// Chiavi richieste dal richiamo in corso: null = apertura dell'app (tutte e tre),
+// altrimenti solo quelle pertinenti al gesto che l'ha fatto comparire.
+var _legalGateNeed = null;
+var _legalOnAccept = null;
+
+function legalRenderGate() {
+    var links = document.getElementById('legal-gate-links');
+    var intro = document.getElementById('legal-gate-intro');
+    var note  = document.getElementById('legal-gate-note');
+    var btn   = document.getElementById('legal-gate-btn');
+    var eb    = document.getElementById('legal-gate-eyebrow');
+    var ti    = document.getElementById('legal-gate-title');
+    var keys  = _legalGateNeed || LEGAL_KEYS;
+
+    if (links) links.innerHTML = keys.map(legalRowHtml).join('');
+    var done = keys.filter(legalIsAccepted).length;
+    var all  = done === keys.length;
+
+    if (_legalGateNeed) {
+        if (eb) { eb.textContent = 'Manca un passaggio'; eb.style.color = '#fbbf24'; }
+        if (ti) ti.textContent = _legalGateTitle || 'Prima di continuare';
+        if (intro) intro.innerHTML = _legalGateIntro || '';
+        if (note) note.textContent = all ? '' : 'Apri il testo e accettalo in fondo alla pagina.';
+    } else {
+        if (eb) { eb.textContent = 'Prima di iniziare'; eb.style.color = ''; }
+        if (ti) ti.textContent = 'Informazioni importanti';
+        if (intro) intro.innerHTML = 'Leggi e accetta ciascun testo. <b>' + done + ' di ' + keys.length + ' accettati.</b>';
+        if (note) note.textContent = all ? 'Puoi rileggerli quando vuoi dal Profilo.'
+                                         : 'Il pulsante si attiva quando li hai accettati tutti e tre.';
+    }
+    if (btn) {
+        btn.disabled = !all;
+        btn.textContent = _legalGateNeed ? 'Continua' : 'Accetta e continua';
+    }
+}
+
+// need: array di chiavi richieste, oppure null per il richiamo di apertura.
+function openLegalGate(onAccept, need, title, intro) {
+    var g = document.getElementById('legal-gate');
+    _legalGateNeed  = (need && need.length) ? need.slice() : null;
+    _legalGateTitle = title || null;
+    _legalGateIntro = intro || null;
+    if (!g) { if (typeof onAccept === 'function') onAccept(); return; }
+    _legalOnAccept = onAccept || null;
+    legalRenderGate();
+    g.classList.add('open');
+    g.setAttribute('aria-hidden', 'false');
+}
+var _legalGateTitle = null, _legalGateIntro = null;
+
+// Chiude il richiamo. proceed = true quando le condizioni richieste sono
+// soddisfatte e l'azione interrotta puo' riprendere.
+function legalCloseGate(proceed) {
+    var g = document.getElementById('legal-gate');
+    if (g) { g.classList.remove('open'); g.setAttribute('aria-hidden', 'true'); }
+    var cb = _legalOnAccept; _legalOnAccept = null;
+    var need = _legalGateNeed; _legalGateNeed = null;
+    _legalGateTitle = null; _legalGateIntro = null;
+    if (proceed && typeof cb === 'function') cb();
+}
+
+// "Leggo dopo": nessuna scadenza, nessun conteggio di rinvii. Il richiamo
+// ricompare a ogni apertura e a ogni gesto che lo richiede, finche' non e'
+// stato accettato: un consenso ottenuto per sfinimento non varrebbe nulla.
+function legalLater() {
+    legalCloseGate(false);
+}
+
+// Richiamo mirato prima di un'azione. Se le informative richieste sono gia'
+// state accettate l'azione parte subito e l'utente non vede nulla.
+function legalRequire(keys, title, intro, onOk) {
+    var missing = keys.filter(function(k) { return !legalIsAccepted(k); });
+    if (!missing.length) { if (typeof onOk === 'function') onOk(); return true; }
+    openLegalGate(onOk, missing, title, intro);
+    return false;
+}
+
+// Mostra l'informativa all'apertura se manca qualcosa. Protetta contro le
+// doppie chiamate: lo splash puo' cadere due volte se la scheda parte in
+// background.
 function legalMaybeShow() {
     try {
         if (!legalNeedsAccept()) return;
         var g = document.getElementById('legal-gate');
         if (g && g.classList.contains('open')) return;
-        openLegalGate(null);
+        openLegalGate(null, null);
     } catch (e) {
         awLog.warn('[Legal]', e && e.message);
     }
-}
-
-function openLegalGate(onAccept) {
-    var g = document.getElementById('legal-gate');
-    if (!g) { if (typeof onAccept === 'function') onAccept(); return; }
-    _legalChecks = { 1: false };
-    var el1 = document.getElementById('legal-ck-1');
-    if (el1) { el1.classList.remove('on'); el1.setAttribute('aria-pressed', 'false'); el1.setAttribute('aria-checked', 'false'); }
-
-    // Il popup resta breve: i tre testi si aprono dai titoli o dalle parole
-    // sottolineate, sopra a questo, e chiudendoli si torna qui. Cosi'
-    // l'apertura dell'app non viene sepolta sotto pagine di informativa.
-    var btn = document.getElementById('legal-gate-btn');
-    if (btn) btn.disabled = true;
-    _legalOnAccept = onAccept || null;
-    g.classList.add('open');
-    g.setAttribute('aria-hidden', 'false');
-}
-
-var _legalOnAccept = null;
-
-function legalAccept() {
-    if (!_legalChecks[1]) return;
-    // Data e versione rendono dimostrabile cosa e' stato accettato e quando.
-    APP.legalAccepted = { v: LEGAL_VERSION, d: new Date().toISOString() };
-    saveState();
-    var g = document.getElementById('legal-gate');
-    if (g) { g.classList.remove('open'); g.setAttribute('aria-hidden', 'true'); }
-    var cb = _legalOnAccept; _legalOnAccept = null;
-    if (typeof cb === 'function') cb();
 }
 
 // ── Esportazione ──
@@ -14290,6 +14428,9 @@ function tdeeUpdateResultHighlight() {
 }
 
 function tdeeSave() {
+    if (!legalRequire(['privacy'], 'Stai per inserire dati sulla salute',
+        'Peso, altezza ed et\u00e0 sono dati personali. Accetta l\u2019informativa privacy per procedere.',
+        function() { tdeeSave(); })) return;
     const kcal   = parseInt(document.getElementById('tdee-res-kcal').textContent) || 2200;
     const p      = parseInt(document.getElementById('tdee-res-p').textContent)    || 175;
     const c      = parseInt(document.getElementById('tdee-res-c').textContent)    || 248;
@@ -14381,6 +14522,12 @@ function _woBeep(freq, duration, type) {
 function woStartWorkout() {
     const exData = APP.exerciseData || [];
     if (exData.length === 0) return;
+
+    // v.179 — allenarsi riguarda l'avvertenza sulla salute: e' l'unica che
+    // viene richiesta qui, non l'intero blocco di informative.
+    if (!legalRequire(['salute'], 'Prima di allenarti',
+        'Devi ancora accettare l\u2019avvertenza su salute e sicurezza.',
+        function() { woStartWorkout(); })) return;
 
 
     // Le prestazioni sono per-sessione: senza azzeramento le ripetizioni di
@@ -15438,6 +15585,7 @@ function navSwitch(tab) {
     if (centerBtn) centerBtn.style.boxShadow = '';
     const navEl = document.getElementById('nav-' + tab);
     if (navEl) navEl.classList.add('active');
+    if (tab === 'profile') { try { legalRenderProfileBadges(); } catch(e) { awLog.warn('[Legal]', e && e.message); } }
     if (tab === 'workout' && centerBtn) {
         centerBtn.style.boxShadow = '0 0 0 3px rgba(var(--pr,0,255,136),0.35), 0 4px 18px rgba(var(--pr,0,255,136),0.4)';
     }
@@ -17880,6 +18028,10 @@ function weightToggleEdit() {
 }
 
 function weightSave() {
+    // Peso e altezza sono dati sulla salute: qui serve l'informativa privacy.
+    if (!legalRequire(['privacy'], 'Stai per inserire dati sulla salute',
+        'Peso, altezza ed et\u00e0 sono dati personali. Accetta l\u2019informativa privacy per procedere.',
+        function() { weightSave(); })) return;
     const inp  = document.getElementById('weight-input');
     const gInp = document.getElementById('weight-goal-input');
     const val  = parseFloat(inp.value);
@@ -20296,7 +20448,7 @@ function homeRefreshData() {
         <button class="tdee-sex-btn" id="tdee-sex-f" onclick="tdeeSetSex('f')">♀ Donna</button>
       </div>
       <div class="tdee-inputs-row">
-        <div class="tdee-input-wrap"><label class="tdee-field-label">Età</label><input class="tdee-input" id="tdee-age" type="number" value="28" min="15" max="80" inputmode="numeric"></div>
+        <div class="tdee-input-wrap"><label class="tdee-field-label">Età</label><input class="tdee-input" id="tdee-age" type="number" value="28" min="18" max="90" inputmode="numeric"></div>
         <div class="tdee-input-wrap"><label class="tdee-field-label">Peso (kg)</label><input class="tdee-input" id="tdee-weight" type="number" value="80" min="40" max="200" inputmode="decimal"></div>
         <div class="tdee-input-wrap"><label class="tdee-field-label">Altezza (cm)</label><input class="tdee-input" id="tdee-height" type="number" value="178" min="140" max="220" inputmode="numeric"></div>
       </div>
