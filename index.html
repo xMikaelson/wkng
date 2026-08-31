@@ -3977,7 +3977,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '182';
+const APP_VERSION = '183';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -10388,7 +10388,7 @@ function awPrompt(message, onDone, opts) {
 // I testi vivono qui in un unico posto e vengono mostrati sia dal Profilo sia
 // dai link dentro l'accettazione al primo allenamento: una sola versione da
 // aggiornare, nessuna possibilità che le due copie divergano.
-var LEGAL_VERSION = '2026-08-27';
+var LEGAL_VERSION = '2026-08-28';
 var LEGAL_CONTACT = '[indirizzo email]';
 
 var LEGAL_TEXTS = {
@@ -10407,7 +10407,7 @@ var LEGAL_TEXTS = {
     privacy: {
         icon: '\ud83d\udd12',
         title: 'Privacy e dati',
-        sub: 'Aggiornato il 27 agosto 2026',
+        sub: 'Aggiornato il 28 agosto 2026',
         html:
           '<div class="legal-sec">Cosa resta sul telefono</div>' +
           '<p>Se usi l\u2019app senza registrarti, <b>tutto resta sul tuo dispositivo</b>: protocolli, carichi, storico, pasti, peso. Nessun dato esce dal telefono e nessuno puo\u0300 leggerli. Disinstallando l\u2019app spariscono.</p>' +
@@ -10422,10 +10422,18 @@ var LEGAL_TEXTS = {
           '<p>Peso e altezza sono dati sulla salute: <b>li salviamo online solo perche\u0301 ce lo chiedi tu creando un account</b>, e solo per farti ritrovare i tuoi progressi. Puoi usare tutta l\u2019app senza mai inserirli.</p>' +
           '<div class="legal-sec">Cosa non facciamo</div>' +
           '<p>Non vendiamo i tuoi dati. Non li cediamo a inserzionisti. Non ci sono pubblicita\u0300 ne\u0301 tracciatori pubblicitari nell\u2019app. Non profiliamo il tuo comportamento per scopi commerciali.</p>' +
-          '<div class="legal-sec">Chi li conserva</div>' +
-          '<p>L\u2019archiviazione e\u0300 affidata a Supabase, che ospita i dati per nostro conto. Le funzioni di intelligenza artificiale \u2014 il Coach e il riconoscimento dei pasti da foto \u2014 inviano il testo o l\u2019immagine ad Anthropic per generare la risposta; non vengono usati per addestrare modelli. Le informazioni sui prodotti alimentari arrivano da Open Food Facts, un archivio pubblico.</p>' +
+          '<div class="legal-sec">Dove sono conservati</div>' +
+          '<p>L\u2019archiviazione e\u0300 affidata a <b>Supabase</b>, che ospita i dati per nostro conto su server situati in <b>Irlanda</b>: restano quindi all\u2019interno dell\u2019Unione Europea e sotto il GDPR.</p>' +
+          '<p>Due eccezioni, che riguardano solo il momento in cui usi quelle funzioni:</p>' +
+          '<dl class="legal-dl">' +
+            '<dt>Coach AI</dt><dd>il testo della tua domanda viene inviato ad <b>Anthropic</b> (Stati Uniti) per generare la risposta</dd>' +
+            '<dt>Foto dei pasti</dt><dd>l\u2019immagine viene inviata ad Anthropic per riconoscere l\u2019alimento</dd>' +
+          '</dl>' +
+          '<p>In entrambi i casi si tratta di un trasferimento fuori dall\u2019Unione Europea. Anthropic non usa questi contenuti per addestrare i propri modelli e non li conserva per profilarti. Se preferisci evitarlo, non usare il Coach e inserisci gli alimenti manualmente o con il codice a barre: tutto il resto dell\u2019app funziona senza.</p>' +
+          '<p>Le informazioni sui prodotti alimentari arrivano da <b>Open Food Facts</b>, un archivio pubblico: la ricerca invia solo il nome o il codice a barre del prodotto, nessun tuo dato.</p>' +
           '<div class="legal-sec">I tuoi diritti</div>' +
-          '<p>Puoi scaricare in qualsiasi momento una copia completa di quello che abbiamo, ed eliminare i tuoi dati dal server. La cancellazione e\u0300 definitiva: non teniamo copie.</p>' +
+          '<p>Puoi scaricare in qualsiasi momento una copia completa di quello che abbiamo. Puoi anche eliminare l\u2019account: vengono rimossi i dati <b>e le credenziali di accesso</b>, in modo definitivo e senza copie di riserva.</p>' +
+          '<p>Hai inoltre diritto a chiedere la rettifica dei dati inesatti, a opporti al trattamento e a presentare reclamo al Garante per la protezione dei dati personali. Per esercitarli scrivi all\u2019indirizzo in fondo.</p>' +
           '<div class="legal-only-profile">' +
           '<button type="button" class="legal-act ghost" onclick="exportUserData()">\u2b07\ufe0f Esporta i miei dati</button>' +
           '<button type="button" class="legal-act danger" onclick="deleteAccountFlow()">\ud83d\uddd1\ufe0f Elimina account e dati</button>' +
@@ -10435,7 +10443,7 @@ var LEGAL_TEXTS = {
     termini: {
         icon: '\ud83d\udcc4',
         title: 'Termini di utilizzo',
-        sub: 'Aggiornato il 27 agosto 2026',
+        sub: 'Aggiornato il 28 agosto 2026',
         html:
           '<p><b>Cosa e\u0300 Awakening.</b> Un\u2019app che genera programmi di allenamento a partire dall\u2019obiettivo, dal livello e dall\u2019attrezzatura che dichiari, e ne segue l\u2019andamento nel tempo. E\u0300 uno strumento di supporto: le decisioni su cosa e quanto allenarti restano tue.</p>' +
           '<p><b>Nessuna garanzia di risultato.</b> I progressi dipendono da riposo, alimentazione, costanza e caratteristiche personali che l\u2019app non puo\u0300 misurare. Non promettiamo un risultato specifico in un tempo specifico.</p>' +
@@ -10742,19 +10750,43 @@ function deleteAccountFlow() {
       }, { title: 'Eliminare account e dati?', okLabel: 'Continua', danger: true });
 }
 
+// v.183 — la cancellazione passa dalla Edge Function 'delete-account', che
+// elimina anche l'UTENTE di accesso oltre ai dati. Dal browser quel passaggio
+// non e' possibile: richiede la chiave di servizio, che nell'app sarebbe
+// visibile a chiunque. La funzione ricava l'identita' dal token, quindi puo'
+// cancellare solo chi la sta chiamando.
+// Se la funzione non risponde si ricade sulla cancellazione delle sole righe,
+// cosi' i dati spariscono comunque e l'utente viene avvisato di cio' che resta.
 async function _deleteAccountNow() {
-    var serverOk = true;
+    var serverOk = false;
+    var authRemoved = false;
+    var loggedIn = false;
+
     try {
         var res = await sbClient.auth.getUser();
         var user = res && res.data ? res.data.user : null;
+        loggedIn = !!user;
+
         if (user) {
-            var r1 = await sbClient.from('protocols').delete().eq('user_id', user.id);
-            var r2 = await sbClient.from('profiles').delete().eq('id', user.id);
-            // Attenzione: qui user_id contiene lo username, non l'id di
-            // autenticazione (vedi il salvataggio della sottoscrizione push).
-            var r3 = { error: null };
-            if (APP.userName) r3 = await sbClient.from('push_subscriptions').delete().eq('user_id', APP.userName);
-            if ((r1 && r1.error) || (r2 && r2.error) || (r3 && r3.error)) serverOk = false;
+            var fn = await sbClient.functions.invoke('delete-account', {
+                body: { username: APP.userName || null }
+            });
+            if (fn && !fn.error && fn.data && fn.data.ok) {
+                serverOk = true;
+                authRemoved = true;
+            } else {
+                awLog.warn('[delete-account]', (fn && fn.error && fn.error.message) || 'risposta non valida');
+                // Ripiego: almeno i dati vengono rimossi.
+                var r1 = await sbClient.from('protocols').delete().eq('user_id', user.id);
+                var r2 = await sbClient.from('profiles').delete().eq('id', user.id);
+                var r3 = { error: null };
+                if (APP.userName) r3 = await sbClient.from('push_subscriptions').delete().eq('user_id', APP.userName);
+                serverOk = !((r1 && r1.error) || (r2 && r2.error) || (r3 && r3.error));
+            }
+        } else {
+            // Nessun account: c'e' solo il dispositivo da ripulire.
+            serverOk = true;
+            authRemoved = true;
         }
     } catch (e) {
         serverOk = false;
@@ -10771,11 +10803,19 @@ async function _deleteAccountNow() {
         }
     } catch(e){ awLog.warn("[_deleteAccountNow]", e && e.message); }
 
-    if (serverOk) {
-        alert('Dati eliminati. L\u2019app si riavvia.');
+    var msg;
+    if (serverOk && authRemoved) {
+        msg = loggedIn
+            ? 'Account e dati eliminati definitivamente. L\u2019app si riavvia.'
+            : 'Dati eliminati da questo dispositivo. L\u2019app si riavvia.';
+    } else if (serverOk) {
+        msg = 'I tuoi dati sono stati eliminati, ma l\u2019account di accesso e\u0300 ancora attivo.\n\n' +
+              'Riprova pi\u00f9 tardi oppure scrivi a ' + LEGAL_CONTACT + ' per completare la rimozione.';
     } else {
-        alert('I dati su questo dispositivo sono stati eliminati, ma non e\u0300 stato possibile contattare il server.\n\nRiprova da connesso, oppure scrivi a ' + LEGAL_CONTACT + ' per la cancellazione completa.');
+        msg = 'I dati su questo dispositivo sono stati eliminati, ma non e\u0300 stato possibile contattare il server.\n\n' +
+              'Riprova da connesso, oppure scrivi a ' + LEGAL_CONTACT + ' per la cancellazione completa.';
     }
+    alert(msg);
     location.reload();
 }
 
