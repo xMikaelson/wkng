@@ -90,7 +90,15 @@ self.addEventListener('fetch', event => {
                 cache.match(event.request)
                     .then(hit => hit || cache.match('./index.html'))
                     .then(cached => {
-                        const fromNetwork = fetch(event.request)
+                        // cache:'no-cache' obbliga a rivalidare con GitHub.
+                        // Con la fetch normale il browser poteva rispondere
+                        // dalla propria cache HTTP e riscrivere in cache un
+                        // index.html gia' superato, annullando il precache
+                        // appena fatto da install().
+                        const fromNetwork = fetch(new Request(event.request.url, {
+                                cache: 'no-cache',
+                                credentials: 'same-origin'
+                            }))
                             .then(response => {
                                 if (response && response.status === 200) {
                                     cache.put('./index.html', response.clone());
