@@ -15504,26 +15504,34 @@ function woCompleteSet() {
         woState.exIndex = exData.length;
         woRenderExList();
 
-        // ── Marca automaticamente la chip del giorno come "done" ──
+        // ── Storico carichi: SEMPRE registrato a fine sessione ──
+        // v.184 — prima stava dentro il blocco che marca la chip: se il giorno
+        // era già 'done' (ripetizione della sessione) o se _todayDayIdx non era
+        // valorizzato, l'intero blocco veniva saltato e i "Progressi nei Pesi"
+        // restavano vuoti nonostante l'allenamento fosse stato completato.
         const wIdx = APP.selectedViewWeek;
+        logLoadHistory(wIdx);   // storico carichi per i grafici per esercizio
+
+        // ── Marca automaticamente la chip del giorno come "done" ──
         const di = woState._todayDayIdx;
         if (di !== undefined && di !== null && APP.chipStates[wIdx] && APP.chipStates[wIdx][di] !== 'done') {
             APP.chipStates[wIdx][di] = 'done';
             APP.totalWorkouts = APP.chipStates.flat().filter(s => s === 'done').length;
-            logLoadHistory(wIdx);   // storico carichi per i grafici per esercizio
-            saveState();
-            // Refresh completo di tutte le viste che mostrano lo stato dei workout:
-            // - chip della Home (pagina results) + donut + motivazione
-            // - chip della pagina Plans (se renderizzata)
-            // - pagina Progressi (volumi/streak/badges)
-            // L'aggiornamento manuale di un singolo chipEl non bastava: lasciava
-            // home e donut non aggiornati finché non cambiavi tab/categoria.
-            if (typeof restoreChipStates === 'function') restoreChipStates();
-            if (typeof renderPlanPage === 'function') renderPlanPage(wIdx);
-            if (typeof updateStats === 'function') updateStats();
-            checkChapterCompletion(wIdx);
-            updateProgressPage();
         }
+
+        saveState();
+
+        // Refresh completo di tutte le viste che mostrano lo stato dei workout:
+        // - chip della Home (pagina results) + donut + motivazione
+        // - chip della pagina Plans (se renderizzata)
+        // - pagina Progressi (volumi/streak/badges)
+        // L'aggiornamento manuale di un singolo chipEl non bastava: lasciava
+        // home e donut non aggiornati finché non cambiavi tab/categoria.
+        if (typeof restoreChipStates === 'function') restoreChipStates();
+        if (typeof renderPlanPage === 'function') renderPlanPage(wIdx);
+        if (typeof updateStats === 'function') updateStats();
+        checkChapterCompletion(wIdx);
+        updateProgressPage();
         return;
     }
 
@@ -16433,7 +16441,7 @@ const EXERCISE_PRESETS = {
             ],
             intermedio: [
                 { name: 'Dumbbell Bench Press', weight: 16 },
-                { name: 'Dumbbell Incline Fly', weight: 10 },
+                { name: 'Dumbbell Fly', weight: 10 },
                 { name: 'Dumbbell Row', weight: 18 },
                 { name: 'Dumbbell Lunges', weight: 14 },
                 { name: 'Dumbbell Curl', weight: 12 },
@@ -16442,7 +16450,7 @@ const EXERCISE_PRESETS = {
             ],
             avanzato: [
                 { name: 'Dumbbell Bench Press', weight: 28 },
-                { name: 'Dumbbell Incline Fly', weight: 16 },
+                { name: 'Dumbbell Fly', weight: 16 },
                 { name: 'Dumbbell Row', weight: 28 },
                 { name: 'Dumbbell Pullover', weight: 20 },
                 { name: 'Dumbbell Bulgarian Split Squat', weight: 22 },
@@ -16573,7 +16581,7 @@ const EXERCISE_PRESETS = {
                     { name: 'Dumbbell Lunges', sr: '5 x 5', weight: 8 }
                 ],
                 push: [
-                    { name: 'Dumbbell Incline Press', sr: '4 x 10', weight: 8 },
+                    { name: 'Dumbbell Bench Press', sr: '4 x 10', weight: 8 },
                     { name: 'Dumbbell Shoulder Press', sr: '4 x 10', weight: 6 },
                     { name: 'Dumbbell Overhead Tricep Extension', sr: '4 x 10', weight: 6 },
                     { name: 'Dumbbell Lateral Raise', sr: '4 x 10', weight: 4 }
@@ -16604,7 +16612,7 @@ const EXERCISE_PRESETS = {
                     { name: 'Dumbbell Goblet Squat', sr: '5 x 5', weight: 22 }
                 ],
                 push: [
-                    { name: 'Dumbbell Incline Press', sr: '4 x 10', weight: 14 },
+                    { name: 'Dumbbell Bench Press', sr: '4 x 10', weight: 14 },
                     { name: 'Dumbbell Shoulder Press', sr: '4 x 10', weight: 12 },
                     { name: 'Dumbbell Fly', sr: '4 x 12', weight: 10 },
                     { name: 'Dumbbell Overhead Tricep Extension', sr: '4 x 10', weight: 10 },
@@ -16639,7 +16647,7 @@ const EXERCISE_PRESETS = {
                     { name: 'Dumbbell Hip Thrust', sr: '5 x 5', weight: 28 }
                 ],
                 push: [
-                    { name: 'Dumbbell Incline Press', sr: '4 x 10', weight: 24 },
+                    { name: 'Dumbbell Bench Press', sr: '4 x 10', weight: 24 },
                     { name: 'Dumbbell Shoulder Press', sr: '4 x 10', weight: 20 },
                     { name: 'Dumbbell Fly', sr: '4 x 12', weight: 16 },
                     { name: 'Dumbbell Overhead Tricep Extension', sr: '4 x 10', weight: 16 },
@@ -17721,11 +17729,11 @@ const SPLIT_PRESETS = {
                     lower: [{ name: 'Dumbbell Lunges', weight: 8 }, { name: 'Dumbbell Goblet Squat', weight: 10 }, { name: 'Dumbbell Romanian Deadlift', weight: 10 }, { name: 'Dumbbell Calf Raise', weight: 12 }]
                 },
                 intermedio: {
-                    upper: [{ name: 'Dumbbell Bench Press', weight: 16 }, { name: 'Dumbbell Incline Fly', weight: 10 }, { name: 'Dumbbell Row', weight: 18 }, { name: 'Dumbbell Shoulder Press', weight: 12 }, { name: 'Dumbbell Curl', weight: 12 }, { name: 'Dumbbell Overhead Tricep Extension', weight: 10 }, { name: 'Dumbbell Lateral Raise', weight: 7 }],
+                    upper: [{ name: 'Dumbbell Bench Press', weight: 16 }, { name: 'Dumbbell Fly', weight: 10 }, { name: 'Dumbbell Row', weight: 18 }, { name: 'Dumbbell Shoulder Press', weight: 12 }, { name: 'Dumbbell Curl', weight: 12 }, { name: 'Dumbbell Overhead Tricep Extension', weight: 10 }, { name: 'Dumbbell Lateral Raise', weight: 7 }],
                     lower: [{ name: 'Dumbbell Bulgarian Split Squat', weight: 14 }, { name: 'Dumbbell Romanian Deadlift', weight: 20 }, { name: 'Dumbbell Lunges', weight: 12 }, { name: 'Dumbbell Step Up', weight: 14 }, { name: 'Dumbbell Calf Raise', weight: 20 }]
                 },
                 avanzato: {
-                    upper: [{ name: 'Dumbbell Bench Press', weight: 28 }, { name: 'Dumbbell Incline Fly', weight: 16 }, { name: 'Dumbbell Row', weight: 28 }, { name: 'Dumbbell Pullover', weight: 20 }, { name: 'Dumbbell Shoulder Press', weight: 20 }, { name: 'Dumbbell Curl', weight: 18 }, { name: 'Dumbbell Overhead Tricep Extension', weight: 16 }, { name: 'Dumbbell Lateral Raise', weight: 12 }],
+                    upper: [{ name: 'Dumbbell Bench Press', weight: 28 }, { name: 'Dumbbell Fly', weight: 16 }, { name: 'Dumbbell Row', weight: 28 }, { name: 'Dumbbell Pullover', weight: 20 }, { name: 'Dumbbell Shoulder Press', weight: 20 }, { name: 'Dumbbell Curl', weight: 18 }, { name: 'Dumbbell Overhead Tricep Extension', weight: 16 }, { name: 'Dumbbell Lateral Raise', weight: 12 }],
                     lower: [{ name: 'Dumbbell Bulgarian Split Squat', weight: 24 }, { name: 'Dumbbell Romanian Deadlift', weight: 30 }, { name: 'Dumbbell Step Up', weight: 22 }, { name: 'Dumbbell Lunges', weight: 20 }, { name: 'Dumbbell Goblet Squat', weight: 26 }, { name: 'Dumbbell Calf Raise', weight: 28 }]
                 }
             },
