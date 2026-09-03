@@ -3977,7 +3977,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '183';
+const APP_VERSION = '184';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -20701,26 +20701,44 @@ document.addEventListener('visibilitychange', function() {
 });
 
 if ('serviceWorker' in navigator) {
+    // Guardia condivisa: SW_UPDATED e controllerchange possono scattare
+    // entrambi per lo stesso aggiornamento. Senza questa flag la pagina si
+    // ricaricherebbe due volte di fila.
+    let _swReloaded = false;
+    function _swReloadOnce() {
+        if (_swReloaded) return;
+        _swReloaded = true;
+        // Segnala al prossimo avvio di saltare il boot splash: l'utente l'ha
+        // appena visto un attimo fa, farlo ripartire e' fastidioso.
+        // sessionStorage vale solo per questa "sessione di scheda": se
+        // l'utente chiude e riapre l'app da freddo, lo splash torna normale.
+        try { sessionStorage.setItem('aw_boot_skip', '1'); } catch (e) {}
+        window.location.reload();
+    }
+
     // Il nuovo SW ha finito activate() e ha preso controllo: ricarica la pagina
     // per mostrare subito la versione aggiornata. E' la pagina a ricaricarsi
     // (non il SW a farla navigare) perche' su iOS in modalita' standalone
     // client.navigate() dal lato SW resta silenzioso e blocca l'app sull'avvio.
     navigator.serviceWorker.addEventListener('message', function(event) {
-        if (event.data && event.data.type === 'SW_UPDATED') {
-            // Segnala al prossimo avvio di saltare il boot splash: l'utente l'ha
-            // appena visto un attimo fa, farlo ripartire e' fastidioso.
-            // sessionStorage vale solo per questa "sessione di scheda": se
-            // l'utente chiude e riapre l'app da freddo, lo splash torna normale.
-            try { sessionStorage.setItem('aw_boot_skip', '1'); } catch(e) {}
-            window.location.reload();
-        }
+        if (event.data && event.data.type === 'SW_UPDATED') _swReloadOnce();
     });
+
+    // Registrazione trattenuta qui: serve a rifare il controllo aggiornamenti
+    // ogni volta che l'app torna in primo piano.
+    let _swReg = null;
 
     window.addEventListener('load', () => {
         // Only register SW if served from root scope (not subdirectory)
         const swScope = window.location.pathname.replace(/\/[^/]*$/, '/') || '/';
-        navigator.serviceWorker.register('./sw.js', { scope: swScope })
+        // updateViaCache:'none' e' la chiave dell'aggiornamento automatico.
+        // Senza, il browser cerca sw.js nella PROPRIA cache HTTP: GitHub Pages
+        // manda Cache-Control con max-age, quindi per l'intera durata di quella
+        // scadenza il browser continua a leggere il vecchio sw.js, non vede mai
+        // il CACHE_NAME nuovo e l'app resta congelata sulla versione precedente.
+        navigator.serviceWorker.register('./sw.js', { scope: swScope, updateViaCache: 'none' })
             .then(function(reg) {
+                _swReg = reg;
                 awLog.log('SW registered:', reg.scope);
 
                 // Se un nuovo SW resta "in attesa" (waiting), lo si sblocca
@@ -20750,6 +20768,26 @@ if ('serviceWorker' in navigator) {
                 awLog.log('SW skipped:', err.message);
             });
     });
+
+    // Una PWA installata non viene quasi mai chiusa davvero: iOS la sospende e
+    // la riprende, quindi l'evento 'load' sopra puo' non ripartire per giorni e
+    // il controllo aggiornamenti non verrebbe mai rifatto. Lo si ripete a ogni
+    // ritorno in primo piano, con un minimo di 60s tra un controllo e l'altro
+    // per non chiamare GitHub a ogni cambio di scheda.
+    let _swLastCheck = 0;
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState !== 'visible') return;
+        if (!_swReg || !_swReg.update) return;
+        const now = Date.now();
+        if (now - _swLastCheck < 60000) return;
+        _swLastCheck = now;
+        try { _swReg.update(); } catch (e) {}
+    });
+
+    // Rete di sicurezza: se il SW nuovo prende il controllo senza che il
+    // messaggio SW_UPDATED sia arrivato (succede quando activate() gira mentre
+    // la pagina e' in background), si ricarica comunque una volta sola.
+    navigator.serviceWorker.addEventListener('controllerchange', _swReloadOnce);
 }
 
 // ===== HERO MODE =====
