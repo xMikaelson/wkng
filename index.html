@@ -2082,9 +2082,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wo-sets { margin:0 16px 12px; display:flex; gap:7px; justify-content:center; flex-wrap:wrap; }
         .wo-set { width:40px; height:40px; border-radius:10px; border:2px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.03); display:flex; align-items:center; justify-content:center; font-size:0.68rem; font-weight:700; color:#64748b; cursor:pointer; transition:all 0.18s cubic-bezier(0.34,1.56,0.64,1); }
         .wo-set.done { background:var(--primary); border-color:var(--primary); color:#000; font-size:0.95rem; box-shadow:0 0 0 3px rgba(var(--pr,0,255,136),0.2),0 0 14px rgba(var(--pr,0,255,136),0.4); }
-        .wo-set.curr { border-color:var(--accent); background:rgba(99,102,241,0.15); color:#e2e8f0; animation:pset 1.5s ease-in-out infinite; }
+        /* Serie in corso: pulsa nel colore PRIMARIO del capitolo */
+        .wo-set.curr { border-color:var(--primary); background:rgba(var(--pr,0,255,136),0.15); color:#e2e8f0; animation:pset 1.5s ease-in-out infinite; }
+        /* Durante il recupero resta evidenziata la serie APPENA CHIUSA, nel
+           colore SECONDARIO: setIndex avanza prima che parta il timer, quindi
+           senza questo l'evidenza saltava già alla serie successiva. */
+        .wo-set.resting { border-color:var(--accent); background:rgba(var(--ac,99,102,241),0.18); color:#e2e8f0; animation:psetRest 1.5s ease-in-out infinite; }
         @keyframes prPop { 0%{transform:scale(0.8);opacity:0} 100%{transform:scale(1);opacity:1} }
-        @keyframes pset { 0%,100%{box-shadow:0 0 0 0 rgba(99,102,241,0.4);} 50%{box-shadow:0 0 0 5px rgba(99,102,241,0);} }
+        @keyframes pset { 0%,100%{box-shadow:0 0 0 0 rgba(var(--pr,0,255,136),0.45);} 50%{box-shadow:0 0 0 5px rgba(var(--pr,0,255,136),0);} }
+        @keyframes psetRest { 0%,100%{box-shadow:0 0 0 0 rgba(var(--ac,99,102,241),0.45);} 50%{box-shadow:0 0 0 5px rgba(var(--ac,99,102,241),0);} }
         .wo-timer-block { text-align:center; margin:0 0 6px; }
         .wo-timer-lbl { font-size:0.5rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.12em; margin-bottom:3px; }
         .wo-elapsed-row { display:flex; align-items:center; justify-content:center; gap:6px; margin-top:8px; }
@@ -2240,6 +2246,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .proto-ex-right .pe-kg { background:rgba(0,255,136,0.06); border-color:rgba(0,255,136,0.2); color:var(--primary); font-weight:700; cursor:default; pointer-events:none; opacity:0.85; width:40px; }
         .proto-ex-del { background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.2); border-radius:6px; color:#f87171; font-size:0.6rem; cursor:pointer; width:24px; height:24px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-family:inherit; padding:0; }
         .pe-mtr-btn { background:rgba(0,255,136,0.08); border:1px solid rgba(0,255,136,0.2); border-radius:6px; color:var(--primary); font-size:0.55rem; cursor:pointer; width:22px; height:22px; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:0; font-family:inherit; line-height:1; }
+        .pe-hold-tag { background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.25); border-radius:6px; color:#a5b4fc; font-size:0.5rem; font-weight:700; letter-spacing:0.02em; height:22px; padding:0 7px; display:flex; align-items:center; justify-content:center; flex-shrink:0; white-space:nowrap; }
         /* Overlay popup MTR — Variante 5 */
         #mtr-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9500; display:none; align-items:center; justify-content:center; padding:16px; }
         #mtr-overlay.active { display:flex; }
@@ -3977,7 +3984,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '184';
+const APP_VERSION = '186';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -6962,8 +6969,21 @@ function buildProtoEditorBox(proto, weekIdx) {
                 }, srReps(ex.sr));
             };
             right.appendChild(srInput);
-            right.appendChild(kgInput);
-            right.appendChild(mtrBtn);
+            // Isometrici (plank e simili): si misurano in secondi a corpo libero,
+            // non hanno un carico e quindi non hanno un Massimo Tecnico. Il campo
+            // kg e il bottone 🎯 chiederebbero un peso che non esiste: al loro
+            // posto un semplice indicatore. La progressione si fa allungando i
+            // secondi nello schema qui a fianco.
+            if (srIsTime(ex.sr)) {
+                var holdTag = document.createElement('div');
+                holdTag.className = 'pe-hold-tag';
+                holdTag.textContent = '⏱ a tempo';
+                holdTag.title = 'Esercizio isometrico: si misura in secondi, senza carico';
+                right.appendChild(holdTag);
+            } else {
+                right.appendChild(kgInput);
+                right.appendChild(mtrBtn);
+            }
             card.appendChild(right);
             wrap.appendChild(card);
 
@@ -8062,6 +8082,16 @@ function awRoundKg(v) {
 function sanitizeStoredLoads() {
     function fixEx(ex) {
         if (!ex) return;
+        // Un isometrico non ha carico: se una versione precedente gli ha
+        // assegnato un MTR in chili (il bottone 🎯 compariva anche su plank e
+        // simili) quei valori vanno rimossi, altrimenti l'esercizio continua a
+        // portarsi dietro un peso che non ha senso.
+        if (typeof srIsTime === 'function' && srIsTime(ex.sr)) {
+            ex.baseWeight = 0;
+            if (ex.loads) delete ex.loads;
+            if (ex.mtrValue != null) delete ex.mtrValue;
+            return;
+        }
         if (Array.isArray(ex.loads)) ex.loads = ex.loads.map(function(v) {
             return (typeof v === 'number') ? awRoundKg(v) : v;
         });
@@ -14823,9 +14853,15 @@ function woRenderEx() {
     const setsEl = document.getElementById('wo-sets-container');
     setsEl.className = 'wo-sets';
     setsEl.innerHTML = '';
+    // Durante il recupero l'evidenza resta sulla serie appena completata
+    const restIdx = woState.restRunning ? woState.setIndex - 1 : -1;
     for (let s=0; s<totalSets; s++) {
         const div = document.createElement('div');
-        div.className = 'wo-set ' + (s < woState.setIndex ? 'done' : s === woState.setIndex ? 'curr' : '');
+        let cls = '';
+        if (s === restIdx)                cls = 'done resting';
+        else if (s < woState.setIndex)    cls = 'done';
+        else if (s === woState.setIndex)  cls = woState.restRunning ? '' : 'curr';
+        div.className = 'wo-set ' + cls;
         div.textContent = s < woState.setIndex ? '✓' : s+1;
         setsEl.appendChild(div);
     }
@@ -15532,6 +15568,17 @@ function woCompleteSet() {
         if (typeof updateStats === 'function') updateStats();
         checkChapterCompletion(wIdx);
         updateProgressPage();
+
+        // Esci dalla modalità sessione: senza questo la pagina restava in
+        // 'wo-running', che nasconde la tab bar Allenamento/Nutrizione, e la
+        // schermata di fine allenamento diventava un vicolo cieco.
+        // Il ritardo lascia leggere il messaggio di completamento.
+        setTimeout(function() {
+            var pg = document.getElementById('page-workout');
+            if (pg) pg.classList.remove('wo-running');
+            if (typeof initWorkoutPage === 'function') initWorkoutPage();
+            if (typeof woRefreshScroll === 'function') woRefreshScroll();
+        }, 2200);
         return;
     }
 
