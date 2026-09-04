@@ -3984,7 +3984,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '186';
+const APP_VERSION = '187';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -5102,7 +5102,7 @@ function restoreUI() {
         APP.exerciseData.forEach((ex, i) => {
             const div = document.createElement('div');
             div.className = 'input-group';
-            div.innerHTML = `<input type="text" class="ex-name" placeholder="Cerca esercizio..." oninput="debouncedSearch(this)" value="${escapeHTML(ex.name)}"><div class="suggestions"></div><input type="text" class="ex-sr" value="${escapeHTML(ex.sr)}"><input type="number" class="ex-weight" placeholder="Kg" min="0" step="0.5" value="${ex.baseWeight}">`;
+            div.innerHTML = `<input type="text" class="ex-name" placeholder="Cerca esercizio..." oninput="debouncedSearch(this)" value="${escapeHTML(exDisplay(ex.name))}"><div class="suggestions"></div><input type="text" class="ex-sr" value="${escapeHTML(ex.sr)}"><input type="number" class="ex-weight" placeholder="Kg" min="0" step="0.5" value="${ex.baseWeight}">`;
             inputList.appendChild(div);
         });
         generate(true); // silent restore, no re-save
@@ -5171,8 +5171,8 @@ const EX_IT = {
   // ── Spalle ──
   'Overhead Press': 'Lento Avanti',
   'Military Press': 'Military Press',
-  'Shoulder Press': 'Press per le Spalle',
-  'Dumbbell Shoulder Press': 'Press per le Spalle con Manubri',
+  'Shoulder Press': 'Lento Avanti',
+  'Dumbbell Shoulder Press': 'Lento Avanti con Manubri',
   'Arnold Press': 'Arnold Press',
   'Lateral Raise': 'Alzate Laterali',
   'Dumbbell Lateral Raise': 'Alzate Laterali con Manubri',
@@ -5207,14 +5207,20 @@ const EX_IT = {
   'Squat': 'Squat',
   'Barbell Squat': 'Squat con Bilanciere',
   'Goblet Squat': 'Goblet Squat',
-  'Dumbbell Goblet Squat': 'Goblet Squat con Manubrio',
+  'Dumbbell Goblet Squat': 'Squat Goblet con Manubrio',
   'Front Squat': 'Squat Frontale',
   'Leg Press': 'Leg Press',
   'Lunge': 'Affondi',
   'Walking Lunge': 'Affondi Camminando',
   'Dumbbell Lunge': 'Affondi con Manubri',
   'Bulgarian Split Squat': 'Bulgarian Split Squat',
-  'Dumbbell Bulgarian Split Squat': 'Bulgarian Split Squat con Manubri',
+  'Dumbbell Bulgarian Split Squat': 'Affondi Bulgari con Manubri',
+  // v.187 — alias per i nomi misti salvati dalle versioni precedenti: senza
+  // queste righe le sessioni gia' registrate resterebbero scritte a meta'.
+  'Bulgarian Split Squat con Manubri': 'Affondi Bulgari con Manubri',
+  'Goblet Squat con Manubrio': 'Squat Goblet con Manubrio',
+  'Press per le Spalle': 'Lento Avanti',
+  'Press per le Spalle con Manubri': 'Lento Avanti con Manubri',
   'Leg Extension': 'Leg Extension',
   'Leg Curl': 'Leg Curl',
   'Lying Leg Curl': 'Leg Curl Sdraiato',
@@ -5494,6 +5500,18 @@ function exIsEnglish(name) {
     return exNormKey(exCanonical(name)) !== k;
 }
 
+// v.187 — Unico punto da cui passa OGNI nome di esercizio mostrato a schermo.
+// L'app e' destinata al mercato italiano: la ricerca resta bilingue (si puo'
+// continuare a digitare "bench press"), ma il nome stampato e' sempre quello
+// italiano. Risolvendo dal nome canonico invece che dal testo salvato, anche
+// le sessioni gia' registrate in inglese si vedono in italiano senza dover
+// riscrivere nulla nei dati.
+function exDisplay(name) {
+    if (!name) return name;
+    var c = exCanonical(name);   // sinonimi inglesi del DB -> nome italiano
+    return exItalian(c);         // rete di sicurezza per i nomi solo in EX_IT
+}
+
 // Etichetta compound/isolato nella lingua del nome esercizio
 function exBadgeLabel(comp, name) {
     if (comp === true) return 'Compound';
@@ -5569,10 +5587,12 @@ function searchExercises(input) {
             }
         }
         if (!itHit && !enName) return;
-        var useEn = !itHit && !!enName;
+        // v.187 — Si continua a trovare l'esercizio digitando in inglese, ma
+        // la voce proposta (e quindi quella salvata) e' sempre in italiano.
         results.push({
-            nome: useEn ? enName : ex.nome,
-            gruppo: useEn ? (GRUPPO_EN[ex.gruppo] || ex.gruppo) : ex.gruppo
+            nome: ex.nome,
+            gruppo: ex.gruppo,
+            via: (!itHit && enName) ? enName : ''   // come lo hai cercato
         });
     });
 
@@ -5583,7 +5603,9 @@ function searchExercises(input) {
     results.forEach(function(ex) {
         var d = document.createElement('div');
         d.className = 'suggestion-item';
-        d.innerHTML = '<span>' + ex.nome + '</span><span style="font-size:0.65rem;color:#94a3b8;margin-left:6px;">' + ex.gruppo + '</span>';
+        d.innerHTML = '<span>' + ex.nome + '</span>' +
+            (ex.via ? '<span style="font-size:0.6rem;color:#64748b;margin-left:6px;">(' + ex.via + ')</span>' : '') +
+            '<span style="font-size:0.65rem;color:#94a3b8;margin-left:6px;">' + ex.gruppo + '</span>';
         d.onclick = function() {
             input.value = ex.nome;
             sBox.style.display = 'none';
@@ -5950,7 +5972,7 @@ async function onLoginSuccess(user, usernameOverride = null) {
             protoToActivate.exercises.forEach(ex => {
                 const div = document.createElement('div');
                 div.className = 'input-group';
-                div.innerHTML = `<input type="text" class="ex-name" placeholder="Cerca esercizio..." oninput="debouncedSearch(this)" value="${escapeHTML(ex.name)}"><div class="suggestions"></div><input type="text" class="ex-sr" value="${escapeHTML(ex.sr)}"><input type="number" class="ex-weight" placeholder="Kg" min="0" step="0.5" value="${ex.baseWeight}">`;
+                div.innerHTML = `<input type="text" class="ex-name" placeholder="Cerca esercizio..." oninput="debouncedSearch(this)" value="${escapeHTML(exDisplay(ex.name))}"><div class="suggestions"></div><input type="text" class="ex-sr" value="${escapeHTML(ex.sr)}"><input type="number" class="ex-weight" placeholder="Kg" min="0" step="0.5" value="${ex.baseWeight}">`;
                 inputList.appendChild(div);
             });
         }
@@ -7518,10 +7540,10 @@ function protoEditorShowCoachResult(proto, draft, weekIdx, saveBtn, coachBox, co
         vBox.className = 'coach-verif';
         var righe = '';
         (_verif.scartati || []).forEach(function(x){
-            righe += '<div class="cv-row cv-out"><b>' + escapeHTML(x.name) + '</b> \u2014 scartato: ' + x.motivo + '</div>';
+            righe += '<div class="cv-row cv-out"><b>' + escapeHTML(exDisplay(x.name)) + '</b> \u2014 scartato: ' + x.motivo + '</div>';
         });
         (_verif.corretti || []).forEach(function(x){
-            righe += '<div class="cv-row cv-fix"><b>' + escapeHTML(x.name) + '</b> \u2014 ' + x.motivo + '</div>';
+            righe += '<div class="cv-row cv-fix"><b>' + escapeHTML(exDisplay(x.name)) + '</b> \u2014 ' + x.motivo + '</div>';
         });
         vBox.innerHTML = '<div class="cv-hd">\uD83D\uDD0E Verifica automatica</div>' + righe +
             '<div class="cv-note">I parametri mostrati provengono dalle tabelle dell\'app, non dal Coach.</div>';
@@ -7542,7 +7564,7 @@ function protoEditorShowCoachResult(proto, draft, weekIdx, saveBtn, coachBox, co
         var nAdd = 0, nDel = 0, nChg = 0;
         var mkRow = function(e, cls, tag){
             var kg = e.baseWeight ? e.baseWeight + ' kg' : 'CL';
-            return '<div class="cmp-row ' + cls + '"><div class="cmp-nm">' + escapeHTML(e.name) +
+            return '<div class="cmp-row ' + cls + '"><div class="cmp-nm">' + escapeHTML(exDisplay(e.name)) +
                    (tag ? '<span class="cmp-tag ' + tag.c + '">' + tag.t + '</span>' : '') +
                    '</div><div class="cmp-meta">' + escapeHTML(e.sr || '?') + ' \u00b7 ' + kg + '</div></div>';
         };
@@ -7982,7 +8004,7 @@ function protoEditorPersist(proto) {
             proto.exercises.forEach(function(ex) {
                 var div = document.createElement('div');
                 div.className = 'input-group';
-                div.innerHTML = '<input type="text" class="ex-name" placeholder="Cerca esercizio..." oninput="debouncedSearch(this)" value="' + escapeHTML(ex.name) + '"><div class="suggestions"></div><input type="text" class="ex-sr" value="' + escapeHTML(ex.sr) + '"><input type="number" class="ex-weight" placeholder="Kg" min="0" step="0.5" value="' + ex.baseWeight + '">';
+                div.innerHTML = '<input type="text" class="ex-name" placeholder="Cerca esercizio..." oninput="debouncedSearch(this)" value="' + escapeHTML(exDisplay(ex.name)) + '"><div class="suggestions"></div><input type="text" class="ex-sr" value="' + escapeHTML(ex.sr) + '"><input type="number" class="ex-weight" placeholder="Kg" min="0" step="0.5" value="' + ex.baseWeight + '">';
                 inputList.appendChild(div);
             });
         }
@@ -8418,7 +8440,7 @@ function generateDeloadProtocol(mode) {
         var filtered = proto.exercises.filter(function(ex){ return isCompound(ex.name); });
         if (filtered.length === 0) return 'Nessuno';
         return filtered.map(function(ex) {
-            return '- ' + ex.name + ' | ' + ex.sr + ' | ' + (ex.baseWeight || 0) + 'kg';
+            return '- ' + exDisplay(ex.name) + ' | ' + ex.sr + ' | ' + (ex.baseWeight || 0) + 'kg';
         }).join('\n');
     }
 
@@ -8765,7 +8787,7 @@ function renderMtrManager() {
         row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);';
         var nameEl = document.createElement('div');
         nameEl.style.cssText = 'flex:1;font-size:0.68rem;color:#e2e8f0;font-weight:600;';
-        nameEl.textContent = name;
+        nameEl.textContent = exDisplay(name);
         var kgInput = document.createElement('input');
         kgInput.type = 'number';
         kgInput.value = APP.mtrValues[name];
@@ -8999,7 +9021,7 @@ function openDeloadManualForm() {
             row.style.cssText = 'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:9px 12px;display:flex;align-items:center;gap:10px;';
             var info2 = document.createElement('div');
             info2.style.cssText = 'flex:1;min-width:0;';
-            info2.innerHTML = '<div style="font-size:0.75rem;font-weight:700;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + ex.name + '</div>' +
+            info2.innerHTML = '<div style="font-size:0.75rem;font-weight:700;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHTML(exDisplay(ex.name)) + '</div>' +
                 '<div style="font-size:0.62rem;color:#94a3b8;margin-top:1px;">3\u00d78-10 \u00b7 <strong style="color:#cbd5e1;">' +
                 _fmtKg((ex.loads && ex.loads[DELOAD_WEEK]) || ex.baseWeight) + ' kg</strong> nel Deload \u00b7 MTR ' + _fmtKg(ex.max) + ' kg</div>';
             var btnDel = document.createElement('button');
@@ -9964,7 +9986,7 @@ function _pmPesiHtml() {
         var prIcon = (isFinite(prVal) && prVal > 0)
             ? '<span class="m-list-pr" title="Record: ' + _fmtKg(prVal) + ' kg">\uD83C\uDFC6</span>' : '';
         h += '<div class="m-list-row" onclick="openExChart(' + JSON.stringify(n).replace(/"/g, '&quot;') + ')">' +
-                '<div><div class="m-list-name">' + escapeHTML(n) + '</div>' +
+                '<div><div class="m-list-name">' + escapeHTML(exDisplay(n)) + '</div>' +
                 '<div class="m-list-meta">' + (lower ? 'arti inferiori' : 'parte superiore') + '</div></div>' +
                 '<div class="m-list-right">' + prIcon + trend +
                     '<span class="m-list-val">' + (v != null ? v + ' kg' : '\u2014') + '</span>' +
@@ -10310,7 +10332,7 @@ function openExChart(name) {
     _exChartCycle  = 'all';
     var mtr = mtrGet(name);
     var lower = (typeof woIsLowerBody === 'function') ? woIsLowerBody(name) : false;
-    document.getElementById('ex-modal-title').textContent = name;
+    document.getElementById('ex-modal-title').textContent = exDisplay(name);
     document.getElementById('ex-modal-sub').textContent =
         (lower ? 'arti inferiori' : 'parte superiore') + (mtr ? ' \u00b7 MTR ' + mtr + ' kg' : '');
     renderExChartBody();
@@ -11248,7 +11270,7 @@ function initWorkoutPage() {
                     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
                         <div style="display:flex;gap:8px;align-items:center;">
                             <div style="width:20px;height:20px;border-radius:6px;background:rgba(var(--pr,52,211,153),0.12);border:1px solid rgba(var(--pr,52,211,153),0.25);display:flex;align-items:center;justify-content:center;font-size:0.55rem;font-weight:800;color:var(--primary);">${i+1}</div>
-                            <span style="font-size:0.72rem;font-weight:600;">${escapeHTML(exItalian(ex.name))}</span>
+                            <span style="font-size:0.72rem;font-weight:600;">${escapeHTML(exDisplay(ex.name))}</span>
                         </div>
                         <div style="text-align:right;">
                             <div style="font-size:0.65rem;color:var(--primary);font-weight:700;">${kg} kg</div>
@@ -11274,7 +11296,7 @@ function initWorkoutPage() {
             return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
                 <div style="display:flex;gap:8px;align-items:center;">
                     <div style="width:20px;height:20px;border-radius:6px;background:rgba(var(--pr,52,211,153),0.12);border:1px solid rgba(var(--pr,52,211,153),0.25);display:flex;align-items:center;justify-content:center;font-size:0.55rem;font-weight:800;color:var(--primary);">${i+1}</div>
-                    <span style="font-size:0.72rem;font-weight:600;">${escapeHTML(exItalian(ex.name))}</span>
+                    <span style="font-size:0.72rem;font-weight:600;">${escapeHTML(exDisplay(ex.name))}</span>
                 </div>
                 <div style="text-align:right;">
                     <div style="font-size:0.65rem;color:var(--primary);font-weight:700;">${kg} kg</div>
@@ -14442,7 +14464,7 @@ function mealManualClose() {
 // ═══ EXERCISE VIDEO ═══
 function exVideoOpen(name) {
     const overlay = document.getElementById('ex-video-overlay');
-    document.getElementById('ex-video-title').textContent = exItalian(name);
+    document.getElementById('ex-video-title').textContent = exDisplay(name);
     const ytLink = document.getElementById('ex-yt-link');
     if (ytLink) {
         // Use English name for better YouTube results
@@ -14817,7 +14839,7 @@ function woRenderEx() {
 
     // proto name already set in initWorkoutPage
     document.getElementById('wo-ex-num').textContent = `Esercizio ${woState.exIndex+1} di ${totalEx}`;
-    document.getElementById('wo-ex-name').textContent = exItalian(ex.name);
+    document.getElementById('wo-ex-name').textContent = exDisplay(ex.name);
     document.getElementById('wo-ex-scheme').textContent = displaySr + (w === DELOAD_WEEK ? ' 🔄' : '');
     // Isometrico: nessun carico, nessun MTR, si tiene la posizione a tempo
     const isHold = srIsTime(displaySr);
@@ -14918,7 +14940,7 @@ function woRenderExList() {
         return `
         <div class="wo-ex-row ${i < woState.exIndex ? 'completed' : i===woState.exIndex ? 'active' : ''}" onclick="exVideoOpen('${escapeHTML(e.name).replace(/'/g,'\\&apos;')}')">
             <div class="wo-dot"></div>
-            <span class="wo-ex-rname">${escapeHTML(exItalian(e.name))}</span>
+            <span class="wo-ex-rname">${escapeHTML(exDisplay(e.name))}</span>
             <span class="wo-ex-rsr">${escapeHTML(e.sr)}</span>
             ${kgCol}
         </div>`;
@@ -16033,7 +16055,7 @@ function showProtocolInWeekBox(protoId, editMode = false) {
             const row = document.createElement('div');
             row.className = 'exercise-row';
             row.innerHTML = `
-                <div class="exercise-row-content"><span>${escapeHTML(ex.name)}</span><b>${(ex.baseWeight * WEEK_LOADS[APP.selectedViewWeek]).toFixed(1)}kg</b></div>
+                <div class="exercise-row-content"><span>${escapeHTML(exDisplay(ex.name))}</span><b>${(ex.baseWeight * WEEK_LOADS[APP.selectedViewWeek]).toFixed(1)}kg</b></div>
                 <div class="exercise-sr">${escapeHTML(ex.sr)}</div>
             `;
             card.appendChild(row);
@@ -16052,7 +16074,7 @@ function showProtocolInWeekBox(protoId, editMode = false) {
             const row = document.createElement('div');
             row.className = 'exercise-row editable-row';
             row.innerHTML = `
-                <div class="exercise-row-content"><span>${escapeHTML(ex.name)}</span><b>${(ex.baseWeight * WEEK_LOADS[APP.selectedViewWeek]).toFixed(1)}kg</b></div>
+                <div class="exercise-row-content"><span>${escapeHTML(exDisplay(ex.name))}</span><b>${(ex.baseWeight * WEEK_LOADS[APP.selectedViewWeek]).toFixed(1)}kg</b></div>
                 <div class="exercise-sr">${escapeHTML(ex.sr)}</div>
                 <button class="ex-remove-btn" onclick="event.stopPropagation(); removeExFromProtocol('${proto.id}', ${i})" title="Rimuovi">✕</button>
             `;
@@ -16142,7 +16164,7 @@ function removeExFromProtocol(protoId, index) {
     const removed = proto.exercises.splice(index, 1);
     activateProtocol(protoId);
     showProtocolInWeekBox(protoId, true); // stay in edit mode
-    showToast(`"${removed[0]?.name}" rimosso`);
+    showToast(`"${exDisplay(removed[0]?.name)}" rimosso`);
 }
 
 
@@ -16391,7 +16413,7 @@ function updateCurrentWeekDisplay() {
 
     APP.exerciseData.forEach(ex => {
         card.innerHTML += `<div class="exercise-row">
-            <div class="exercise-row-content"><span>${escapeHTML(ex.name)}</span><b>${ex.loads[APP.selectedViewWeek].toFixed(1)}kg</b></div>
+            <div class="exercise-row-content"><span>${escapeHTML(exDisplay(ex.name))}</span><b>${ex.loads[APP.selectedViewWeek].toFixed(1)}kg</b></div>
             <div class="exercise-sr">${escapeHTML(ex.sr)}</div>
         </div>`;
     });
@@ -17366,7 +17388,7 @@ function awkRenderResult(){
       const kg = isTime ? 0 : awkDefaultKg(e.name, P.level);
       const zn = AWK_ZONES[e.zone];
       h += '<div class="ob-ex"><div class="dot" style="background:' + awkRoleColor(e.role) + '"></div>' +
-        '<div class="en">' + escapeHTML(e.name) + '<div class="em">' + awkRoleLabel(e.role) +
+        '<div class="en">' + escapeHTML(exDisplay(e.name)) + '<div class="em">' + awkRoleLabel(e.role) +
         (e.rir ? ' \u00B7 ' + e.rir : '') + ' \u00B7 rec ' + awkFmtRest(e.rest) +
         (isTime ? ' \u00B7 nessun carico' : (kg ? ' \u00B7 ' + kg + ' kg' : ' \u00B7 corpo libero')) +
         '</div></div>' +
@@ -18649,7 +18671,7 @@ function renderExerciseTracker() {
         item.innerHTML = `
             <div class="exercise-dot ${dotClass}" onclick="selectExercise(${idx})" title="Seleziona esercizio"></div>
             <div class="exercise-info">
-                <div class="exercise-name">${escapeHTML(ex.name)}</div>
+                <div class="exercise-name">${escapeHTML(exDisplay(ex.name))}</div>
                 <div class="exercise-sets">${escapeHTML(ex.sr)}</div>
             </div>
             <div class="set-counter ${ex.completedSets === ex.totalSets ? 'completed' : ''}" onclick="manualCompleteSet(${idx})" title="Clicca per completare una serie">${ex.completedSets}/${ex.totalSets}</div>
@@ -18839,7 +18861,7 @@ function activateProtocol(protoId, preserveCurrentWeek = false) {
     proto.exercises.forEach(ex => {
         const div = document.createElement('div');
         div.className = 'input-group';
-        div.innerHTML = `<input type="text" class="ex-name" placeholder="Cerca esercizio..." oninput="debouncedSearch(this)" value="${escapeHTML(ex.name)}"><div class="suggestions"></div><input type="text" class="ex-sr" value="${escapeHTML(ex.sr)}"><input type="number" class="ex-weight" placeholder="Kg" min="0" step="0.5" value="${ex.baseWeight}">`;
+        div.innerHTML = `<input type="text" class="ex-name" placeholder="Cerca esercizio..." oninput="debouncedSearch(this)" value="${escapeHTML(exDisplay(ex.name))}"><div class="suggestions"></div><input type="text" class="ex-sr" value="${escapeHTML(ex.sr)}"><input type="number" class="ex-weight" placeholder="Kg" min="0" step="0.5" value="${ex.baseWeight}">`;
         inputList.appendChild(div);
     });
 
