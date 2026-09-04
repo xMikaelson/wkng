@@ -3984,7 +3984,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '187';
+const APP_VERSION = '188';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -19519,6 +19519,25 @@ async function performFullReset() {
     APP.activeProtocolId = null;
     APP.workoutSeconds = 0;
 
+    // ── Campi che il reset precedente NON toccava e che restavano in memoria ──
+    // Senza questo blocco il grafico "Progressi nei Pesi", i trofei e gli MTR
+    // di ogni esercizio sopravvivevano al reset perché saveState() li ripersisteva
+    // subito dopo la pulizia di STORAGE_KEY, e le viste li leggevano dalla RAM.
+    APP.loadHistory = [];         // storico carichi → grafico Progressi nei Pesi
+    APP.personalRecords = {};     // record personali → trofei/badge PR
+    APP.prMeta = {};              // meta del record (kg, reps, target, data)
+    APP.prLegacy = null;          // archivio record pre-v.168
+    APP._prMigrated = false;      // flag migrazione PR
+    APP.mtrValues = {};           // MTR per esercizio (Massimo Tecnico di Ripetizione)
+    APP.mtrReps = {};             // base di ripetizioni di ogni MTR
+    APP._weekCelebrated = [false, false, false, false, false];
+    APP.overloadNoticeSeen = false;
+    APP.overloadAnswers = {};
+    APP.progressionPending = false;
+    APP.currentSet = 1;
+    APP.restSeconds = 0;
+    APP.currentVisibleWeek = 0;
+
     // Cancella tutti i dati da localStorage
     localStorage.removeItem('awakening_streak_record');
     localStorage.removeItem('awakening_badges');
@@ -19602,6 +19621,12 @@ async function performFullReset() {
     weightUpdateBMI(null);
     initDashboard();
     updateStats();
+    // Ridipinge grafico progressione carichi e pagina Progressi in stato vuoto —
+    // senza questo, se l'utente aveva la pagina Progressi già montata, restavano
+    // visibili i vecchi punti del grafico "Progressi nei Pesi" finché non
+    // navigava altrove.
+    if (typeof updateChart === 'function') updateChart();
+    if (typeof updateProgressPage === 'function') updateProgressPage();
     renderProtocolList();
     showToast('Dati resettati con successo', 'success');
 
