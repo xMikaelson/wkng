@@ -2254,6 +2254,35 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .proto-ex-del { background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.2); border-radius:6px; color:#f87171; font-size:0.6rem; cursor:pointer; width:24px; height:24px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-family:inherit; padding:0; }
         .pe-mtr-btn { background:rgba(0,255,136,0.08); border:1px solid rgba(0,255,136,0.2); border-radius:6px; color:var(--primary); font-size:0.55rem; cursor:pointer; width:22px; height:22px; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:0; font-family:inherit; line-height:1; }
         .pe-hold-tag { background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.25); border-radius:6px; color:#a5b4fc; font-size:0.5rem; font-weight:700; letter-spacing:0.02em; height:22px; padding:0 7px; display:flex; align-items:center; justify-content:center; flex-shrink:0; white-space:nowrap; }
+        /* Corpo libero: puro (grigio, nessun carico) e zavorrabile (ambra, +kg) */
+        .pe-bw-tag { background:rgba(148,163,184,0.1); border:1px solid rgba(148,163,184,0.25); border-radius:6px; color:#94a3b8; font-size:0.5rem; font-weight:700; height:22px; padding:0 7px; display:flex; align-items:center; justify-content:center; flex-shrink:0; white-space:nowrap; }
+        .proto-ex-right .pe-kg.pe-kg-zav { background:rgba(251,191,36,0.07); border-color:rgba(251,191,36,0.28); color:#fbbf24; width:46px; }
+        /* Bottone sostituzione */
+        .pe-swap-btn { background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.3); border-radius:6px; color:#a5b4fc; font-size:0.6rem; cursor:pointer; width:22px; height:22px; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:0; font-family:inherit; line-height:1; }
+        .pe-swap-btn:active { transform:scale(0.9); }
+        /* Pannello sostituzione */
+        #swap-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:9600; display:none; align-items:flex-end; justify-content:center; }
+        #swap-overlay.active { display:flex; }
+        #swap-sheet { width:100%; max-width:520px; background:var(--card); border-radius:18px 18px 0 0; padding:16px 14px calc(20px + env(safe-area-inset-bottom)); max-height:82vh; overflow-y:auto; animation:swapUp 0.26s cubic-bezier(0.22,1,0.36,1); }
+        @keyframes swapUp { from { transform:translateY(100%); } to { transform:translateY(0); } }
+        .swap-top { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:4px; }
+        .swap-title { font-size:0.85rem; font-weight:800; }
+        .swap-sub { font-size:0.62rem; color:#64748b; line-height:1.5; margin-bottom:12px; }
+        .swap-sub b { color:#e2e8f0; }
+        .swap-x { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:#64748b; width:26px; height:26px; border-radius:8px; font-size:0.85rem; cursor:pointer; flex-shrink:0; padding:0; font-family:inherit; }
+        .swap-filters { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:13px; }
+        .swap-chip { font-size:0.52rem; font-weight:700; padding:5px 9px; border-radius:20px; background:rgba(0,255,136,0.08); border:1px solid rgba(0,255,136,0.22); color:var(--primary); }
+        .swap-chip.env { background:rgba(148,163,184,0.08); border-color:rgba(148,163,184,0.2); color:#94a3b8; }
+        .swap-alt { display:flex; align-items:center; gap:10px; padding:11px; border-radius:11px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); margin-bottom:7px; cursor:pointer; }
+        .swap-alt.sel { border-color:rgba(0,255,136,0.45); background:rgba(0,255,136,0.07); }
+        .swap-alt-l { flex:1; min-width:0; }
+        .swap-alt-n { font-size:0.73rem; font-weight:700; margin-bottom:3px; }
+        .swap-alt-m { font-size:0.54rem; color:#64748b; line-height:1.4; }
+        .swap-alt-tag { font-size:0.5rem; font-weight:700; color:#a5b4fc; background:rgba(99,102,241,0.12); border-radius:5px; padding:3px 6px; flex-shrink:0; white-space:nowrap; }
+        .swap-excl { font-size:0.55rem; color:#334155; line-height:1.5; text-align:center; margin:10px 0; }
+        .swap-empty { font-size:0.65rem; color:#64748b; text-align:center; padding:18px 8px; line-height:1.5; }
+        .swap-cta { width:100%; padding:13px; border:none; border-radius:11px; margin-top:6px; background:var(--primary); color:#000; font-family:inherit; font-size:0.78rem; font-weight:800; cursor:pointer; text-transform:none; }
+        .swap-cta:disabled { opacity:0.35; }
         /* Overlay popup MTR — Variante 5 */
         #mtr-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9500; display:none; align-items:center; justify-content:center; padding:16px; }
         #mtr-overlay.active { display:flex; }
@@ -3991,7 +4020,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '189';
+const APP_VERSION = '191';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -7042,6 +7071,34 @@ function buildProtoEditorBox(proto, weekIdx) {
                     showToast('🎯 MTR salvato su tutti i protocolli!', 'success');
                 }, srReps(ex.sr));
             };
+            // Bottone sostituzione: propone alternative per gli stessi muscoli,
+            // limitate all'attrezzatura dichiarata nel wizard.
+            var swapBtn = document.createElement('button');
+            swapBtn.className = 'pe-swap-btn';
+            swapBtn.title = 'Sostituisci esercizio';
+            swapBtn.textContent = '⇄';
+            swapBtn.onclick = function() {
+                var env = proto._env || '';
+                if (!env) {
+                    var nL = (proto.name || '').toLowerCase();
+                    env = (nL.indexOf('casa') !== -1 || nL.indexOf('home') !== -1) ? 'casa' : 'palestra';
+                }
+                swapOpen(ex.name, env, getMuscles(ex.name), function(newName) {
+                    draft[idx].name = newName;
+                    // L'esercizio cambia: carico e Massimo Tecnico del vecchio
+                    // non valgono più, si riparte puliti.
+                    draft[idx].baseWeight = 0;
+                    delete draft[idx].loads;
+                    delete draft[idx].mtrValue;
+                    var recNew = getRecommendedSr(newName, sl);
+                    if (recNew) draft[idx].sr = recNew;
+                    onManualEdit();
+                    rerenderList();
+                    showToast('Sostituito con ' + newName, 'success');
+                }, getMuscles);
+            };
+            right.appendChild(swapBtn);
+
             right.appendChild(srInput);
             // Isometrici (plank e simili): si misurano in secondi a corpo libero,
             // non hanno un carico e quindi non hanno un Massimo Tecnico. Il campo
@@ -7054,6 +7111,23 @@ function buildProtoEditorBox(proto, weekIdx) {
                 holdTag.textContent = '⏱ a tempo';
                 holdTag.title = 'Esercizio isometrico: si misura in secondi, senza carico';
                 right.appendChild(holdTag);
+            } else if (exIsPureBodyweight(ex.name)) {
+                // Corpo libero puro: il carico è il peso del corpo, non si imposta.
+                var bwTag = document.createElement('div');
+                bwTag.className = 'pe-bw-tag';
+                bwTag.textContent = 'corpo libero';
+                bwTag.title = 'Si esegue col peso del corpo: nessun carico da impostare';
+                right.appendChild(bwTag);
+            } else if (exIsLoadableBodyweight(ex.name)) {
+                // Zavorrabile: il bersaglio resta, ma il numero è la zavorra.
+                kgInput.classList.add('pe-kg-zav');
+                kgInput.type = 'text';   // 'number' rifiuterebbe il segno +
+                var zavVal = (ex.loads && ex.loads[weekIdx] != null) ? ex.loads[weekIdx] : (ex.baseWeight || 0);
+                kgInput.value = zavVal ? ('+' + zavVal) : '+0';
+                kgInput.title = 'Zavorra aggiunta al peso del corpo';
+                mtrBtn.title = 'Imposta la zavorra massima';
+                right.appendChild(kgInput);
+                right.appendChild(mtrBtn);
             } else {
                 right.appendChild(kgInput);
                 right.appendChild(mtrBtn);
@@ -8213,6 +8287,142 @@ function woTwoForTwo(name) {
     return last2.every(function(e) { return e.tr > 0 && e.r >= e.tr + 2; });
 }
 
+/* ── Esercizi a corpo libero ────────────────────────────────────────────
+   Due famiglie diverse, che vanno trattate diversamente:
+
+   PURI (push up, crunch, iperestensioni): il carico è il peso del corpo e
+   non si tocca. Nessun Massimo Tecnico, come per gli isometrici.
+
+   ZAVORRABILI (trazioni, chin up, dip): si caricano con un disco alla
+   cintura, ed è la loro progressione principale. Qui il Massimo Tecnico
+   serve, ma il numero è la ZAVORRA AGGIUNTA, non il peso sollevato: chi
+   non si zavorra scrive zero e la riga si comporta come corpo libero puro.
+
+   Il riconoscimento è sul nome canonico, così vale sia in italiano che in
+   inglese. Le varianti con manubrio o bilanciere non sono corpo libero:
+   "pullover con manubrio" contiene "pullover" ma ha un carico vero, per
+   questo si controllano prima le parole che indicano un attrezzo. */
+var BODYWEIGHT_LOADABLE = [
+    'trazioni', 'pull up', 'pullup', 'chin up', 'chinup',
+    'dip', 'dips', 'parallele', 'muscle up'
+];
+var BODYWEIGHT_PURE = [
+    'push up', 'pushup', 'piegamenti', 'flessioni',
+    'crunch', 'sit up', 'situp', 'addominali',
+    'iperestensioni', 'hyperextension', 'back extension',
+    'ponte glutei', 'glute bridge', 'hip thrust a corpo libero',
+    'burpee', 'mountain climber', 'jumping jack',
+    'squat a corpo libero', 'air squat', 'bodyweight squat',
+    'affondi a corpo libero', 'walking lunge',
+    'superman', 'bird dog', 'russian twist'
+];
+// Parole che indicano un attrezzo: se compaiono, l'esercizio ha un carico
+// vero e non va classificato come corpo libero.
+var LOADED_MARKERS = [
+    'manubri', 'manubrio', 'bilanciere', 'kettlebell', 'cavi', 'cavo',
+    'macchina', 'machine', 'dumbbell', 'barbell', 'cable', 'smith',
+    'lat machine', 'pulley', 'zavorrat', 'weighted'
+];
+
+function _exHasLoadedMarker(name) {
+    var n = (name || '').toLowerCase();
+    for (var i = 0; i < LOADED_MARKERS.length; i++) {
+        if (n.indexOf(LOADED_MARKERS[i]) !== -1) return true;
+    }
+    return false;
+}
+function _exMatchesList(name, list) {
+    var n = (typeof exCanonical === 'function' ? exCanonical(name) : (name || ''))
+        .toLowerCase().replace(/[-_/]+/g, ' ');
+    for (var i = 0; i < list.length; i++) {
+        var w = list[i].split(' ');
+        var all = true;
+        for (var j = 0; j < w.length; j++) {
+            if (!new RegExp('\\b' + w[j].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).test(n)) { all = false; break; }
+        }
+        if (all) return true;
+    }
+    return false;
+}
+// Corpo libero che si può zavorrare → tiene il bersaglio, ma chiede la zavorra
+function exIsLoadableBodyweight(name) {
+    if (_exHasLoadedMarker(name)) return false;
+    return _exMatchesList(name, BODYWEIGHT_LOADABLE);
+}
+// Corpo libero puro → nessun carico, nessun bersaglio
+function exIsPureBodyweight(name) {
+    if (_exHasLoadedMarker(name)) return false;
+    return _exMatchesList(name, BODYWEIGHT_PURE);
+}
+
+/* ── Attrezzatura richiesta da un esercizio ──────────────────────────────
+   Dedotta dal nome, perché il catalogo non porta questo dato. Serve a non
+   proporre come alternativa un esercizio che l'atleta non può eseguire:
+   chi si allena in casa con manubri e panca piana non deve vedere la lat
+   machine fra le sostituzioni. */
+function exEquipment(name) {
+    var n = (name || '').toLowerCase();
+    if (/lat machine|pulley|cavi|cavo|cable|pushdown|croci ai cavi/.test(n)) return 'cavi';
+    if (/leg press|hack squat|chest press|pec deck|peck deck|machine|macchina|smith|multipower|leg extension|leg curl/.test(n)) return 'macchina';
+    if (/bilanciere|barbell|stacco|deadlift|panca piana con bilanciere|front squat|good morning|rematore con bilanciere/.test(n)) return 'bilanciere';
+    if (/manubri|manubrio|dumbbell|kettlebell/.test(n)) return 'manubri';
+    if (/sbarra|trazioni|pull up|pullup|chin up|chinup|dip|parallele|push up|pushup|piegamenti|crunch|plank|corpo libero|burpee/.test(n)) return 'corpo libero';
+    return 'altro';
+}
+// Attrezzatura utilizzabile in base a quanto dichiarato nel wizard.
+function envAllowedEquipment(env) {
+    return (env === 'casa')
+        ? ['manubri', 'corpo libero']
+        : ['manubri', 'corpo libero', 'bilanciere', 'cavi', 'macchina', 'altro'];
+}
+var EQUIP_LABEL = {
+    'manubri': 'manubri', 'corpo libero': 'corpo libero', 'bilanciere': 'bilanciere',
+    'cavi': 'cavi', 'macchina': 'macchina', 'altro': 'attrezzo vario'
+};
+
+/* Alternative per un esercizio: stesso gruppo muscolare, attrezzatura
+   compatibile, ordinate mettendo per prime quelle che replicano lo stesso
+   schema di movimento (una panca si sostituisce meglio con un'altra spinta
+   orizzontale che con delle croci). */
+function findExAlternatives(exName, env, limit) {
+    if (typeof ESERCIZI_DB === 'undefined') return { list: [], excluded: [] };
+    var canon = (typeof exCanonical === 'function' ? exCanonical(exName) : exName || '').toLowerCase();
+    var allowed = envAllowedEquipment(env);
+    var srcPattern = (typeof getMovementPattern === 'function') ? getMovementPattern(exName) : null;
+
+    // Gruppo muscolare dell'esercizio di partenza
+    var srcGroup = null;
+    for (var i = 0; i < ESERCIZI_DB.length; i++) {
+        var e = ESERCIZI_DB[i];
+        var nm = (e.nome || '').toLowerCase(), en = (e.en || '').toLowerCase();
+        if (nm === canon || en === canon || nm.indexOf(canon) !== -1 || canon.indexOf(nm) !== -1) {
+            srcGroup = e.gruppo; break;
+        }
+    }
+    if (!srcGroup) return { list: [], excluded: [] };
+
+    var list = [], excluded = [];
+    ESERCIZI_DB.forEach(function(e) {
+        if (e.gruppo !== srcGroup) return;
+        var nm = (e.nome || '').toLowerCase();
+        if (nm === canon) return;                          // è l'esercizio stesso
+        if (typeof exSameExercise === 'function' && exSameExercise(e.nome, exName)) return;
+        var eq = exEquipment(e.nome);
+        if (allowed.indexOf(eq) === -1) { excluded.push(e.nome); return; }
+        list.push({
+            name: e.nome,
+            en: e.en,
+            equip: eq,
+            samePattern: srcPattern && (typeof getMovementPattern === 'function') &&
+                         getMovementPattern(e.nome) === srcPattern
+        });
+    });
+    // Stesso schema di movimento in cima
+    list.sort(function(a, b) { return (b.samePattern ? 1 : 0) - (a.samePattern ? 1 : 0); });
+    if (limit) list = list.slice(0, limit);
+    return { list: list, excluded: excluded };
+}
+
 function srIsTime(sr) {
     // Riconosce sia "3 x 45s" sia un eventuale intervallo ereditato "3 x 40-60s",
     // altrimenti prima della migrazione 40 secondi verrebbero letti come 40 ripetizioni.
@@ -8295,6 +8505,93 @@ var _mtrWeekIdx  = 0;
 var _mtrSlot     = 'forza'; // 'forza' o 'massa'
 var _mtrExName   = '';
 var _mtrSchemeReps = null; // ripetizioni previste dallo schema dell'esercizio
+
+/* ── Sostituzione esercizio ─────────────────────────────────────────────
+   Mostra solo alternative che allenano lo stesso gruppo muscolare e che si
+   possono eseguire con l'attrezzatura dichiarata nel wizard. Le esclusioni
+   vengono elencate in fondo, così l'atleta capisce perché certe opzioni
+   ovvie non compaiono. */
+var _swapCb = null, _swapPick = null;
+
+function swapOpen(exName, env, muscles, callback, muscleFn) {
+    _swapCb = callback; _swapPick = null;
+    var ov = document.getElementById('swap-overlay');
+    if (!ov) return;
+
+    document.getElementById('swap-from').textContent = exItalian(exName) || exName;
+
+    var res = findExAlternatives(exName, env, 8);
+
+    // Etichette: muscoli coinvolti + attrezzatura disponibile
+    var f = document.getElementById('swap-filters');
+    f.innerHTML = '';
+    (muscles || '').split(',').forEach(function(m) {
+        m = m.trim();
+        if (!m) return;
+        var c = document.createElement('span');
+        c.className = 'swap-chip';
+        c.textContent = m;
+        f.appendChild(c);
+    });
+    var envChip = document.createElement('span');
+    envChip.className = 'swap-chip env';
+    envChip.textContent = (env === 'casa') ? '🏠 manubri e panca' : '🏋️ palestra completa';
+    f.appendChild(envChip);
+
+    // Elenco alternative
+    var list = document.getElementById('swap-list');
+    list.innerHTML = '';
+    if (!res.list.length) {
+        list.innerHTML = '<div class="swap-empty">Nessuna alternativa disponibile per questo gruppo muscolare con l\'attrezzatura che hai dichiarato.</div>';
+    } else {
+        res.list.forEach(function(a) {
+            var row = document.createElement('div');
+            row.className = 'swap-alt';
+            var muscTxt = (typeof muscleFn === 'function' ? (muscleFn(a.name) || '') : '');
+            if (!muscTxt) muscTxt = EQUIP_LABEL[a.equip] || a.equip;
+            row.innerHTML = '<div class="swap-alt-l">' +
+                    '<div class="swap-alt-n">' + escapeHTML(a.name) + '</div>' +
+                    '<div class="swap-alt-m">' + escapeHTML(muscTxt) + ' · ' + escapeHTML(EQUIP_LABEL[a.equip] || a.equip) + '</div>' +
+                '</div>' +
+                (a.samePattern ? '<span class="swap-alt-tag">stesso movimento</span>' : '');
+            row.onclick = function() {
+                var all = list.querySelectorAll('.swap-alt');
+                for (var i = 0; i < all.length; i++) all[i].classList.remove('sel');
+                row.classList.add('sel');
+                _swapPick = a.name;
+                var cta = document.getElementById('swap-cta');
+                cta.disabled = false;
+                cta.textContent = 'Sostituisci con ' + a.name;
+            };
+            list.appendChild(row);
+        });
+    }
+
+    // Esclusi per attrezzatura mancante
+    var ex = document.getElementById('swap-excl');
+    ex.textContent = (res.excluded && res.excluded.length)
+        ? 'Non disponibili con la tua attrezzatura: ' + res.excluded.slice(0, 4).join(', ') +
+          (res.excluded.length > 4 ? ' e altri' : '')
+        : '';
+
+    var cta = document.getElementById('swap-cta');
+    cta.disabled = true;
+    cta.textContent = 'Scegli un esercizio';
+    ov.classList.add('active');
+}
+
+function swapClose() {
+    var ov = document.getElementById('swap-overlay');
+    if (ov) ov.classList.remove('active');
+    _swapCb = null; _swapPick = null;
+}
+
+function swapConfirm() {
+    if (!_swapPick) return;
+    var cb = _swapCb, name = _swapPick;
+    swapClose();
+    if (cb) cb(name);
+}
 
 function mtrOpen(exName, weekIdx, slot, callback, defaultReps) {
     _mtrCallback = callback;
@@ -19545,7 +19842,15 @@ function _resetAllDataNow() {
 
 async function performFullReset() {
     // Reset APP state
+    // NOTA: savedProtocols va azzerato QUI (in cima), prima di qualsiasi cosa
+    // che possa triggerare saveState(). saveState() chiama mtrSyncFromProtocols()
+    // che legge ex.mtrValue da APP.savedProtocols e li ripersiste nel dizionario
+    // APP.mtrValues. Se lo azzeriamo dopo il blocco Supabase (che ha await lunghi),
+    // qualsiasi saveState() nel mezzo — timer, event handler, cleanup UI —
+    // ripristina gli MTR appena cancellati.
     APP.exerciseData = [];
+    APP.savedProtocols = [];
+    APP.activeProtocolId = null;
     APP.totalWorkouts = 0;
     APP.startDate = null;
     APP.selectedViewWeek = 0;
@@ -19621,7 +19926,8 @@ async function performFullReset() {
             awLog.warn('Reset Supabase fallito (continuo comunque):', e && e.message);
         }
     }
-    APP.savedProtocols = [];
+    // NOTA: savedProtocols e activeProtocolId gia' azzerati in cima (v.190),
+    // per prevenire il race con mtrSyncFromProtocols durante gli await Supabase.
 
     // Reset flag step3
     APP._step3Done = false;
@@ -20577,6 +20883,23 @@ function homeRefreshData() {
 </script>
     <!-- WEEK COMPLETE OVERLAY -->
     <!-- Overlay MTR (Massimo Tecnico di Ripetizione) — Variante 5 -->
+    <!-- Pannello sostituzione esercizio -->
+    <div id="swap-overlay" onclick="if(event.target===this)swapClose()">
+        <div id="swap-sheet">
+            <div class="swap-top">
+                <div>
+                    <div class="swap-title">Sostituisci esercizio</div>
+                    <div class="swap-sub">Al posto di <b id="swap-from">—</b></div>
+                </div>
+                <button class="swap-x" onclick="swapClose()">✕</button>
+            </div>
+            <div class="swap-filters" id="swap-filters"></div>
+            <div id="swap-list"></div>
+            <div class="swap-excl" id="swap-excl"></div>
+            <button class="swap-cta" id="swap-cta" disabled onclick="swapConfirm()">Scegli un esercizio</button>
+        </div>
+    </div>
+
     <div id="mtr-overlay">
         <div id="mtr-card">
             <div class="mtr-header">
