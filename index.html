@@ -2128,9 +2128,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             color:#a5b4fc; font-family:inherit; font-size:0.66rem; font-weight:800;
             text-transform:none; cursor:pointer; }
         .plan-rest-btn:active { background:rgba(99,102,241,0.28); }
+        /* width/padding/text-transform espliciti contro la regola globale `button` */
+        .plan-reset-btn { width:auto; padding:9px 20px; margin:0; border-radius:14px;
+            border:1px solid rgba(248,113,113,0.45); background:rgba(239,68,68,0.14);
+            color:#fca5a5; font-family:inherit; font-size:0.66rem; font-weight:800;
+            text-transform:none; cursor:pointer; }
+        .plan-reset-btn:active { background:rgba(239,68,68,0.28); transform:scale(0.97); }
+        .plan-reset-btn[disabled] { opacity:0.35; cursor:not-allowed; }
         .plan-chips { display:flex; gap:5px; flex-wrap:wrap; justify-content:center; margin-bottom:14px; }
         .plan-chip { width:40px; height:40px; border-radius:8px; border:1px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.07); display:flex; align-items:center; justify-content:center; font-size:0.55rem; font-weight:700; color:#94a3b8; transition:all 0.18s cubic-bezier(0.34,1.56,0.64,1); cursor:not-allowed; user-select:none; }
-        .plan-chip.assigned { cursor:pointer; border-color:rgba(99,102,241,0.4); background:rgba(99,102,241,0.12); color:#cbd5e1; }
+        .plan-chip.assigned { cursor:pointer; border-color:rgba(var(--ac,99,102,241),0.4); background:rgba(var(--ac,99,102,241),0.12); color:#cbd5e1; }
         .plan-chip.done { width:35px; height:35px; background:var(--primary); border-color:var(--primary); color:#000; font-size:0.82rem; font-weight:900; box-shadow:0 0 0 3px rgba(var(--pr,0,255,136),0.2),0 0 14px rgba(var(--pr,0,255,136),0.5); cursor:pointer; }
         .plan-chip.locked { opacity:0.2; }
         .plan-chip.drag-over { border-color:var(--primary)!important; background:rgba(var(--pr,0,255,136),0.2)!important; transform:scale(1.14); }
@@ -3984,7 +3991,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '188';
+const APP_VERSION = '189';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -6428,6 +6435,51 @@ function renderPlanPage(w) {
         chipsEl.appendChild(chip);
     });
     block.appendChild(chipsEl);
+
+    // Reset assegnazioni del capitolo. Il tap sulla chip non libera più il
+    // giorno (un tocco accidentale toglieva il protocollo senza annulla):
+    // questo è il punto esplicito e reversibile-per-conferma in cui si
+    // svuotano i giorni per riassegnare protocolli diversi.
+    if (isUnlocked) {
+        const resetWrap = document.createElement('div');
+        resetWrap.style.cssText = 'text-align:center;margin:-6px 0 14px;';
+        const resetBtn = document.createElement('button');
+        resetBtn.type = 'button';
+        resetBtn.className = 'plan-reset-btn';
+        resetBtn.textContent = '🔄 Reset giorni';
+        const nAssigned = (APP.dayAssignments[w] || []).filter(function(a){ return !!a; }).length;
+        if (nAssigned === 0) {
+            resetBtn.disabled = true;
+            resetBtn.title = 'Nessun protocollo assegnato in questo capitolo';
+        }
+        resetBtn.onclick = function() {
+            const nDone = (APP.chipStates[w] || []).filter(function(s){ return s === 'done'; }).length;
+            let msg = 'Vuoi liberare tutti i giorni di questo capitolo? I protocolli assegnati verranno rimossi e potrai riassegnarli.';
+            if (nDone > 0) {
+                msg += '\n\nAttenzione: ' + nDone + (nDone === 1 ? ' sessione già completata verrà' : ' sessioni già completate verranno') + ' azzerata' + (nDone === 1 ? '' : 'e') + '.';
+            }
+            awConfirm(msg, function(ok) {
+                if (!ok) return;
+                for (let d = 0; d < 7; d++) {
+                    APP.dayAssignments[w][d] = null;
+                    APP.chipStates[w][d] = 'rest';
+                }
+                APP.totalWorkouts = Math.max(0, APP.totalWorkouts - nDone);
+                APP.completedWeeks[w] = false;
+                if (APP._weekCelebrated) APP._weekCelebrated[w] = false;
+                if (APP.motivationalQuotes) APP.motivationalQuotes[w] = '';
+                saveState();
+                updateStats();
+                renderPlanPage(w);
+                if (document.getElementById('page-progress')?.classList.contains('active')) {
+                    updateProgressPage();
+                }
+                showToast('Giorni liberati: puoi assegnare nuovi protocolli.', 'success');
+            }, { title: 'Reset giorni', okLabel: 'Libera i giorni', danger: true });
+        };
+        resetWrap.appendChild(resetBtn);
+        block.appendChild(resetWrap);
+    }
 
     // Riposo totale: solo nel Deload. Senza questo, chi sceglie il riposo
     // completo non chiude mai la settimana e il Chapter 1 resta bloccato.
