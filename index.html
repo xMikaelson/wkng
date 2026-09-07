@@ -4020,7 +4020,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '192';
+const APP_VERSION = '193';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -7403,7 +7403,11 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
     // corrette: un 5x3 da avanzato veniva segnalato come errore. Ora il prompt
     // riceve la stessa tabella usata dal generatore, differenziata per livello.
     var awkLvl  = proto._awkLevel || 'intermedio';
-    var awkGoal = proto._awkGoal || (tipoAllenamento === 'forza' ? 'full_forza' : 'full_ipertrofia');
+    // Stesso risolutore usato dalle tabelle: in un Hybrid la scheda Upper e'
+    // forza anche se l'obiettivo del protocollo nel suo insieme non lo e'.
+    var awkGoal = (typeof awkGoalOfProto === 'function')
+        ? awkGoalOfProto(proto)
+        : (proto._awkGoal || (tipoAllenamento === 'forza' ? 'full_forza' : 'full_ipertrofia'));
     var pgKey = awkGoal === 'full_forza' ? 'forza'
               : awkGoal === 'calisthenic' ? 'calisthenic' : 'ipertrofia';
     var tab = (typeof AWK_PARAMS !== 'undefined' && AWK_PARAMS[pgKey] && AWK_PARAMS[pgKey][awkLvl])
@@ -7857,9 +7861,37 @@ function awkCatalogFor(equip){
 }
 
 /* Parametri ufficiali per un ruolo, dato il protocollo. */
+/* Obiettivo effettivo di UNA singola scheda.
+   In un Hybrid il protocollo nel suo insieme non e' ne' forza ne' ipertrofia:
+   Upper e Lower si allenano in forza, Push, Pull e Legs in ipertrofia. Finche'
+   si guardava solo l'obiettivo generale, un valore come 'hybrid' non
+   corrispondeva a nessuna tabella e si finiva sempre su ipertrofia, per cui
+   la scheda Upper riceveva 4x8 invece di 5x5. Lo slot, quando c'e', descrive
+   la singola seduta ed e' quindi piu' attendibile dell'obiettivo complessivo. */
+function awkGoalOfProto(proto) {
+    var slot = (typeof protoResolveSlot === 'function')
+        ? protoResolveSlot(proto)
+        : ((proto && proto._splitSlot) || '').toLowerCase();
+
+    if (slot === 'upper' || slot === 'lower') return 'full_forza';
+    if (slot === 'push' || slot === 'pull' || slot === 'legs') return 'full_ipertrofia';
+
+    var g = proto && proto._awkGoal;
+    // 'hybrid' non e' una tabella: senza slot si ricade sull'obiettivo della scheda.
+    if (g && g !== 'hybrid') return g;
+    if (proto && proto.goal === 'forza') return 'full_forza';
+    if (proto && proto.goal === 'calisthenic') return 'calisthenic';
+    return 'full_ipertrofia';
+}
+function awkGoalToTable(goal) {
+    return goal === 'full_forza' ? 'forza'
+         : goal === 'calisthenic' ? 'calisthenic'
+         : 'ipertrofia';
+}
+
 function awkParamsFor(proto, role){
-  const goal = proto._awkGoal || (proto.goal === 'forza' ? 'full_forza' : 'full_ipertrofia');
-  const pg = goal === 'full_forza' ? 'forza' : goal === 'calisthenic' ? 'calisthenic' : 'ipertrofia';
+  const goal = awkGoalOfProto(proto);
+  const pg = awkGoalToTable(goal);
   const lvl = proto._awkLevel || 'intermedio';
   const tab = AWK_PARAMS[pg] && AWK_PARAMS[pg][lvl];
   return tab ? tab[role] : null;
@@ -8499,7 +8531,7 @@ function awkMigrateSr() {
     var changed = 0;
     (APP.savedProtocols || []).forEach(function(p) {
         (p.exercises || []).forEach(function(e) {
-            var nw = awkRangeToFixed(e.sr, e._role, p._awkGoal, p._awkLevel);
+            var nw = awkRangeToFixed(e.sr, e._role, awkGoalOfProto(p), p._awkLevel);
             if (nw !== e.sr) { e.sr = nw; changed++; }
         });
     });
