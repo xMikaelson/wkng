@@ -4020,7 +4020,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '191';
+const APP_VERSION = '192';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -7866,8 +7866,13 @@ function awkParamsFor(proto, role){
 }
 
 /* Riconduce la lista del Coach a dati verificabili.
-   - esercizi gia' presenti nella scheda: serie, ripetizioni e carico
-     restano quelli originali (il Coach non li puo' cambiare);
+   - esercizi gia' presenti nella scheda: il nome e il carico restano quelli
+     dell'atleta, mentre serie e ripetizioni vengono allineate alle tabelle
+     dell'app. Prima restavano invariate anche quando erano sbagliate: il
+     Coach le segnalava fra i punti critici e poi applicando i consigli
+     tornavano identiche, quindi il consiglio non arrivava mai a destinazione.
+     I parametri non li decide il modello, li decide la tabella: cosi' la
+     correzione avviene senza dare al Coach la facolta' di inventare numeri;
    - esercizi nuovi: devono esistere nel catalogo ed essere compatibili
      con l'attrezzatura, e i loro parametri vengono dalle tabelle;
    - tutto il resto viene scartato e mostrato all'atleta. */
@@ -7902,10 +7907,28 @@ function awkVerifyCoachList(suggested, draft, proto){
       } catch (err) { /* nessuna corrispondenza */ }
     }
     if (o) {
-      if (norm(o.sr) !== norm(e.sr) || (o.baseWeight || 0) !== (e.baseWeight || 0)) {
-        corretti.push({ name: o.name, motivo: 'parametri riportati a quelli del protocollo' });
+      // L'esercizio c'e' gia'. Il nome e il carico sono dell'atleta e non si
+      // toccano; serie e ripetizioni vengono invece riportate a quelle giuste
+      // per il tipo di scheda, che e' il motivo per cui il Coach e' stato
+      // interpellato. Il valore viene dalla tabella, non dalla risposta del
+      // modello, cosi' la correzione resta verificabile.
+      var catO  = awkCatalogLookup(o.name);
+      var roleO = o._role || (catO && catO.role) || null;
+      var pO    = roleO ? awkParamsFor(proto, roleO) : null;
+
+      var srO = o.sr, typeO = o._type, zoneO = o._zone;
+      if (pO) {
+        var asTimeO = !!(catO && catO.hold) && pO.t === 'time';
+        var repsO   = asTimeO ? pO.r : (roleO === 'core' ? (pO.rDyn || pO.r) : pO.r);
+        srO   = pO.s + ' x ' + repsO + (asTimeO ? 's' : '');
+        typeO = asTimeO ? 'time' : 'reps';
+        zoneO = asTimeO ? pO.z : (roleO === 'core' ? (pO.zDyn || pO.z) : pO.z);
       }
-      out.push({ name: o.name, sr: o.sr, baseWeight: o.baseWeight, _type: o._type, _role: o._role, _zone: o._zone });
+
+      if (norm(srO) !== norm(o.sr)) {
+        corretti.push({ name: o.name, motivo: 'serie e ripetizioni allineate al tipo di scheda' });
+      }
+      out.push({ name: o.name, sr: srO, baseWeight: o.baseWeight, _type: typeO, _role: roleO || o._role, _zone: zoneO });
       return;
     }
 
