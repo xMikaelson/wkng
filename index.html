@@ -4020,7 +4020,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '193';
+const APP_VERSION = '195';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -4082,14 +4082,31 @@ const DELOAD_WEEK = 4; // indice (0-based) della settimana deload
 const OVERLOAD_WEEK = DELOAD_WEEK - 1; // Chapter 4: ultima settimana di carico
 // Percentuali del baseWeight per ogni settimana
 // Percentuali del MTR, cioè del massimo tecnico ALLE RIPETIZIONI TARGET.
-// La scala sale fino al 100% del massimo tecnico, ma viene applicata al
-// TRAINING MAX (90% dell'MTR) e non all'MTR pieno: l'MTR è un valore da
-// serie singola, mentre lo schema prescrive 4-5 serie a quel carico.
-// È la stessa soluzione del 5/3/1 di Jim Wendler, che programma sul 90%
-// del massimale proprio per rendere completabile il lavoro multi-serie.
-// Risultato sull'MTR: W1:72%  W2:78,3%  W3:84,6%  W4:90%  W5(Deload):84,6%
-const TRAINING_MAX = 0.90;
-const MTR_LADDER   = [0.80, 0.87, 0.94, 1.00, 0.94];
+// La scala dei carichi lungo il ciclo.
+//
+// Prima partiva dal 72% e arrivava al 90% del massimo tecnico. Quella discesa
+// era troppo profonda: il carico veniva ridotto tre volte di fila (l'MTR e' gia'
+// prudente perche' dichiarato con tecnica pulita, poi il training max toglieva
+// un altro 10%, poi il primo capitolo un altro 20%). Il Chapter 1 finiva a
+// lavorare intorno al 65% del massimale reale, dove le ripetizioni previste da
+// una scheda di forza diventano un riscaldamento. Un protocollo di forza non
+// entrava mai nella zona della forza, se non nell'ultimo capitolo.
+//
+// La scala e' ora piu' stretta e piu' alta. Il margine per completare tutte le
+// serie non viene piu' da uno sconto fisso sul carico, ma dalle ripetizioni,
+// che scendono capitolo dopo capitolo mentre il carico sale (vedi AWK_PARAMS).
+// E' la periodizzazione lineare classica: accumulo all'inizio, picco alla fine.
+//
+// Zone risultanti sul massimale stimato, verificate contro ACSM 2009:
+//   forza avanzato      Ch1 77% → Ch4 88%   (zona 1-6 rip sopra l'80%)
+//   forza intermedio    Ch1 73% → Ch4 83%
+//   forza principiante  Ch1 67% → Ch4 77%   (ACSM: carico moderato ai novizi)
+//   ipertrofia          Ch1 67% → Ch4 77%   (zona 6-12 rip)
+// Deload: carico appena sotto il picco e volume dimezzato, secondo la ricerca
+// sul taper (Bosquet 2007; Mujika & Padilla 2003), che indica di ridurre il
+// volume mantenendo l'intensita'.
+const TRAINING_MAX = 1.00;
+const MTR_LADDER   = [0.85, 0.89, 0.93, 0.97, 0.90];
 const WEEK_LOADS   = MTR_LADDER.map(function(p){ return Math.round(p * TRAINING_MAX * 1000) / 1000; });
 const STORAGE_KEY = 'awakening_state';
 
@@ -7415,13 +7432,20 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
     var regoleSerie;
     if (tab) {
         function _zn(k){ return (typeof AWK_ZONES !== 'undefined' && AWK_ZONES[k]) ? AWK_ZONES[k].z : ''; }
+        // Le ripetizioni dipendono dal capitolo in corso, non sono piu' fisse.
+        var _awkCh  = APP.selectedViewWeek || 0;
+        var _pMain  = awkParamsFor(proto, 'main', _awkCh) || tab.main;
+        var _pSec   = awkParamsFor(proto, 'sec',  _awkCh) || tab.sec;
+        var _pIso   = awkParamsFor(proto, 'iso',  _awkCh) || tab.iso;
         regoleSerie =
-            'PARAMETRI DI QUESTO PROTOCOLLO (livello ' + awkLvl + ')\n' +
-            '• Compound primario   → ' + tab.main.s + ' x ' + tab.main.r + '   (zona ' + _zn(tab.main.z) + ')\n' +
-            '• Compound secondario → ' + tab.sec.s  + ' x ' + tab.sec.r  + '   (zona ' + _zn(tab.sec.z)  + ')\n' +
-            '• Isolamento          → ' + tab.iso.s  + ' x ' + tab.iso.r  + '   (zona ' + _zn(tab.iso.z)  + ')\n' +
+            'PARAMETRI DI QUESTO PROTOCOLLO (livello ' + awkLvl + ', ' + (CHAPTER_NAMES[_awkCh] || ('Chapter ' + (_awkCh+1))) + ')\n' +
+            '• Compound primario   → ' + _pMain.s + ' x ' + _pMain.r + '   (zona ' + _zn(tab.main.z) + ')\n' +
+            '• Compound secondario → ' + _pSec.s  + ' x ' + _pSec.r  + '   (zona ' + _zn(tab.sec.z)  + ')\n' +
+            '• Isolamento          → ' + _pIso.s  + ' x ' + _pIso.r  + '   (zona ' + _zn(tab.iso.z)  + ')\n' +
             '• Core isometrico     → ' + tab.core.s + ' x ' + tab.core.r + 's  (zona ' + _zn(tab.core.z) + ')\n\n' +
-            'Queste ripetizioni sono gia\' corrette e derivano da ACSM 2009 e Schoenfeld 2017.\n' +
+            'Le ripetizioni cambiano da un capitolo all\'altro: scendono man mano che\n' +
+            'il carico sale. Quelle sopra valgono per il capitolo in corso e derivano\n' +
+            'da ACSM 2009 e Schoenfeld 2017.\n' +
             'NON modificarle e NON segnalarle come errore. Le zone tra parentesi sono\n' +
             'informative: la prescrizione e\' il numero secco, perche\' l\'MTR e\' definito\n' +
             'per un dato numero di ripetizioni.\n' +
@@ -7869,6 +7893,13 @@ function awkCatalogFor(equip){
    la scheda Upper riceveva 4x8 invece di 5x5. Lo slot, quando c'e', descrive
    la singola seduta ed e' quindi piu' attendibile dell'obiettivo complessivo. */
 function awkGoalOfProto(proto) {
+    // Il calisthenic e' un obiettivo a se': anche quando e' diviso in sedute
+    // (Upper, Push...) resta calisthenic, perche' il carico e' il peso del
+    // corpo e la progressione passa dalla variante, non dai chili. La regola
+    // che segue, che fa decidere alla singola seduta, vale solo per l'Hybrid.
+    var declared = (proto && proto._awkGoal) || (proto && proto.goal) || '';
+    if (declared === 'calisthenic') return 'calisthenic';
+
     var slot = (typeof protoResolveSlot === 'function')
         ? protoResolveSlot(proto)
         : ((proto && proto._splitSlot) || '').toLowerCase();
@@ -7889,12 +7920,60 @@ function awkGoalToTable(goal) {
          : 'ipertrofia';
 }
 
-function awkParamsFor(proto, role){
+function awkParamsFor(proto, role, chIdx){
   const goal = awkGoalOfProto(proto);
   const pg = awkGoalToTable(goal);
   const lvl = proto._awkLevel || 'intermedio';
   const tab = AWK_PARAMS[pg] && AWK_PARAMS[pg][lvl];
-  return tab ? tab[role] : null;
+  const p = tab ? tab[role] : null;
+  if (!p) return null;
+
+  // Le ripetizioni scendono capitolo dopo capitolo mentre il carico sale.
+  // Senza indice si restituisce il primo capitolo, che e' lo schema di
+  // partenza del ciclo.
+  var ch = (typeof chIdx === 'number') ? chIdx : 0;
+  if (!p.rc) return p;
+
+  var isDeload = (ch === DELOAD_WEEK);
+  // Nel deload si dimezzano le serie. Il capitolo da cui prendere le
+  // ripetizioni dipende da come progredisce il ciclo: dove il carico sale,
+  // il picco e' l'ultimo capitolo e il deload parte da li' scaricando il
+  // carico; nel calisthenic invece il carico e' il peso del corpo e non
+  // scende mai, quindi l'unico modo di alleggerire e' tornare al capitolo
+  // con meno ripetizioni, che e' il primo.
+  var caliMode = (awkGoalOfProto(proto) === 'calisthenic');
+  var srcCh = isDeload ? (caliMode ? 0 : DELOAD_WEEK - 1) : ch;
+  if (srcCh < 0) srcCh = 0;
+  if (srcCh > p.rc.length - 1) srcCh = p.rc.length - 1;
+
+  var out = {};
+  for (var k in p) if (Object.prototype.hasOwnProperty.call(p, k)) out[k] = p[k];
+  out.r = p.rc[srcCh];
+  // Nel deload si dimezzano le serie e si tengono ripetizioni e carico.
+  if (isDeload) out.s = Math.max(2, Math.round(p.s * 0.5));
+  return out;
+}
+
+/* Schema serie x ripetizioni di un esercizio in un dato capitolo.
+   Lo schema salvato sull'esercizio resta quello di partenza; qui viene
+   adattato al capitolo, perche' le ripetizioni calano man mano che il
+   carico sale. Sugli isometrici cambiano solo le serie: la durata resta. */
+/* Protocollo attivo, per risolvere lo schema del capitolo corrente. */
+function awkActiveProto() {
+  return (APP.savedProtocols || []).find(function(p) { return p.id === APP.activeProtocolId; }) || null;
+}
+
+function srForChapter(ex, chIdx, proto) {
+  var base = ex && ex.sr;
+  if (!base) return base;
+  if (srIsTime(base)) {
+    return (chIdx === DELOAD_WEEK) ? woDeloadSr(base) : base;
+  }
+  var role = ex._role;
+  var p = (role && proto) ? awkParamsFor(proto, role, chIdx) : null;
+  if (p && p.s && p.r) return p.s + ' x ' + p.r;
+  // Senza ruolo noto si conserva il comportamento precedente.
+  return (chIdx === DELOAD_WEEK) ? woDeloadSr(base) : base;
 }
 
 /* Riconduce la lista del Coach a dati verificabili.
@@ -7946,7 +8025,7 @@ function awkVerifyCoachList(suggested, draft, proto){
       // modello, cosi' la correzione resta verificabile.
       var catO  = awkCatalogLookup(o.name);
       var roleO = o._role || (catO && catO.role) || null;
-      var pO    = roleO ? awkParamsFor(proto, roleO) : null;
+      var pO    = roleO ? awkParamsFor(proto, roleO, APP.selectedViewWeek || 0) : null;
 
       var srO = o.sr, typeO = o._type, zoneO = o._zone;
       if (pO) {
@@ -7976,7 +8055,7 @@ function awkVerifyCoachList(suggested, draft, proto){
       return;
     }
     // 4. Parametri e carico presi dalle tabelle, non dal modello
-    const p = awkParamsFor(proto, cat.role);
+    const p = awkParamsFor(proto, cat.role, APP.selectedViewWeek || 0);
     const asTime = !!cat.hold && p && p.t === 'time';
     const reps = p ? (asTime ? p.r : (cat.role === 'core' ? (p.rDyn || p.r) : p.r)) : null;
     const sr = p ? (p.s + ' x ' + reps + (asTime ? 's' : '')) : e.sr;
@@ -9895,7 +9974,7 @@ function cheatLeveling() {
                 var prev = (ex.loads && typeof ex.loads[wIdx] === 'number') ? ex.loads[wIdx] : (ex.baseWeight || 0);
                 if (!(prev > 0)) return; // esercizio a corpo libero / senza carico: salta lo storico numerico
 
-                var displaySr = (wIdx === DELOAD_WEEK) ? woDeloadSr(ex.sr) : ex.sr;
+                var displaySr = srForChapter(ex, wIdx, protoRef || awkActiveProto());
                 var tr = srReps(displaySr); // null se a tempo
                 var usedKg = prev;
                 var reps = tr;
@@ -11678,7 +11757,7 @@ function initWorkoutPage() {
                         </div>
                         <div style="text-align:right;">
                             <div style="font-size:0.65rem;color:var(--primary);font-weight:700;">${kg} kg</div>
-                            <div style="font-size:0.55rem;color:#94a3b8;">${escapeHTML(woDeloadSr(ex.sr))}</div>
+                            <div style="font-size:0.55rem;color:#94a3b8;">${escapeHTML(srForChapter(ex, DELOAD_WEEK, awkActiveProto()))}</div>
                         </div>
                     </div>`;
                 }).join('')}`;
@@ -11696,7 +11775,7 @@ function initWorkoutPage() {
         woState._exListHtml = `<div style="font-size:0.55rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;font-weight:700;">Programma · ${protoName}</div>
         ${exData.map((ex,i) => {
             const kg = ex.loads ? ex.loads[kgW].toFixed(1) : (ex.baseWeight||0);
-            const srDisplay = isDeload ? woDeloadSr(ex.sr) : ex.sr;
+            const srDisplay = srForChapter(ex, kgW, awkActiveProto());
             return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
                 <div style="display:flex;gap:8px;align-items:center;">
                     <div style="width:20px;height:20px;border-radius:6px;background:rgba(var(--pr,52,211,153),0.12);border:1px solid rgba(var(--pr,52,211,153),0.25);display:flex;align-items:center;justify-content:center;font-size:0.55rem;font-weight:800;color:var(--primary);">${i+1}</div>
@@ -15237,7 +15316,7 @@ function woRenderEx() {
     const kg = ex.loads ? ex.loads[w].toFixed(1) : (ex.baseWeight||0);
     const totalEx = exData.length;
     // In deload week: usa serie ridotte
-    const displaySr = (w === DELOAD_WEEK) ? woDeloadSr(ex.sr) : ex.sr;
+    const displaySr = srForChapter(ex, w, awkActiveProto());
     const srParts = displaySr ? displaySr.match(/(\d+)\s*[xX×]\s*(\d+)/) : null;
     const totalSets = srParts ? parseInt(srParts[1]) : 3;
 
@@ -15314,7 +15393,7 @@ function woStartHold() {
     const ex = exData[woState.exIndex];
     if (!ex || woState.holdRunning) return;
     const w = APP.selectedViewWeek || 0;
-    const displaySr = (w === DELOAD_WEEK) ? woDeloadSr(ex.sr) : ex.sr;
+    const displaySr = srForChapter(ex, w, awkActiveProto());
     const dur = srDuration(displaySr);
     if (!dur) return;
     woState.holdSecs = dur;
@@ -15909,7 +15988,7 @@ function woCompleteSet() {
     const ex = exData[woState.exIndex];
     if (!ex) return;
     const w = APP.selectedViewWeek || 0;
-    const displaySr = (w === DELOAD_WEEK) ? woDeloadSr(ex.sr) : ex.sr;
+    const displaySr = srForChapter(ex, w, awkActiveProto());
     const srParts = displaySr ? displaySr.match(/(\d+)\s*[xX×]\s*(\d+)/) : null;
     const totalSets = srParts ? parseInt(srParts[1]) : 3;
 
@@ -17405,19 +17484,19 @@ const AWK_ZONES = {
 
 const AWK_PARAMS = {
   forza: {
-    principiante: { main:{s:3,r:8,z:'forza_novi',rest:180,rir:'RIR 2\u20133'}, sec:{s:3,r:10,z:'forza_novi',rest:150,rir:'RIR 2'}, iso:{s:3,r:8,z:'forza_acc',rest:90,rir:'RIR 1\u20132'}, core:{s:3,r:30,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
-    intermedio:   { main:{s:4,r:4,z:'forza_main',rest:240,rir:'RIR 1\u20132'}, sec:{s:3,r:5,z:'forza_main',rest:180,rir:'RIR 2'}, iso:{s:3,r:8,z:'forza_acc',rest:90,rir:'RIR 1'}, core:{s:3,r:40,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
-    avanzato:     { main:{s:5,r:3,z:'forza_main',rest:300,rir:'RIR 0\u20131'}, sec:{s:4,r:5,z:'forza_main',rest:240,rir:'RIR 1'}, iso:{s:3,r:10,z:'forza_acc',rest:90,rir:'RIR 1'}, core:{s:4,r:45,rDyn:15,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} }
+    principiante: { main:{s:3,r:8,rc:[12,10,9,8],z:'forza_novi',rest:180,rir:'RIR 2\u20133'}, sec:{s:3,r:10,rc:[12,10,9,8],z:'forza_novi',rest:150,rir:'RIR 2'}, iso:{s:3,r:8,rc:[12,10,10,10],z:'forza_acc',rest:90,rir:'RIR 1\u20132'}, core:{s:3,r:30,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
+    intermedio:   { main:{s:4,r:4,rc:[8,6,5,4],z:'forza_main',rest:240,rir:'RIR 1\u20132'}, sec:{s:3,r:5,rc:[8,7,6,5],z:'forza_main',rest:180,rir:'RIR 2'}, iso:{s:3,r:8,rc:[10,9,8,8],z:'forza_acc',rest:90,rir:'RIR 1'}, core:{s:3,r:40,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
+    avanzato:     { main:{s:5,r:3,rc:[6,5,4,3],z:'forza_main',rest:300,rir:'RIR 0\u20131'}, sec:{s:4,r:5,rc:[6,6,5,5],z:'forza_main',rest:240,rir:'RIR 1'}, iso:{s:3,r:10,rc:[10,10,9,8],z:'forza_acc',rest:90,rir:'RIR 1'}, core:{s:4,r:45,rDyn:15,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} }
   },
   ipertrofia: {
-    principiante: { main:{s:3,r:8,z:'iper_main',rest:150,rir:'RIR 2\u20133'}, sec:{s:3,r:10,z:'iper_main',rest:120,rir:'RIR 2'}, iso:{s:2,r:12,z:'iper_wide',rest:75,rir:'RIR 1\u20132'}, core:{s:3,r:30,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
-    intermedio:   { main:{s:4,r:8,z:'iper_main',rest:180,rir:'RIR 1\u20132'}, sec:{s:3,r:12,z:'iper_main',rest:120,rir:'RIR 1\u20132'}, iso:{s:3,r:12,z:'iper_wide',rest:75,rir:'RIR 1'}, core:{s:3,r:40,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
-    avanzato:     { main:{s:4,r:8,z:'iper_main',rest:180,rir:'RIR 1'}, sec:{s:4,r:12,z:'iper_main',rest:120,rir:'RIR 1'}, iso:{s:4,r:15,z:'iper_wide',rest:75,rir:'RIR 0\u20131'}, core:{s:4,r:45,rDyn:15,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} }
+    principiante: { main:{s:3,r:8,rc:[14,12,11,10],z:'iper_main',rest:150,rir:'RIR 2\u20133'}, sec:{s:3,r:10,rc:[14,12,11,10],z:'iper_main',rest:120,rir:'RIR 2'}, iso:{s:2,r:12,rc:[15,14,13,12],z:'iper_wide',rest:75,rir:'RIR 1\u20132'}, core:{s:3,r:30,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
+    intermedio:   { main:{s:4,r:8,rc:[12,10,8,7],z:'iper_main',rest:180,rir:'RIR 1\u20132'}, sec:{s:3,r:12,rc:[14,12,11,10],z:'iper_main',rest:120,rir:'RIR 1\u20132'}, iso:{s:3,r:12,rc:[15,14,13,12],z:'iper_wide',rest:75,rir:'RIR 1'}, core:{s:3,r:40,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
+    avanzato:     { main:{s:4,r:8,rc:[12,10,8,6],z:'iper_main',rest:180,rir:'RIR 1'}, sec:{s:4,r:12,rc:[14,12,10,9],z:'iper_main',rest:120,rir:'RIR 1'}, iso:{s:4,r:15,rc:[16,15,14,12],z:'iper_wide',rest:75,rir:'RIR 0\u20131'}, core:{s:4,r:45,rDyn:15,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} }
   },
   calisthenic: {
-    principiante: { main:{s:3,r:6,z:'cali_main',rest:150,rir:'RIR 2\u20133'}, sec:{s:3,r:10,z:'iper_main',rest:120,rir:'RIR 2'}, iso:{s:3,r:12,z:'iper_wide',rest:75,rir:'RIR 1\u20132'}, core:{s:3,r:20,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
-    intermedio:   { main:{s:4,r:6,z:'cali_main',rest:180,rir:'RIR 1\u20132'}, sec:{s:3,r:10,z:'iper_main',rest:120,rir:'RIR 1\u20132'}, iso:{s:3,r:12,z:'iper_wide',rest:75,rir:'RIR 1'}, core:{s:4,r:30,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
-    avanzato:     { main:{s:5,r:5,z:'cali_main',rest:240,rir:'RIR 1'}, sec:{s:4,r:10,z:'iper_main',rest:150,rir:'RIR 1'}, iso:{s:4,r:15,z:'iper_wide',rest:75,rir:'RIR 0\u20131'}, core:{s:4,r:45,rDyn:15,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} }
+    principiante: { main:{s:3,r:6,rc:[6,7,8,10],z:'cali_main',rest:150,rir:'RIR 2\u20133'}, sec:{s:3,r:10,rc:[9,10,11,12],z:'iper_main',rest:120,rir:'RIR 2'}, iso:{s:3,r:12,rc:[12,13,14,15],z:'iper_wide',rest:75,rir:'RIR 1\u20132'}, core:{s:3,r:20,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
+    intermedio:   { main:{s:4,r:6,rc:[6,7,9,10],z:'cali_main',rest:180,rir:'RIR 1\u20132'}, sec:{s:3,r:10,rc:[9,10,11,12],z:'iper_main',rest:120,rir:'RIR 1\u20132'}, iso:{s:3,r:12,rc:[12,13,14,15],z:'iper_wide',rest:75,rir:'RIR 1'}, core:{s:4,r:30,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
+    avanzato:     { main:{s:5,r:5,rc:[5,6,7,8],z:'cali_main',rest:240,rir:'RIR 1'}, sec:{s:4,r:10,rc:[9,10,11,12],z:'iper_main',rest:150,rir:'RIR 1'}, iso:{s:4,r:15,rc:[12,13,14,16],z:'iper_wide',rest:75,rir:'RIR 0\u20131'}, core:{s:4,r:45,rDyn:15,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} }
   }
 };
 
@@ -20099,7 +20178,7 @@ function _lhUpsert(ex, wIdx, onlyIfExists) {
     var prev = awRoundKg(ex.loads ? (ex.loads[wIdx] || ex.baseWeight || 0) : (ex.baseWeight || 0));
     if (!prev) return;
     var used = (parseFloat(ex._sessionKg) > 0) ? Math.round(parseFloat(ex._sessionKg) * 10) / 10 : prev;
-    var displaySr = (wIdx === DELOAD_WEEK) ? woDeloadSr(ex.sr) : ex.sr;
+    var displaySr = srForChapter(ex, wIdx, protoRef || awkActiveProto());
     var tr = srReps(displaySr);
     var r  = (typeof ex._sessionReps === 'number' && ex._sessionReps > 0) ? ex._sessionReps : null;
     var eq = (r && tr) ? woEquivalentLoad(used, r, tr) : used;
@@ -20984,7 +21063,7 @@ function homeRefreshData() {
                     <div class="mtr-block-row"><span class="mtr-block-ch">Deload 85%</span><span class="mtr-block-kg" id="mf4" style="color:#94a3b8">—</span></div>
                 </div>
             </div>
-            <div class="mtr-note">📖 Il MTR è il carico più alto che riesci a tenere per le ripetizioni indicate <strong>prima che la tecnica si sporchi</strong>. Il ciclo lavora sul 90% di questo valore, così puoi completare tutte le serie e non solo la prima.</div>
+            <div class="mtr-note">📖 Il MTR è il carico più alto che riesci a tenere per le ripetizioni indicate <strong>prima che la tecnica si sporchi</strong>. Lungo il ciclo il carico sale mentre le ripetizioni scendono: parti con più ripetizioni e un carico più gestibile, e arrivi al Chapter 4 con il carico più alto e poche ripetizioni.</div>
             <button id="mtr-apply" onclick="mtrApply()">✓ Applica ai carichi</button>
             <button id="mtr-cancel" onclick="mtrClose()">Annulla</button>
         </div>
