@@ -4020,7 +4020,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '195';
+const APP_VERSION = '196';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -7963,13 +7963,48 @@ function awkActiveProto() {
   return (APP.savedProtocols || []).find(function(p) { return p.id === APP.activeProtocolId; }) || null;
 }
 
+/* Ruolo di un esercizio quando il nome esatto non e' in catalogo.
+   Cerca le voci che cominciano con lo stesso nome ("Alzate Laterali" trova
+   "Alzate Laterali con Manubri" e "ai Cavi") e accetta il ruolo solo se
+   tutte concordano. Se le varianti hanno ruoli diversi non si indovina:
+   meglio lasciare lo schema salvato che assegnarne uno sbagliato.
+   Serve solo a scegliere le ripetizioni, non a identificare l'esercizio,
+   quindi un accostamento per prefisso e' accettabile qui e non altrove. */
+function awkRoleGuess(name) {
+  if (typeof AWK_POOL === 'undefined' || typeof AWK_POOL_ROLE === 'undefined') return null;
+  var q = (name || '').toString().trim().toLowerCase().replace(/[-_]+/g, ' ');
+  if (q.length < 4) return null;
+  var found = null;
+  var keys = Object.keys(AWK_POOL);
+  for (var i = 0; i < keys.length; i++) {
+    var arr = AWK_POOL[keys[i]] || [];
+    for (var j = 0; j < arr.length; j++) {
+      var n = (arr[j].n || '').toLowerCase().replace(/[-_]+/g, ' ');
+      if (n.indexOf(q) !== 0) continue;
+      var r = AWK_POOL_ROLE[keys[i]] || 'iso';
+      if (found === null) found = r;
+      else if (found !== r) return null;   // varianti discordi: non si indovina
+    }
+  }
+  return found;
+}
+
 function srForChapter(ex, chIdx, proto) {
   var base = ex && ex.sr;
   if (!base) return base;
   if (srIsTime(base)) {
     return (chIdx === DELOAD_WEEK) ? woDeloadSr(base) : base;
   }
+  // Il ruolo (fondamentale, secondario, isolamento) e' quello che dice quante
+  // ripetizioni spettano al capitolo. I protocolli creati prima che il ruolo
+  // venisse salvato non ce l'hanno: in quel caso si ricava dal catalogo, cosi'
+  // anche le schede vecchie seguono la progressione senza doverle rifare.
   var role = ex._role;
+  if (!role && typeof awkCatalogLookup === 'function') {
+    var cat = awkCatalogLookup(ex.name);
+    if (cat && cat.role) role = cat.role;
+  }
+  if (!role) role = awkRoleGuess(ex.name);
   var p = (role && proto) ? awkParamsFor(proto, role, chIdx) : null;
   if (p && p.s && p.r) return p.s + ' x ' + p.r;
   // Senza ruolo noto si conserva il comportamento precedente.
