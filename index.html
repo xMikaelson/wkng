@@ -4020,7 +4020,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '196';
+const APP_VERSION = '198';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -7575,7 +7575,13 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
         '   Non consigliare nulla che non sia gia\' applicato nella lista: se scrivi\n' +
         '   "aggiungi un calf raise", quel calf raise deve essere nella lista.\n' +
         '   Se invece la scheda va bene cosi\', riporta la lista identica e non\n' +
-        '   proporre aggiunte.\n\n' +
+        '   proporre aggiunte.\n' +
+        '7. La LISTA DEFINITIVA deve essere COMPLETA: riscrivi TUTTI gli esercizi\n' +
+        '   che restano, uno per riga, anche quelli che vanno bene e che non stai\n' +
+        '   cambiando. Non abbreviare, non scrivere "gli altri restano invariati",\n' +
+        '   non fermarti dopo i primi. Se la scheda ha ' + draft.length + ' esercizi e non ne togli\n' +
+        '   nessuno, la lista deve avere ' + draft.length + ' righe.\n' +
+        '   Tieni il testo dei commenti breve per avere spazio a sufficienza.\n\n' +
         'Struttura della risposta. Devi usare ESATTAMENTE queste tre intestazioni,\n' +
         'ognuna su una riga sua, nell\'ordine indicato. Sotto ogni intestazione\n' +
         'scrivi a discorso, come parleresti a un atleta che hai davanti: dagli del\n' +
@@ -7634,7 +7640,10 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
         },
         body: JSON.stringify({
             messages: [{ role: 'user', content: prompt }],
-            max_tokens: 700
+            // La lista definitiva sta in fondo alla risposta: con un tetto
+            // stretto una risposta prolissa la troncava a meta', e gli
+            // esercizi rimasti fuori sparivano dalla scheda.
+            max_tokens: 1500
         })
     })
     .then(function(r) { return r.json(); })
@@ -7689,7 +7698,8 @@ function protoEditorShowCoachResult(proto, draft, weekIdx, saveBtn, coachBox, co
     // Confronto affiancato: a sinistra la lista attuale, a destra quella del
     // Coach. Cosi' si vede cosa cambierebbe prima di premere "Applica".
     // Trasparenza: l'atleta deve vedere cosa e' stato scartato e perche'
-    if ((_verif.scartati && _verif.scartati.length) || (_verif.corretti && _verif.corretti.length)) {
+    if ((_verif.scartati && _verif.scartati.length) || (_verif.corretti && _verif.corretti.length)
+        || (_verif.mantenuti && _verif.mantenuti.length) || _verif.riordinati) {
         var vBox = document.createElement('div');
         vBox.className = 'coach-verif';
         var righe = '';
@@ -7699,6 +7709,15 @@ function protoEditorShowCoachResult(proto, draft, weekIdx, saveBtn, coachBox, co
         (_verif.corretti || []).forEach(function(x){
             righe += '<div class="cv-row cv-fix"><b>' + escapeHTML(exDisplay(x.name)) + '</b> \u2014 ' + x.motivo + '</div>';
         });
+        // Esercizi che il Coach non ha citato e che restano in scheda
+        if (_verif.mantenuti && _verif.mantenuti.length) {
+            righe += '<div class="cv-row cv-fix">' + _verif.mantenuti.length +
+                (_verif.mantenuti.length === 1 ? ' esercizio mantenuto' : ' esercizi mantenuti') +
+                ': il Coach non li ha citati, quindi restano in scheda</div>';
+        }
+        if (_verif.riordinati) {
+            righe += '<div class="cv-row cv-fix">Ordine di esecuzione sistemato: fondamentali all\'inizio, isolamenti dopo, core in chiusura</div>';
+        }
         vBox.innerHTML = '<div class="cv-hd">\uD83D\uDD0E Verifica automatica</div>' + righe +
             '<div class="cv-note">I parametri mostrati provengono dalle tabelle dell\'app, non dal Coach.</div>';
         coachBox.appendChild(vBox);
@@ -7828,7 +7847,7 @@ function awkCatalogIndex(){
   };
   Object.keys(AWK_POOL).forEach(function(k){
     AWK_POOL[k].forEach(function(ex){
-      const val = { name: ex.n, eq: ex.eq, hold: !!ex.hold, role: AWK_POOL_ROLE[k] || 'iso' };
+      const val = { name: ex.n, eq: ex.eq, hold: !!ex.hold, role: AWK_POOL_ROLE[k] || 'iso', grp: k };
       put(ex.n, val);
       try {
         if (typeof exNormKey === 'function') put(exNormKey(ex.n), val);
@@ -8022,6 +8041,44 @@ function srForChapter(ex, chIdx, proto) {
    - esercizi nuovi: devono esistere nel catalogo ed essere compatibili
      con l'attrezzatura, e i loro parametri vengono dalle tabelle;
    - tutto il resto viene scartato e mostrato all'atleta. */
+/* Ordine di esecuzione degli esercizi dentro una seduta.
+   Tre criteri, presi dalle raccomandazioni ACSM 2009 e dal manuale NSCA
+   (Baechle & Earle):
+     - i multiarticolari vanno prima dei monoarticolari, perche' richiedono
+       piu' coordinazione e carico e vanno affrontati da freschi;
+     - fra i multiarticolari vengono prima quelli che muovono piu' massa
+       (accosciata e piegamento d'anca prima di spinte e tirate);
+     - gli isolamenti seguono l'ordine dei gruppi dal piu' grande al piu'
+       piccolo, e il core chiude, perche' affaticare gli stabilizzatori
+       prima dei fondamentali peggiora la tecnica e la sicurezza.
+   La revisione di Simao e colleghi (Sports Medicine, 2012) mostra che gli
+   esercizi messi all'inizio rendono di piu' a prescindere dal gruppo, il che
+   e' l'altra ragione per cui i fondamentali stanno davanti. */
+var AWK_ORDER = {
+  // Multiarticolari — catena inferiore, i piu' impegnativi
+  SQUAT:10, HINGE:11, C_LEG:12, C_LEG2:13,
+  // Multiarticolari — spinta
+  HPUSH:20, HPUSH2:21, VPUSH:22, C_PUSH:23, C_PUSH2:24, C_VPUSH:25,
+  // Multiarticolari — tirata
+  VPULL:30, HPULL:31, C_PULL:32, C_PULL2:33, C_ROW:34,
+  // Isolamento — dal gruppo piu' grande al piu' piccolo
+  QUAD:40, HAM:41, CHESTISO:42, LATDELT:43, REARDELT:44, TRI:45, BIC:46, CALF:47,
+  // Core in chiusura
+  CORE:60, C_CORE:61, C_CORE2:62
+};
+/* Peso d'ordinamento di un esercizio. Senza famiglia nota si usa il ruolo,
+   cosi' anche un esercizio aggiunto a mano finisce nella zona giusta. */
+function awkOrderWeight(ex) {
+  var cat = (typeof awkCatalogLookup === 'function') ? awkCatalogLookup(ex.name) : null;
+  if (cat && cat.grp && AWK_ORDER[cat.grp] != null) return AWK_ORDER[cat.grp];
+  var role = ex._role || (cat && cat.role);
+  if (role === 'main' || role === 'sec') return 26;   // fra i multiarticolari
+  if (role === 'core') return 60;
+  if (role === 'iso')  return 44;
+  if (typeof srIsTime === 'function' && srIsTime(ex.sr)) return 60;  // isometrico
+  return 50;
+}
+
 function awkVerifyCoachList(suggested, draft, proto){
   const norm = function(x){ return (x || '').toString().trim().toLowerCase(); };
   const idx = awkCatalogIndex();
@@ -8105,7 +8162,58 @@ function awkVerifyCoachList(suggested, draft, proto){
     });
   });
 
-  return { list: out, scartati: scartati, corretti: corretti };
+  /* Esercizi della scheda che il Coach non ha riscritto.
+     La lista finale veniva costruita solo con cio' che il Coach riscriveva,
+     quindi bastava che ne dimenticasse uno perche' sparisse dalla scheda. E'
+     un rischio concreto: la lista sta in fondo alla risposta, e se il modello
+     si dilunga viene troncata. E' cosi' che una scheda Push si e' ritrovata
+     con un solo esercizio, pur essendo gli altri quattro corretti e citati
+     nel testo del consiglio.
+     Un'omissione non e' una bocciatura: chi non viene nominato resta, con le
+     serie allineate alle tabelle come per gli altri. Per togliere un esercizio
+     resta la ✕ nell'elenco, che e' una scelta esplicita dell'atleta. */
+  var giaPresenti = {};
+  out.forEach(function(e){ giaPresenti[norm(e.name)] = true; });
+  var mantenuti = [];
+  (draft || []).forEach(function(o){
+    if (!o || !o.name || giaPresenti[norm(o.name)]) return;
+
+    var catM  = awkCatalogLookup(o.name);
+    var roleM = o._role || (catM && catM.role) || null;
+    var pM    = roleM ? awkParamsFor(proto, roleM, APP.selectedViewWeek || 0) : null;
+
+    var srM = o.sr, typeM = o._type, zoneM = o._zone;
+    if (pM) {
+      var asTimeM = !!(catM && catM.hold) && pM.t === 'time';
+      var repsM   = asTimeM ? pM.r : (roleM === 'core' ? (pM.rDyn || pM.r) : pM.r);
+      srM   = pM.s + ' x ' + repsM + (asTimeM ? 's' : '');
+      typeM = asTimeM ? 'time' : 'reps';
+      zoneM = asTimeM ? pM.z : (roleM === 'core' ? (pM.zDyn || pM.z) : pM.z);
+    }
+    out.push({ name: o.name, sr: srM, baseWeight: o.baseWeight, _type: typeM, _role: roleM || o._role, _zone: zoneM });
+    mantenuti.push({ name: o.name, motivo: 'mantenuto: il Coach non lo ha citato' });
+  });
+
+  /* Ordine di esecuzione: fondamentali davanti, isolamenti dopo, core in
+     chiusura. A parita' di posizione si tiene la sequenza che l'atleta
+     aveva impostato, cosi' fra due esercizi equivalenti non cambia nulla. */
+  var ordine = {};
+  (draft || []).forEach(function(o, i){ if (o && o.name) ordine[norm(o.name)] = i; });
+  var riordinati = false;
+  var prima = out.map(function(e){ return norm(e.name); });
+
+  out.forEach(function(e, i){ e._ord = awkOrderWeight(e); e._pos = i; });
+  out.sort(function(a, b){
+    if (a._ord !== b._ord) return a._ord - b._ord;
+    var ia = ordine[norm(a.name)], ib = ordine[norm(b.name)];
+    if (ia === undefined && ib === undefined) return a._pos - b._pos;
+    if (ia === undefined) return 1;    // esercizi nuovi dopo quelli gia' in scheda
+    if (ib === undefined) return -1;
+    return ia - ib;
+  });
+  out.forEach(function(e, i){ if (prima[i] !== norm(e.name)) riordinati = true; delete e._ord; delete e._pos; });
+
+  return { list: out, scartati: scartati, corretti: corretti, mantenuti: mantenuti, riordinati: riordinati };
 }
 
 /* Il servizio a monte puo' rispondere in JSON dentro <ai_modifications>
