@@ -4020,7 +4020,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '198';
+const APP_VERSION = '199';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -7736,7 +7736,22 @@ function protoEditorShowCoachResult(proto, draft, weekIdx, saveBtn, coachBox, co
 
         var nAdd = 0, nDel = 0, nChg = 0;
         var mkRow = function(e, cls, tag){
-            var kg = e.baseWeight ? e.baseWeight + ' kg' : 'CL';
+            // "CL" vale solo per chi si allena davvero col peso del corpo.
+            // Un esercizio con manubri o bilanciere a zero non e' a corpo
+            // libero: e' un carico che non e' ancora stato impostato, e
+            // chiamarlo CL faceva sembrare senza peso mezza scheda.
+            var kg;
+            if (e.baseWeight) {
+                kg = e.baseWeight + ' kg';
+            } else if (typeof srIsTime === 'function' && srIsTime(e.sr)) {
+                kg = 'a tempo';
+            } else if (typeof exIsPureBodyweight === 'function' && exIsPureBodyweight(e.name)) {
+                kg = 'CL';
+            } else if (typeof exIsLoadableBodyweight === 'function' && exIsLoadableBodyweight(e.name)) {
+                kg = 'CL';
+            } else {
+                kg = 'carico da impostare';
+            }
             return '<div class="cmp-row ' + cls + '"><div class="cmp-nm">' + escapeHTML(exDisplay(e.name)) +
                    (tag ? '<span class="cmp-tag ' + tag.c + '">' + tag.t + '</span>' : '') +
                    '</div><div class="cmp-meta">' + escapeHTML(e.sr || '?') + ' \u00b7 ' + kg + '</div></div>';
@@ -7824,8 +7839,15 @@ function protoEditorShowCoachResult(proto, draft, weekIdx, saveBtn, coachBox, co
 
 /* Ruolo associato a ogni famiglia di esercizi del catalogo. */
 const AWK_POOL_ROLE = {
-  SQUAT:'sec', HINGE:'sec', HPUSH:'sec', HPUSH2:'sec', VPUSH:'sec',
-  HPULL:'sec', VPULL:'sec',
+  // Fondamentali: sono i movimenti che reggono la seduta (panca, squat,
+  // stacco, military, rematore, trazioni). Prima erano classificati come
+  // secondari, cosi' nessun esercizio finiva mai fra i fondamentali e la
+  // riga 'main' delle tabelle non veniva usata da nessuno: la panca
+  // prendeva le ripetizioni degli accessori, molto piu' alte.
+  SQUAT:'main', HINGE:'main', HPUSH:'main', VPUSH:'main',
+  HPULL:'main', VPULL:'main',
+  // Varianti e complementari
+  HPUSH2:'sec',
   C_PUSH:'sec', C_PUSH2:'sec', C_VPUSH:'sec', C_PULL:'sec', C_PULL2:'sec',
   C_ROW:'sec', C_LEG:'sec', C_LEG2:'sec',
   QUAD:'iso', HAM:'iso', CALF:'iso', CHESTISO:'iso', LATDELT:'iso',
@@ -17627,14 +17649,14 @@ const AWK_ZONES = {
 
 const AWK_PARAMS = {
   forza: {
-    principiante: { main:{s:3,r:8,rc:[12,10,9,8],z:'forza_novi',rest:180,rir:'RIR 2\u20133'}, sec:{s:3,r:10,rc:[12,10,9,8],z:'forza_novi',rest:150,rir:'RIR 2'}, iso:{s:3,r:8,rc:[12,10,10,10],z:'forza_acc',rest:90,rir:'RIR 1\u20132'}, core:{s:3,r:30,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
+    principiante: { main:{s:3,r:8,rc:[12,10,9,8],z:'forza_novi',rest:180,rir:'RIR 2\u20133'}, sec:{s:3,r:10,rc:[12,10,9,8],z:'forza_novi',rest:150,rir:'RIR 2'}, iso:{s:3,r:8,rc:[12,11,10,10],z:'forza_acc',rest:90,rir:'RIR 1\u20132'}, core:{s:3,r:30,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
     intermedio:   { main:{s:4,r:4,rc:[8,6,5,4],z:'forza_main',rest:240,rir:'RIR 1\u20132'}, sec:{s:3,r:5,rc:[8,7,6,5],z:'forza_main',rest:180,rir:'RIR 2'}, iso:{s:3,r:8,rc:[10,9,8,8],z:'forza_acc',rest:90,rir:'RIR 1'}, core:{s:3,r:40,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
     avanzato:     { main:{s:5,r:3,rc:[6,5,4,3],z:'forza_main',rest:300,rir:'RIR 0\u20131'}, sec:{s:4,r:5,rc:[6,6,5,5],z:'forza_main',rest:240,rir:'RIR 1'}, iso:{s:3,r:10,rc:[10,10,9,8],z:'forza_acc',rest:90,rir:'RIR 1'}, core:{s:4,r:45,rDyn:15,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} }
   },
   ipertrofia: {
-    principiante: { main:{s:3,r:8,rc:[14,12,11,10],z:'iper_main',rest:150,rir:'RIR 2\u20133'}, sec:{s:3,r:10,rc:[14,12,11,10],z:'iper_main',rest:120,rir:'RIR 2'}, iso:{s:2,r:12,rc:[15,14,13,12],z:'iper_wide',rest:75,rir:'RIR 1\u20132'}, core:{s:3,r:30,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
-    intermedio:   { main:{s:4,r:8,rc:[12,10,8,7],z:'iper_main',rest:180,rir:'RIR 1\u20132'}, sec:{s:3,r:12,rc:[14,12,11,10],z:'iper_main',rest:120,rir:'RIR 1\u20132'}, iso:{s:3,r:12,rc:[15,14,13,12],z:'iper_wide',rest:75,rir:'RIR 1'}, core:{s:3,r:40,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
-    avanzato:     { main:{s:4,r:8,rc:[12,10,8,6],z:'iper_main',rest:180,rir:'RIR 1'}, sec:{s:4,r:12,rc:[14,12,10,9],z:'iper_main',rest:120,rir:'RIR 1'}, iso:{s:4,r:15,rc:[16,15,14,12],z:'iper_wide',rest:75,rir:'RIR 0\u20131'}, core:{s:4,r:45,rDyn:15,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} }
+    principiante: { main:{s:3,r:8,rc:[13,12,11,10],z:'iper_main',rest:150,rir:'RIR 2\u20133'}, sec:{s:3,r:10,rc:[13,12,11,10],z:'iper_main',rest:120,rir:'RIR 2'}, iso:{s:2,r:12,rc:[15,14,13,12],z:'iper_wide',rest:75,rir:'RIR 1\u20132'}, core:{s:3,r:30,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
+    intermedio:   { main:{s:4,r:8,rc:[12,10,9,8],z:'iper_main',rest:180,rir:'RIR 1\u20132'}, sec:{s:3,r:12,rc:[12,11,10,9],z:'iper_main',rest:120,rir:'RIR 1\u20132'}, iso:{s:3,r:12,rc:[14,13,12,11],z:'iper_wide',rest:75,rir:'RIR 1'}, core:{s:3,r:40,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
+    avanzato:     { main:{s:4,r:8,rc:[12,10,8,6],z:'iper_main',rest:180,rir:'RIR 1'}, sec:{s:4,r:12,rc:[12,10,9,8],z:'iper_main',rest:120,rir:'RIR 1'}, iso:{s:4,r:15,rc:[14,12,11,10],z:'iper_wide',rest:75,rir:'RIR 0\u20131'}, core:{s:4,r:45,rDyn:15,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} }
   },
   calisthenic: {
     principiante: { main:{s:3,r:6,rc:[6,7,8,10],z:'cali_main',rest:150,rir:'RIR 2\u20133'}, sec:{s:3,r:10,rc:[9,10,11,12],z:'iper_main',rest:120,rir:'RIR 2'}, iso:{s:3,r:12,rc:[12,13,14,15],z:'iper_wide',rest:75,rir:'RIR 1\u20132'}, core:{s:3,r:20,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
