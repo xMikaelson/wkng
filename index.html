@@ -2313,6 +2313,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .mtr-block-ch { font-size:0.48rem; color:#94a3b8; }
         .mtr-block-kg { font-size:0.5rem; font-weight:700; color:#e2e8f0; }
         .mtr-block-kg.hi { color:var(--primary); }
+        .mtr-prefill { font-size:0.56rem; color:#a5b4fc; line-height:1.5; margin-bottom:8px; padding:8px 10px; background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.25); border-radius:8px; }
+        .mtr-prefill b { color:#e2e8f0; }
         .mtr-note { font-size:0.54rem; color:#64748b; line-height:1.5; margin-bottom:12px; padding:8px 10px; background:rgba(255,255,255,0.02); border-radius:8px; }
         #mtr-apply { width:100%; padding:12px; background:linear-gradient(135deg,#00ff88,#00cc88); color:#000; border:none; border-radius:10px; font-size:0.78rem; font-weight:800; cursor:pointer; font-family:inherit; }
         #mtr-cancel { width:100%; padding:7px; background:transparent; color:#64748b; border:none; font-size:0.65rem; cursor:pointer; font-family:inherit; margin-top:5px; }
@@ -4020,7 +4022,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '199';
+const APP_VERSION = '200';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -8788,8 +8790,34 @@ function awkMigrateSr() {
     return changed;
 }
 
+/* Quante ripetizioni regge un gruppo muscolare a parita' di percentuale
+   del massimale. Non e' uguale per tutti: Hoeger e colleghi (1990) hanno
+   misurato che all'80% del massimale la leg press si ripete quasi il doppio
+   delle volte rispetto alla panca. Le gambe, che muovono piu' massa e hanno
+   piu' fibre resistenti, reggono piu' ripetizioni; i piccoli gruppi del
+   busto meno. Il coefficiente entra nella formula di Epley al posto del 30
+   fisso: piu' e' alto, piu' ripetizioni si assumono a quel carico.
+   Sono stime ragionevoli, non misure sul singolo atleta: servono a partire
+   da un valore sensato invece che da un campo vuoto. */
+var AWK_REP_K = {
+  SQUAT:36, HINGE:36, C_LEG:36, C_LEG2:36,   // catena inferiore
+  QUAD:34, HAM:34, CALF:38,                  // isolamenti gambe, polpacci molto resistenti
+  HPUSH:30, HPUSH2:30, VPUSH:30,             // spinte busto
+  HPULL:31, VPULL:31,                        // tirate busto
+  C_PUSH:30, C_PUSH2:30, C_VPUSH:30, C_PULL:31, C_PULL2:31, C_ROW:31,
+  CHESTISO:30, LATDELT:32, REARDELT:32,      // deltoidi: molto resistenti
+  BIC:29, TRI:29,                            // braccia: cedono prima
+  CORE:36, C_CORE:36, C_CORE2:36
+};
+function awkRepK(name) {
+  var cat = (typeof awkCatalogLookup === 'function') ? awkCatalogLookup(name) : null;
+  if (cat && cat.grp && AWK_REP_K[cat.grp]) return AWK_REP_K[cat.grp];
+  return 30;   // valore classico di Epley
+}
+
 // MTR riportato a un numero di ripetizioni diverso dalla sua base.
-// Passa per l'1RM stimato con Epley: 1RM = kg × (1 + rip/30).
+// Passa per l'1RM stimato con Epley, con il coefficiente del gruppo
+// muscolare al posto del 30 fisso.
 // Serve quando lo stesso esercizio compare in due schemi diversi
 // (es. panca 5x5 in Upper e 4x10 in Push): l'MTR è uno solo.
 function mtrForReps(name, targetReps) {
@@ -8797,8 +8825,9 @@ function mtrForReps(name, targetReps) {
     if (!kg || kg <= 0) return null;
     var base = mtrRepsGet(name);
     if (!base || !targetReps || base === targetReps) return kg;
-    var e1rm = kg * (1 + base / 30);
-    return Math.round((e1rm / (1 + targetReps / 30)) * 2) / 2;
+    var k = awkRepK(name);
+    var e1rm = kg * (1 + base / k);
+    return Math.round((e1rm / (1 + targetReps / k)) * 2) / 2;
 }
 var _mtrWeekIdx  = 0;
 var _mtrSlot     = 'forza'; // 'forza' o 'massa'
@@ -8903,11 +8932,47 @@ function mtrOpen(exName, weekIdx, slot, callback, defaultReps) {
     var repsEl  = document.getElementById('mtr-reps');
     if (!overlay) return;
     if (nameEl) nameEl.textContent = exName;
-    if (input)  { input.value = ''; }
-    // Ripetizioni precompilate dallo schema dell'esercizio, o dalla base
-    // già registrata per questo MTR
     _mtrSchemeReps = parseInt(defaultReps) || null;
-    if (repsEl) repsEl.value = mtrRepsGet(exName) || defaultReps || '';
+
+    /* Precompilazione. L'MTR di un esercizio e' uno solo e vale per tutte le
+       schede: se la panca e' gia' stata misurata in Upper a 32 kg per 3
+       ripetizioni, in Push non va rimisurata da capo. Il carico viene
+       riportato alle ripetizioni di questa scheda passando per il massimale
+       stimato, con il coefficiente del gruppo muscolare.
+       Prima il campo del peso veniva sempre svuotato, quindi lo stesso
+       esercizio andava dichiarato una volta per la forza e una per
+       l'ipertrofia. */
+    var _mtrPrefilled = false;
+    var noto = parseFloat(mtrGet(exName));
+    var baseNota = mtrRepsGet(exName);
+    if (input) {
+        if (noto && noto > 0) {
+            var conv = (_mtrSchemeReps && baseNota && baseNota !== _mtrSchemeReps)
+                ? mtrForReps(exName, _mtrSchemeReps)
+                : noto;
+            input.value = conv || noto;
+            _mtrPrefilled = true;
+        } else {
+            input.value = '';
+        }
+    }
+    // Le ripetizioni mostrate sono quelle che serviranno in questa scheda
+    if (repsEl) repsEl.value = _mtrSchemeReps || baseNota || defaultReps || '';
+
+    // Avviso: il valore non e' stato digitato ora, arriva da un'altra scheda
+    var hintEl = document.getElementById('mtr-prefill-hint');
+    if (hintEl) {
+        if (_mtrPrefilled && baseNota && _mtrSchemeReps && baseNota !== _mtrSchemeReps) {
+            hintEl.innerHTML = '\u21BB Ricavato dai <b>' + noto + ' kg \u00D7 ' + baseNota +
+                ' rip</b> che hai gi\u00E0 misurato per questo esercizio. Correggilo se non ti torna.';
+            hintEl.style.display = 'block';
+        } else if (_mtrPrefilled) {
+            hintEl.innerHTML = '\u21BB Valore gi\u00E0 misurato per questo esercizio. Correggilo se \u00E8 cambiato.';
+            hintEl.style.display = 'block';
+        } else {
+            hintEl.style.display = 'none';
+        }
+    }
     // Reset preview
     for (var i = 0; i < 5; i++) {
         var ef = document.getElementById('mf' + i);
@@ -8918,6 +8983,9 @@ function mtrOpen(exName, weekIdx, slot, callback, defaultReps) {
     overlay.classList.add('active');
     if (input) input.oninput = mtrUpdatePreview;
     if (repsEl) repsEl.oninput = mtrUpdatePreview;
+    // Con il campo precompilato l'anteprima dei carichi va mostrata subito,
+    // senza aspettare che l'atleta tocchi qualcosa.
+    if (_mtrPrefilled) { try { mtrUpdatePreview(); } catch (e) {} }
     // Evidenzia il chapter attivo
     var activeF = document.getElementById('mf' + _mtrWeekIdx);
     var activeM = document.getElementById('mm' + _mtrWeekIdx);
@@ -17654,9 +17722,9 @@ const AWK_PARAMS = {
     avanzato:     { main:{s:5,r:3,rc:[6,5,4,3],z:'forza_main',rest:300,rir:'RIR 0\u20131'}, sec:{s:4,r:5,rc:[6,6,5,5],z:'forza_main',rest:240,rir:'RIR 1'}, iso:{s:3,r:10,rc:[10,10,9,8],z:'forza_acc',rest:90,rir:'RIR 1'}, core:{s:4,r:45,rDyn:15,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} }
   },
   ipertrofia: {
-    principiante: { main:{s:3,r:8,rc:[13,12,11,10],z:'iper_main',rest:150,rir:'RIR 2\u20133'}, sec:{s:3,r:10,rc:[13,12,11,10],z:'iper_main',rest:120,rir:'RIR 2'}, iso:{s:2,r:12,rc:[15,14,13,12],z:'iper_wide',rest:75,rir:'RIR 1\u20132'}, core:{s:3,r:30,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
-    intermedio:   { main:{s:4,r:8,rc:[12,10,9,8],z:'iper_main',rest:180,rir:'RIR 1\u20132'}, sec:{s:3,r:12,rc:[12,11,10,9],z:'iper_main',rest:120,rir:'RIR 1\u20132'}, iso:{s:3,r:12,rc:[14,13,12,11],z:'iper_wide',rest:75,rir:'RIR 1'}, core:{s:3,r:40,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
-    avanzato:     { main:{s:4,r:8,rc:[12,10,8,6],z:'iper_main',rest:180,rir:'RIR 1'}, sec:{s:4,r:12,rc:[12,10,9,8],z:'iper_main',rest:120,rir:'RIR 1'}, iso:{s:4,r:15,rc:[14,12,11,10],z:'iper_wide',rest:75,rir:'RIR 0\u20131'}, core:{s:4,r:45,rDyn:15,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} }
+    principiante: { main:{s:3,r:8,rc:[13,12,11,10],z:'iper_main',rest:150,rir:'RIR 2\u20133'}, sec:{s:3,r:10,rc:[13,12,11,10],z:'iper_main',rest:120,rir:'RIR 2'}, iso:{s:2,r:12,rc:[13,12,12,11],z:'iper_wide',rest:75,rir:'RIR 1\u20132'}, core:{s:3,r:30,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
+    intermedio:   { main:{s:4,r:8,rc:[12,10,9,8],z:'iper_main',rest:180,rir:'RIR 1\u20132'}, sec:{s:3,r:12,rc:[12,11,10,9],z:'iper_main',rest:120,rir:'RIR 1\u20132'}, iso:{s:3,r:12,rc:[12,12,11,10],z:'iper_wide',rest:75,rir:'RIR 1'}, core:{s:3,r:40,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
+    avanzato:     { main:{s:4,r:8,rc:[12,10,8,6],z:'iper_main',rest:180,rir:'RIR 1'}, sec:{s:4,r:12,rc:[12,10,9,8],z:'iper_main',rest:120,rir:'RIR 1'}, iso:{s:4,r:15,rc:[12,12,11,10],z:'iper_wide',rest:75,rir:'RIR 0\u20131'}, core:{s:4,r:45,rDyn:15,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} }
   },
   calisthenic: {
     principiante: { main:{s:3,r:6,rc:[6,7,8,10],z:'cali_main',rest:150,rir:'RIR 2\u20133'}, sec:{s:3,r:10,rc:[9,10,11,12],z:'iper_main',rest:120,rir:'RIR 2'}, iso:{s:3,r:12,rc:[12,13,14,15],z:'iper_wide',rest:75,rir:'RIR 1\u20132'}, core:{s:3,r:20,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
@@ -21228,6 +21296,7 @@ function homeRefreshData() {
                     <div class="mtr-block-row"><span class="mtr-block-ch">Deload 85%</span><span class="mtr-block-kg" id="mf4" style="color:#94a3b8">—</span></div>
                 </div>
             </div>
+            <div class="mtr-prefill" id="mtr-prefill-hint" style="display:none"></div>
             <div class="mtr-note">📖 Il MTR è il carico più alto che riesci a tenere per le ripetizioni indicate <strong>prima che la tecnica si sporchi</strong>. Lungo il ciclo il carico sale mentre le ripetizioni scendono: parti con più ripetizioni e un carico più gestibile, e arrivi al Chapter 4 con il carico più alto e poche ripetizioni.</div>
             <button id="mtr-apply" onclick="mtrApply()">✓ Applica ai carichi</button>
             <button id="mtr-cancel" onclick="mtrClose()">Annulla</button>
