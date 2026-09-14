@@ -4022,7 +4022,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '200';
+const APP_VERSION = '201';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -4428,6 +4428,7 @@ function loadState() {
 // NON chiama saveState(): viene invocata anche da dentro saveState().
 function mtrSyncFromProtocols() {
     if (!APP.mtrValues) APP.mtrValues = {};
+    if (!APP.mtrReps)   APP.mtrReps = {};
     if (!APP.savedProtocols) return false;
     var changed = false;
     APP.savedProtocols.forEach(function(proto) {
@@ -4441,8 +4442,45 @@ function mtrSyncFromProtocols() {
                 mtrSet(ex.name, mtr);
                 changed = true;
             }
+            /* Recupera anche su quante ripetizioni quell'MTR era stato
+               dichiarato, leggendolo dallo schema della scheda in cui si
+               trova. Senza questo dato il peso non si puo' riportare a uno
+               schema diverso: veniva copiato tale e quale, e un valore
+               misurato in forza compariva invariato in ipertrofia.
+               Le protezioni contano: sugli isometrici non c'e' MTR, e un
+               valore gia' registrato non viene sovrascritto. */
+            if (mtrRepsGet(ex.name) == null && typeof srReps === 'function') {
+                var r = srReps(ex.sr);
+                if (r && r > 0) { mtrRepsSet(ex.name, r); changed = true; }
+            }
         });
     });
+
+    /* Schede piu' vecchie in cui l'MTR non e' mai stato registrato ma i
+       carichi del ciclo ci sono. Quei carichi derivano dall'MTR moltiplicato
+       per la scala, quindi si puo' risalire al valore di partenza invece di
+       lasciare il campo vuoto. Si parte dal primo capitolo perche' e' il
+       riferimento della scala. */
+    APP.savedProtocols.forEach(function(proto) {
+        if (!proto || !proto.exercises) return;
+        proto.exercises.forEach(function(ex) {
+            if (!ex || !ex.name) return;
+            if (mtrGet(ex.name) != null) return;                 // gia' noto
+            if (typeof srIsTime === 'function' && srIsTime(ex.sr)) return;  // isometrico
+            if (!Array.isArray(ex.loads) || !ex.loads.length) return;
+            var base = parseFloat(ex.loads[0]);
+            if (!base || base <= 0) return;
+            var stima = Math.round((base / WEEK_LOADS[0]) * 2) / 2;
+            if (!stima || stima <= 0) return;
+            mtrSet(ex.name, stima);
+            if (mtrRepsGet(ex.name) == null && typeof srReps === 'function') {
+                var rr = srReps(ex.sr);
+                if (rr && rr > 0) mtrRepsSet(ex.name, rr);
+            }
+            changed = true;
+        });
+    });
+
     return changed;
 }
 
