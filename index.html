@@ -4022,7 +4022,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '202';
+const APP_VERSION = '203';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -7111,6 +7111,16 @@ function buildProtoEditorBox(proto, weekIdx) {
             mtrBtn.textContent = '🎯';
             mtrBtn.onclick = function() {
                 var slot = protoResolveSlot(proto);
+                /* Ripetizioni su cui misurare l'MTR: quelle che questo
+                   esercizio prevede in QUESTA scheda e in QUESTO capitolo.
+                   Senza passarle, la finestra riproponeva l'ultimo valore
+                   registrato per l'esercizio (le 3 ripetizioni della forza)
+                   anche aprendola da una scheda di ipertrofia o da un
+                   capitolo con schema diverso. */
+                var _srCh = (typeof srForChapter === 'function')
+                    ? srForChapter(draft[idx], weekIdx, proto)
+                    : (draft[idx] && draft[idx].sr);
+                var _repsCh = (typeof srReps === 'function') ? srReps(_srCh) : null;
                 mtrOpen(ex.name || 'Esercizio', weekIdx, slot, function(loads, baseWeight, forzaLoads, massaLoads, mtrValue) {
                     // 1. Salva in dizionario globale MTR (chiave canonica IT/EN unificata)
                     mtrSet(ex.name, mtrValue);
@@ -7128,7 +7138,10 @@ function buildProtoEditorBox(proto, weekIdx) {
                             // Lo stesso esercizio può comparire con schemi diversi
                             // (es. 5x5 in Upper e 4x10 in Push): l'MTR è uno solo,
                             // quindi lo riportiamo alle ripetizioni di QUESTO schema.
-                            var pRef = mtrForReps(ex.name, srReps(pEx.sr)) || mtrValue;
+                            // Schema del capitolo di quella scheda, non quello
+                            // salvato: e' li' che vive la progressione.
+                            var pSr = (typeof srForChapter === 'function') ? srForChapter(pEx, weekIdx, p) : pEx.sr;
+                            var pRef = mtrForReps(ex.name, srReps(pSr)) || mtrValue;
                             var pLoads = WEEK_LOADS.map(function(q){ return Math.round(pRef*q*2)/2; });
                             pEx.mtrValue = mtrValue;
                             pEx.loads = pLoads;
@@ -7139,7 +7152,7 @@ function buildProtoEditorBox(proto, weekIdx) {
                     saveState();
                     APP.savedProtocols.forEach(function(p) { saveProtocolToSupabase(p); });
                     showToast('🎯 MTR salvato su tutti i protocolli!', 'success');
-                }, srReps(ex.sr));
+                }, _repsCh, proto.name);
             };
             // Bottone sostituzione: propone alternative per gli stessi muscoli,
             // limitate all'attrezzatura dichiarata nel wizard.
@@ -8972,7 +8985,9 @@ function swapConfirm() {
     if (cb) cb(name);
 }
 
-function mtrOpen(exName, weekIdx, slot, callback, defaultReps) {
+var _mtrProtoName = '';
+function mtrOpen(exName, weekIdx, slot, callback, defaultReps, protoName) {
+    _mtrProtoName = protoName || '';
     _mtrCallback = callback;
     _mtrWeekIdx  = weekIdx || 0;
     _mtrSlot     = slot || 'forza';
@@ -8982,7 +8997,16 @@ function mtrOpen(exName, weekIdx, slot, callback, defaultReps) {
     var input   = document.getElementById('mtr-input');
     var repsEl  = document.getElementById('mtr-reps');
     if (!overlay) return;
-    if (nameEl) nameEl.textContent = exName;
+    if (nameEl) {
+        // Sotto il nome, da quale scheda e capitolo si sta misurando: le
+        // ripetizioni richieste dipendono da li', e senza indicarlo il numero
+        // proposto sembrerebbe arbitrario.
+        var ctx = '';
+        if (typeof _mtrProtoName === 'string' && _mtrProtoName) ctx += _mtrProtoName;
+        if (CHAPTER_NAMES[weekIdx]) ctx += (ctx ? ' \u00B7 ' : '') + 'Ch.' + (weekIdx + 1) + ' ' + CHAPTER_NAMES[weekIdx];
+        nameEl.innerHTML = escapeHTML(exName) +
+            (ctx ? '<div style="font-size:0.5rem;color:#64748b;font-weight:600;margin-top:3px;letter-spacing:0.04em;">' + escapeHTML(ctx) + '</div>' : '');
+    }
     _mtrSchemeReps = parseInt(defaultReps) || null;
 
     /* Precompilazione. L'MTR di un esercizio e' uno solo e vale per tutte le
