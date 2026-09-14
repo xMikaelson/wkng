@@ -4022,7 +4022,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '201';
+const APP_VERSION = '202';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -6867,21 +6867,24 @@ function buildProtoEditorBox(proto, weekIdx) {
     var sg = protoResolveSlot(proto);
     var env = proto._env || '';
     var badgeColor, badgeText;
-    if (sg === 'upper') {
-        badgeColor = '#f59e0b'; badgeText = '⚡ FORZA · UPPER BODY · 5×5 / 3×8';
-    } else if (sg === 'lower') {
-        badgeColor = '#f59e0b'; badgeText = '⚡ FORZA · LOWER BODY · 5×5 / 3×8';
-    } else if (sg === 'push') {
-        badgeColor = '#818cf8'; badgeText = '💪 IPERTROFIA · PUSH · 4×10 / 4×12';
-    } else if (sg === 'pull') {
-        badgeColor = '#818cf8'; badgeText = '💪 IPERTROFIA · PULL · 4×10 / 4×12';
-    } else if (sg === 'legs') {
-        badgeColor = '#818cf8'; badgeText = '💪 IPERTROFIA · LEGS · 4×10 / 4×12';
-    } else if (proto.goal === 'forza') {
-        badgeColor = '#f59e0b'; badgeText = '⚡ FORZA · 5×5 / 3×8';
-    } else {
-        badgeColor = '#818cf8'; badgeText = '💪 IPERTROFIA · 4×10 / 4×12';
-    }
+    /* Gli schemi nel badge sono quelli del capitolo che si sta guardando.
+       Prima erano scritti a mano e restavano fissi, quindi il badge
+       dichiarava numeri diversi da quelli che la scheda sotto mostrava. */
+    var _bMain = (typeof awkParamsFor === 'function') ? awkParamsFor(proto, 'main', weekIdx) : null;
+    var _bIso  = (typeof awkParamsFor === 'function') ? awkParamsFor(proto, 'iso',  weekIdx) : null;
+    var schemi = (_bMain && _bIso)
+        ? (_bMain.s + '\u00D7' + _bMain.r + ' / ' + _bIso.s + '\u00D7' + _bIso.r)
+        : null;
+    var isForzaB = (sg === 'upper' || sg === 'lower' ||
+                    (typeof awkGoalOfProto === 'function' && awkGoalOfProto(proto) === 'full_forza'));
+    var etichetta = isForzaB ? '\u26A1 FORZA' : '\uD83D\uDCAA IPERTROFIA';
+    var slotLabel = sg === 'upper' ? ' \u00B7 UPPER BODY' : sg === 'lower' ? ' \u00B7 LOWER BODY'
+                  : sg === 'push'  ? ' \u00B7 PUSH'       : sg === 'pull'  ? ' \u00B7 PULL'
+                  : sg === 'legs'  ? ' \u00B7 LEGS'       : '';
+    badgeColor = isForzaB ? '#f59e0b' : '#818cf8';
+    badgeText  = etichetta + slotLabel + (schemi ? ' \u00B7 ' + schemi : '');
+    // Capitolo in corso, cosi' si capisce a cosa si riferiscono gli schemi
+    if (CHAPTER_NAMES[weekIdx]) badgeText += ' \u00B7 CH.' + (weekIdx + 1);
     // Aggiunge info attrezzatura al badge
     var envLabel = env === 'casa' ? ' · 🏠 Casa' : env === 'palestra' ? ' · 🏋️ Palestra' : '';
     badgeText += envLabel;
@@ -7081,7 +7084,17 @@ function buildProtoEditorBox(proto, weekIdx) {
             srInput.type = 'text';
             srInput.className = 'pe-sr';
             srInput.placeholder = recSr || 'serie';
-            srInput.value = ex.sr || '';
+            /* Schema del capitolo che si sta guardando, non quello salvato.
+               Il campo del carico accanto mostra gia' il carico di questo
+               capitolo: lasciare lo schema fisso significava affiancare due
+               numeri riferiti a momenti diversi del ciclo, e in una scheda di
+               forza si leggeva 5x3 anche nel primo capitolo, dove le
+               ripetizioni previste sono 6. Modificandolo a mano il valore
+               scritto diventa fisso e vale per tutti i capitoli. */
+            var srCh = (typeof srForChapter === 'function') ? srForChapter(ex, weekIdx, proto) : null;
+            srInput.value = srCh || ex.sr || '';
+            srInput.title = 'Schema del ' + (CHAPTER_NAMES[weekIdx] ? 'Chapter ' + (weekIdx+1) + ' \u00b7 ' + CHAPTER_NAMES[weekIdx] : 'capitolo in corso') +
+                            '. Cambia da un capitolo all\'altro: scrivendone uno a mano resta fisso.';
             var kgInput = document.createElement('input');
             kgInput.type = 'number';
             kgInput.className = 'pe-kg';
