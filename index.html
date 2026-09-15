@@ -2276,6 +2276,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .proto-ex-right .pe-kg { background:rgba(0,255,136,0.06); border-color:rgba(0,255,136,0.2); color:var(--primary); font-weight:700; cursor:default; pointer-events:none; opacity:0.85; width:40px; }
         .proto-ex-del { background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.2); border-radius:6px; color:#f87171; font-size:0.6rem; cursor:pointer; width:24px; height:24px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-family:inherit; padding:0; }
         .pe-mtr-btn { background:rgba(0,255,136,0.08); border:1px solid rgba(0,255,136,0.2); border-radius:6px; color:var(--primary); font-size:0.55rem; cursor:pointer; width:22px; height:22px; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:0; font-family:inherit; line-height:1; }
+        .pe-tipo { display:flex; gap:2px; flex-shrink:0; background:rgba(255,255,255,0.03); border-radius:7px; padding:2px; }
+        .pe-tipo-b { background:none; border:none; color:#64748b; font-size:0.48rem; font-weight:700; font-family:inherit; padding:4px 6px; border-radius:5px; cursor:pointer; white-space:nowrap; line-height:1; }
+        .pe-tipo-b.on { background:rgba(99,102,241,0.22); color:#a5b4fc; }
         .pe-hold-tag { background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.25); border-radius:6px; color:#a5b4fc; font-size:0.5rem; font-weight:700; letter-spacing:0.02em; height:22px; padding:0 7px; display:flex; align-items:center; justify-content:center; flex-shrink:0; white-space:nowrap; }
         /* Corpo libero: puro (grigio, nessun carico) e zavorrabile (ambra, +kg) */
         .pe-bw-tag { background:rgba(148,163,184,0.1); border:1px solid rgba(148,163,184,0.25); border-radius:6px; color:#94a3b8; font-size:0.5rem; font-weight:700; height:22px; padding:0 7px; display:flex; align-items:center; justify-content:center; flex-shrink:0; white-space:nowrap; }
@@ -4051,7 +4054,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '206';
+const APP_VERSION = '207';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -7217,6 +7220,52 @@ function buildProtoEditorBox(proto, weekIdx) {
             right.appendChild(swapBtn);
 
             right.appendChild(srInput);
+
+            /* Esercizio scritto a mano e non presente nel catalogo.
+               In questo caso l'app non puo' sapere se si misura a ripetizioni
+               o a tempo, e finora lo dava per scontato a ripetizioni: un
+               esercizio isometrico inserito a mano non poteva essere
+               impostato in secondi. Qui la scelta la fa l'atleta.
+               Il selettore compare solo finche' l'esercizio resta
+               sconosciuto: appena e' riconosciuto, decide il catalogo. */
+            var _noto = (typeof awkCatalogLookup === 'function') && awkCatalogLookup(ex.name);
+            var _haNome = !!(ex.name && ex.name.trim().length > 1);
+            if (!_noto && _haNome) {
+                var tipoWrap = document.createElement('div');
+                tipoWrap.className = 'pe-tipo';
+                var bRip = document.createElement('button');
+                var bTmp = document.createElement('button');
+                var isT = srIsTime(ex.sr);
+                bRip.type = 'button'; bTmp.type = 'button';
+                bRip.className = 'pe-tipo-b' + (isT ? '' : ' on');
+                bTmp.className = 'pe-tipo-b' + (isT ? ' on' : '');
+                bRip.textContent = '\u00D7 rip';
+                bTmp.textContent = '\u23F1 sec';
+                bRip.title = 'Si misura a ripetizioni';
+                bTmp.title = 'Si misura a tempo, in secondi';
+
+                function setTipo(aTempo) {
+                    var m = (draft[idx].sr || '').match(/(\d+)\s*[xX\u00D7]\s*(\d+)/);
+                    var s = m ? m[1] : '3';
+                    var v = m ? m[2] : (aTempo ? '30' : '10');
+                    // Passando a tempo un numero di ripetizioni diventerebbe
+                    // una durata assurda, e viceversa: si riparte da un valore
+                    // sensato per il tipo scelto.
+                    if (aTempo && (!m || parseInt(v) < 15)) v = '30';
+                    if (!aTempo && (!m || parseInt(v) > 30)) v = '10';
+                    draft[idx].sr = s + ' x ' + v + (aTempo ? 's' : '');
+                    draft[idx]._type = aTempo ? 'time' : 'reps';
+                    if (aTempo) { draft[idx].baseWeight = 0; delete draft[idx].loads; delete draft[idx].mtrValue; }
+                    onManualEdit();
+                    rerenderList();
+                }
+                bRip.onclick = function(){ setTipo(false); };
+                bTmp.onclick = function(){ setTipo(true); };
+                tipoWrap.appendChild(bRip);
+                tipoWrap.appendChild(bTmp);
+                right.appendChild(tipoWrap);
+            }
+
             // Isometrici (plank e simili): si misurano in secondi a corpo libero,
             // non hanno un carico e quindi non hanno un Massimo Tecnico. Il campo
             // kg e il bottone 🎯 chiederebbero un peso che non esiste: al loro
