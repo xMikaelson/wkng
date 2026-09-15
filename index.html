@@ -133,6 +133,29 @@
         @keyframes pc-rise { from{transform:translateY(30px);opacity:0;} to{transform:translateY(0);opacity:1;} }
         @keyframes pc-pulse-ring { 0%{box-shadow:0 0 0 0 rgba(0,255,136,0.5);} 70%{box-shadow:0 0 0 30px rgba(0,255,136,0);} 100%{box-shadow:0 0 0 0 rgba(0,255,136,0);} }
         /* Confetti particles */
+        /* ── Animazione fine allenamento ── */
+        .wo-cmpl-ov { position:fixed; inset:0; z-index:9500; display:flex; align-items:center;
+            justify-content:center; padding:24px; box-sizing:border-box;
+            background:rgba(6,13,26,0.92); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+            animation:woCmplIn 0.3s ease both; }
+        .wo-cmpl-ov.closing { animation:woCmplOut 0.26s ease both; }
+        .wo-cmpl-box { text-align:center; max-width:340px; width:100%;
+            animation:woCmplPop 0.5s cubic-bezier(0.22,1.4,0.36,1) both; }
+        .wo-cmpl-check { width:88px; height:88px; margin:0 auto 18px; border-radius:50%;
+            background:rgba(var(--pr,0,255,136),0.14); border:2px solid var(--primary);
+            color:var(--primary); font-size:2.6rem; font-weight:900; line-height:84px;
+            animation:woCmplRing 1.6s ease-in-out infinite; }
+        .wo-cmpl-title { font-size:1.15rem; font-weight:900; color:#e2e8f0; letter-spacing:0.02em; }
+        .wo-cmpl-sub { font-size:0.7rem; color:#94a3b8; margin-top:5px; }
+        .wo-cmpl-stats { display:flex; justify-content:center; gap:14px; margin-top:20px; }
+        .wo-cmpl-stat { flex:1; max-width:120px; padding:12px 8px; border-radius:12px;
+            background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); }
+        .wo-cmpl-stat b { display:block; font-size:1.3rem; font-weight:900; color:var(--primary); }
+        .wo-cmpl-stat span { font-size:0.56rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.08em; }
+        @keyframes woCmplIn  { from{opacity:0;} to{opacity:1;} }
+        @keyframes woCmplOut { from{opacity:1;} to{opacity:0;} }
+        @keyframes woCmplPop { 0%{opacity:0;transform:scale(0.86) translateY(14px);} 100%{opacity:1;transform:none;} }
+        @keyframes woCmplRing { 0%,100%{box-shadow:0 0 0 0 rgba(var(--pr,0,255,136),0.45);} 50%{box-shadow:0 0 0 14px rgba(var(--pr,0,255,136),0);} }
         .confetto {
             position: fixed; width: 8px; height: 8px; border-radius: 2px;
             pointer-events: none; z-index: 9001;
@@ -4022,7 +4045,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '203';
+const APP_VERSION = '205';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -7151,6 +7174,11 @@ function buildProtoEditorBox(proto, weekIdx) {
                     // 4. Salva
                     saveState();
                     APP.savedProtocols.forEach(function(p) { saveProtocolToSupabase(p); });
+                    // Ricostruisci subito le viste che mostrano i carichi:
+                    // prima si aggiornavano solo riavviando l'app.
+                    if (typeof initWorkoutPage === 'function') initWorkoutPage();
+                    if (typeof renderPlanPage === 'function') renderPlanPage(APP.selectedViewWeek || 0);
+                    if (typeof updateStats === 'function') updateStats();
                     showToast('🎯 MTR salvato su tutti i protocolli!', 'success');
                 }, _repsCh, proto.name);
             };
@@ -12019,7 +12047,12 @@ function initWorkoutPage() {
             // Firma del riscaldamento corrente: se rientrando nella sezione è
             // ancora la stessa, NON ricostruiamo il blocco. Ricostruirlo
             // azzererebbe i set già spuntati e i timer di recupero in corso.
-            var warmSig = protoName + '|' + kgW + '|' + exData.map(function(e){ return e.name; }).join(',');
+            // La firma include anche i carichi: cambiando l'MTR i nomi restano
+            // gli stessi, quindi senza i kg il blocco risultava ancora valido
+            // e il riscaldamento continuava a mostrare i valori vecchi.
+            var warmSig = protoName + '|' + kgW + '|' + exData.map(function(e){
+                return e.name + ':' + (e.loads ? e.loads.join('-') : (e.baseWeight || 0));
+            }).join(',');
             var oldWarm = document.getElementById('wo-warmup-container');
             var oldCard = oldWarm && oldWarm.querySelector('.wo-warmup-card');
             var keepWarm = !isDeload && exData.length > 0 && oldCard &&
@@ -15572,6 +15605,7 @@ function _woBeginWorkout() {
 
     woState = { holdSecs:0, holdTotal:0, holdRunning:false, exIndex:0, setIndex:0, elapsed:0, restSecs:0, restTotal:0, restRunning:false,
                 timer:null, totalEstSecs: Math.max(estSecs, 1), paused:false,
+                _startedAt: Date.now(), _restEndsAt: 0, _holdEndsAt: 0,
                 _todayProtoId: woState._todayProtoId, _todayDayIdx: woState._todayDayIdx };
     if (woState.timer) clearInterval(woState.timer);
     woState.timer = setInterval(woTick, 1000);
@@ -15707,6 +15741,7 @@ function woStartHold() {
     woState.holdSecs = dur;
     woState.holdTotal = dur;
     woState.holdRunning = true;
+    woState._holdEndsAt = Date.now() + (woState.holdSecs || 0) * 1000;
     const btn = document.getElementById('wo-hold-btn');
     if (btn) { btn.disabled = true; btn.textContent = 'In posizione…'; }
     const t = document.getElementById('wo-timer');
@@ -15721,9 +15756,16 @@ function woRenderExList() {
     const listEl = document.getElementById('wo-ex-list-body');
     if (!listEl) return;
     const w = APP.selectedViewWeek || 0;
+    const proto = (typeof awkActiveProto === 'function') ? awkActiveProto() : null;
     listEl.innerHTML = exData.map((e,i) => {
         // carico pianificato: SEMPRE dal piano, mai modificato dalla sessione
         const plannedKg = parseFloat(e.loads ? e.loads[w] : (e.baseWeight||0)).toFixed(1);
+        // Lo schema deve passare da srForChapter come l'intestazione: stampare
+        // e.sr grezzo mostrava le serie×ripetizioni di base, non quelle del
+        // capitolo corrente (né quelle ridotte del deload).
+        const rowSr = (typeof srForChapter === 'function')
+            ? (srForChapter(e, w, proto) || e.sr || '')
+            : (e.sr || '');
         // Il record NON compare più accanto al carico: oggi coincide con il
         // carico prescritto, quindi affiancarlo aggiungeva rumore senza dire
         // nulla. I record restano salvati e avranno una sezione dedicata.
@@ -15732,7 +15774,7 @@ function woRenderExList() {
         <div class="wo-ex-row ${i < woState.exIndex ? 'completed' : i===woState.exIndex ? 'active' : ''}" onclick="exVideoOpen('${escapeHTML(e.name).replace(/'/g,'\\&apos;')}')">
             <div class="wo-dot"></div>
             <span class="wo-ex-rname">${escapeHTML(exDisplay(e.name))}</span>
-            <span class="wo-ex-rsr">${escapeHTML(e.sr)}</span>
+            <span class="wo-ex-rsr">${escapeHTML(rowSr)}</span>
             ${kgCol}
         </div>`;
     }).join('');
@@ -16358,15 +16400,27 @@ function woCompleteSet() {
         // era già 'done' (ripetizione della sessione) o se _todayDayIdx non era
         // valorizzato, l'intero blocco veniva saltato e i "Progressi nei Pesi"
         // restavano vuoti nonostante l'allenamento fosse stato completato.
-        const wIdx = APP.selectedViewWeek;
-        logLoadHistory(wIdx);   // storico carichi per i grafici per esercizio
+        const wIdx = APP.selectedViewWeek || 0;
+        // Ogni passo è isolato: prima un'eccezione qui dentro (es. in
+        // logLoadHistory) interrompeva tutto il resto del blocco, e insieme
+        // saltavano sia la marcatura della chip sia l'uscita dalla schermata
+        // di fine allenamento — da cui il blocco segnalato.
+        try { logLoadHistory(wIdx); } catch (e) { awLog.warn('logLoadHistory:', e); }
 
         // ── Marca automaticamente la chip del giorno come "done" ──
-        const di = woState._todayDayIdx;
-        if (di !== undefined && di !== null && APP.chipStates[wIdx] && APP.chipStates[wIdx][di] !== 'done') {
-            APP.chipStates[wIdx][di] = 'done';
-            APP.totalWorkouts = APP.chipStates.flat().filter(s => s === 'done').length;
+        // Se _todayDayIdx manca (sessione ripresa, stato perso) si ricava dal
+        // giorno corrente, così la chip viene comunque attivata.
+        let di = woState._todayDayIdx;
+        if (di === undefined || di === null) {
+            const jsDay = new Date().getDay();       // 0 = domenica
+            di = (jsDay + 6) % 7;                    // 0 = lunedì
         }
+        try {
+            if (APP.chipStates[wIdx] && APP.chipStates[wIdx][di] !== 'done') {
+                APP.chipStates[wIdx][di] = 'done';
+                APP.totalWorkouts = APP.chipStates.flat().filter(s => s === 'done').length;
+            }
+        } catch (e) { awLog.warn('chip done:', e); }
 
         saveState();
 
@@ -16376,16 +16430,19 @@ function woCompleteSet() {
         // - pagina Progressi (volumi/streak/badges)
         // L'aggiornamento manuale di un singolo chipEl non bastava: lasciava
         // home e donut non aggiornati finché non cambiavi tab/categoria.
-        if (typeof restoreChipStates === 'function') restoreChipStates();
-        if (typeof renderPlanPage === 'function') renderPlanPage(wIdx);
-        if (typeof updateStats === 'function') updateStats();
-        checkChapterCompletion(wIdx);
-        updateProgressPage();
+        try { if (typeof restoreChipStates === 'function') restoreChipStates(); } catch (e) { awLog.warn('restoreChipStates:', e); }
+        try { if (typeof renderPlanPage === 'function') renderPlanPage(wIdx); } catch (e) { awLog.warn('renderPlanPage:', e); }
+        try { if (typeof updateStats === 'function') updateStats(); } catch (e) { awLog.warn('updateStats:', e); }
+        try { checkChapterCompletion(wIdx); } catch (e) { awLog.warn('checkChapterCompletion:', e); }
+        try { updateProgressPage(); } catch (e) { awLog.warn('updateProgressPage:', e); }
 
-        // Esci dalla modalità sessione: senza questo la pagina restava in
+        // Animazione di fine allenamento
+        try { woShowWorkoutComplete(); } catch (e) { awLog.warn('woShowWorkoutComplete:', e); }
+
+        // Esci dalla modalità sessione: senza questo la pagina resta in
         // 'wo-running', che nasconde la tab bar Allenamento/Nutrizione, e la
-        // schermata di fine allenamento diventava un vicolo cieco.
-        // Il ritardo lascia leggere il messaggio di completamento.
+        // schermata di fine allenamento diventa un vicolo cieco.
+        // Il ritardo copre l'animazione di completamento.
         setTimeout(function() {
             var pg = document.getElementById('page-workout');
             if (pg) pg.classList.remove('wo-running');
@@ -16413,6 +16470,7 @@ function woCompleteSet() {
     woState.restSecs  = restTime;
     woState.restTotal = restTime;
     woState.restRunning = true;
+    woState._restEndsAt = Date.now() + restTime * 1000;
     // Mostra barra recupero
     const rw=document.getElementById('wo-rest-wrap');
     if (rw) rw.style.display='flex';
@@ -16430,6 +16488,40 @@ function woCompleteSet() {
 }
 
 // Rifai l'allenamento di oggi (resetta la chip e mostra il bottone start)
+// ── Animazione di fine allenamento ──
+// Riquadro a schermo intero con riepilogo della sessione. Si chiude da solo
+// dopo l'uscita dalla modalità sessione, oppure al tocco.
+function woShowWorkoutComplete() {
+    var old = document.getElementById('wo-complete-overlay');
+    if (old) old.remove();
+
+    var exN = (APP.exerciseData || []).length;
+    var mins = Math.max(1, Math.round((woState.elapsed || 0) / 60));
+
+    var ov = document.createElement('div');
+    ov.id = 'wo-complete-overlay';
+    ov.className = 'wo-cmpl-ov';
+    ov.innerHTML =
+        '<div class="wo-cmpl-box">' +
+            '<div class="wo-cmpl-check">\u2713</div>' +
+            '<div class="wo-cmpl-title">Allenamento completato</div>' +
+            '<div class="wo-cmpl-sub">Sessione registrata</div>' +
+            '<div class="wo-cmpl-stats">' +
+                '<div class="wo-cmpl-stat"><b>' + exN + '</b><span>esercizi</span></div>' +
+                '<div class="wo-cmpl-stat"><b>' + mins + '</b><span>minuti</span></div>' +
+            '</div>' +
+        '</div>';
+    ov.onclick = function() { ov.classList.add('closing'); setTimeout(function(){ ov.remove(); }, 260); };
+    document.body.appendChild(ov);
+
+    try { if (typeof launchConfetti === 'function') launchConfetti(); } catch (e) {}
+
+    setTimeout(function() {
+        var el = document.getElementById('wo-complete-overlay');
+        if (el) { el.classList.add('closing'); setTimeout(function(){ el.remove(); }, 260); }
+    }, 2400);
+}
+
 function woRedoWorkout() {
     const wIdx = APP.selectedViewWeek;
     const di = woState._todayDayIdx;
@@ -16454,13 +16546,37 @@ function woRedoWorkout() {
 
 function woPause() {
     woState.paused = !woState.paused;
+    if (woState.paused) {
+        // In pausa memorizziamo quanto manca; alla ripresa le scadenze
+        // vengono spostate in avanti, così il tempo in pausa non viene contato.
+        woState._pausedAt = Date.now();
+    } else if (woState._pausedAt) {
+        const gap = Date.now() - woState._pausedAt;
+        if (woState._startedAt)  woState._startedAt  += gap;
+        if (woState._restEndsAt) woState._restEndsAt += gap;
+        if (woState._holdEndsAt) woState._holdEndsAt += gap;
+        woState._pausedAt = 0;
+    }
     const btn = document.getElementById('wo-btn-pause');
     if (btn) btn.textContent = woState.paused ? '▶ Riprendi' : '⏸ Pausa';
 }
 
+// Rientrando in primo piano il tick successivo potrebbe arrivare fino a un
+// secondo dopo: aggiorniamo subito, così il cronometro non appare fermo.
+document.addEventListener('visibilitychange', function() {
+    if (!document.hidden && woState && woState.timer && !woState.paused) woTick();
+});
+
 function woTick() {
     if (woState.paused) return;
-    woState.elapsed++;
+    // Il tempo si ricava dall'orologio, non contando i tick: in background
+    // iOS sospende setInterval e il cronometro restava indietro rispetto
+    // al tempo reale. _startedAt tiene conto anche delle pause.
+    if (woState._startedAt) {
+        woState.elapsed = Math.floor((Date.now() - woState._startedAt) / 1000);
+    } else {
+        woState.elapsed++;
+    }
     const m=String(Math.floor(woState.elapsed/60)).padStart(2,'0');
     const s=String(woState.elapsed%60).padStart(2,'0');
     const el=document.getElementById('wo-elapsed');
@@ -16474,7 +16590,11 @@ function woTick() {
 
     // ── Countdown isometrico ──
     if (woState.holdRunning && woState.holdSecs > 0) {
-        woState.holdSecs--;
+        if (woState._holdEndsAt) {
+            woState.holdSecs = Math.max(0, Math.round((woState._holdEndsAt - Date.now()) / 1000));
+        } else {
+            woState.holdSecs--;
+        }
         const ht = document.getElementById('wo-timer');
         if (ht) ht.textContent = '00:' + String(Math.max(woState.holdSecs, 0)).padStart(2, '0');
         if (woState.holdSecs > 0 && woState.holdSecs <= 3) _woBeep(440, 0.12, 'square');
@@ -16489,7 +16609,13 @@ function woTick() {
     }
 
     if (woState.restRunning && woState.restSecs > 0) {
-        woState.restSecs--;
+        // Anche il recupero si misura sull'orologio: tornando dall'app dopo
+        // due minuti il timer deve risultare finito, non fermo dov'era.
+        if (woState._restEndsAt) {
+            woState.restSecs = Math.max(0, Math.round((woState._restEndsAt - Date.now()) / 1000));
+        } else {
+            woState.restSecs--;
+        }
         // Aggiorna countdown testo
         const rm=String(Math.floor(woState.restSecs/60)).padStart(2,'0');
         const rs=String(woState.restSecs%60).padStart(2,'0');
