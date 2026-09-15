@@ -2655,6 +2655,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wo-done-icon { font-size:2.8rem; animation:prPop 0.6s cubic-bezier(0.34,1.56,0.64,1); }
         .wo-done-title { font-size:1.1rem; font-weight:900; color:var(--primary); letter-spacing:0.02em; }
         .wo-done-sub { font-size:0.68rem; color:#94a3b8; line-height:1.5; }
+        .wo-done-stats { display:flex; gap:8px; margin:16px 0 2px; }
+        .wo-done-stat { flex:1; padding:10px 6px; border-radius:11px; background:rgba(255,255,255,0.04);
+            border:1px solid rgba(255,255,255,0.07); text-align:center; }
+        .wo-done-stat b { display:block; font-size:0.95rem; font-weight:900; color:var(--primary); }
+        .wo-done-stat span { font-size:0.46rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.07em; }
         .wo-done-redo { margin-top:8px; padding:10px 24px; background:rgba(0,255,136,0.08); border:1px solid rgba(0,255,136,0.25); color:var(--primary); font-size:0.72rem; font-weight:700; border-radius:10px; cursor:pointer; font-family:inherit; }
         /* Pulsante "preparati!" nel timer */
         .wo-preparati { display:inline-block; animation:preparatiPulse 0.5s ease-in-out; }
@@ -3129,6 +3134,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <div class="wo-done-icon">🏆</div>
         <div class="wo-done-title">Allenamento completato!</div>
         <div class="wo-done-sub" id="wo-done-sub">Ottimo lavoro per oggi.<br>Riposa e torna domani più forte.</div>
+        <div class="wo-done-stats" id="wo-done-stats" style="display:none;"></div>
         <button class="wo-done-redo" onclick="woRedoWorkout()">↺ Rifai allenamento</button>
       </div>
       <div id="wo-preview-list" style="padding:18px 16px 20px;"></div>
@@ -4045,7 +4051,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '205';
+const APP_VERSION = '206';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -12000,6 +12006,31 @@ function initWorkoutPage() {
                 const nome = proto ? proto.name : (assignment && (assignment.protoName || assignment.name)) || 'Allenamento';
                 doneSub.innerHTML = `<strong>${escapeHTML(nome)}</strong><br>Ottimo lavoro per oggi! Riposa e torna domani più forte. 💪`;
             }
+            // Riepilogo numerico: compare solo subito dopo la sessione, quando
+            // la durata è nota. Rientrando un altro giorno resta nascosto,
+            // perché mostrare "0 minuti" sarebbe peggio che non mostrare nulla.
+            const statsEl = document.getElementById('wo-done-stats');
+            if (statsEl) {
+                const exList = APP.exerciseData || [];
+                const mins = Math.round((woState.elapsed || 0) / 60);
+                if (exList.length && mins > 0) {
+                    const wNow = APP.selectedViewWeek || 0;
+                    const protoNow = (typeof awkActiveProto === 'function') ? awkActiveProto() : null;
+                    let sets = 0;
+                    exList.forEach(function(e) {
+                        const sr = (typeof srForChapter === 'function') ? srForChapter(e, wNow, protoNow) : e.sr;
+                        const m = (sr || '').match(/(\d+)\s*[xX×]/);
+                        sets += m ? parseInt(m[1]) : 0;
+                    });
+                    statsEl.innerHTML =
+                        '<div class="wo-done-stat"><b>' + exList.length + '</b><span>esercizi</span></div>' +
+                        '<div class="wo-done-stat"><b>' + mins + '</b><span>minuti</span></div>' +
+                        (sets ? '<div class="wo-done-stat"><b>' + sets + '</b><span>serie</span></div>' : '');
+                    statsEl.style.display = 'flex';
+                } else {
+                    statsEl.style.display = 'none';
+                }
+            }
         }
         if (prevList) prevList.innerHTML = '';
     } else {
@@ -16390,7 +16421,12 @@ function woCompleteSet() {
         document.getElementById('wo-timer').style.color = 'var(--primary)';
         const wb2=document.getElementById('wo-workout-bar'); if (wb2) wb2.style.width='100%';
         const rw=document.getElementById('wo-rest-wrap'); if (rw) rw.style.display='none';
-        if (woState.timer) clearInterval(woState.timer);
+        // Azzerare il riferimento è indispensabile: la guardia in cima a
+        // initWorkoutPage è `if (woState.timer !== null)`, quindi con il solo
+        // clearInterval la pagina tornava in 'wo-running' e restava bloccata
+        // finché non si premeva TERMINA.
+        if (woState.timer) { clearInterval(woState.timer); woState.timer = null; }
+        woState.restRunning = false; woState.holdRunning = false; woState.paused = false;
         _woBeep(440,0.1,'sine'); setTimeout(()=>_woBeep(550,0.1,'sine'),120); setTimeout(()=>_woBeep(660,0.35,'triangle'),240);
         woState.exIndex = exData.length;
         woRenderExList();
@@ -16444,10 +16480,21 @@ function woCompleteSet() {
         // schermata di fine allenamento diventa un vicolo cieco.
         // Il ritardo copre l'animazione di completamento.
         setTimeout(function() {
+            // Lo scambio avviene MENTRE l'overlay è ancora opaco: dissolvendo
+            // overlay e sessione insieme si intravedeva per un istante
+            // l'ultimo esercizio attraverso lo sfondo semitrasparente.
             var pg = document.getElementById('page-workout');
             if (pg) pg.classList.remove('wo-running');
             if (typeof initWorkoutPage === 'function') initWorkoutPage();
             if (typeof woRefreshScroll === 'function') woRefreshScroll();
+            // Solo ora l'overlay svanisce, scoprendo una schermata già pronta
+            var ovEl = document.getElementById('wo-complete-overlay');
+            if (ovEl) {
+                setTimeout(function() {
+                    ovEl.classList.add('closing');
+                    setTimeout(function(){ ovEl.remove(); }, 300);
+                }, 60);
+            }
         }, 2200);
         return;
     }
@@ -16516,10 +16563,8 @@ function woShowWorkoutComplete() {
 
     try { if (typeof launchConfetti === 'function') launchConfetti(); } catch (e) {}
 
-    setTimeout(function() {
-        var el = document.getElementById('wo-complete-overlay');
-        if (el) { el.classList.add('closing'); setTimeout(function(){ el.remove(); }, 260); }
-    }, 2400);
+    // Nessuna auto-chiusura: l'overlay resta opaco finché la vista sottostante
+    // non è stata sostituita, poi lo chiude la transizione di completamento.
 }
 
 function woRedoWorkout() {
