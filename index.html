@@ -2287,9 +2287,33 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .proto-ex-right .pe-kg { background:rgba(0,255,136,0.06); border-color:rgba(0,255,136,0.2); color:var(--primary); font-weight:700; cursor:default; pointer-events:none; opacity:0.85; width:56px; }
         .proto-ex-del { background:rgba(239,68,68,0.16); border:1px solid rgba(239,68,68,0.32); border-radius:8px; color:#f87171; font-size:0.74rem; cursor:pointer; width:36px; height:calc(100% - 4px); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-family:inherit; padding:0; }
         .pe-mtr-btn { background:rgba(0,255,136,0.08); border:1px solid rgba(0,255,136,0.2); border-radius:6px; color:var(--primary); font-size:0.55rem; cursor:pointer; width:22px; height:22px; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:0; font-family:inherit; line-height:1; }
-        .pe-tipo { display:flex; gap:2px; flex-shrink:0; background:rgba(255,255,255,0.03); border-radius:7px; padding:2px; width:56px; }
-        .pe-tipo-b { flex:1; background:none; border:none; color:#64748b; font-size:0.45rem; font-weight:700; font-family:inherit; padding:3px 2px; border-radius:5px; cursor:pointer; white-space:nowrap; line-height:1; }
-        .pe-tipo-b.on { background:rgba(99,102,241,0.22); color:#a5b4fc; }
+        /* Esercizio scritto a mano: un solo bottone che pulsa finche' il tipo
+           non e' stato scelto. Due bottoni affiancati non facevano capire che
+           bisognava premerli: sembravano un'etichetta. La scelta vera si fa
+           nella finestra che si apre. */
+        .pe-tipo-one { width:56px; height:26px; border-radius:7px; font-family:inherit; font-size:0.47rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase; cursor:pointer; padding:0; display:flex; align-items:center; justify-content:center; gap:3px; background:rgba(251,191,36,0.16); border:1px solid rgba(251,191,36,0.45); color:#fbbf24; flex-shrink:0; animation:peHalo 1.9s ease-in-out infinite; }
+        .pe-tipo-one:active { transform:scale(0.94); }
+        @keyframes peHalo {
+            0%,100% { box-shadow:0 0 0 0 rgba(251,191,36,0.42); }
+            55%     { box-shadow:0 0 0 6px rgba(251,191,36,0); }
+        }
+        @media (prefers-reduced-motion:reduce) {
+            .pe-tipo-one { animation:none; background:rgba(251,191,36,0.28); border-color:rgba(251,191,36,0.6); }
+        }
+        /* Finestra di scelta del tipo */
+        #tipo-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:9700; display:none; align-items:center; justify-content:center; padding:20px; }
+        #tipo-overlay.active { display:flex; }
+        #tipo-sheet { background:var(--card); border-radius:18px; padding:18px 16px; max-width:340px; width:100%; border:1px solid rgba(255,255,255,0.1); animation:tipoIn 0.24s cubic-bezier(0.22,1,0.36,1); }
+        @keyframes tipoIn { from { opacity:0; transform:translateY(14px) scale(0.97); } to { opacity:1; transform:none; } }
+        #tipo-sheet h3 { margin:0 0 4px; font-size:0.85rem; font-weight:800; color:#e2e8f0; }
+        .tipo-sub { margin:0 0 14px; font-size:0.64rem; color:#94a3b8; line-height:1.5; }
+        .tipo-sub b { color:#cbd5e1; }
+        .tipo-choice { width:100%; text-align:left; background:rgba(99,102,241,0.09); border:1px solid rgba(99,102,241,0.35); border-radius:12px; padding:12px 13px; margin-bottom:8px; cursor:pointer; font-family:inherit; display:flex; gap:11px; align-items:flex-start; text-transform:none; color:#e2e8f0; }
+        .tipo-choice:active { transform:scale(0.985); }
+        .tipo-choice .ic { font-size:1.05rem; line-height:1.1; flex-shrink:0; margin-top:1px; }
+        .tipo-choice .t { font-size:0.7rem; font-weight:800; margin-bottom:2px; display:block; }
+        .tipo-choice .d { font-size:0.58rem; color:#94a3b8; line-height:1.45; display:block; }
+        .tipo-cancel { width:100%; background:none; border:none; color:#64748b; font-size:0.62rem; font-weight:700; font-family:inherit; padding:9px 0 2px; cursor:pointer; text-transform:none; }
         .pe-hold-tag { background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.25); border-radius:6px; color:#a5b4fc; font-size:0.5rem; font-weight:700; letter-spacing:0.02em; height:26px; width:56px; padding:0 4px; display:flex; align-items:center; justify-content:center; flex-shrink:0; white-space:nowrap; }
         /* Corpo libero: puro (grigio, nessun carico) e zavorrabile (ambra, +kg) */
         .pe-bw-tag { background:rgba(148,163,184,0.1); border:1px solid rgba(148,163,184,0.25); border-radius:6px; color:#94a3b8; font-size:0.47rem; font-weight:700; height:26px; width:56px; padding:0 3px; display:flex; align-items:center; justify-content:center; flex-shrink:0; white-space:nowrap; }
@@ -4068,7 +4092,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '208';
+const APP_VERSION = '209';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -7328,7 +7352,7 @@ function buildProtoEditorBox(proto, weekIdx) {
                     onManualEdit();
                     rerenderList();
                     showToast('Sostituito con ' + newName, 'success');
-                }, getMuscles);
+                }, getMuscles, Array.isArray(proto._awkEquip) ? proto._awkEquip : null);
             };
             /* Sostituzione e bersaglio uno accanto all'altro, centrati in
                altezza; i valori impilati alla loro destra. Prima erano tutti
@@ -7355,19 +7379,15 @@ function buildProtoEditorBox(proto, weekIdx) {
                sconosciuto: appena e' riconosciuto, decide il catalogo. */
             var _noto = (typeof awkCatalogLookup === 'function') && awkCatalogLookup(ex.name);
             var _haNome = !!(ex.name && ex.name.trim().length > 1);
-            if (!_noto && _haNome) {
-                var tipoWrap = document.createElement('div');
-                tipoWrap.className = 'pe-tipo';
-                var bRip = document.createElement('button');
-                var bTmp = document.createElement('button');
-                var isT = srIsTime(ex.sr);
-                bRip.type = 'button'; bTmp.type = 'button';
-                bRip.className = 'pe-tipo-b' + (isT ? '' : ' on');
-                bTmp.className = 'pe-tipo-b' + (isT ? ' on' : '');
-                bRip.textContent = '\u00D7 rip';
-                bTmp.textContent = '\u23F1 sec';
-                bRip.title = 'Si misura a ripetizioni';
-                bTmp.title = 'Si misura a tempo, in secondi';
+            // Il tipo e' gia' deciso se l'atleta l'ha scelto o se lo schema
+            // e' gia' scritto in secondi (protocolli fatti prima di questa versione).
+            var _tipoDeciso = !!ex._type || srIsTime(ex.sr);
+            if (!_noto && _haNome && !_tipoDeciso) {
+                var tipoBtn = document.createElement('button');
+                tipoBtn.type = 'button';
+                tipoBtn.className = 'pe-tipo-one';
+                tipoBtn.innerHTML = '<span>tipo</span><span>?</span>';
+                tipoBtn.title = 'Scegli se questo esercizio si misura a ripetizioni o a tempo';
 
                 function setTipo(aTempo) {
                     var m = (draft[idx].sr || '').match(/(\d+)\s*[xX\u00D7]\s*(\d+)/);
@@ -7380,15 +7400,14 @@ function buildProtoEditorBox(proto, weekIdx) {
                     if (!aTempo && (!m || parseInt(v) > 30)) v = '10';
                     draft[idx].sr = s + ' x ' + v + (aTempo ? 's' : '');
                     draft[idx]._type = aTempo ? 'time' : 'reps';
+                    // Scelta fatta: il bottone che pulsa non serve piu'.
+
                     if (aTempo) { draft[idx].baseWeight = 0; delete draft[idx].loads; delete draft[idx].mtrValue; }
                     onManualEdit();
                     rerenderList();
                 }
-                bRip.onclick = function(){ setTipo(false); };
-                bTmp.onclick = function(){ setTipo(true); };
-                tipoWrap.appendChild(bRip);
-                tipoWrap.appendChild(bTmp);
-                vStack.appendChild(tipoWrap);
+                tipoBtn.onclick = function(){ tipoOpen(ex.name, setTipo); };
+                vStack.appendChild(tipoBtn);
             }
 
             // Isometrici (plank e simili): si misurano in secondi a corpo libero,
@@ -7461,7 +7480,11 @@ function buildProtoEditorBox(proto, weekIdx) {
             }
 
             nameInput.addEventListener('input', function() {
+                var prima = draft[idx].name || '';
                 draft[idx].name = this.value;
+                // Cambiando esercizio la scelta fatta per il precedente non vale
+                // piu': il bottone del tipo torna a proporsi per il nuovo nome.
+                if (this.value !== prima && draft[idx]._type) delete draft[idx]._type;
                 onManualEdit();
             });
 
@@ -8969,9 +8992,55 @@ var EQUIP_LABEL = {
    compatibile, ordinate mettendo per prime quelle che replicano lo stesso
    schema di movimento (una panca si sostituisce meglio con un'altra spinta
    orizzontale che con delle croci). */
-function findExAlternatives(exName, env, limit) {
+/* Attrezzatura realmente a disposizione: quella spuntata nel wizard.
+   Se il protocollo non la porta con se' (protocolli vecchi) si ricade sulle
+   due dotazioni tipiche, coerenti con l'etichetta mostrata nel pannello. */
+function swapEquipAvail(env, equipList) {
+    var base = (Array.isArray(equipList) && equipList.length)
+        ? equipList.slice()
+        : (env === 'casa' ? ['manubri', 'panca']
+                          : (typeof AWK_EQUIP_FULL !== 'undefined' ? AWK_EQUIP_FULL.slice() : []));
+    return (typeof awkExpandEquip === 'function') ? awkExpandEquip(base) : base;
+}
+function swapEquipLabel(keys) {
+    if (!keys || !keys.length) return 'corpo libero';
+    var lab = {};
+    if (typeof AWK_EQUIP !== 'undefined') AWK_EQUIP.forEach(function(e){ lab[e.k] = (e.l || e.k).toLowerCase(); });
+    return keys.map(function(k){ return lab[k] || k; }).join(' + ');
+}
+
+function findExAlternatives(exName, env, limit, equipList) {
+    /* Il catalogo principale dell'app e' la fonte giusta: classifica ogni
+       esercizio per schema di movimento (cerniera d'anca, spinta orizzontale,
+       tirata verticale...) e dichiara attrezzo per attrezzo cosa serve.
+       Il vecchio elenco per "gruppo" mandava fuori strada: lo stacco rumeno vi
+       e' archiviato sotto Schiena, e al posto di un esercizio per femorali e
+       glutei venivano proposte trazioni e rematori. Lo stesso elenco conosceva
+       solo "manubri" e "corpo libero", cosi' una sbarra mai dichiarata passava
+       il filtro. */
+    var cat = (typeof awkCatalogLookup === 'function') ? awkCatalogLookup(exName) : null;
+    if (cat && cat.grp && typeof AWK_POOL !== 'undefined' && AWK_POOL[cat.grp]) {
+        var have = swapEquipAvail(env, equipList);
+        var okList = [], outList = [];
+        AWK_POOL[cat.grp].forEach(function(p) {
+            if (!p || !p.n) return;
+            if (p.n === cat.n) return;                       // e' l'esercizio stesso
+            if (typeof exSameExercise === 'function' && exSameExercise(p.n, exName)) return;
+            var req = p.eq || [];
+            var manca = req.filter(function(k){ return have.indexOf(k) === -1; });
+            if (manca.length) { outList.push({ name: p.n, missing: swapEquipLabel(manca) }); return; }
+            okList.push({ name: p.n, equip: swapEquipLabel(req), samePattern: false });
+        });
+        if (limit) okList = okList.slice(0, limit);
+        return { list: okList, excluded: outList, fromCatalog: true };
+    }
+
+    /* Esercizio fuori catalogo: si ripiega sul vecchio elenco, ma con
+       corrispondenza esatta sul nome. Il confronto per sottostringa faceva
+       coincidere nomi diversi e sbagliava gruppo muscolare. */
     if (typeof ESERCIZI_DB === 'undefined') return { list: [], excluded: [] };
     var canon = (typeof exCanonical === 'function' ? exCanonical(exName) : exName || '').toLowerCase();
+    var key = (typeof exNormKey === 'function') ? exNormKey(exName) : null;
     var allowed = envAllowedEquipment(env);
     var srcPattern = (typeof getMovementPattern === 'function') ? getMovementPattern(exName) : null;
 
@@ -8980,7 +9049,8 @@ function findExAlternatives(exName, env, limit) {
     for (var i = 0; i < ESERCIZI_DB.length; i++) {
         var e = ESERCIZI_DB[i];
         var nm = (e.nome || '').toLowerCase(), en = (e.en || '').toLowerCase();
-        if (nm === canon || en === canon || nm.indexOf(canon) !== -1 || canon.indexOf(nm) !== -1) {
+        var nk = (typeof exNormKey === 'function') ? exNormKey(e.nome) : null;
+        if (nm === canon || en === canon || (key && nk && key === nk)) {
             srcGroup = e.gruppo; break;
         }
     }
@@ -8993,7 +9063,7 @@ function findExAlternatives(exName, env, limit) {
         if (nm === canon) return;                          // è l'esercizio stesso
         if (typeof exSameExercise === 'function' && exSameExercise(e.nome, exName)) return;
         var eq = exEquipment(e.nome);
-        if (allowed.indexOf(eq) === -1) { excluded.push(e.nome); return; }
+        if (allowed.indexOf(eq) === -1) { excluded.push({ name: e.nome, missing: EQUIP_LABEL[eq] || eq }); return; }
         list.push({
             name: e.nome,
             en: e.en,
@@ -9125,14 +9195,14 @@ var _mtrSchemeReps = null; // ripetizioni previste dallo schema dell'esercizio
    ovvie non compaiono. */
 var _swapCb = null, _swapPick = null;
 
-function swapOpen(exName, env, muscles, callback, muscleFn) {
+function swapOpen(exName, env, muscles, callback, muscleFn, equipList) {
     _swapCb = callback; _swapPick = null;
     var ov = document.getElementById('swap-overlay');
     if (!ov) return;
 
     document.getElementById('swap-from').textContent = exItalian(exName) || exName;
 
-    var res = findExAlternatives(exName, env, 8);
+    var res = findExAlternatives(exName, env, 8, equipList);
 
     // Etichette: muscoli coinvolti + attrezzatura disponibile
     var f = document.getElementById('swap-filters');
@@ -9147,7 +9217,18 @@ function swapOpen(exName, env, muscles, callback, muscleFn) {
     });
     var envChip = document.createElement('span');
     envChip.className = 'swap-chip env';
-    envChip.textContent = (env === 'casa') ? '🏠 manubri e panca' : '🏋️ palestra completa';
+    // Etichetta onesta: elenca l'attrezzatura davvero dichiarata, perche' e'
+    // quella su cui il filtro sta lavorando.
+    var _eqTxt = '';
+    if (Array.isArray(equipList) && equipList.length) {
+        var _lab = {};
+        if (typeof AWK_EQUIP !== 'undefined') AWK_EQUIP.forEach(function(e){ _lab[e.k] = (e.l || e.k).toLowerCase(); });
+        var _n = equipList.slice(0, 3).map(function(k){ return _lab[k] || k; });
+        _eqTxt = '🧰 ' + _n.join(', ') + (equipList.length > 3 ? ' e altro' : '');
+    } else {
+        _eqTxt = (env === 'casa') ? '🏠 manubri e panca' : '🏋️ palestra completa';
+    }
+    envChip.textContent = _eqTxt;
     f.appendChild(envChip);
 
     // Elenco alternative
@@ -9160,7 +9241,7 @@ function swapOpen(exName, env, muscles, callback, muscleFn) {
             var row = document.createElement('div');
             row.className = 'swap-alt';
             var muscTxt = (typeof muscleFn === 'function' ? (muscleFn(a.name) || '') : '');
-            if (!muscTxt) muscTxt = EQUIP_LABEL[a.equip] || a.equip;
+            if (!muscTxt) muscTxt = 'stesso schema di movimento';
             row.innerHTML = '<div class="swap-alt-l">' +
                     '<div class="swap-alt-n">' + escapeHTML(a.name) + '</div>' +
                     '<div class="swap-alt-m">' + escapeHTML(muscTxt) + ' · ' + escapeHTML(EQUIP_LABEL[a.equip] || a.equip) + '</div>' +
@@ -9181,15 +9262,43 @@ function swapOpen(exName, env, muscles, callback, muscleFn) {
 
     // Esclusi per attrezzatura mancante
     var ex = document.getElementById('swap-excl');
-    ex.textContent = (res.excluded && res.excluded.length)
-        ? 'Non disponibili con la tua attrezzatura: ' + res.excluded.slice(0, 4).join(', ') +
-          (res.excluded.length > 4 ? ' e altri' : '')
-        : '';
+    if (res.excluded && res.excluded.length) {
+        var voci = res.excluded.slice(0, 4).map(function(x) {
+            return (typeof x === 'string') ? x : (x.name + ' (serve ' + x.missing + ')');
+        });
+        ex.textContent = 'Escludo per attrezzatura mancante: ' + voci.join(', ') +
+                         (res.excluded.length > 4 ? ' e altri' : '');
+    } else { ex.textContent = ''; }
 
     var cta = document.getElementById('swap-cta');
     cta.disabled = true;
     cta.textContent = 'Scegli un esercizio';
     ov.classList.add('active');
+}
+
+/* ── Tipo di misurazione per un esercizio fuori catalogo ────────────────
+   L'app non sa se un esercizio scritto a mano si conta a ripetizioni o a
+   tempo. Invece di darlo per scontato, lo chiede: nella riga compare un
+   bottone che pulsa e qui si sceglie, vedendo cosa cambia nello schema. */
+var _tipoCb = null;
+
+function tipoOpen(exName, callback) {
+    _tipoCb = callback || null;
+    var ov = document.getElementById('tipo-overlay');
+    if (!ov) { if (_tipoCb) { _tipoCb(false); _tipoCb = null; } return; }
+    var nm = document.getElementById('tipo-name');
+    if (nm) nm.textContent = exName || 'questo esercizio';
+    ov.classList.add('active');
+}
+function tipoClose() {
+    var ov = document.getElementById('tipo-overlay');
+    if (ov) ov.classList.remove('active');
+    _tipoCb = null;
+}
+function tipoPick(aTempo) {
+    var cb = _tipoCb;
+    tipoClose();
+    if (cb) cb(!!aTempo);
 }
 
 function swapClose() {
@@ -21696,6 +21805,22 @@ function homeRefreshData() {
             <div id="swap-list"></div>
             <div class="swap-excl" id="swap-excl"></div>
             <button class="swap-cta" id="swap-cta" disabled onclick="swapConfirm()">Scegli un esercizio</button>
+        </div>
+    </div>
+
+    <div id="tipo-overlay" onclick="if(event.target===this)tipoClose()">
+        <div id="tipo-sheet">
+            <h3>Come si misura?</h3>
+            <p class="tipo-sub">L'esercizio <b id="tipo-name">—</b> non è in catalogo, quindi l'app non sa come contarlo.</p>
+            <button class="tipo-choice" onclick="tipoPick(false)">
+                <span class="ic">🔁</span>
+                <span><span class="t">A ripetizioni</span><span class="d">Serie per ripetizioni. Potrai impostare un carico e il suo bersaglio.</span></span>
+            </button>
+            <button class="tipo-choice" onclick="tipoPick(true)">
+                <span class="ic">⏱️</span>
+                <span><span class="t">A tempo</span><span class="d">Serie in secondi. Nessun carico: si progredisce allungando la durata.</span></span>
+            </button>
+            <button class="tipo-cancel" onclick="tipoClose()">Decido dopo</button>
         </div>
     </div>
 
