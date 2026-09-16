@@ -4092,7 +4092,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '209';
+const APP_VERSION = '210';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -7127,6 +7127,27 @@ function buildProtoEditorBox(proto, weekIdx) {
         peEqualizeRows();
     }
 
+    /* Tipo automatico per gli esercizi riconosciuti: isometrici a tempo,
+       tutti gli altri a ripetizioni. Si applica quando il nome smette di
+       essere scritto a meta', cioe' alla fine della digitazione o scegliendo
+       dai suggerimenti. */
+    function applyTipoAuto(i) {
+        if (!draft[i]) return;
+        var t = peTipoDaCatalogo(draft[i].name);
+        if (!t) return;                       // sconosciuto: decide l'atleta
+        var eraTempo = srIsTime(draft[i].sr);
+        var vuoleTempo = (t === 'time');
+        var cambia = (draft[i]._type !== t) || (eraTempo !== vuoleTempo);
+        draft[i]._type = t;
+        if (eraTempo !== vuoleTempo) {
+            var m = (draft[i].sr || '').match(/(\d+)\s*[xX\u00D7]\s*(\d+)/);
+            var serie = m ? m[1] : '3';
+            draft[i].sr = serie + ' x ' + (vuoleTempo ? '30s' : '10');
+            if (vuoleTempo) { draft[i].baseWeight = 0; delete draft[i].loads; delete draft[i].mtrValue; }
+        }
+        if (cambia) { onManualEdit(); rerenderList(); }
+    }
+
     var peOpenCard = null;
     function peAttachSwipe(card, wrap, actions) {
         var startX = 0, startY = 0, dx = 0, dragging = false, locked = null, openW = 0;
@@ -7377,12 +7398,16 @@ function buildProtoEditorBox(proto, weekIdx) {
                impostato in secondi. Qui la scelta la fa l'atleta.
                Il selettore compare solo finche' l'esercizio resta
                sconosciuto: appena e' riconosciuto, decide il catalogo. */
-            var _noto = (typeof awkCatalogLookup === 'function') && awkCatalogLookup(ex.name);
-            var _haNome = !!(ex.name && ex.name.trim().length > 1);
+            var _noto = peExRiconosciuto(ex.name);
             // Il tipo e' gia' deciso se l'atleta l'ha scelto o se lo schema
             // e' gia' scritto in secondi (protocolli fatti prima di questa versione).
             var _tipoDeciso = !!ex._type || srIsTime(ex.sr);
-            if (!_noto && _haNome && !_tipoDeciso) {
+            /* Il bottone compare da subito, anche su una riga appena aggiunta e
+               ancora senza nome: prima aspettava che ci fossero almeno due
+               lettere, cosi' su un esercizio nuovo non si vedeva mai. Sparisce
+               appena il nome viene riconosciuto, perche' allora il tipo lo
+               sa gia' il catalogo. */
+            if (!_noto && !_tipoDeciso) {
                 var tipoBtn = document.createElement('button');
                 tipoBtn.type = 'button';
                 tipoBtn.className = 'pe-tipo-one';
@@ -7485,8 +7510,18 @@ function buildProtoEditorBox(proto, weekIdx) {
                 // Cambiando esercizio la scelta fatta per il precedente non vale
                 // piu': il bottone del tipo torna a proporsi per il nuovo nome.
                 if (this.value !== prima && draft[idx]._type) delete draft[idx]._type;
+                // Mentre si scrive: appena il nome viene riconosciuto il bottone
+                // si toglie di mezzo, se il nome torna sconosciuto ricompare.
+                // Si nasconde e basta, senza ridisegnare la riga, per non
+                // strappare il cursore da sotto le dita.
+                if (typeof tipoBtn !== 'undefined' && tipoBtn) {
+                    tipoBtn.style.display = peExRiconosciuto(this.value) ? 'none' : '';
+                }
                 onManualEdit();
             });
+            // Finito di scrivere: se l'esercizio e' in catalogo il tipo lo decide
+            // il catalogo, e la riga si aggiorna di conseguenza.
+            nameInput.addEventListener('blur', function() { applyTipoAuto(idx); });
 
             // Aggiorna badge, muscoli e sr quando si seleziona dal dropdown
             var observer = new MutationObserver(function() {
@@ -7507,6 +7542,10 @@ function buildProtoEditorBox(proto, weekIdx) {
                             // Sr automatico
                             var rec = getRecommendedSr(sel, sl);
                             if (rec) { srInput.value = rec; draft[idx].sr = rec; srInput.placeholder = rec; }
+                            // Scelto dai suggerimenti: e' per forza un esercizio
+                            // noto, quindi il tipo lo assegna il catalogo e il
+                            // bottone di scelta non serve piu'.
+                            applyTipoAuto(idx);
                         };
                     }
                 });
@@ -9274,6 +9313,40 @@ function swapOpen(exName, env, muscles, callback, muscleFn, equipList) {
     cta.disabled = true;
     cta.textContent = 'Scegli un esercizio';
     ov.classList.add('active');
+}
+
+/* Un esercizio e' "riconosciuto" se sta nel catalogo principale (che sa anche
+   se si tiene a tempo) oppure nell'elenco dei nomi con corrispondenza esatta.
+   In quel caso il tipo non si chiede: lo decide il catalogo. */
+function peExCatalogo(name) {
+    if (!name || !name.trim()) return null;
+    if (typeof awkCatalogLookup === 'function') {
+        var c = awkCatalogLookup(name);
+        if (c) return c;
+    }
+    return null;
+}
+function peExRiconosciuto(name) {
+    if (!name || !name.trim()) return null;
+    var c = peExCatalogo(name);
+    if (c) return c;
+    if (typeof ESERCIZI_DB === 'undefined') return null;
+    var canon = (typeof exCanonical === 'function' ? exCanonical(name) : name).toLowerCase().trim();
+    var key = (typeof exNormKey === 'function') ? exNormKey(name) : null;
+    for (var i = 0; i < ESERCIZI_DB.length; i++) {
+        var e = ESERCIZI_DB[i];
+        var nm = (e.nome || '').toLowerCase(), en = (e.en || '').toLowerCase();
+        var nk = (typeof exNormKey === 'function') ? exNormKey(e.nome) : null;
+        if (nm === canon || en === canon || (key && nk && key === nk)) return { n: e.nome, hold: false };
+    }
+    return null;
+}
+/* Tipo dedotto dal catalogo: 'time' per gli isometrici (plank e simili),
+   'reps' per tutto il resto. */
+function peTipoDaCatalogo(name) {
+    var c = peExRiconosciuto(name);
+    if (!c) return null;
+    return c.hold ? 'time' : 'reps';
 }
 
 /* ── Tipo di misurazione per un esercizio fuori catalogo ────────────────
