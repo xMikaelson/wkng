@@ -2294,7 +2294,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
            sottile: si tocca la meta' corrispondente al tipo. Le scritte
            uscivano dalla cornice, quindi ogni meta' e' libera di restringersi
            (min-width:0) invece di imporre la propria larghezza naturale. */
-        .pe-tipo { display:flex; gap:0; flex-shrink:0; background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.45); border-radius:7px; padding:0; width:56px; height:26px; overflow:hidden; box-sizing:border-box; animation:peHalo 1.9s ease-in-out infinite; }
+        .pe-tipo { display:flex; gap:0; flex-shrink:0; background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.45); border-radius:7px; padding:0; width:56px; height:26px; overflow:hidden; box-sizing:border-box; }
+        /* L'alone pulsa solo finche' non si e' scelto; dopo la scelta il
+           riquadro resta li', spento, con la meta' attiva evidenziata, cosi' si
+           puo' cambiare idea in qualsiasi momento. */
+        .pe-tipo.attesa { animation:peHalo 1.9s ease-in-out infinite; }
+        .pe-tipo-b.on { background:rgba(251,191,36,0.34); color:#fef3c7; }
         .pe-tipo-b { flex:1 1 0; min-width:0; background:none; border:none; color:#fbbf24; font-size:0.42rem; font-weight:800; letter-spacing:0; font-family:inherit; padding:0; cursor:pointer; white-space:nowrap; line-height:1; text-align:center; overflow:hidden; display:flex; align-items:center; justify-content:center; }
         .pe-tipo-b + .pe-tipo-b { border-left:1px solid rgba(251,191,36,0.35); }
         .pe-tipo-b:active { background:rgba(251,191,36,0.3); }
@@ -2303,7 +2308,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             55%     { box-shadow:0 0 0 6px rgba(251,191,36,0); }
         }
         @media (prefers-reduced-motion:reduce) {
-            .pe-tipo { animation:none; background:rgba(251,191,36,0.24); border-color:rgba(251,191,36,0.6); }
+            .pe-tipo.attesa { animation:none; background:rgba(251,191,36,0.24); border-color:rgba(251,191,36,0.6); }
         }
         .pe-hold-tag { background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.25); border-radius:6px; color:#a5b4fc; font-size:0.5rem; font-weight:700; letter-spacing:0.02em; height:26px; width:56px; padding:0 4px; display:flex; align-items:center; justify-content:center; flex-shrink:0; white-space:nowrap; }
         /* Corpo libero: puro (grigio, nessun carico) e zavorrabile (ambra, +kg) */
@@ -4083,7 +4088,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '213';
+const APP_VERSION = '215';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -7403,22 +7408,36 @@ function buildProtoEditorBox(proto, weekIdx) {
                lettere, cosi' su un esercizio nuovo non si vedeva mai. Sparisce
                appena il nome viene riconosciuto, perche' allora il tipo lo
                sa gia' il catalogo. */
-            var _daScegliere = (!_noto && !_tipoDeciso);
+            /* Barra del nome vuota: si riparte sempre da capo, qualunque tipo
+               fosse stato scelto per l'esercizio precedente. */
+            var _vuoto = !(ex.name && ex.name.trim());
+            if (_vuoto && ex._type) delete ex._type;
+            var _daScegliere = (!_noto && (_vuoto || !_tipoDeciso));
+            /* Il controllo del tipo resta visibile per tutto il tempo in cui
+               l'esercizio non e' riconosciuto, anche dopo aver scelto: cosi' si
+               puo' passare da ripetizioni a secondi e viceversa in qualsiasi
+               momento. Prima spariva al primo tocco e la scelta non si poteva
+               piu' correggere. */
+            /* Il controllo viene sempre creato, anche per un esercizio
+               riconosciuto: resta solo nascosto. Prima non esisteva affatto, e
+               cancellando il nome non poteva ricomparire. */
+            var _mostraTipo = true;
             /* Serie e ripetizioni non hanno senso finche' non si sa se
                l'esercizio si conta a ripetizioni o a secondi: la casella
                compare insieme al resto, una volta deciso. */
             if (!_daScegliere) vStack.appendChild(srInput);
-            if (_daScegliere) {
-                /* Finche' l'esercizio non e' riconosciuto, i due pulsanti
-                   affiancati: si vede subito quali sono le due possibilita'.
-                   L'alone attorno resta finche' non se ne sceglie una. */
+            if (_mostraTipo) {
+                /* Un solo riquadro con i due simboli: si tocca la meta' che
+                   corrisponde al tipo. L'alone pulsa finche' non si sceglie. */
                 var tipoWrap = document.createElement('div');
                 tipoWrap.className = 'pe-tipo';
                 var bRip = document.createElement('button');
                 var bTmp = document.createElement('button');
                 bRip.type = 'button'; bTmp.type = 'button';
-                bRip.className = 'pe-tipo-b';
-                bTmp.className = 'pe-tipo-b';
+                if (_daScegliere) tipoWrap.classList.add('attesa');
+                if (_noto) tipoWrap.style.display = 'none';
+                bRip.className = 'pe-tipo-b' + (ex._type === 'reps' ? ' on' : '');
+                bTmp.className = 'pe-tipo-b' + (ex._type === 'time' ? ' on' : '');
                 bRip.textContent = '\u00D7rip';
                 bTmp.textContent = '\u23F1sec';
                 bRip.title = 'Si misura a ripetizioni';
@@ -7428,14 +7447,14 @@ function buildProtoEditorBox(proto, weekIdx) {
                     var m = (draft[idx].sr || '').match(/(\d+)\s*[xX\u00D7]\s*(\d+)/);
                     var s = m ? m[1] : '3';
                     var v = m ? m[2] : (aTempo ? '30' : '10');
-                    // Passando a tempo un numero di ripetizioni diventerebbe
-                    // una durata assurda, e viceversa: si riparte da un valore
-                    // sensato per il tipo scelto.
-                    if (aTempo && (!m || parseInt(v) < 15)) v = '30';
-                    if (!aTempo && (!m || parseInt(v) > 30)) v = '10';
+                    /* Passando a tempo un numero di ripetizioni diventerebbe
+                       una durata assurda, e viceversa: cambiando tipo si
+                       riparte sempre da un valore sensato. Prima tornando da
+                       secondi a ripetizioni restavano 30 ripetizioni. */
+                    var eraTempo = srIsTime(draft[idx].sr);
+                    if (!m || eraTempo !== aTempo) v = aTempo ? '30' : '10';
                     draft[idx].sr = s + ' x ' + v + (aTempo ? 's' : '');
                     draft[idx]._type = aTempo ? 'time' : 'reps';
-                    // Scelta fatta: il bottone che pulsa non serve piu'.
 
                     if (aTempo) { draft[idx].baseWeight = 0; delete draft[idx].loads; delete draft[idx].mtrValue; }
                     onManualEdit();
@@ -7446,10 +7465,10 @@ function buildProtoEditorBox(proto, weekIdx) {
                 tipoWrap.appendChild(bRip);
                 tipoWrap.appendChild(bTmp);
                 vStack.appendChild(tipoWrap);
-                /* Senza esercizio riconosciuto non c'e' un carico da mostrare
-                   ne' un bersaglio da impostare: il campo kg e il 🎯
-                   chiedevano un peso per un esercizio che ancora non esiste. */
-                if (mtrBtn.parentNode) mtrBtn.parentNode.removeChild(mtrBtn);
+                /* Finche' non si sa di che esercizio si tratta non c'e' un
+                   carico da mostrare ne' un bersaglio da impostare: il campo kg
+                   e il 🎯 chiedevano un peso per un esercizio inesistente. */
+                if (_daScegliere && mtrBtn.parentNode) mtrBtn.parentNode.removeChild(mtrBtn);
             }
 
             // Isometrici (plank e simili): si misurano in secondi a corpo libero,
@@ -7529,12 +7548,43 @@ function buildProtoEditorBox(proto, weekIdx) {
                 // Cambiando esercizio la scelta fatta per il precedente non vale
                 // piu': il bottone del tipo torna a proporsi per il nuovo nome.
                 if (this.value !== prima && draft[idx]._type) delete draft[idx]._type;
-                // Mentre si scrive: appena il nome viene riconosciuto il bottone
-                // si toglie di mezzo, se il nome torna sconosciuto ricompare.
-                // Si nasconde e basta, senza ridisegnare la riga, per non
-                // strappare il cursore da sotto le dita.
+                /* Aggiornamento dal vivo, senza ridisegnare la riga: il cursore
+                   resta dov'e' mentre si scrive.
+                   - nome riconosciuto  → il controllo del tipo si toglie
+                   - barra svuotata     → si torna allo stato di partenza:
+                                          controllo che pulsa, niente schema,
+                                          niente carico, niente bersaglio
+                   - nome sconosciuto   → il controllo resta a disposizione */
+                var _vuotoOra = !this.value.trim();
+                var _ricOra = peExRiconosciuto(this.value);
+                if (_vuotoOra && draft[idx]._type) delete draft[idx]._type;
                 if (typeof tipoWrap !== 'undefined' && tipoWrap) {
-                    tipoWrap.style.display = peExRiconosciuto(this.value) ? 'none' : 'flex';
+                    tipoWrap.style.display = _ricOra ? 'none' : 'flex';
+                    if (_vuotoOra || !draft[idx]._type) {
+                        tipoWrap.classList.add('attesa');
+                        if (typeof bRip !== 'undefined' && bRip) bRip.classList.remove('on');
+                        if (typeof bTmp !== 'undefined' && bTmp) bTmp.classList.remove('on');
+                    }
+                }
+                /* Badge e muscoli seguono il nome mentre lo si scrive: restando
+                   fermi, una riga svuotata continuava a dichiarare i muscoli
+                   dell'esercizio cancellato. */
+                var _cOra = isCompoundEx(this.value);
+                badge.className = _cOra === true ? 'proto-ex-badge'
+                                : _cOra === false ? 'proto-ex-badge iso'
+                                : 'proto-ex-badge unknown';
+                badge.textContent = _vuotoOra ? exBadgeLabel(null, '') : exBadgeLabel(_cOra, this.value);
+                musclesEl.textContent = _vuotoOra ? '' : (getMuscles(this.value) || '');
+                if (_vuotoOra) {
+                    srInput.style.display = 'none';
+                    if (kgInput) kgInput.style.display = 'none';
+                    if (mtrBtn) mtrBtn.style.display = 'none';
+                    var _tagVuoto = card.querySelector('.pe-hold-tag, .pe-bw-tag');
+                    if (_tagVuoto) _tagVuoto.style.display = 'none';
+                } else {
+                    if (srInput.style.display === 'none' && (_ricOra || draft[idx]._type)) srInput.style.display = '';
+                    if (mtrBtn && mtrBtn.style.display === 'none' && _ricOra) mtrBtn.style.display = '';
+                    if (kgInput && kgInput.style.display === 'none' && _ricOra) kgInput.style.display = '';
                 }
                 onManualEdit();
             });
