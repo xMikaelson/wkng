@@ -2290,8 +2290,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         /* Esercizio non riconosciuto: i due pulsanti affiancati, con un alone
            che pulsa finche' non se ne sceglie uno, cosi' si capisce che vanno
            premuti e non sono una semplice etichetta. */
-        .pe-tipo { display:flex; gap:2px; flex-shrink:0; background:rgba(251,191,36,0.1); border:1px solid rgba(251,191,36,0.4); border-radius:7px; padding:2px; width:56px; animation:peHalo 1.9s ease-in-out infinite; }
-        .pe-tipo-b { flex:1; background:none; border:none; color:#fbbf24; font-size:0.45rem; font-weight:800; font-family:inherit; padding:3px 2px; border-radius:5px; cursor:pointer; white-space:nowrap; line-height:1; }
+        .pe-tipo { display:flex; gap:2px; flex-shrink:0; background:rgba(251,191,36,0.1); border:1px solid rgba(251,191,36,0.4); border-radius:7px; padding:2px; width:56px; overflow:hidden; box-sizing:border-box; animation:peHalo 1.9s ease-in-out infinite; }
+        /* Le scritte uscivano dalla cornice: niente simboli, testo piu' corto e
+           ogni meta' libera di restringersi (min-width:0) invece di imporre la
+           propria larghezza naturale. */
+        .pe-tipo-b { flex:1 1 0; min-width:0; background:none; border:none; color:#fbbf24; font-size:0.42rem; font-weight:800; letter-spacing:0; font-family:inherit; padding:4px 0; border-radius:5px; cursor:pointer; white-space:nowrap; line-height:1; text-align:center; overflow:hidden; }
         .pe-tipo-b:active { background:rgba(251,191,36,0.3); }
         @keyframes peHalo {
             0%,100% { box-shadow:0 0 0 0 rgba(251,191,36,0.42); }
@@ -4078,7 +4081,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '211';
+const APP_VERSION = '212';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -7230,6 +7233,9 @@ function buildProtoEditorBox(proto, weekIdx) {
             nameInput.rows = 1;
             nameInput.className = 'pe-name';
             nameInput.placeholder = 'Cerca esercizio...';
+            // Sia il contenuto sia il valore: un'area di testo creata fuori dalla
+            // pagina puo' mostrare il segnaposto anche con il valore assegnato.
+            nameInput.textContent = ex.name || '';
             nameInput.value = ex.name || '';
             nameInput.setAttribute('oninput', 'debouncedSearch(this)');
             // Invio: chiude la scrittura invece di aggiungere una riga vuota.
@@ -7379,8 +7385,6 @@ function buildProtoEditorBox(proto, weekIdx) {
             right.appendChild(icoRow);
             right.appendChild(vStack);
 
-            vStack.appendChild(srInput);
-
             /* Esercizio scritto a mano e non presente nel catalogo.
                In questo caso l'app non puo' sapere se si misura a ripetizioni
                o a tempo, e finora lo dava per scontato a ripetizioni: un
@@ -7398,6 +7402,10 @@ function buildProtoEditorBox(proto, weekIdx) {
                appena il nome viene riconosciuto, perche' allora il tipo lo
                sa gia' il catalogo. */
             var _daScegliere = (!_noto && !_tipoDeciso);
+            /* Serie e ripetizioni non hanno senso finche' non si sa se
+               l'esercizio si conta a ripetizioni o a secondi: la casella
+               compare insieme al resto, una volta deciso. */
+            if (!_daScegliere) vStack.appendChild(srInput);
             if (_daScegliere) {
                 /* Finche' l'esercizio non e' riconosciuto, i due pulsanti
                    affiancati: si vede subito quali sono le due possibilita'.
@@ -7409,8 +7417,8 @@ function buildProtoEditorBox(proto, weekIdx) {
                 bRip.type = 'button'; bTmp.type = 'button';
                 bRip.className = 'pe-tipo-b';
                 bTmp.className = 'pe-tipo-b';
-                bRip.textContent = '\u00D7 rip';
-                bTmp.textContent = '\u23F1 sec';
+                bRip.textContent = 'RIP';
+                bTmp.textContent = 'SEC';
                 bRip.title = 'Si misura a ripetizioni';
                 bTmp.title = 'Si misura a tempo, in secondi';
 
@@ -7540,6 +7548,7 @@ function buildProtoEditorBox(proto, weekIdx) {
                         item.onclick = function() {
                             var sel = item.querySelector('span') ? item.querySelector('span').textContent : item.textContent;
                             draft[idx].name = sel;
+                            nameInput.textContent = sel;
                             nameInput.value = sel;
                             suggestionsEl.style.display = 'none';
                             nameInput.setAttribute('data-selected', 'true');
@@ -7551,10 +7560,13 @@ function buildProtoEditorBox(proto, weekIdx) {
                             // Sr automatico
                             var rec = getRecommendedSr(sel, sl);
                             if (rec) { srInput.value = rec; draft[idx].sr = rec; srInput.placeholder = rec; }
-                            // Scelto dai suggerimenti: e' per forza un esercizio
-                            // noto, quindi il tipo lo assegna il catalogo e il
-                            // bottone di scelta non serve piu'.
+                            /* Scelto dai suggerimenti: il tipo lo assegna il
+                               catalogo. La riga viene comunque ridisegnata, cosi'
+                               nome, tipo, carico e bersaglio si allineano tutti
+                               insieme: prima capitava che cambiassero badge e
+                               schema mentre i pulsanti del tipo restavano li'. */
                             applyTipoAuto(idx);
+                            rerenderList();
                         };
                     }
                 });
@@ -9339,6 +9351,18 @@ function peExRiconosciuto(name) {
     if (!name || !name.trim()) return null;
     var c = peExCatalogo(name);
     if (c) return c;
+    /* Se l'app sa gia' dire se e' fondamentale o isolamento, l'esercizio lo
+       conosce: e' lo stesso giudizio che finisce nel badge della riga. Senza
+       questo, esercizi presenti solo negli elenchi secondari restavano
+       "da definire" anche dopo essere stati scelti dalla ricerca. */
+    if (typeof isCompoundEx === 'function' && isCompoundEx(name) !== null) {
+        // Varianti di isometrici non presenti nel catalogo principale
+        // (es. "Plank con Braccio Teso"): vanno comunque contate in secondi.
+        var low = (name || '').toLowerCase();
+        var tenuta = ['plank', 'isometric', 'hollow hold', 'wall sit', 'dead hang', 'sospensione alla sbarra']
+            .some(function(k){ return low.indexOf(k) !== -1; });
+        return { n: name, hold: tenuta };
+    }
     if (typeof ESERCIZI_DB === 'undefined') return null;
     var canon = (typeof exCanonical === 'function' ? exCanonical(name) : name).toLowerCase().trim();
     var key = (typeof exNormKey === 'function') ? exNormKey(name) : null;
