@@ -2294,12 +2294,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
            sottile: si tocca la meta' corrispondente al tipo. Le scritte
            uscivano dalla cornice, quindi ogni meta' e' libera di restringersi
            (min-width:0) invece di imporre la propria larghezza naturale. */
-        .pe-tipo { display:flex; gap:0; flex-shrink:0; background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.45); border-radius:7px; padding:0; width:56px; height:26px; overflow:hidden; box-sizing:border-box; }
-        /* L'alone pulsa solo finche' non si e' scelto; dopo la scelta il
-           riquadro resta li', spento, con la meta' attiva evidenziata, cosi' si
-           puo' cambiare idea in qualsiasi momento. */
+        /* Un solo pulsante: premendolo si apre la finestra dove si decide.
+           L'alone pulsa finche' non si e' scelto; dopo la scelta il pulsante
+           resta li', spento, e mostra il tipo impostato, cosi' si puo'
+           cambiare idea in qualsiasi momento. */
+        .pe-tipo { display:flex; align-items:center; justify-content:center; flex-shrink:0; background:rgba(251,191,36,0.14); border:1px solid rgba(251,191,36,0.45); border-radius:7px; padding:0; width:56px; height:26px; overflow:hidden; box-sizing:border-box; color:#fbbf24; font-family:inherit; font-size:0.45rem; font-weight:800; letter-spacing:0.03em; text-transform:uppercase; cursor:pointer; white-space:nowrap; }
         .pe-tipo.attesa { animation:peHalo 1.9s ease-in-out infinite; }
-        .pe-tipo-b.on { background:rgba(251,191,36,0.34); color:#fef3c7; }
+        .pe-tipo:active { transform:scale(0.94); }
         .pe-tipo-b { flex:1 1 0; min-width:0; background:none; border:none; color:#fbbf24; font-size:0.42rem; font-weight:800; letter-spacing:0; font-family:inherit; padding:0; cursor:pointer; white-space:nowrap; line-height:1; text-align:center; overflow:hidden; display:flex; align-items:center; justify-content:center; }
         .pe-tipo-b + .pe-tipo-b { border-left:1px solid rgba(251,191,36,0.35); }
         .pe-tipo-b:active { background:rgba(251,191,36,0.3); }
@@ -2308,8 +2309,23 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             55%     { box-shadow:0 0 0 6px rgba(251,191,36,0); }
         }
         @media (prefers-reduced-motion:reduce) {
-            .pe-tipo.attesa { animation:none; background:rgba(251,191,36,0.24); border-color:rgba(251,191,36,0.6); }
+            .pe-tipo.attesa { animation:none; background:rgba(251,191,36,0.3); border-color:rgba(251,191,36,0.65); }
         }
+        /* Finestra di scelta del tipo */
+        #tipo-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:9700; display:none; align-items:center; justify-content:center; padding:20px; }
+        #tipo-overlay.active { display:flex; }
+        #tipo-sheet { background:var(--card); border-radius:18px; padding:18px 16px; max-width:340px; width:100%; border:1px solid rgba(255,255,255,0.1); animation:tipoIn 0.24s cubic-bezier(0.22,1,0.36,1); }
+        @keyframes tipoIn { from { opacity:0; transform:translateY(14px) scale(0.97); } to { opacity:1; transform:none; } }
+        #tipo-sheet h3 { margin:0 0 4px; font-size:0.85rem; font-weight:800; color:#e2e8f0; }
+        .tipo-sub { margin:0 0 14px; font-size:0.64rem; color:#94a3b8; line-height:1.5; }
+        .tipo-sub b { color:#cbd5e1; }
+        .tipo-choice { width:100%; text-align:left; background:rgba(99,102,241,0.09); border:1px solid rgba(99,102,241,0.35); border-radius:12px; padding:12px 13px; margin-bottom:8px; cursor:pointer; font-family:inherit; display:flex; gap:11px; align-items:flex-start; text-transform:none; color:#e2e8f0; }
+        .tipo-choice.on { background:rgba(251,191,36,0.14); border-color:rgba(251,191,36,0.5); }
+        .tipo-choice:active { transform:scale(0.985); }
+        .tipo-choice .ic { font-size:1.05rem; line-height:1.1; flex-shrink:0; margin-top:1px; }
+        .tipo-choice .t { font-size:0.7rem; font-weight:800; margin-bottom:2px; display:block; }
+        .tipo-choice .d { font-size:0.58rem; color:#94a3b8; line-height:1.45; display:block; }
+        .tipo-cancel { width:100%; background:none; border:none; color:#64748b; font-size:0.62rem; font-weight:700; font-family:inherit; padding:9px 0 2px; cursor:pointer; text-transform:none; }
         .pe-hold-tag { background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.25); border-radius:6px; color:#a5b4fc; font-size:0.5rem; font-weight:700; letter-spacing:0.02em; height:26px; width:56px; padding:0 4px; display:flex; align-items:center; justify-content:center; flex-shrink:0; white-space:nowrap; }
         /* Corpo libero: puro (grigio, nessun carico) e zavorrabile (ambra, +kg) */
         .pe-bw-tag { background:rgba(148,163,184,0.1); border:1px solid rgba(148,163,184,0.25); border-radius:6px; color:#94a3b8; font-size:0.47rem; font-weight:700; height:26px; width:56px; padding:0 3px; display:flex; align-items:center; justify-content:center; flex-shrink:0; white-space:nowrap; }
@@ -4088,7 +4104,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '215';
+const APP_VERSION = '217';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -7123,6 +7139,27 @@ function buildProtoEditorBox(proto, weekIdx) {
         peEqualizeRows();
     }
 
+    /* Definita qui e non dentro la singola riga: serve anche alle funzioni
+       che agiscono sull'intero elenco. Stando piu' in basso, l'assegnazione
+       automatica del tipo si interrompeva a meta' con un errore, e la riga
+       non veniva mai ridisegnata dopo aver scelto un esercizio dalla ricerca. */
+    function onManualEdit() {
+        if (proto._coachOptimizedAt) {
+            proto._coachOptimizedAt = null;
+            var sb = box.querySelector('.proto-editor-save-btn');
+            if (sb && sb.disabled) {
+                sb.textContent = '🤖 Analisi Coach AI';
+                sb.disabled = false;
+                sb.style.background = '';
+                sb.style.color = '';
+                sb.style.border = '';
+                sb.onclick = function() { protoEditorStartSave(proto, draft, weekIdx, sb, box); };
+                var hint = sb.parentElement.querySelector('div');
+                if (hint) hint.remove();
+            }
+        }
+    }
+
     /* Tipo automatico per gli esercizi riconosciuti: isometrici a tempo,
        tutti gli altri a ripetizioni. Si applica quando il nome smette di
        essere scritto a meta', cioe' alla fine della digitazione o scegliendo
@@ -7429,19 +7466,17 @@ function buildProtoEditorBox(proto, weekIdx) {
             if (_mostraTipo) {
                 /* Un solo riquadro con i due simboli: si tocca la meta' che
                    corrisponde al tipo. L'alone pulsa finche' non si sceglie. */
-                var tipoWrap = document.createElement('div');
+                var tipoWrap = document.createElement('button');
+                tipoWrap.type = 'button';
                 tipoWrap.className = 'pe-tipo';
-                var bRip = document.createElement('button');
-                var bTmp = document.createElement('button');
-                bRip.type = 'button'; bTmp.type = 'button';
                 if (_daScegliere) tipoWrap.classList.add('attesa');
                 if (_noto) tipoWrap.style.display = 'none';
-                bRip.className = 'pe-tipo-b' + (ex._type === 'reps' ? ' on' : '');
-                bTmp.className = 'pe-tipo-b' + (ex._type === 'time' ? ' on' : '');
-                bRip.textContent = '\u00D7rip';
-                bTmp.textContent = '\u23F1sec';
-                bRip.title = 'Si misura a ripetizioni';
-                bTmp.title = 'Si misura a tempo, in secondi';
+                /* Sul pulsante c'e' sempre un tipo, mai una domanda: finche'
+                   non si e' scelto mostra ripetizioni, che e' il criterio con
+                   cui l'app conterebbe comunque l'esercizio, e pulsa per farsi
+                   confermare o cambiare. */
+                tipoWrap.textContent = ex._type === 'time' ? '\u23F1 sec' : '\u00D7 rip';
+                tipoWrap.title = 'Scegli se questo esercizio si misura a ripetizioni o a tempo';
 
                 function setTipo(aTempo) {
                     var m = (draft[idx].sr || '').match(/(\d+)\s*[xX\u00D7]\s*(\d+)/);
@@ -7460,10 +7495,7 @@ function buildProtoEditorBox(proto, weekIdx) {
                     onManualEdit();
                     rerenderList();
                 }
-                bRip.onclick = function(){ setTipo(false); };
-                bTmp.onclick = function(){ setTipo(true); };
-                tipoWrap.appendChild(bRip);
-                tipoWrap.appendChild(bTmp);
+                tipoWrap.onclick = function(){ tipoOpen(draft[idx].name, draft[idx]._type, setTipo); };
                 vStack.appendChild(tipoWrap);
                 /* Finche' non si sa di che esercizio si tratta non c'e' un
                    carico da mostrare ne' un bersaglio da impostare: il campo kg
@@ -7525,22 +7557,6 @@ function buildProtoEditorBox(proto, weekIdx) {
             list.appendChild(wrap);
 
             // Listeners
-            function onManualEdit() {
-                if (proto._coachOptimizedAt) {
-                    proto._coachOptimizedAt = null;
-                    var sb = box.querySelector('.proto-editor-save-btn');
-                    if (sb && sb.disabled) {
-                        sb.textContent = '🤖 Analisi Coach AI';
-                        sb.disabled = false;
-                        sb.style.background = '';
-                        sb.style.color = '';
-                        sb.style.border = '';
-                        sb.onclick = function() { protoEditorStartSave(proto, draft, weekIdx, sb, box); };
-                        var hint = sb.parentElement.querySelector('div');
-                        if (hint) hint.remove();
-                    }
-                }
-            }
 
             nameInput.addEventListener('input', function() {
                 var prima = draft[idx].name || '';
@@ -7562,8 +7578,7 @@ function buildProtoEditorBox(proto, weekIdx) {
                     tipoWrap.style.display = _ricOra ? 'none' : 'flex';
                     if (_vuotoOra || !draft[idx]._type) {
                         tipoWrap.classList.add('attesa');
-                        if (typeof bRip !== 'undefined' && bRip) bRip.classList.remove('on');
-                        if (typeof bTmp !== 'undefined' && bTmp) bTmp.classList.remove('on');
+                        tipoWrap.textContent = '\u00D7 rip';
                     }
                 }
                 /* Badge e muscoli seguono il nome mentre lo si scrive: restando
@@ -9443,6 +9458,31 @@ function peTipoDaCatalogo(name) {
     var c = peExRiconosciuto(name);
     if (!c) return null;
     return c.hold ? 'time' : 'reps';
+}
+
+/* ── Finestra di scelta del tipo per un esercizio fuori catalogo ──────── */
+var _tipoCb = null;
+function tipoOpen(exName, tipoCorrente, callback) {
+    _tipoCb = callback || null;
+    var ov = document.getElementById('tipo-overlay');
+    if (!ov) { if (_tipoCb) { _tipoCb(false); _tipoCb = null; } return; }
+    var nm = document.getElementById('tipo-name');
+    if (nm) nm.textContent = (exName && exName.trim()) ? exName : 'Questo esercizio';
+    // La scelta gia' fatta resta evidenziata, cosi' si vede da cosa si parte.
+    var cr = document.getElementById('tipo-ch-rip'), cs = document.getElementById('tipo-ch-sec');
+    if (cr) cr.className = 'tipo-choice' + (tipoCorrente === 'reps' ? ' on' : '');
+    if (cs) cs.className = 'tipo-choice' + (tipoCorrente === 'time' ? ' on' : '');
+    ov.classList.add('active');
+}
+function tipoClose() {
+    var ov = document.getElementById('tipo-overlay');
+    if (ov) ov.classList.remove('active');
+    _tipoCb = null;
+}
+function tipoPick(aTempo) {
+    var cb = _tipoCb;
+    tipoClose();
+    if (cb) cb(!!aTempo);
 }
 
 function swapClose() {
@@ -21949,6 +21989,22 @@ function homeRefreshData() {
             <div id="swap-list"></div>
             <div class="swap-excl" id="swap-excl"></div>
             <button class="swap-cta" id="swap-cta" disabled onclick="swapConfirm()">Scegli un esercizio</button>
+        </div>
+    </div>
+
+    <div id="tipo-overlay" onclick="if(event.target===this)tipoClose()">
+        <div id="tipo-sheet">
+            <h3>Come si misura?</h3>
+            <p class="tipo-sub"><b id="tipo-name">Questo esercizio</b> non è in catalogo, quindi l'app non sa come contarlo.</p>
+            <button class="tipo-choice" id="tipo-ch-rip" onclick="tipoPick(false)">
+                <span class="ic">🔁</span>
+                <span><span class="t">A ripetizioni</span><span class="d">Serie per ripetizioni. Potrai impostare un carico e il suo bersaglio.</span></span>
+            </button>
+            <button class="tipo-choice" id="tipo-ch-sec" onclick="tipoPick(true)">
+                <span class="ic">⏱️</span>
+                <span><span class="t">A tempo</span><span class="d">Serie in secondi. Nessun carico: si progredisce allungando la durata.</span></span>
+            </button>
+            <button class="tipo-cancel" onclick="tipoClose()">Annulla</button>
         </div>
     </div>
 
