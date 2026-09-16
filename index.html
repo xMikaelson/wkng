@@ -2290,11 +2290,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         /* Esercizio non riconosciuto: i due pulsanti affiancati, con un alone
            che pulsa finche' non se ne sceglie uno, cosi' si capisce che vanno
            premuti e non sono una semplice etichetta. */
-        .pe-tipo { display:flex; gap:2px; flex-shrink:0; background:rgba(251,191,36,0.1); border:1px solid rgba(251,191,36,0.4); border-radius:7px; padding:2px; width:56px; overflow:hidden; box-sizing:border-box; animation:peHalo 1.9s ease-in-out infinite; }
-        /* Le scritte uscivano dalla cornice: niente simboli, testo piu' corto e
-           ogni meta' libera di restringersi (min-width:0) invece di imporre la
-           propria larghezza naturale. */
-        .pe-tipo-b { flex:1 1 0; min-width:0; background:none; border:none; color:#fbbf24; font-size:0.42rem; font-weight:800; letter-spacing:0; font-family:inherit; padding:4px 0; border-radius:5px; cursor:pointer; white-space:nowrap; line-height:1; text-align:center; overflow:hidden; }
+        /* Un solo controllo con dentro i due simboli, diviso da una linea
+           sottile: si tocca la meta' corrispondente al tipo. Le scritte
+           uscivano dalla cornice, quindi ogni meta' e' libera di restringersi
+           (min-width:0) invece di imporre la propria larghezza naturale. */
+        .pe-tipo { display:flex; gap:0; flex-shrink:0; background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.45); border-radius:7px; padding:0; width:56px; height:26px; overflow:hidden; box-sizing:border-box; animation:peHalo 1.9s ease-in-out infinite; }
+        .pe-tipo-b { flex:1 1 0; min-width:0; background:none; border:none; color:#fbbf24; font-size:0.42rem; font-weight:800; letter-spacing:0; font-family:inherit; padding:0; cursor:pointer; white-space:nowrap; line-height:1; text-align:center; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+        .pe-tipo-b + .pe-tipo-b { border-left:1px solid rgba(251,191,36,0.35); }
         .pe-tipo-b:active { background:rgba(251,191,36,0.3); }
         @keyframes peHalo {
             0%,100% { box-shadow:0 0 0 0 rgba(251,191,36,0.42); }
@@ -4081,7 +4083,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '212';
+const APP_VERSION = '213';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -7417,8 +7419,8 @@ function buildProtoEditorBox(proto, weekIdx) {
                 bRip.type = 'button'; bTmp.type = 'button';
                 bRip.className = 'pe-tipo-b';
                 bTmp.className = 'pe-tipo-b';
-                bRip.textContent = 'RIP';
-                bTmp.textContent = 'SEC';
+                bRip.textContent = '\u00D7rip';
+                bTmp.textContent = '\u23F1sec';
                 bRip.title = 'Si misura a ripetizioni';
                 bTmp.title = 'Si misura a tempo, in secondi';
 
@@ -7536,9 +7538,19 @@ function buildProtoEditorBox(proto, weekIdx) {
                 }
                 onManualEdit();
             });
-            // Finito di scrivere: se l'esercizio e' in catalogo il tipo lo decide
-            // il catalogo, e la riga si aggiorna di conseguenza.
-            nameInput.addEventListener('blur', function() { applyTipoAuto(idx); });
+            /* Finito di scrivere, il tipo lo decide il catalogo. Ma l'uscita dal
+               campo avviene PRIMA che il tocco sul risultato della ricerca venga
+               registrato: ridisegnando subito la riga, il risultato spariva da
+               sotto il dito e la selezione andava persa. Si aspetta un istante,
+               e se nel frattempo e' stato scelto un esercizio si lascia fare a
+               quella selezione. */
+            var _appenaScelto = false;
+            nameInput.addEventListener('blur', function() {
+                setTimeout(function() { if (!_appenaScelto) applyTipoAuto(idx); }, 220);
+            });
+            // Toccando un risultato il campo non perde il fuoco: cosi' la
+            // selezione arriva sempre a destinazione.
+            suggestionsEl.addEventListener('pointerdown', function(e) { e.preventDefault(); });
 
             // Aggiorna badge, muscoli e sr quando si seleziona dal dropdown
             var observer = new MutationObserver(function() {
@@ -7546,6 +7558,7 @@ function buildProtoEditorBox(proto, weekIdx) {
                     if (!item._patched) {
                         item._patched = true;
                         item.onclick = function() {
+                            _appenaScelto = true;
                             var sel = item.querySelector('span') ? item.querySelector('span').textContent : item.textContent;
                             draft[idx].name = sel;
                             nameInput.textContent = sel;
