@@ -2298,7 +2298,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
            L'alone pulsa finche' non si e' scelto; dopo la scelta il pulsante
            resta li', spento, e mostra il tipo impostato, cosi' si puo'
            cambiare idea in qualsiasi momento. */
-        .pe-tipo { display:flex; align-items:center; justify-content:center; flex-shrink:0; background:rgba(251,191,36,0.14); border:1px solid rgba(251,191,36,0.45); border-radius:7px; padding:0; width:56px; height:26px; overflow:hidden; box-sizing:border-box; color:#fbbf24; font-family:inherit; font-size:0.45rem; font-weight:800; letter-spacing:0.03em; text-transform:uppercase; cursor:pointer; white-space:nowrap; }
+        .pe-tipo { display:flex; align-items:center; justify-content:center; gap:2px; flex-shrink:0; background:rgba(251,191,36,0.14); border:1px solid rgba(251,191,36,0.45); border-radius:7px; padding:0 2px; width:56px; height:26px; overflow:hidden; box-sizing:border-box; color:#fbbf24; font-family:inherit; font-size:0.38rem; font-weight:800; letter-spacing:0; text-transform:uppercase; cursor:pointer; white-space:nowrap; }
+        /* Le due scritte non sono premibili: qualunque punto si tocchi si apre
+           la finestra di scelta. */
+        .pe-tipo-s, .pe-tipo-sep { pointer-events:none; line-height:1; }
+        .pe-tipo-s { opacity:0.55; }
+        .pe-tipo-s.on { opacity:1; color:#fef3c7; text-decoration:underline; text-underline-offset:2px; }
+        .pe-tipo-sep { opacity:0.4; }
         .pe-tipo.attesa { animation:peHalo 1.9s ease-in-out infinite; }
         .pe-tipo:active { transform:scale(0.94); }
         .pe-tipo-b { flex:1 1 0; min-width:0; background:none; border:none; color:#fbbf24; font-size:0.42rem; font-weight:800; letter-spacing:0; font-family:inherit; padding:0; cursor:pointer; white-space:nowrap; line-height:1; text-align:center; overflow:hidden; display:flex; align-items:center; justify-content:center; }
@@ -4104,7 +4110,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // ============= APP VERSION (single source of truth) =============
 // Numero unico bumpato a ogni release. Il footer nel profilo lo legge da qui.
 // Prima era hard-coded nell'HTML → v.143 restava congelata anche dopo il deploy.
-const APP_VERSION = '217';
+const APP_VERSION = '218';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -7471,11 +7477,7 @@ function buildProtoEditorBox(proto, weekIdx) {
                 tipoWrap.className = 'pe-tipo';
                 if (_daScegliere) tipoWrap.classList.add('attesa');
                 if (_noto) tipoWrap.style.display = 'none';
-                /* Sul pulsante c'e' sempre un tipo, mai una domanda: finche'
-                   non si e' scelto mostra ripetizioni, che e' il criterio con
-                   cui l'app conterebbe comunque l'esercizio, e pulsa per farsi
-                   confermare o cambiare. */
-                tipoWrap.textContent = ex._type === 'time' ? '\u23F1 sec' : '\u00D7 rip';
+                tipoWrap.innerHTML = peTipoLabelHtml(ex._type);
                 tipoWrap.title = 'Scegli se questo esercizio si misura a ripetizioni o a tempo';
 
                 function setTipo(aTempo) {
@@ -7578,7 +7580,7 @@ function buildProtoEditorBox(proto, weekIdx) {
                     tipoWrap.style.display = _ricOra ? 'none' : 'flex';
                     if (_vuotoOra || !draft[idx]._type) {
                         tipoWrap.classList.add('attesa');
-                        tipoWrap.textContent = '\u00D7 rip';
+                        tipoWrap.innerHTML = peTipoLabelHtml(null);
                     }
                 }
                 /* Badge e muscoli seguono il nome mentre lo si scrive: restando
@@ -9417,6 +9419,15 @@ function swapOpen(exName, env, muscles, callback, muscleFn, equipList) {
 /* Un esercizio e' "riconosciuto" se sta nel catalogo principale (che sa anche
    se si tiene a tempo) oppure nell'elenco dei nomi con corrispondenza esatta.
    In quel caso il tipo non si chiede: lo decide il catalogo. */
+/* Etichetta del pulsante del tipo: sempre i due simboli, con evidenziato
+   quello in uso. I simboli sono solo scritte, non due pulsanti: il tocco
+   apre comunque la finestra di scelta. */
+function peTipoLabelHtml(tipo) {
+    return '<span class="pe-tipo-s' + (tipo === 'reps' ? ' on' : '') + '">\u00D7rip</span>' +
+           '<span class="pe-tipo-sep">|</span>' +
+           '<span class="pe-tipo-s' + (tipo === 'time' ? ' on' : '') + '">\u23F1sec</span>';
+}
+
 function peExCatalogo(name) {
     if (!name || !name.trim()) return null;
     if (typeof awkCatalogLookup === 'function') {
