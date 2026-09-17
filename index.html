@@ -2303,11 +2303,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
            la finestra di scelta. */
         .pe-tipo-s, .pe-tipo-sep { pointer-events:none; line-height:1; }
         .pe-tipo-s { opacity:0.55; }
-        .pe-tipo-s.on { opacity:1; color:#fef3c7; text-decoration:underline; text-underline-offset:2px; }
-        /* Tipo gia' scelto: l'etichetta e' sola nel riquadro, quindi niente
-           sottolineatura (non c'e' piu' nulla da cui distinguerla) e piu'
-           spazio a disposizione per leggerla. */
-        .pe-tipo-s.solo { text-decoration:none; font-size:0.52rem; letter-spacing:0.02em; }
         .pe-tipo-sep { opacity:0.4; }
         .pe-tipo.attesa { animation:peHalo 1.9s ease-in-out infinite; }
         .pe-tipo:active { transform:scale(0.94); }
@@ -7483,7 +7478,7 @@ function buildProtoEditorBox(proto, weekIdx) {
                 tipoWrap.className = 'pe-tipo';
                 if (_daScegliere) tipoWrap.classList.add('attesa');
                 if (!_daScegliere) tipoWrap.style.display = 'none';
-                tipoWrap.innerHTML = peTipoLabelHtml(ex._type);
+                tipoWrap.innerHTML = peTipoLabelHtml();
                 tipoWrap.title = 'Scegli se questo esercizio si misura a ripetizioni o a tempo';
 
                 function setTipo(aTempo) {
@@ -7586,7 +7581,7 @@ function buildProtoEditorBox(proto, weekIdx) {
                     tipoWrap.style.display = (_ricOra || draft[idx]._type) ? 'none' : 'flex';
                     if (_vuotoOra || !draft[idx]._type) {
                         tipoWrap.classList.add('attesa');
-                        tipoWrap.innerHTML = peTipoLabelHtml(null);
+                        tipoWrap.innerHTML = peTipoLabelHtml();
                     }
                 }
                 /* Badge e muscoli seguono il nome mentre lo si scrive: restando
@@ -9425,17 +9420,10 @@ function swapOpen(exName, env, muscles, callback, muscleFn, equipList) {
 /* Un esercizio e' "riconosciuto" se sta nel catalogo principale (che sa anche
    se si tiene a tempo) oppure nell'elenco dei nomi con corrispondenza esatta.
    In quel caso il tipo non si chiede: lo decide il catalogo. */
-/* Etichetta del pulsante del tipo: finche' la scelta non e' stata fatta si
-   vedono entrambi i simboli, come invito a sceglierne uno. Scelto il tipo
-   resta solo quello: il confronto fra le due opzioni non serve piu' e il
-   riquadro si legge a colpo d'occhio. Prima restavano tutti e due con quello
-   in uso evidenziato, e a distanza sembrava ancora una scelta da fare.
-   Il tocco riapre comunque la finestra per cambiare idea. */
-function peTipoLabelHtml(tipo) {
-    if (tipo === 'reps' || tipo === 'time') {
-        return '<span class="pe-tipo-s on solo">' +
-               (tipo === 'time' ? '\u23F1sec' : '\u00D7rip') + '</span>';
-    }
+/* Etichetta del pulsante del tipo: i due simboli affiancati, come invito a
+   sceglierne uno. Il riquadro si vede solo finche' la scelta non e' stata
+   fatta, quindi non c'e' mai un tipo "in uso" da evidenziare. */
+function peTipoLabelHtml() {
     return '<span class="pe-tipo-s">\u00D7rip</span>' +
            '<span class="pe-tipo-sep">|</span>' +
            '<span class="pe-tipo-s">\u23F1sec</span>';
