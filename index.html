@@ -7460,11 +7460,13 @@ function buildProtoEditorBox(proto, weekIdx) {
             var _vuoto = !(ex.name && ex.name.trim());
             if (_vuoto && ex._type) delete ex._type;
             var _daScegliere = (!_noto && (_vuoto || !_tipoDeciso));
-            /* Il controllo del tipo resta visibile per tutto il tempo in cui
-               l'esercizio non e' riconosciuto, anche dopo aver scelto: cosi' si
-               puo' passare da ripetizioni a secondi e viceversa in qualsiasi
-               momento. Prima spariva al primo tocco e la scelta non si poteva
-               piu' correggere. */
+            /* Il controllo del tipo si vede solo finche' la scelta non e'
+               stata fatta. Appena si sceglie, l'esercizio e' impostato con
+               quel tipo e la riga diventa quella di un esercizio normale:
+               schema e carico se va a ripetizioni, schema e indicatore
+               "a tempo" se va a secondi. Prima il riquadro restava anche
+               dopo la scelta, e una riga fuori catalogo non somigliava mai a
+               una riconosciuta. Per rifare la scelta si riscrive il nome. */
             /* Il controllo viene sempre creato, anche per un esercizio
                riconosciuto: resta solo nascosto. Prima non esisteva affatto, e
                cancellando il nome non poteva ricomparire. */
@@ -7480,7 +7482,7 @@ function buildProtoEditorBox(proto, weekIdx) {
                 tipoWrap.type = 'button';
                 tipoWrap.className = 'pe-tipo';
                 if (_daScegliere) tipoWrap.classList.add('attesa');
-                if (_noto) tipoWrap.style.display = 'none';
+                if (!_daScegliere) tipoWrap.style.display = 'none';
                 tipoWrap.innerHTML = peTipoLabelHtml(ex._type);
                 tipoWrap.title = 'Scegli se questo esercizio si misura a ripetizioni o a tempo';
 
@@ -7581,7 +7583,7 @@ function buildProtoEditorBox(proto, weekIdx) {
                 var _ricOra = peExRiconosciuto(this.value);
                 if (_vuotoOra && draft[idx]._type) delete draft[idx]._type;
                 if (typeof tipoWrap !== 'undefined' && tipoWrap) {
-                    tipoWrap.style.display = _ricOra ? 'none' : 'flex';
+                    tipoWrap.style.display = (_ricOra || draft[idx]._type) ? 'none' : 'flex';
                     if (_vuotoOra || !draft[idx]._type) {
                         tipoWrap.classList.add('attesa');
                         tipoWrap.innerHTML = peTipoLabelHtml(null);
