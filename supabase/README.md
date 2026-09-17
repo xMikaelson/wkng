@@ -16,11 +16,11 @@ web e non sarebbe rivedibile in un diff.
 
 | Ora   | Promemoria     |
 |-------|----------------|
-| 07:15 | ⚖️ Peso        |
+| 07:30 | ⚖️ Buongiorno  |
 | 08:00 | ☕ Colazione    |
-| 10:30 | 🍎 Snack + Acqua |
-| 13:00 | 🍝 Pranzo      |
-| 16:00 | 🍊 Snack + Acqua |
+| 10:30 | 🍎 Piccola pausa |
+| 13:00 | 🍝 È ora di pranzo |
+| 16:00 | 🍊 Metà pomeriggio |
 | 20:00 | 🍽️ Cena        |
 
 Gli orari si cambiano in **due punti**, che devono restare allineati:
@@ -32,7 +32,7 @@ cron nella migration (gli scatti che risvegliano la function).
 `pg_cron` ragiona in UTC e non conosce l'ora legale. Con un solo scatto gli
 orari erano giusti d'inverno e un'ora tardi da fine marzo a fine ottobre.
 Ora ogni promemoria e' schedulato sia sull'ora CET che su quella CEST
-(es. `15 5,6 * * *` per le 07:15): la function confronta con l'ora di Roma e
+(es. `30 5,6 * * *` per le 07:30): la function confronta con l'ora di Roma e
 scarta lo scatto sbagliato, quindi ogni giorno ne va a segno esattamente uno.
 
 ## Notifiche locali

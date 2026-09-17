@@ -161,12 +161,12 @@ async function sendPush(
 // ('awakening-' + h + '-' + m): stesso tag = la notifica push e quella locale
 // si sovrascrivono invece di accumularsi quando l'app e' aperta.
 const SCHEDULE: { h: number; m: number; title: string; body: string }[] = [
-  { h: 7,  m: 15, title: "⚖️ Peso",         body: "Buongiorno! Registra il tuo peso di oggi." },
-  { h: 8,  m: 0,  title: "☕ Colazione",           body: "Ora di colazione! Ricordati di loggarla su Awakening." },
-  { h: 10, m: 30, title: "🍎 Snack + Acqua", body: "Spuntino di meta mattina! Hai bevuto abbastanza acqua?" },
-  { h: 13, m: 0,  title: "🍝 Pranzo",        body: "Ora di pranzo! Registra il pasto su Awakening." },
-  { h: 16, m: 0,  title: "🍊 Snack + Acqua", body: "Spuntino pomeridiano! Ricordati di bere." },
-  { h: 20, m: 0,  title: "🍽️ Cena",    body: "Ora di cena! Registra il pasto su Awakening." },
+  { h: 7,  m: 30, title: "\u2696\ufe0f Buongiorno",        body: "Saliamo un attimo sulla bilancia?" },
+  { h: 8,  m: 0,  title: "\u2615 Colazione",                body: "Che si mangia? Segnalo quando hai finito." },
+  { h: 10, m: 30, title: "\ud83c\udf4e Piccola pausa",     body: "Uno spuntino e un bicchiere d\u2019acqua." },
+  { h: 13, m: 0,  title: "\ud83c\udf5d \u00c8 ora di pranzo", body: "Raccontami cosa c\u2019\u00e8 nel piatto." },
+  { h: 16, m: 0,  title: "\ud83c\udf4a Met\u00e0 pomeriggio", body: "Un boccone e bevi, manca poco." },
+  { h: 20, m: 0,  title: "\ud83c\udf7d\ufe0f Cena",       body: "Ultimo pasto, poi si stacca." },
 ];
 
 // Il cron parte al minuto esatto ma la chiamata HTTP puo' arrivare con qualche

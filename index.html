@@ -4119,7 +4119,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '234';
+const APP_VERSION = '235';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -11132,12 +11132,12 @@ async function savePushSubscriptionToSupabase(subscription) {
 
 // ── NOTIFICHE CLIENT-SIDE ───────────────────────────────
 var CLIENT_NOTIF_SCHEDULE = [
-    { h:7,  m:15, title:'\u2696\ufe0f Peso',         body:'Buongiorno! Registra il tuo peso di oggi.' },
-    { h:8,  m:0,  title:'\u2615 Colazione',           body:'Ora di colazione! Ricordati di loggarla su Awakening.' },
-    { h:10, m:30, title:'🍎 Snack + Acqua',   body:'Spuntino di meta mattina! Hai bevuto abbastanza acqua?' },
-    { h:13, m:0,  title:'🍝 Pranzo',          body:'Ora di pranzo! Registra il pasto su Awakening.' },
-    { h:16, m:0,  title:'🍊 Snack + Acqua',   body:'Spuntino pomeridiano! Ricordati di bere.' },
-    { h:20, m:0,  title:'🍽️ Cena',      body:'Ora di cena! Registra il pasto su Awakening.' },
+    { h:7,  m:30, title:'\u2696\ufe0f Buongiorno',    body:'Saliamo un attimo sulla bilancia?' },
+    { h:8,  m:0,  title:'\u2615 Colazione',            body:'Che si mangia? Segnalo quando hai finito.' },
+    { h:10, m:30, title:'🍎 Piccola pausa',   body:'Uno spuntino e un bicchiere d’acqua.' },
+    { h:13, m:0,  title:'🍝 È ora di pranzo', body:'Raccontami cosa c’è nel piatto.' },
+    { h:16, m:0,  title:'🍊 Metà pomeriggio', body:'Un boccone e bevi, manca poco.' },
+    { h:20, m:0,  title:'🍽️ Cena',           body:'Ultimo pasto, poi si stacca.' },
 ];
 
 var _clientNotifTimers = [];
