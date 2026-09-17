@@ -4112,7 +4112,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '225';
+const APP_VERSION = '226';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -5628,6 +5628,185 @@ function musclesToEn(s) {
     return out;
 }
 
+function getMuscles(name) {
+    if (!name) return '';
+    var n = exCanonical(name).toLowerCase();
+    var muscleMap = {
+        'panca piana': 'petto, tricipiti, deltoide ant.',
+        'panca inclinata': 'petto sup., tricipiti, deltoide ant.',
+        'panca declinata': 'petto inf., tricipiti',
+        'military press': 'deltoidi, trapezio, tricipiti',
+        'lento avanti': 'deltoidi, trapezio, tricipiti',
+        'arnold press': 'deltoidi, trapezio, tricipiti',
+        'lento dietro': 'deltoidi, trapezio',
+        'dip': 'petto, tricipiti, deltoide',
+        'push up': 'petto, tricipiti, deltoide ant.',
+        'pullover': 'petto, gran dorsale, tricipiti',
+        'croci inverse': 'deltoide post., romboidi',
+        'croci inclinate': 'petto sup., deltoide ant.',
+        'croci': 'petto, deltoide ant.',
+        'trazioni': 'gran dorsale, bicipiti, romboidi',
+        'lat machine': 'gran dorsale, bicipiti, romboidi',
+        'rematore con bilanciere': 'gran dorsale, romboidi, bicipiti',
+        'rematore con manubrio': 'gran dorsale, romboidi, bicipiti',
+        'rematore ai cavi': 'gran dorsale, romboidi, bicipiti',
+        'stacco da terra': 'femorali, glutei, erettori spinali',
+        'stacco rumeno': 'femorali, glutei, erettori',
+        'stacco sumo': 'glutei, femorali, quadricipiti',
+        'good morning': 'femorali, glutei, erettori',
+        'iperestensioni': 'erettori spinali, glutei, femorali',
+        'alzate laterali': 'deltoide laterale',
+        'alzate frontali': 'deltoide anteriore',
+        'face pull': 'deltoide post., rotatori, trapezio',
+        'scrollate': 'trapezio superiore',
+        'curl con bilanciere': 'bicipiti',
+        'curl con manubri': 'bicipiti',
+        'curl alternato': 'bicipiti',
+        'curl ai cavi': 'bicipiti',
+        'curl hammer': 'bicipiti, brachiale',
+        'curl concentrato': 'bicipiti',
+        'curl su panca scott': 'bicipiti',
+        'french press': 'tricipiti — isolato',
+        'pushdown': 'tricipiti — isolato',
+        'estensioni tricipiti': 'tricipiti — isolato',
+        'kickback': 'tricipiti — isolato',
+        'tricipiti in presa stretta': 'tricipiti, petto',
+        'squat': 'quadricipiti, glutei, femorali',
+        'hack squat': 'quadricipiti, glutei',
+        'goblet': 'quadricipiti, glutei, core',
+        'leg press': 'quadricipiti, glutei, femorali',
+        'affondi': 'quadricipiti, glutei, femorali',
+        'step up': 'quadricipiti, glutei',
+        'leg extension': 'quadricipiti',
+        'hip thrust': 'glutei, femorali',
+        'sumo squat': 'glutei, adduttori, quadricipiti',
+        'abductor': 'glutei, abduttori',
+        'leg curl': 'femorali',
+        'calf raise': 'polpacci (gastrocnemio)',
+        'crunch': 'addominali',
+        'plank': 'core, addominali',
+        'russian twist': 'addominali obliqui',
+        'leg raise': 'addominali inferiori',
+        'rollout': 'core, addominali',
+        'mountain climber': 'core, spalle, quadricipiti',
+        'clean and press': 'full body, deltoidi, glutei',
+        'kettlebell swing': 'glutei, femorali, core',
+        'thruster': 'quadricipiti, deltoidi, tricipiti',
+        'burpee': 'full body',
+        /* Varianti del catalogo alternative: nessuna chiave le
+           intercettava e restavano senza muscoli. Le voci specifiche
+           stanno prima delle generiche, perche' vince la prima che
+           combacia col nome. */
+        'overhead press con kettlebell': 'deltoidi, trapezio, tricipiti, core',
+        'overhead press': 'deltoidi, trapezio, tricipiti',
+        'shoulder press': 'deltoidi, tricipiti, trapezio',
+        'handstand push-up': 'deltoidi, tricipiti, trapezio',
+        'handstand hold': 'deltoidi, core, trapezio',
+        'pike push-up': 'deltoidi, tricipiti, trapezio',
+        'alzata al mento': 'deltoide laterale, trapezio, bicipiti',
+        'alzate posteriori': 'deltoide post., romboidi, trapezio',
+        'alzate per i deltoidi posteriori': 'deltoide post., romboidi, trapezio',
+        'alzate prone y-t-w': 'deltoide post., trapezio inf., romboidi',
+        'y-raise': 'deltoide post., trapezio inf., romboidi',
+        'reverse fly': 'deltoide post., romboidi, trapezio',
+        'chest press inclinata': 'petto sup., tricipiti, deltoide ant.',
+        'chest press': 'petto, tricipiti, deltoide ant.',
+        'pressa petto': 'petto, tricipiti, deltoide ant.',
+        'pectoral machine': 'petto, deltoide ant.',
+        'peck deck': 'petto, deltoide ant.',
+        'floor press': 'petto, tricipiti, deltoide ant.',
+        'diamond push-up': 'tricipiti, petto, deltoide ant.',
+        'archer push-up': 'petto, tricipiti, deltoide ant.',
+        'pseudo planche push-up': 'petto, deltoide ant., tricipiti, core',
+        'push-up declinato': 'petto sup., tricipiti, deltoide ant.',
+        'push-up largo': 'petto, deltoide ant., tricipiti',
+        'push-up agli anelli': 'petto, tricipiti, deltoide ant., core',
+        'push-up con elastico': 'petto, tricipiti, deltoide ant.',
+        'push-up': 'petto, tricipiti, deltoide ant.',
+        'rematore al tavolo presa supina': 'gran dorsale, bicipiti, romboidi',
+        'rematore a t': 'gran dorsale, romboidi, trapezio',
+        'pendlay row': 'gran dorsale, romboidi, trapezio, bicipiti',
+        'australian row': 'gran dorsale, romboidi, bicipiti',
+        'rematore': 'gran dorsale, romboidi, bicipiti',
+        'pulldown a braccia tese': 'gran dorsale, tricipiti (capo lungo)',
+        'lat pulldown': 'gran dorsale, bicipiti, romboidi',
+        'front lever': 'gran dorsale, core, addominali',
+        'nordic hamstring curl': 'femorali (eccentrico), glutei',
+        'curl a martello': 'bicipiti, brachiale',
+        'curl inclinato': 'bicipiti (capo lungo)',
+        'curl di concentrazione': 'bicipiti',
+        'curl per i bicipiti': 'bicipiti',
+        'curl agli anelli': 'bicipiti, brachiale',
+        'curl isometrico': 'bicipiti, brachiale',
+        'curl con elastico': 'bicipiti',
+        'estensione tricipiti': 'tricipiti (capo lungo) — isolato',
+        'estensioni sopra la testa': 'tricipiti (capo lungo) — isolato',
+        'push-down': 'tricipiti — isolato',
+        'glute bridge': 'glutei, femorali',
+        'ponte glutei': 'glutei, femorali',
+        'step-up': 'quadricipiti, glutei',
+        'box jump': 'quadricipiti, glutei, polpacci',
+        'hollow hold': 'core, addominali',
+        'l-sit': 'core, addominali, flessori anca',
+        'dragon flag': 'core, addominali, flessori anca',
+        'sit up': 'addominali, flessori anca',
+        'sollevamento gambe alla sbarra': 'addominali inferiori, flessori anca',
+        'jumping jack': 'full body, polpacci, deltoidi'
+    };
+    for (var key in muscleMap) {
+        if (n.indexOf(key) !== -1) {
+            return exIsEnglish(name) ? musclesToEn(muscleMap[key]) : muscleMap[key];
+        }
+    }
+    return '';
+}
+
+/* Gruppo muscolare di un esercizio. Per quelli del database e' scritto nella
+   scheda; per tutti gli altri si ricava dal primo muscolo dell'elenco, che e'
+   il principale. Cosi' resta allineato da solo: se cambiano i muscoli cambia
+   anche il gruppo, senza una seconda tabella da tenere aggiornata. */
+var GRUPPO_DA_MUSCOLO = [
+    ['petto', 'Petto'], ['gran dorsale', 'Schiena'], ['erettori', 'Schiena'],
+    ['deltoid', 'Spalle'], ['trapezio', 'Spalle'],
+    ['bicipiti', 'Bicipiti'], ['tricipiti', 'Tricipiti'],
+    ['quadricipiti', 'Quadricipiti'], ['femorali', 'Femorali'],
+    ['glutei', 'Glutei'], ['polpacci', 'Polpacci'],
+    ['addominali', 'Addominali'], ['core', 'Core'], ['full body', 'Full Body']
+];
+function exGruppoMuscolare(name) {
+    if (!name) return '';
+    var canon = exCanonical(name), k = exNormKey(canon);
+    for (var i = 0; i < ESERCIZI_DB.length; i++) {
+        if (exNormKey(ESERCIZI_DB[i].nome) === k) return ESERCIZI_DB[i].gruppo;
+    }
+    var primo = (getMuscles(canon) || '').split(',')[0].trim().toLowerCase();
+    for (var j = 0; j < GRUPPO_DA_MUSCOLO.length; j++) {
+        if (primo.indexOf(GRUPPO_DA_MUSCOLO[j][0]) === 0) return GRUPPO_DA_MUSCOLO[j][1];
+    }
+    return '';
+}
+
+/* Il catalogo delle alternative in elenco piatto, costruito una volta sola.
+   Sono esercizi veri quanto quelli del database: per chi li fa abitualmente
+   non sono affatto "alternative", e devono potersi cercare per nome. */
+var _exAltIndex = null;
+function exAltList() {
+    if (_exAltIndex) return _exAltIndex;
+    _exAltIndex = [];
+    if (typeof AWK_POOL === 'undefined') return _exAltIndex;
+    var visti = {};
+    Object.keys(AWK_POOL).forEach(function(blocco) {
+        (AWK_POOL[blocco] || []).forEach(function(v) {
+            if (!v || !v.n) return;
+            var k = exNormKey(exCanonical(v.n));
+            if (visti[k]) return;
+            visti[k] = true;
+            _exAltIndex.push({ nome: v.n, chiave: k, gruppo: exGruppoMuscolare(v.n) });
+        });
+    });
+    return _exAltIndex;
+}
+
 function exNormKey(s) {
     return (s || '').toString().toLowerCase()
         .replace(/[-_/]/g, ' ')
@@ -5781,6 +5960,20 @@ function searchExercises(input) {
             gruppo: ex.gruppo,
             via: (!itHit && enName) ? enName : ''   // come lo hai cercato
         });
+    });
+
+    /* Dopo il database, il catalogo delle alternative. Restano in coda perche'
+       il database e' la fonte autorevole (ha gruppo e sinonimi inglesi curati),
+       ma senza questo passaggio 77 esercizi non si potevano trovare scrivendoli:
+       si arrivava solo passando dalla sostituzione. */
+    var gia = {};
+    results.forEach(function(r) { gia[exNormKey(exCanonical(r.nome))] = true; });
+    exAltList().forEach(function(alt) {
+        if (results.length >= 8) return;
+        if (gia[alt.chiave]) return;
+        if (alt.nome.toLowerCase().indexOf(query) === -1) return;
+        gia[alt.chiave] = true;
+        results.push({ nome: alt.nome, gruppo: alt.gruppo, via: '' });
     });
 
     if (results.length === 0) { sBox.style.display = 'none'; return; }
@@ -7027,139 +7220,6 @@ function buildProtoEditorBox(proto, weekIdx) {
     // Helper: restituisce i muscoli coinvolti dall'esercizio
     // Il nome viene risolto in canonico italiano (così funziona anche in inglese)
     // e l'elenco viene tradotto se l'esercizio è scritto in inglese.
-    function getMuscles(name) {
-        if (!name) return '';
-        var n = exCanonical(name).toLowerCase();
-        var muscleMap = {
-            'panca piana': 'petto, tricipiti, deltoide ant.',
-            'panca inclinata': 'petto sup., tricipiti, deltoide ant.',
-            'panca declinata': 'petto inf., tricipiti',
-            'military press': 'deltoidi, trapezio, tricipiti',
-            'lento avanti': 'deltoidi, trapezio, tricipiti',
-            'arnold press': 'deltoidi, trapezio, tricipiti',
-            'lento dietro': 'deltoidi, trapezio',
-            'dip': 'petto, tricipiti, deltoide',
-            'push up': 'petto, tricipiti, deltoide ant.',
-            'pullover': 'petto, gran dorsale, tricipiti',
-            'croci inverse': 'deltoide post., romboidi',
-            'croci inclinate': 'petto sup., deltoide ant.',
-            'croci': 'petto, deltoide ant.',
-            'trazioni': 'gran dorsale, bicipiti, romboidi',
-            'lat machine': 'gran dorsale, bicipiti, romboidi',
-            'rematore con bilanciere': 'gran dorsale, romboidi, bicipiti',
-            'rematore con manubrio': 'gran dorsale, romboidi, bicipiti',
-            'rematore ai cavi': 'gran dorsale, romboidi, bicipiti',
-            'stacco da terra': 'femorali, glutei, erettori spinali',
-            'stacco rumeno': 'femorali, glutei, erettori',
-            'stacco sumo': 'glutei, femorali, quadricipiti',
-            'good morning': 'femorali, glutei, erettori',
-            'iperestensioni': 'erettori spinali, glutei, femorali',
-            'alzate laterali': 'deltoide laterale',
-            'alzate frontali': 'deltoide anteriore',
-            'face pull': 'deltoide post., rotatori, trapezio',
-            'scrollate': 'trapezio superiore',
-            'curl con bilanciere': 'bicipiti',
-            'curl con manubri': 'bicipiti',
-            'curl alternato': 'bicipiti',
-            'curl ai cavi': 'bicipiti',
-            'curl hammer': 'bicipiti, brachiale',
-            'curl concentrato': 'bicipiti',
-            'curl su panca scott': 'bicipiti',
-            'french press': 'tricipiti — isolato',
-            'pushdown': 'tricipiti — isolato',
-            'estensioni tricipiti': 'tricipiti — isolato',
-            'kickback': 'tricipiti — isolato',
-            'tricipiti in presa stretta': 'tricipiti, petto',
-            'squat': 'quadricipiti, glutei, femorali',
-            'hack squat': 'quadricipiti, glutei',
-            'goblet': 'quadricipiti, glutei, core',
-            'leg press': 'quadricipiti, glutei, femorali',
-            'affondi': 'quadricipiti, glutei, femorali',
-            'step up': 'quadricipiti, glutei',
-            'leg extension': 'quadricipiti',
-            'hip thrust': 'glutei, femorali',
-            'sumo squat': 'glutei, adduttori, quadricipiti',
-            'abductor': 'glutei, abduttori',
-            'leg curl': 'femorali',
-            'calf raise': 'polpacci (gastrocnemio)',
-            'crunch': 'addominali',
-            'plank': 'core, addominali',
-            'russian twist': 'addominali obliqui',
-            'leg raise': 'addominali inferiori',
-            'rollout': 'core, addominali',
-            'mountain climber': 'core, spalle, quadricipiti',
-            'clean and press': 'full body, deltoidi, glutei',
-            'kettlebell swing': 'glutei, femorali, core',
-            'thruster': 'quadricipiti, deltoidi, tricipiti',
-            'burpee': 'full body',
-            /* Varianti del catalogo alternative: nessuna chiave le
-               intercettava e restavano senza muscoli. Le voci specifiche
-               stanno prima delle generiche, perche' vince la prima che
-               combacia col nome. */
-            'overhead press con kettlebell': 'deltoidi, trapezio, tricipiti, core',
-            'overhead press': 'deltoidi, trapezio, tricipiti',
-            'shoulder press': 'deltoidi, tricipiti, trapezio',
-            'handstand push-up': 'deltoidi, tricipiti, trapezio',
-            'handstand hold': 'deltoidi, core, trapezio',
-            'pike push-up': 'deltoidi, tricipiti, trapezio',
-            'alzata al mento': 'deltoide laterale, trapezio, bicipiti',
-            'alzate posteriori': 'deltoide post., romboidi, trapezio',
-            'alzate per i deltoidi posteriori': 'deltoide post., romboidi, trapezio',
-            'alzate prone y-t-w': 'deltoide post., trapezio inf., romboidi',
-            'y-raise': 'deltoide post., trapezio inf., romboidi',
-            'reverse fly': 'deltoide post., romboidi, trapezio',
-            'chest press inclinata': 'petto sup., tricipiti, deltoide ant.',
-            'chest press': 'petto, tricipiti, deltoide ant.',
-            'pressa petto': 'petto, tricipiti, deltoide ant.',
-            'pectoral machine': 'petto, deltoide ant.',
-            'peck deck': 'petto, deltoide ant.',
-            'floor press': 'petto, tricipiti, deltoide ant.',
-            'diamond push-up': 'tricipiti, petto, deltoide ant.',
-            'archer push-up': 'petto, tricipiti, deltoide ant.',
-            'pseudo planche push-up': 'petto, deltoide ant., tricipiti, core',
-            'push-up declinato': 'petto sup., tricipiti, deltoide ant.',
-            'push-up largo': 'petto, deltoide ant., tricipiti',
-            'push-up agli anelli': 'petto, tricipiti, deltoide ant., core',
-            'push-up con elastico': 'petto, tricipiti, deltoide ant.',
-            'push-up': 'petto, tricipiti, deltoide ant.',
-            'rematore al tavolo presa supina': 'gran dorsale, bicipiti, romboidi',
-            'rematore a t': 'gran dorsale, romboidi, trapezio',
-            'pendlay row': 'gran dorsale, romboidi, trapezio, bicipiti',
-            'australian row': 'gran dorsale, romboidi, bicipiti',
-            'rematore': 'gran dorsale, romboidi, bicipiti',
-            'pulldown a braccia tese': 'gran dorsale, tricipiti (capo lungo)',
-            'lat pulldown': 'gran dorsale, bicipiti, romboidi',
-            'front lever': 'gran dorsale, core, addominali',
-            'nordic hamstring curl': 'femorali (eccentrico), glutei',
-            'curl a martello': 'bicipiti, brachiale',
-            'curl inclinato': 'bicipiti (capo lungo)',
-            'curl di concentrazione': 'bicipiti',
-            'curl per i bicipiti': 'bicipiti',
-            'curl agli anelli': 'bicipiti, brachiale',
-            'curl isometrico': 'bicipiti, brachiale',
-            'curl con elastico': 'bicipiti',
-            'estensione tricipiti': 'tricipiti (capo lungo) — isolato',
-            'estensioni sopra la testa': 'tricipiti (capo lungo) — isolato',
-            'push-down': 'tricipiti — isolato',
-            'glute bridge': 'glutei, femorali',
-            'ponte glutei': 'glutei, femorali',
-            'step-up': 'quadricipiti, glutei',
-            'box jump': 'quadricipiti, glutei, polpacci',
-            'hollow hold': 'core, addominali',
-            'l-sit': 'core, addominali, flessori anca',
-            'dragon flag': 'core, addominali, flessori anca',
-            'sit up': 'addominali, flessori anca',
-            'sollevamento gambe alla sbarra': 'addominali inferiori, flessori anca',
-            'jumping jack': 'full body, polpacci, deltoidi'
-        };
-        for (var key in muscleMap) {
-            if (n.indexOf(key) !== -1) {
-                return exIsEnglish(name) ? musclesToEn(muscleMap[key]) : muscleMap[key];
-            }
-        }
-        return '';
-    }
-
     // Helper: restituisce sr consigliato in base a compound/isolato e slot protocollo
     function getRecommendedSr(name, slot) {
         var comp = isCompoundEx(name);
@@ -9544,7 +9604,8 @@ function peExRiconosciuto(name) {
         // Varianti di isometrici non presenti nel catalogo principale
         // (es. "Plank con Braccio Teso"): vanno comunque contate in secondi.
         var low = (name || '').toLowerCase();
-        var tenuta = ['plank', 'isometric', 'hollow hold', 'wall sit', 'dead hang', 'sospensione alla sbarra']
+        var tenuta = ['plank', 'isometric', 'hollow hold', 'wall sit', 'dead hang', 'sospensione alla sbarra',
+                      'l-sit', 'front lever', 'handstand hold']
             .some(function(k){ return low.indexOf(k) !== -1; });
         return { n: name, hold: tenuta };
     }
@@ -18398,7 +18459,7 @@ const AWK_POOL = {
     {n:'Lat Machine ai Cavi', eq:['cavi']},
     {n:'Lat Pulldown con Elastico', eq:['elastici']},
     {n:'Rematore al Tavolo Presa Supina', eq:['appoggio'], fam:'row_bw'},
-    {n:'Rematore Isometrico allo Stipite', eq:[]}
+    {n:'Rematore Isometrico allo Stipite', eq:[], hold:true}
   ],
   QUAD: [
     {n:'Leg Extension', eq:['macchine']},
@@ -18431,7 +18492,7 @@ const AWK_POOL = {
     {n:'Alzate Laterali ai Cavi', eq:['cavi']},
     {n:'Alzate Laterali con Manubri', eq:['manubri']},
     {n:'Alzate Laterali con Elastico', eq:['elastici']},
-    {n:'Handstand Hold al Muro', eq:[]}
+    {n:'Handstand Hold al Muro', eq:[], hold:true}
   ],
   REARDELT: [
     {n:'Face Pull ai Cavi', eq:['cavi']},
@@ -18448,7 +18509,7 @@ const AWK_POOL = {
     {n:'Chin-up', eq:['sbarra']},
     {n:'Curl agli Anelli', eq:['anelli']},
     {n:'Rematore al Tavolo Presa Stretta', eq:['appoggio'], fam:'row_bw'},
-    {n:'Curl Isometrico con Asciugamano', eq:[]}
+    {n:'Curl Isometrico con Asciugamano', eq:[], hold:true}
   ],
   TRI: [
     {n:'Push-down ai Cavi', eq:['cavi']},
@@ -18485,11 +18546,11 @@ const AWK_POOL = {
     {n:'Trazioni agli Anelli', eq:['anelli']},
     {n:'Trazioni con Elastico', eq:['sbarra','elastici']},
     {n:'Rematore al Tavolo', eq:['appoggio'], fam:'row_bw'},
-    {n:'Rematore Isometrico allo Stipite', eq:[]}
+    {n:'Rematore Isometrico allo Stipite', eq:[], hold:true}
   ],
   C_PULL2: [
-    {n:'Front Lever Tuck', eq:['sbarra']},
-    {n:'Front Lever Tuck agli Anelli', eq:['anelli']},
+    {n:'Front Lever Tuck', eq:['sbarra'], hold:true},
+    {n:'Front Lever Tuck agli Anelli', eq:['anelli'], hold:true},
     {n:'Rematore al Tavolo Monobraccio', eq:['appoggio'], fam:'row_bw'},
     {n:'Alzate Prone Y-T-W', eq:[], fam:'prone_raise'}
   ],
