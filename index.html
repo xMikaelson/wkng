@@ -4112,7 +4112,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '222';
+const APP_VERSION = '223';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -7582,7 +7582,13 @@ function buildProtoEditorBox(proto, weekIdx) {
                 var _ricOra = peExRiconosciuto(this.value);
                 if (_vuotoOra && draft[idx]._type) delete draft[idx]._type;
                 if (typeof tipoWrap !== 'undefined' && tipoWrap) {
-                    tipoWrap.style.display = (_ricOra || draft[idx]._type) ? 'none' : 'flex';
+                    /* Mentre si scrive il riquadro non compare mai. Riscrivendo
+                       "plank" in "curl" si passa per "plan", "pl", "cur": nomi
+                       che nessun catalogo conosce, e a ogni battuta il riquadro
+                       sbucava in mezzo alla parola per poi sparire. La riga si
+                       sistema quando si e' finito di scrivere. Resta la barra
+                       vuota, che e' l'inizio di un esercizio nuovo. */
+                    tipoWrap.style.display = _vuotoOra ? 'flex' : 'none';
                     if (_vuotoOra || !draft[idx]._type) {
                         tipoWrap.classList.add('attesa');
                         tipoWrap.innerHTML = peTipoLabelHtml();
@@ -7618,7 +7624,19 @@ function buildProtoEditorBox(proto, weekIdx) {
                quella selezione. */
             var _appenaScelto = false;
             nameInput.addEventListener('blur', function() {
-                setTimeout(function() { if (!_appenaScelto) applyTipoAuto(idx); }, 220);
+                setTimeout(function() {
+                    if (_appenaScelto) return;
+                    applyTipoAuto(idx);
+                    /* Fuori catalogo applyTipoAuto non ha niente da dire e la
+                       riga resta come l'ha lasciata la scrittura, col riquadro
+                       nascosto. Se a nome finito il tipo non e' deciso da
+                       nessuno, la riga va ridisegnata: e' l'unico momento in
+                       cui chiedere di scegliere ha senso. */
+                    var _d = draft[idx];
+                    if (!_d) return;
+                    var _nomeFin = (_d.name || '').trim();
+                    if (_nomeFin && !peExRiconosciuto(_nomeFin) && !_d._type && !srIsTime(_d.sr)) rerenderList();
+                }, 220);
             });
             // Toccando un risultato il campo non perde il fuoco: cosi' la
             // selezione arriva sempre a destinazione.
