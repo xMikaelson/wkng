@@ -4112,7 +4112,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '227';
+const APP_VERSION = '228';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -5190,9 +5190,12 @@ function startWarmupRestTimer(el, totalSecs, nextBtn, allNextBtns) {
             if (b) { b.disabled = true; b.style.opacity = '0.35'; b.style.cursor = 'not-allowed'; b.classList.remove('pulse'); }
         });
     }
+    // Scadenza sull'orologio: in background i tick si fermano, ma al rientro
+    // il recupero deve risultare gia' concluso invece di ripartire da dov'era.
+    var endsAt = Date.now() + totalSecs * 1000;
     var remaining = totalSecs;
     var interval = setInterval(function() {
-        remaining--;
+        remaining = Math.max(0, Math.round((endsAt - Date.now()) / 1000));
         if (remaining <= 0) {
             fill.style.transition = 'width 0.5s linear';
             fill.style.width = '0%';
@@ -20136,22 +20139,36 @@ function updateDefaultSR() {
 // ============= WORKOUT TIMER =============
 let workoutInterval = null;
 let restInterval = null;
+// Il tempo si ricava dall'orologio, non contando i tick: uscendo dall'app
+// senza chiuderla iOS sospende setInterval e il cronometro restava indietro
+// rispetto al tempo realmente trascorso. workoutStartedAt e restEndsAt sono
+// le ancore su Date.now().
+let workoutStartedAt = 0;
+let restEndsAt = 0;
 
 function startWorkout() {
     if (workoutInterval) return;
     document.getElementById('start-btn').style.display = 'none';
     document.getElementById('stop-btn').style.display = 'inline-block';
 
-    workoutInterval = setInterval(() => {
-        APP.workoutSeconds++;
-        updateWorkoutDisplay();
-    }, 1000);
+    // Riparte da dove si era in pausa: l'ancora viene spostata indietro dei
+    // secondi gia' maturati.
+    workoutStartedAt = Date.now() - (APP.workoutSeconds || 0) * 1000;
+    workoutInterval = setInterval(tickWorkout, 1000);
+}
+
+function tickWorkout() {
+    if (!workoutStartedAt) return;
+    APP.workoutSeconds = Math.max(0, Math.floor((Date.now() - workoutStartedAt) / 1000));
+    updateWorkoutDisplay();
 }
 
 function stopWorkout() {
     if (!workoutInterval) return;
+    tickWorkout();               // fissa i secondi maturati fino a questo momento
     clearInterval(workoutInterval);
     workoutInterval = null;
+    workoutStartedAt = 0;
     document.getElementById('start-btn').style.display = 'inline-block';
     document.getElementById('stop-btn').style.display = 'none';
 }
@@ -20159,6 +20176,7 @@ function stopWorkout() {
 function resetWorkout() {
     stopWorkout();
     APP.workoutSeconds = 0;
+    workoutStartedAt = 0;
     updateWorkoutDisplay();
 
     // Reset exercise tracking
@@ -20185,6 +20203,7 @@ function startRestTimer(duration) {
     if (restInterval) clearInterval(restInterval);
 
     APP.restSeconds = duration;
+    restEndsAt = Date.now() + duration * 1000;
     updateRestDisplay();
 
     // Highlight active preset
@@ -20192,32 +20211,51 @@ function startRestTimer(duration) {
 
     playBeep();
 
-    restInterval = setInterval(() => {
-        APP.restSeconds--;
-        updateRestDisplay();
+    restInterval = setInterval(tickRest, 1000);
+}
 
-        if (APP.restSeconds <= 0) {
-            clearInterval(restInterval);
-            restInterval = null;
-            document.getElementById('rest-timer').textContent = '✓ Fatto!';
-            completeSet();
-            playBeep(); playBeep();
+function tickRest() {
+    if (!restInterval) return;
+    // Anche il recupero si misura sulla scadenza: tornando nell'app dopo due
+    // minuti il timer deve risultare finito, non fermo dov'era.
+    const prev = APP.restSeconds;
+    APP.restSeconds = Math.max(0, Math.round((restEndsAt - Date.now()) / 1000));
+    updateRestDisplay();
 
-            setTimeout(() => {
-                document.getElementById('rest-timer').textContent = '--:--';
-            }, 2000);
-        } else if (APP.restSeconds <= 3) {
-            playBeep();
-        }
-    }, 1000);
+    if (APP.restSeconds <= 0) {
+        clearInterval(restInterval);
+        restInterval = null;
+        restEndsAt = 0;
+        document.getElementById('rest-timer').textContent = '✓ Fatto!';
+        completeSet();
+        playBeep(); playBeep();
+
+        setTimeout(() => {
+            const el = document.getElementById('rest-timer');
+            if (el && el.textContent === '✓ Fatto!') el.textContent = '--:--';
+        }, 2000);
+    } else if (APP.restSeconds <= 3 && APP.restSeconds !== prev) {
+        // Un solo beep per secondo effettivo: rientrando dal background i
+        // secondi saltati non devono produrre una raffica di suoni.
+        playBeep();
+    }
 }
 
 function stopRestTimer() {
     if (restInterval) { clearInterval(restInterval); restInterval = null; }
     APP.restSeconds = 0;
+    restEndsAt = 0;
     document.getElementById('rest-timer').textContent = '--:--';
     document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active-rest'));
 }
+
+// Rientrando in primo piano il tick successivo potrebbe arrivare fino a un
+// secondo dopo: aggiorniamo subito, cosi' i timer mostrano il tempo reale.
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) return;
+    if (workoutInterval) tickWorkout();
+    if (restInterval) tickRest();
+});
 
 function updateRestDisplay() {
     const m = Math.floor(APP.restSeconds / 60);
