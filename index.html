@@ -2100,6 +2100,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wo-kg-input:focus { outline:none; }
         .wo-kg-unit { font-size:0.7rem; font-weight:700; color:var(--primary); margin-left:0; align-self:flex-end; padding-bottom:5px; line-height:1; }
         .wo-pr-badge { display:block; font-size:0.52rem; font-weight:800; letter-spacing:0.06em; margin-top:6px; text-align:center; min-height:14px; }
+        /* Conferma della correzione del carico: compare solo quando il numero
+           nella box differisce da quello previsto dal capitolo.
+           width:auto perche' la regola globale button{width:100%} lo sfonderebbe. */
+        .wo-kg-apply { display:none; width:auto; margin:8px auto 0; padding:8px 14px; border-radius:11px; text-transform:none;
+                       background:rgba(251,191,36,0.14); border:1px solid rgba(251,191,36,0.45); color:#fbbf24;
+                       font-size:0.62rem; font-weight:800; font-family:inherit; cursor:pointer; letter-spacing:0.02em; }
+        .wo-kg-apply:active { background:rgba(251,191,36,0.24); transform:scale(0.97); }
         .wo-weight-val { display:flex; align-items:center; justify-content:center; gap:0; }
         .wo-weight-unit { font-size:0.9rem; color:rgba(var(--pr,0,255,136),0.6); font-weight:600; }
         .wo-sets { margin:0 16px 12px; display:flex; gap:7px; justify-content:center; flex-wrap:wrap; }
@@ -4112,7 +4119,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '228';
+const APP_VERSION = '229';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -16384,6 +16391,18 @@ function woRenderEx() {
         prBadgeEl.className = 'wo-pr-badge';
         prContainer.appendChild(prBadgeEl);
     }
+    // Conferma della correzione del carico: creato una volta sola, resta
+    // nascosto finche' il numero digitato non si scosta dal piano.
+    let applyBtnEl = document.getElementById('wo-kg-apply');
+    if (!applyBtnEl) {
+        applyBtnEl = document.createElement('button');
+        applyBtnEl.id = 'wo-kg-apply';
+        applyBtnEl.type = 'button';
+        applyBtnEl.className = 'wo-kg-apply';
+        applyBtnEl.onclick = woAskPlanLoad;
+        prContainer.appendChild(applyBtnEl);
+    }
+    applyBtnEl.style.display = 'none';
     // v.177 — il badge veniva svuotato e riempito solo al cambio del carico:
     // aprendo un esercizio senza toccare nulla restava vuoto anche con un
     // record registrato. Ora viene calcolato subito.
@@ -16497,6 +16516,23 @@ function woKgChanged(val) {
     if (!ex) return;
     ex._sessionKg = kg;
     woUpdatePrBadge(kg);
+    woUpdatePlanBtn(kg);
+}
+
+// Il bottone compare solo se la correzione ha davvero un piano da ricalcolare:
+// esercizio con carico, scostamento di almeno mezzo chilo, capitolo con una
+// percentuale valida. Altrimenti il numero resta la scelta di oggi e basta.
+function woUpdatePlanBtn(kg) {
+    var btn = document.getElementById('wo-kg-apply');
+    if (!btn) return;
+    var ex = (APP.exerciseData || [])[woState.exIndex];
+    var plan = ex ? woComputePlanLoad(ex.name, parseFloat(kg), APP.selectedViewWeek || 0) : null;
+    if (!plan) { btn.style.display = 'none'; return; }
+    // display esplicito: svuotare lo stile inline ricadrebbe sul display:none
+    // della regola CSS e il bottone non comparirebbe mai.
+    btn.style.display = 'block';
+    btn.textContent = (plan.newKg < plan.prevKg ? '\u2193 ' : '\u2191 ') +
+        'Aggiorna il piano a ' + _fmtKg(plan.rows[0].to) + ' kg';
 }
 
 // v.177 — il badge confrontava il carico impostato con il record, ma dalla
@@ -16674,6 +16710,150 @@ function woAdjustFutureLoads(exName, eq, targetReps, wIdx) {
     showToast(msg, 'success');
     if (typeof updateChart === 'function') updateChart();
     return changed;
+}
+
+// ── CORREZIONE DEL CARICO DALLA BOX (v.228) ───────────────
+// Il carico previsto puo' risultare troppo pesante — o troppo leggero — mentre
+// ci si allena: l'MTR e' una stima, non una misura. Fino a ieri l'unico modo
+// di correggerlo era uscire dall'allenamento, aprire il protocollo e rifare il
+// 🎯. Ora si scrive il carico giusto nella box e si conferma: da quel numero
+// viene ricalcolato il riferimento e con esso il capitolo in corso e tutti
+// quelli che seguono.
+// I capitoli gia' svolti non si toccano: la scala 85/89/93/97% non si spezza,
+// cambia il riferimento da cui i capitoli derivano. E' la stessa regola di
+// woAdjustFutureLoads, applicata pero' anche al capitolo presente, perche' qui
+// non si registra una prestazione passata: si dichiara il carico di oggi.
+function woPlannedKg(ex, wIdx) {
+    if (!ex) return 0;
+    var v = ex.loads ? (ex.loads[wIdx] || ex.baseWeight || 0) : (ex.baseWeight || 0);
+    return parseFloat(v) || 0;
+}
+
+// Calcola cosa cambierebbe, SENZA scrivere nulla: serve sia all'anteprima
+// della conferma sia all'applicazione vera.
+function woComputePlanLoad(exName, newKg, wIdx) {
+    var pct = WEEK_LOADS[wIdx];
+    if (!(pct > 0) || !(newKg > 0)) return null;
+    var ex = (APP.exerciseData || []).find(function(x) { return exSameExercise(x.name, exName); });
+    if (!ex) return null;
+    var prevKg = woPlannedKg(ex, wIdx);
+    // Corpo libero puro: senza un carico previsto non c'e' nessuna scala da
+    // ricalcolare, il numero digitato resta la zavorra di oggi.
+    if (!(prevKg > 0)) return null;
+    if (Math.abs(newKg - prevKg) < 0.5) return null;
+    var targetReps = srReps(srForChapter(ex, wIdx, awkActiveProto())) || srReps(ex.sr);
+    if (!(targetReps > 0)) return null;   // isometrico: si misura in secondi
+
+    var ref = newKg / pct;                // riferimento dichiarato dall'atleta
+    var baseReps = mtrRepsGet(exName) || targetReps;
+    // Stessa conversione di mtrForReps (Epley col coefficiente del gruppo
+    // muscolare): e' da li' che gli altri protocolli rileggeranno questo MTR,
+    // quindi le due strade devono usare la stessa formula.
+    var k = awkRepK(exName);
+    var newMtr = awRoundKg(ref * (1 + targetReps / k) / (1 + baseReps / k));
+    if (!(newMtr > 0)) return null;
+
+    var rows = [];
+    for (var i = wIdx; i < WEEK_LOADS.length; i++) {
+        rows.push({ i: i, from: woPlannedKg(ex, i), to: awRoundKg(ref * WEEK_LOADS[i]) });
+    }
+    return {
+        ex: ex, ref: ref, targetReps: targetReps, baseReps: baseReps,
+        oldMtr: parseFloat(mtrGet(exName)) || 0, newMtr: newMtr,
+        prevKg: prevKg, newKg: awRoundKg(newKg), rows: rows
+    };
+}
+
+// Scrive il nuovo riferimento e riallinea i carichi dal capitolo in corso in
+// avanti, su tutti i protocolli che contengono l'esercizio.
+function woApplyPlanLoad(exName, newKg, wIdx) {
+    var plan = woComputePlanLoad(exName, newKg, wIdx);
+    if (!plan) return false;
+
+    mtrSet(exName, plan.newMtr);
+    // Un MTR senza base di ripetizioni e' ambiguo: se mancava, la base e'
+    // quella dello schema da cui e' stato dichiarato.
+    if (!mtrRepsGet(exName)) mtrRepsSet(exName, plan.baseReps);
+    if (!APP.mtrAdjusted) APP.mtrAdjusted = {};
+    // Una correzione dichiarata dall'atleta vale piu' dello storico del ciclo:
+    // la regola 2-per-2 non ci somma sopra un altro aumento a fine Chapter 4.
+    APP.mtrAdjusted[exName] = wIdx;
+
+    function applyTo(e, proto) {
+        if (!e || !e.name || !exSameExercise(e.name, exName)) return false;
+        if (!Array.isArray(e.loads) || e.loads.length !== WEEK_LOADS.length) {
+            e.loads = WEEK_LOADS.map(function(p) { return awRoundKg((e.baseWeight || 0) * p); });
+        }
+        // Lo stesso esercizio puo' comparire con schemi diversi (5x5 in Upper,
+        // 4x10 in Push): il riferimento va riportato alle ripetizioni di quello.
+        var eReps = srReps(srForChapter(e, wIdx, proto || null)) || srReps(e.sr);
+        var ref = (eReps && eReps !== plan.targetReps)
+            ? (mtrForReps(exName, eReps) || plan.newMtr)
+            : plan.ref;
+        for (var i = wIdx; i < WEEK_LOADS.length; i++) e.loads[i] = awRoundKg(ref * WEEK_LOADS[i]);
+        e.mtrValue = plan.newMtr;
+        e.baseWeight = e.loads[wIdx] || e.loads[0];
+        return true;
+    }
+
+    var activeProto = awkActiveProto();
+    (APP.exerciseData || []).forEach(function(e) { applyTo(e, activeProto); });
+    var touched = [];
+    (APP.savedProtocols || []).forEach(function(p) {
+        var hit = false;
+        (p.exercises || []).forEach(function(e) { if (applyTo(e, p)) hit = true; });
+        if (hit) touched.push(p);
+    });
+
+    // Il carico di oggi e' quello confermato: lo storico della seduta deve
+    // registrare lo stesso numero che l'atleta ha davanti.
+    if (plan.ex) plan.ex._sessionKg = plan.newKg;
+    saveState();
+    touched.forEach(function(p) {
+        if (typeof saveProtocolToSupabase !== 'function') return;
+        try { saveProtocolToSupabase(p); } catch (err) { awLog.warn('saveProtocolToSupabase:', err); }
+    });
+
+    // Si aggiorna la schermata, non si reinizializza: initWorkoutPage
+    // ricostruirebbe woState e farebbe ripartire l'allenamento da capo.
+    if (typeof woRenderEx === 'function') woRenderEx();
+    if (typeof renderPlanPage === 'function') renderPlanPage(APP.selectedViewWeek || 0);
+    if (typeof updateStats === 'function') updateStats();
+    if (typeof updateChart === 'function') updateChart();
+
+    var nextIdx = wIdx + 1;
+    var msg = 'Carico aggiornato: ' + _fmtKg(plan.prevKg) + ' \u2192 ' + _fmtKg(plan.newKg) + ' kg';
+    if (nextIdx < WEEK_LOADS.length && plan.rows.length > 1) {
+        msg += ' \u00b7 ' + (CH_LABELS[nextIdx] || ('Ch' + (nextIdx + 1))) + ': ' + _fmtKg(plan.rows[1].to) + ' kg';
+    }
+    showToast(msg, 'success');
+    return true;
+}
+
+// Prima di riscrivere il piano si mostra cosa cambia, capitolo per capitolo:
+// e' l'unica difesa contro un carico digitato per sbaglio, e serve a capire
+// che la correzione non vale solo per oggi.
+function woAskPlanLoad() {
+    var ex = (APP.exerciseData || [])[woState.exIndex];
+    if (!ex) return;
+    var wIdx = APP.selectedViewWeek || 0;
+    var inp = document.getElementById('wo-kg-input');
+    var plan = woComputePlanLoad(ex.name, parseFloat(inp ? inp.value : NaN), wIdx);
+    if (!plan) return;
+
+    var lines = plan.rows.map(function(r) {
+        var lab = (CH_LABELS[r.i] || ('Ch' + (r.i + 1)));
+        if (CHAPTER_NAMES[r.i]) lab += ' \u00b7 ' + CHAPTER_NAMES[r.i];
+        return lab + ': ' + _fmtKg(r.from) + ' \u2192 ' + _fmtKg(r.to) + ' kg';
+    });
+    var msg = exDisplay(ex.name) + '\n\n' + lines.join('\n') +
+        '\n\nRiferimento (MTR): ' +
+        (plan.oldMtr > 0 ? _fmtKg(plan.oldMtr) + ' \u2192 ' + _fmtKg(plan.newMtr) : _fmtKg(plan.newMtr)) + ' kg' +
+        '\n\nI capitoli gi\u00e0 svolti restano come sono. La correzione vale su tutti i protocolli che contengono questo esercizio.';
+
+    awConfirm(msg, function(ok) {
+        if (ok) woApplyPlanLoad(ex.name, plan.newKg, wIdx);
+    }, { title: 'Aggiornare il piano?', okLabel: 'Aggiorna' });
 }
 
 function woAskExtraReps(exName, targetReps, usedKg, onDone) {
