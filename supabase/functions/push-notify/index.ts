@@ -164,7 +164,7 @@ const SCHEDULE: { h: number; m: number; title: string; body: string }[] = [
   { h: 7,  m: 30, title: "\u2696\ufe0f Buongiorno",        body: "Saliamo un attimo sulla bilancia?" },
   { h: 8,  m: 0,  title: "\u2615 Colazione",                body: "Che si mangia? Segnalo quando hai finito." },
   { h: 10, m: 30, title: "\ud83c\udf4e Piccola pausa",     body: "Uno spuntino e un bicchiere d\u2019acqua." },
-  { h: 13, m: 0,  title: "\ud83c\udf5d \u00c8 ora di pranzo", body: "Raccontami cosa c\u2019\u00e8 nel piatto." },
+  { h: 12, m: 0,  title: "\ud83c\udf5d \u00c8 ora di pranzo", body: "Raccontami cosa c\u2019\u00e8 nel piatto." },
   { h: 16, m: 0,  title: "\ud83c\udf4a Met\u00e0 pomeriggio", body: "Un boccone e bevi, manca poco." },
   { h: 20, m: 0,  title: "\ud83c\udf7d\ufe0f Cena",       body: "Ultimo pasto, poi si stacca." },
 ];

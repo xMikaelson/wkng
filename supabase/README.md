@@ -19,7 +19,7 @@ web e non sarebbe rivedibile in un diff.
 | 07:30 | ⚖️ Buongiorno  |
 | 08:00 | ☕ Colazione    |
 | 10:30 | 🍎 Piccola pausa |
-| 13:00 | 🍝 È ora di pranzo |
+| 12:00 | 🍝 È ora di pranzo |
 | 16:00 | 🍊 Metà pomeriggio |
 | 20:00 | 🍽️ Cena        |
 
