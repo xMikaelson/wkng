@@ -4112,7 +4112,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '223';
+const APP_VERSION = '224';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -7454,9 +7454,12 @@ function buildProtoEditorBox(proto, weekIdx) {
                appena il nome viene riconosciuto, perche' allora il tipo lo
                sa gia' il catalogo. */
             /* Barra del nome vuota: si riparte sempre da capo, qualunque tipo
-               fosse stato scelto per l'esercizio precedente. */
+               fosse stato scelto per l'esercizio precedente. Si azzera anche
+               lo schema: restando i "30s" del plank cancellato, l'esercizio
+               scritto subito dopo risultava gia' deciso a tempo e il riquadro
+               della scelta non tornava piu'. */
             var _vuoto = !(ex.name && ex.name.trim());
-            if (_vuoto && ex._type) delete ex._type;
+            if (_vuoto) { if (ex._type) delete ex._type; if (ex.sr) ex.sr = ''; }
             var _daScegliere = (!_noto && (_vuoto || !_tipoDeciso));
             /* Il controllo del tipo si vede solo finche' la scelta non e'
                stata fatta. Appena si sceglie, l'esercizio e' impostato con
@@ -7580,15 +7583,22 @@ function buildProtoEditorBox(proto, weekIdx) {
                    - nome sconosciuto   → il controllo resta a disposizione */
                 var _vuotoOra = !this.value.trim();
                 var _ricOra = peExRiconosciuto(this.value);
-                if (_vuotoOra && draft[idx]._type) delete draft[idx]._type;
+                if (_vuotoOra) {
+                    if (draft[idx]._type) delete draft[idx]._type;
+                    // Come sopra: lo schema di prima non deve decidere per il prossimo.
+                    if (draft[idx].sr) { draft[idx].sr = ''; srInput.value = ''; }
+                }
                 if (typeof tipoWrap !== 'undefined' && tipoWrap) {
-                    /* Mentre si scrive il riquadro non compare mai. Riscrivendo
-                       "plank" in "curl" si passa per "plan", "pl", "cur": nomi
-                       che nessun catalogo conosce, e a ogni battuta il riquadro
-                       sbucava in mezzo alla parola per poi sparire. La riga si
-                       sistema quando si e' finito di scrivere. Resta la barra
-                       vuota, che e' l'inizio di un esercizio nuovo. */
-                    tipoWrap.style.display = _vuotoOra ? 'flex' : 'none';
+                    /* Quando un tipo e' gia' deciso il riquadro resta fermo
+                       fino a nome finito: riscrivendo "plank" in "curl" si
+                       passa per "plan", "pl", "cur", nomi che il catalogo non
+                       conosce, e altrimenti sbucherebbe a ogni battuta in
+                       mezzo alla parola. Se invece nessuno ha ancora deciso
+                       - riga nuova, o nome appena cancellato - il riquadro
+                       accompagna la scrittura: e' il momento in cui serve, e
+                       aspettare la fine lo faceva sembrare sparito. */
+                    var _decisoOra = !!draft[idx]._type || srIsTime(draft[idx].sr);
+                    tipoWrap.style.display = (_vuotoOra || (!_ricOra && !_decisoOra)) ? 'flex' : 'none';
                     if (_vuotoOra || !draft[idx]._type) {
                         tipoWrap.classList.add('attesa');
                         tipoWrap.innerHTML = peTipoLabelHtml();
