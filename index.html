@@ -1114,10 +1114,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         /* I nomi dei percorsi sono sigle: la spaziatura li fa leggere come tali
            e non come parole inglesi qualsiasi. */
         .ob-card .ob-c-code { letter-spacing: 0.1em; font-size: 0.97rem; }
+        /* Nota sulla carta: quello che il percorso chiede davvero, detto
+           prima di sceglierlo e non dopo aver generato la scheda. */
+        .ob-card .ob-c-note { font-size: 0.63rem; line-height: 1.45; margin-top: 7px;
+                              padding-left: 8px; color: #cbd5e1;
+                              border-left: 2px solid var(--ob-tint, rgba(255,255,255,0.18)); }
         .ob-grouphd { font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase;
                       color: #64748b; font-weight: 600; margin: 18px 4px 9px; }
         .ob-grouphd:first-child { margin-top: 2px; }
         .ob-card .ob-c-dd { font-size: 0.68rem; color: #94a3b8; margin-top: 3px; line-height: 1.4; }
+        /* Rimando attivo dentro un riquadro dell'anteprima protocollo. */
+        .ob-zlink { color: var(--primary); font-weight: 600; text-decoration: underline;
+                    text-underline-offset: 2px; cursor: pointer; }
+        .ob-zlink:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 2px; }
         .ob-eqchips { display: flex; flex-wrap: wrap; gap: 8px; }
         .ob-eqchip { background: rgba(30,41,59,0.8); border: 1.5px solid rgba(255,255,255,0.08);
                      border-radius: 12px; padding: 9px 12px; font-size: 0.74rem; cursor: pointer;
@@ -4121,7 +4130,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '248';
+const APP_VERSION = '249';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -19596,7 +19605,8 @@ function awkCards(box, items, sel, cb, append){
     if (o.tint) d.style.setProperty('--ob-tint', o.tint);
     d.innerHTML = '<div class="ob-c-ic">' + (o.i || '\u25CF') + '</div>' +
       '<div style="flex:1; min-width:0;"><div class="ob-c-tt' + (o.code ? ' ob-c-code' : '') + '">' + o.l + '</div>' +
-      '<div class="ob-c-dd">' + o.d + '</div></div>';
+      '<div class="ob-c-dd">' + o.d + '</div>' +
+      (o.note ? '<div class="ob-c-note">' + o.note + '</div>' : '') + '</div>';
     if (!o.locked) d.onclick = function(){ cb(o.k); };
     box.appendChild(d);
   });
@@ -19618,6 +19628,44 @@ function awkDrawLevels(){
     function(k){ onboarding.level = k; awkDrawLevels(); obUpdate(); setTimeout(function(){ obGo(2); }, 220); });
 }
 
+/* Giorni a settimana che un percorso chiede al livello scelto. Letto da
+   AWK_TPL, non scritto a mano: se un template cambia, la nota lo segue. */
+function awkGoalDays(k, lvl){
+  const t = AWK_TPL[k] && AWK_TPL[k][lvl];
+  return t ? t.days : 0;
+}
+
+/* Cosa aggiungere sotto la descrizione di una carta.
+   - TITAN e MONOLITH da principiante: la scheda che ne esce ha gli stessi
+     fondamentali, 3x8 in entrambi i casi. Non e' un difetto ma la
+     raccomandazione dell'ACSM Position Stand 2009 (Med Sci Sports Exerc
+     41(3):687-708), che per i principianti indica carichi moderati su 8-12
+     ripetizioni qualunque sia l'obiettivo: prima si impara il movimento.
+     Detto sulla carta, pero', evita di far credere che la scelta a quel
+     livello cambi tutto: cambiano recuperi e accessori, non i fondamentali.
+   - FORGE: alterna forza e ipertrofia nella stessa settimana e per farlo
+     chiede piu' giorni degli altri. "Ibrido" suona come la via di mezzo
+     comoda ed e' invece l'impegno settimanale piu' alto: meglio saperlo
+     prima di sceglierlo. */
+function awkGoalNote(k, lvl){
+  if (!lvl) return '';
+  if (lvl === 'principiante' && (k === 'full_forza' || k === 'full_ipertrofia')){
+    const altro = (k === 'full_forza') ? 'MONOLITH' : 'TITAN';
+    return 'A questo livello i fondamentali sono gli stessi di ' + altro +
+           ': 3\u00D78 in entrambi. Cambiano recuperi e accessori.';
+  }
+  if (k === 'hybrid'){
+    const d = awkGoalDays('hybrid', lvl);
+    if (!d) return '';
+    let max = 0;
+    Object.keys(AWK_TPL).forEach(function(o){
+      if (o !== 'hybrid') max = Math.max(max, awkGoalDays(o, lvl));
+    });
+    return 'Chiede ' + d + ' giorni a settimana' + (d > max ? ', piu\' di ogni altro percorso.' : '.');
+  }
+  return '';
+}
+
 function awkDrawGoals(){
   const box = document.getElementById('ob-goalbox');
   if (!box) return;
@@ -19633,8 +19681,12 @@ function awkDrawGoals(){
     awkDrawGoals(); obUpdate(); setTimeout(function(){ obGo(3); }, 220);
   };
   box.innerHTML = '';
-  const obiettivi = AWK_GOALS.filter(function(g){ return g.group !== 'altro'; });
-  const altri     = AWK_GOALS.filter(function(g){ return g.group === 'altro'; });
+  const withNote = function(g){
+    const n = awkGoalNote(g.k, onboarding.level);
+    return n ? Object.assign({}, g, { note: n }) : g;
+  };
+  const obiettivi = AWK_GOALS.filter(function(g){ return g.group !== 'altro'; }).map(withNote);
+  const altri     = AWK_GOALS.filter(function(g){ return g.group === 'altro'; }).map(withNote);
   awkGroupHead(box, 'Obiettivo');
   awkCards(box, obiettivi, onboarding.goal, pick, true);
   if (altri.length){
@@ -19754,7 +19806,10 @@ function awkRenderResult(){
     h += '<div class="ob-zbanner"><div class="zi">\u2696\uFE0F</div>' +
          '<div class="zt"><b>Il deficit si fa a tavola</b>' +
          'Questo percorso non brucia il grasso al posto della dieta: serve a non perdere muscolo mentre perdi peso. ' +
-         'Imposta il deficit calorico e le proteine dalla sezione Nutrizione, poi allenati con i carichi pieni: ' +
+         'Imposta il deficit calorico e le proteine con il ' +
+         '<span class="ob-zlink" role="button" tabindex="0" onclick="tdeeOpen()" ' +
+         'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();tdeeOpen();}">calcolo TDEE</span>' +
+         ', poi allenati con i carichi pieni: ' +
          'e\' il carico che protegge la massa magra, non le ripetizioni in piu\'.' +
          '</div></div>';
 
@@ -19853,6 +19908,10 @@ function obGo(n){
   const track = document.getElementById('ob-track');
   if (track) track.style.transform = 'translateX(-' + ((n - 1) * 25) + '%)';
   obWatchHeights();
+  // Le carte dell'obiettivo vanno ridisegnate all'ingresso nello slide 2:
+  // le note dipendono dal livello, che al momento di startOnboarding non e'
+  // ancora scelto. Senza questa riga la nota non compariva mai.
+  if (n === 2) awkDrawGoals();
   if (n === 3){ awkDrawPlaces(); awkDrawEquip(); }
   if (n === 4) awkRenderResult();
   // in modalita Free lo slide 4 contiene la ricerca esercizi: la tendina non
