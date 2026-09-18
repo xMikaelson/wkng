@@ -4115,7 +4115,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '244';
+const APP_VERSION = '245';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -8789,6 +8789,14 @@ var AWK_ORDER = {
 };
 /* Peso d'ordinamento di un esercizio. Senza famiglia nota si usa il ruolo,
    cosi' anche un esercizio aggiunto a mano finisce nella zona giusta. */
+/* Dove cade un esercizio che il catalogo non conosce, in base al muscolo che
+   allena: stessa scala di AWK_ORDER, dal gruppo piu' grande al piu' piccolo. */
+var AWK_ORDER_GRUPPO = {
+  'Quadricipiti': 40, 'Femorali': 41, 'Glutei': 41,
+  'Schiena': 42, 'Petto': 42, 'Spalle': 43,
+  'Tricipiti': 45, 'Bicipiti': 46, 'Polpacci': 47,
+  'Addominali': 60, 'Core': 60, 'Full Body': 26
+};
 function awkOrderWeight(ex) {
   var cat = (typeof awkCatalogLookup === 'function') ? awkCatalogLookup(ex.name) : null;
   if (cat && cat.grp && AWK_ORDER[cat.grp] != null) return AWK_ORDER[cat.grp];
@@ -8797,6 +8805,21 @@ function awkOrderWeight(ex) {
   if (role === 'core') return 60;
   if (role === 'iso')  return 44;
   if (typeof srIsTime === 'function' && srIsTime(ex.sr)) return 60;  // isometrico
+  /* Sconosciuto al catalogo: prima finiva tutto con lo stesso peso, che cadeva
+     dopo ogni isolamento. Cosi' "Curl Hammer con Manubri" si staccava da "Curl
+     con Manubri" pur essendo lo stesso lavoro (uno riconosciuto, l'altro no), e
+     il pullover finiva dopo i curl pur muovendo dorso e petto. Ora conta cosa
+     allena: multiarticolare fra i multiarticolari, altrimenti il posto del suo
+     gruppo muscolare. Simao et al. 2012: l'ordine condiziona il carico
+     sollevato, cio' che si esegue per ultimo rende meno, quindi i gruppi
+     grandi vanno prima dei piccoli. */
+  try {
+    if (typeof isCompoundEx === 'function' && isCompoundEx(ex.name) === true) return 26;
+    if (typeof exGruppoMuscolare === 'function') {
+      var g = exGruppoMuscolare(ex.name);
+      if (g && AWK_ORDER_GRUPPO[g] != null) return AWK_ORDER_GRUPPO[g];
+    }
+  } catch (err) { /* si ricade sul peso generico */ }
   return 50;
 }
 
