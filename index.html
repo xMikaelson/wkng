@@ -1111,6 +1111,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .ob-card.locked { opacity: 0.34; cursor: not-allowed; }
         .ob-card .ob-c-ic { font-size: 1.75rem; width: 42px; text-align: center; flex-shrink: 0; }
         .ob-card .ob-c-tt { font-weight: 700; font-size: 0.92rem; color: #fff; }
+        /* I nomi dei percorsi sono sigle: la spaziatura li fa leggere come tali
+           e non come parole inglesi qualsiasi. */
+        .ob-card .ob-c-code { letter-spacing: 0.1em; font-size: 0.97rem; }
+        .ob-grouphd { font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase;
+                      color: #64748b; font-weight: 600; margin: 18px 4px 9px; }
+        .ob-grouphd:first-child { margin-top: 2px; }
         .ob-card .ob-c-dd { font-size: 0.68rem; color: #94a3b8; margin-top: 3px; line-height: 1.4; }
         .ob-eqchips { display: flex; flex-wrap: wrap; gap: 8px; }
         .ob-eqchip { background: rgba(30,41,59,0.8); border: 1.5px solid rgba(255,255,255,0.08);
@@ -4115,7 +4121,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '246';
+const APP_VERSION = '248';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -6595,16 +6601,24 @@ function planValidateFocus(){
   }
 }
 
-const AWK_GOAL_LABEL = { full_ipertrofia:'Full Ipertrofia', full_forza:'Full Forza',
-                         hybrid:'Hybrid', calisthenic:'Calisthenic',
+const AWK_GOAL_LABEL = { full_ipertrofia:'MONOLITH', full_forza:'TITAN',
+                         hybrid:'FORGE', calisthenic:'GRAVITY',
+                         dimagrimento:'SHIELD',
                          ipertrofia:'Ipertrofia', forza:'Forza' };
 const AWK_ENV_LABEL  = { palestra:'Palestra', casa:'Casa', corpolibero:'Corpo libero' };
 
 /* I protocolli creati prima del nuovo wizard non hanno i metadati di piano,
    ma il loro nome li contiene: "Hybrid - Casa - Push". Qui si recuperano. */
+/* I nomi in codice della v.248 vanno riconosciuti quanto quelli vecchi: un
+   protocollo salvato come "Hybrid - Casa - Push" e uno salvato come
+   "FORGE - Casa - Push" sono la stessa cosa, e senza le righe nuove il
+   secondo perdeva l'obiettivo e finiva in un bundle a se'. */
 const AWK_NAME_GOALS = [
-  [/\bhybrid\b/i, 'hybrid'], [/\bcalisthenic/i, 'calisthenic'],
-  [/\bipertrofia\b/i, 'ipertrofia'], [/\bforza\b/i, 'forza']
+  [/\bforge\b/i, 'hybrid'],        [/\bhybrid\b/i, 'hybrid'],
+  [/\bgravity\b/i, 'calisthenic'], [/\bcalisthenic/i, 'calisthenic'],
+  [/\bshield\b/i, 'dimagrimento'], [/\bdimagriment/i, 'dimagrimento'],
+  [/\bmonolith\b/i, 'ipertrofia'], [/\bipertrofia\b/i, 'ipertrofia'],
+  [/\btitan\b/i, 'forza'],         [/\bforza\b/i, 'forza']
 ];
 const AWK_NAME_ENVS = [
   [/corpo\s*libero/i, 'corpolibero'], [/\bpalestra\b/i, 'palestra'], [/\bcasa\b/i, 'casa']
@@ -8652,6 +8666,11 @@ function awkGoalOfProto(proto) {
     // che segue, che fa decidere alla singola seduta, vale solo per l'Hybrid.
     var declared = (proto && proto._awkGoal) || (proto && proto.goal) || '';
     if (declared === 'calisthenic') return 'calisthenic';
+    // Come il calisthenic, anche il dimagrimento resta se stesso: le sue
+    // sedute avanzate si chiamano Upper e Lower, e senza questa riga la regola
+    // sullo slot qui sotto le avrebbe lette come forza massimale, servendo 5x5
+    // al posto dei 4x8 che il percorso prescrive.
+    if (declared === 'dimagrimento') return 'dimagrimento';
 
     var slot = (typeof protoResolveSlot === 'function')
         ? protoResolveSlot(proto)
@@ -9550,7 +9569,7 @@ function awkRangeToFixed(sr, role, goal, level) {
     var sets = parseInt(m[1]), lo = parseInt(m[2]), hi = parseInt(m[3]);
     // 1) se il protocollo conosce obiettivo e livello, usa la tabella ufficiale
     var pg = goal === 'full_forza' ? 'forza' : goal === 'calisthenic' ? 'calisthenic'
-           : goal === 'full_ipertrofia' || goal === 'hybrid' ? 'ipertrofia' : null;
+           : (goal === 'full_ipertrofia' || goal === 'hybrid' || goal === 'dimagrimento') ? 'ipertrofia' : null;
     if (pg && level && role && typeof AWK_PARAMS !== 'undefined'
         && AWK_PARAMS[pg] && AWK_PARAMS[pg][level] && AWK_PARAMS[pg][level][role]) {
         var r = AWK_PARAMS[pg][level][role].r;
@@ -19045,7 +19064,11 @@ const AWK_REFS = {
   dup:  'Rhea et al. (2002) — JSCR: periodizzazione ondulata efficace quanto/più di quella lineare',
   cal:  'Kotarsky et al. (2018) — JSCR: push-up progressivi ≈ panca piana per forza e spessore muscolare',
   cal2: 'Thomas et al. (2017) — Isokinet Exerc Sci: calisthenics migliora postura, forza e composizione corporea',
-  acsm: 'ACSM Position Stand (2009) — Med Sci Sports Exerc: 1–6 rep @ 80–90% per la forza; 3–5 min di recupero sui multiarticolari'
+  acsm: 'ACSM Position Stand (2009) — Med Sci Sports Exerc: 1–6 rep @ 80–90% per la forza; 3–5 min di recupero sui multiarticolari',
+  cut:  'Murphy & Koehler (2022) — Obesity Reviews: in restrizione calorica l\'allenamento coi pesi riduce la perdita di massa magra',
+  cut2: 'Longland et al. (2016) — Am J Clin Nutr: in deficit, pesi + proteine alte producono perdita di grasso E guadagno di massa magra',
+  cut3: 'Helms, Aragon & Fitschen (2014) — J Int Soc Sports Nutr: in definizione si mantiene il carico e semmai si riduce il volume, non il contrario',
+  cut4: 'Bryner et al. (1999) — J Am Coll Nutr: con dieta fortemente ipocalorica i pesi preservano massa magra e metabolismo basale, l\'aerobica no'
 };
 
 /* ── ATTREZZATURA ─────────────────────────────────────────── */
@@ -19343,6 +19366,42 @@ const AWK_TPL = {
       {n:'Lower', items:[['HINGE','main'],['SQUAT','sec'],['QUAD','iso'],['CALF','iso'],['CORE','core']]}
     ]}
   },
+  /* DIMAGRIMENTO — il percorso non ha una tabella di serie e ripetizioni
+     propria: usa quella dell'ipertrofia (vedi paramGoal in awkBuildProtocol).
+     Non e' una scorciatoia, e' quello che dice la ricerca: nessuno studio
+     documenta un intervallo di ripetizioni "brucia grasso" diverso dagli
+     altri, e in deficit calorico e' il CARICO a proteggere la massa magra
+     (Helms, Aragon & Fitschen 2014, J Int Soc Sports Nutr 11:20 — in
+     definizione si mantiene l'intensita' e semmai si riduce il volume, mai il
+     contrario). Alleggerire i carichi per "bruciare di piu'" e' esattamente
+     la mossa che fa perdere muscolo insieme al grasso.
+     Quello che cambia rispetto a Full Ipertrofia e' l'ORGANIZZAZIONE: sedute
+     full body o upper/lower, dense di fondamentali e povere di isolamento,
+     cosi' ogni muscolo viene stimolato almeno due volte a settimana
+     (Schoenfeld, Ogborn & Krieger 2016, Sports Med 46(11):1689-1697:
+     frequenza 2x/sett. per muscolo superiore a 1x) con meno serie per seduta,
+     perche' in deficit il recupero e' ridotto.
+     Il deficit calorico resta un fatto alimentare: lo si imposta dalla
+     sezione Nutrizione (TDEE), non allenandosi di piu'. */
+  dimagrimento: {
+    principiante: { days:3, dayIdx:[0,2,4], split:'Full Body', sessions:[
+      {n:'Full Body A', items:[['SQUAT','main'],['HPUSH','main'],['VPULL','main'],['CORE','core']]},
+      {n:'Full Body B', items:[['HINGE','main'],['VPUSH','main'],['HPULL','main'],['CORE','core']]},
+      {n:'Full Body C', items:[['SQUAT','sec'],['HPUSH2','main'],['VPULL','sec'],['CORE','core']]}
+    ]},
+    intermedio: { days:4, dayIdx:[0,1,3,4], split:'Full Body ad alta frequenza', sessions:[
+      {n:'Full Body A', items:[['SQUAT','main'],['HPUSH','main'],['HPULL','main'],['CORE','core']]},
+      {n:'Full Body B', items:[['HINGE','main'],['VPUSH','main'],['VPULL','main'],['CORE','core']]},
+      {n:'Full Body C', items:[['SQUAT','sec'],['HPUSH2','main'],['HPULL','sec'],['LATDELT','iso'],['CORE','core']]},
+      {n:'Full Body D', items:[['HINGE','sec'],['VPUSH','sec'],['VPULL','main'],['BIC','iso'],['TRI','iso']]}
+    ]},
+    avanzato: { days:4, dayIdx:[0,1,3,4], split:'Upper / Lower', sessions:[
+      {n:'Upper A', items:[['HPUSH','main'],['VPULL','main'],['VPUSH','sec'],['HPULL','sec'],['TRI','iso']]},
+      {n:'Lower A', items:[['SQUAT','main'],['HINGE','sec'],['QUAD','iso'],['CORE','core']]},
+      {n:'Upper B', items:[['HPUSH2','main'],['HPULL','main'],['VPUSH','sec'],['VPULL','sec'],['BIC','iso']]},
+      {n:'Lower B', items:[['HINGE','main'],['SQUAT','sec'],['HAM','iso'],['CORE','core']]}
+    ]}
+  },
   hybrid: {
     principiante: { days:4, dayIdx:[0,1,3,4], split:'Forza + Ipertrofia alternate', sessions:[
       {n:'Upper Forza',      goal:'forza',      items:[['HPUSH','main'],['HPULL','main'],['VPUSH','sec']]},
@@ -19387,13 +19446,26 @@ const AWK_TPL = {
   }
 };
 
+/* I nomi sono in codice, la descrizione dice di cosa si tratta: la chiave
+   interna (full_ipertrofia, hybrid...) non cambia, quindi i protocolli gia'
+   salvati continuano a funzionare. Ogni descrizione apre con il termine
+   tecnico, cosi' chi cerca "forza" o "ipertrofia" trova comunque la sua carta.
+
+   Due gruppi, perche' le sei voci non erano scelte dello stesso tipo:
+   - obiettivo: i quattro percorsi guidati, che cambiano serie, ripetizioni,
+     recuperi e volume;
+   - altro: GRAVITY, che e' una risposta sull'attrezzatura travestita da
+     obiettivo, e BLANK, che non e' un obiettivo ma il foglio bianco di chi sa
+     gia' cosa fare. In lista unica sembravano alternative a TITAN o MONOLITH.
+   La carta "Prossimamente" e' uscita: con sei percorsi reali un segnaposto
+   bloccato allunga la lista e non dice niente. */
 const AWK_GOALS = [
-  {k:'full_ipertrofia', l:'Full Ipertrofia', d:'Massimo volume, crescita muscolare', i:'🧬', tint:'#34d399'},
-  {k:'full_forza',      l:'Full Forza',      d:'Carichi alti, poche ripetizioni',    i:'⚡', tint:'#f59e0b'},
-  {k:'hybrid',          l:'Hybrid',          d:'Forza + ipertrofia nella stessa settimana', i:'🜛', tint:'#6366f1'},
-  {k:'calisthenic',     l:'Calisthenic',     d:'Corpo libero e progressioni skill',  i:'🤸', tint:'#22d3ee'},
-  {k:'free',            l:'Free',            d:'Costruisci tutto tu, zero vincoli',  i:'✒️', tint:'#94a3b8'},
-  {k:'soon',            l:'Prossimamente',   d:'Nuovi protocolli in arrivo',         i:'🔒', tint:'#475569', locked:true}
+  {k:'full_ipertrofia', l:'MONOLITH', d:'Ipertrofia \u00B7 massimo volume, crescita muscolare',    i:'🧬', tint:'#34d399', group:'obiettivo', code:true},
+  {k:'dimagrimento',    l:'SHIELD',   d:'Dimagrimento \u00B7 perdi grasso senza perdere muscolo',  i:'⚖️', tint:'#fb7185', group:'obiettivo', code:true},
+  {k:'full_forza',      l:'TITAN',    d:'Forza massimale \u00B7 carichi alti, poche ripetizioni',  i:'⚡', tint:'#f59e0b', group:'obiettivo', code:true},
+  {k:'hybrid',          l:'FORGE',    d:'Ibrido \u00B7 forza e ipertrofia nella stessa settimana', i:'🜛', tint:'#6366f1', group:'obiettivo', code:true},
+  {k:'calisthenic',     l:'GRAVITY',  d:'Corpo libero \u00B7 progressioni e skill, zero attrezzi', i:'🤸', tint:'#22d3ee', group:'altro', code:true},
+  {k:'free',            l:'BLANK',    d:'Nessun preset \u00B7 costruisci tutto tu',                i:'✒️', tint:'#94a3b8', group:'altro', code:true}
 ];
 
 const AWK_LEVELS = [
@@ -19515,19 +19587,27 @@ const AWK_PLACES = [
 ];
 const AWK_SLIDE_LABELS = ['Livello','Obiettivo','Attrezzatura','Protocollo'];
 
-function awkCards(box, items, sel, cb){
+function awkCards(box, items, sel, cb, append){
   if (!box) return;
-  box.innerHTML = '';
+  if (!append) box.innerHTML = '';
   items.forEach(function(o){
     const d = document.createElement('div');
     d.className = 'ob-card' + (sel === o.k ? ' selected' : '') + (o.locked ? ' locked' : '');
     if (o.tint) d.style.setProperty('--ob-tint', o.tint);
     d.innerHTML = '<div class="ob-c-ic">' + (o.i || '\u25CF') + '</div>' +
-      '<div style="flex:1; min-width:0;"><div class="ob-c-tt">' + o.l + '</div>' +
+      '<div style="flex:1; min-width:0;"><div class="ob-c-tt' + (o.code ? ' ob-c-code' : '') + '">' + o.l + '</div>' +
       '<div class="ob-c-dd">' + o.d + '</div></div>';
     if (!o.locked) d.onclick = function(){ cb(o.k); };
     box.appendChild(d);
   });
+}
+
+function awkGroupHead(box, text){
+  if (!box) return;
+  const h = document.createElement('div');
+  h.className = 'ob-grouphd';
+  h.textContent = text;
+  box.appendChild(h);
 }
 
 function awkDrawLevels(){
@@ -19539,17 +19619,28 @@ function awkDrawLevels(){
 }
 
 function awkDrawGoals(){
-  awkCards(document.getElementById('ob-goalbox'), AWK_GOALS, onboarding.goal,
-    function(k){
-      onboarding.goal = k;
-      const legacy = {full_forza:'forza', full_ipertrofia:'ipertrofia', hybrid:'hybrid',
-                      calisthenic:'ipertrofia', free:'ipertrofia'}[k] || 'ipertrofia';
-      const gs = document.getElementById('goal'); if (gs) gs.value = legacy;
-      if (k === 'calisthenic' && onboarding.place !== 'corpolibero'){
-        onboarding.place = 'corpolibero'; onboarding.equip = ['sbarra','parallele'];
-      }
-      awkDrawGoals(); obUpdate(); setTimeout(function(){ obGo(3); }, 220);
-    });
+  const box = document.getElementById('ob-goalbox');
+  if (!box) return;
+  const pick = function(k){
+    onboarding.goal = k;
+    const legacy = {full_forza:'forza', full_ipertrofia:'ipertrofia', hybrid:'hybrid',
+                    calisthenic:'ipertrofia', dimagrimento:'ipertrofia',
+                    free:'ipertrofia'}[k] || 'ipertrofia';
+    const gs = document.getElementById('goal'); if (gs) gs.value = legacy;
+    if (k === 'calisthenic' && onboarding.place !== 'corpolibero'){
+      onboarding.place = 'corpolibero'; onboarding.equip = ['sbarra','parallele'];
+    }
+    awkDrawGoals(); obUpdate(); setTimeout(function(){ obGo(3); }, 220);
+  };
+  box.innerHTML = '';
+  const obiettivi = AWK_GOALS.filter(function(g){ return g.group !== 'altro'; });
+  const altri     = AWK_GOALS.filter(function(g){ return g.group === 'altro'; });
+  awkGroupHead(box, 'Obiettivo');
+  awkCards(box, obiettivi, onboarding.goal, pick, true);
+  if (altri.length){
+    awkGroupHead(box, 'Oppure');
+    awkCards(box, altri, onboarding.goal, pick, true);
+  }
 }
 
 function awkDrawPlaces(){
@@ -19656,6 +19747,17 @@ function awkRenderResult(){
   if (P.warn && P.warn.length)
     h += P.warn.map(function(w){ return '<div class="ob-warn">' + w + '</div>'; }).join('');
 
+  // Dimagrimento: la premessa va detta PRIMA della scheda, non dopo. Chi
+  // sceglie questo percorso di solito si aspetta carichi leggeri e tante
+  // ripetizioni, cioe' l'esatto contrario di quello che la scheda prescrive.
+  if (P.goal === 'dimagrimento')
+    h += '<div class="ob-zbanner"><div class="zi">\u2696\uFE0F</div>' +
+         '<div class="zt"><b>Il deficit si fa a tavola</b>' +
+         'Questo percorso non brucia il grasso al posto della dieta: serve a non perdere muscolo mentre perdi peso. ' +
+         'Imposta il deficit calorico e le proteine dalla sezione Nutrizione, poi allenati con i carichi pieni: ' +
+         'e\' il carico che protegge la massa magra, non le ripetizioni in piu\'.' +
+         '</div></div>';
+
   // Le zone di stimolo si spiegano una volta sola qui, non su ogni riga.
   h += '<div class="ob-zbanner"><div class="zi">\uD83D\uDD2C</div>' +
        '<div class="zt"><b>Ogni esercizio ha una zona di stimolo</b>' +
@@ -19689,6 +19791,7 @@ function awkRenderResult(){
   if (P.goal === 'full_ipertrofia') refs = [AWK_REFS.vol, AWK_REFS.rest, AWK_REFS.freq, AWK_REFS.fail];
   if (P.goal === 'hybrid')          refs = [AWK_REFS.dup, AWK_REFS.vol, AWK_REFS.rest2, AWK_REFS.freq];
   if (P.goal === 'calisthenic')     refs = [AWK_REFS.cal, AWK_REFS.cal2, AWK_REFS.fail, AWK_REFS.vol];
+  if (P.goal === 'dimagrimento')    refs = [AWK_REFS.cut, AWK_REFS.cut2, AWK_REFS.cut3, AWK_REFS.cut4, AWK_REFS.freq];
   h += '<div class="ob-refs"><div class="rt">Fonti dei parametri</div>' +
        refs.map(function(r){ return '<p>' + r + '</p>'; }).join('') + '</div>';
   h += '<div class="ob-hint">I carichi mostrati sono un punto di partenza: potrai correggerli con il tuo MTR reale.</div>';
