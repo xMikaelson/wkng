@@ -4115,7 +4115,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '238';
+const APP_VERSION = '239';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -11126,15 +11126,37 @@ function renderNotifTimes() {
         time.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;'
             + 'margin:0;padding:0;border:none;background:transparent;opacity:0;'
             + '-webkit-appearance:none;appearance:none;';
-        time.addEventListener('change', function() {
+        // La rotella di iOS manda un evento a ogni scatto. Salvare li' voleva dire
+        // una scrittura sul server e un avviso per ogni cifra sfiorata, e ridisegnare
+        // il pannello sotto le dita col selettore ancora aperto. Qui l'evento
+        // aggiorna solo il numero mostrato; si salva alla chiusura del selettore,
+        // cioe' quando si tocca "Fine".
+        var leggiOra = function() {
             var parts = (time.value || '').split(':');
             var hh = parseInt(parts[0], 10), mm = parseInt(parts[1], 10);
-            if (isNaN(hh) || isNaN(mm)) { renderNotifTimes(); return; }
+            if (isNaN(hh) || isNaN(mm)) return null;
+            timeText.textContent = String(hh).padStart(2,'0') + ':' + String(mm).padStart(2,'0');
+            return { h: hh, m: mm };
+        };
+        time.addEventListener('input',  leggiOra);
+        time.addEventListener('change', leggiOra);
+        // Il confronto va fatto con l'ultimo valore salvato, non con quello che
+        // slot aveva al disegno: dopo un salvataggio il pannello non si ridisegna,
+        // quindi slot resta indietro e ogni chiusura successiva risalvava lo
+        // stesso orario, con un avviso e una scrittura sul server ogni volta.
+        var ultimoSalvato = { h: slot.h, m: slot.m };
+        time.addEventListener('blur', function() {
+            var v = leggiOra();
+            if (!v) { timeText.textContent = hhmm; return; }
+            if (v.h === ultimoSalvato.h && v.m === ultimoSalvato.m) return;
+            ultimoSalvato = v;
             var st = notifGetSettings();
-            st[slot.id] = { h: hh, m: mm, on: slot.on };
+            st[slot.id] = { h: v.h, m: v.m, on: slot.on };
             notifSaveSettings(st);
-            renderNotifTimes();
-            showToast(slot.label + ' \u2192 ' + time.value, 'success');
+            // Nessun ridisegno: il numero e' gia' aggiornato e il resto della
+            // scheda non cambia. Ridisegnando, toccare subito l'ora di un'altra
+            // scheda avrebbe sostituito il nodo a meta' tocco.
+            showToast(slot.label + ' \u2192 ' + timeText.textContent, 'success');
         });
 
         timeWrap.appendChild(timeText); timeWrap.appendChild(time);
@@ -11314,11 +11336,12 @@ async function scheduleClientNotifications() {
         var timer = setTimeout(async function() {
             try {
                 var reg = await navigator.serviceWorker.ready;
-                // Titolo fisso "Awakening": iOS stampa gia' il nome dell'app
-                // sopra la notifica, ripeterlo nel titolo rubava spazio al
-                // messaggio. Il promemoria sta tutto nel corpo.
-                await reg.showNotification('Awakening', {
-                    body: notif.title + ' \u00b7 ' + notif.body,
+                // iOS aggiunge da se' la riga "from Awakening" sotto il titolo:
+                // e' sua, non si toglie. Mettere "Awakening" anche nel titolo la
+                // ripeteva e sprecava la riga in grassetto, che e' la piu' letta.
+                // Li' ci va il promemoria.
+                await reg.showNotification(notif.title, {
+                    body: notif.body,
                     icon: './icon-192.png', badge: './icon-192.png',
                     tag: 'awakening-' + notif.id, renotify: true, data: { url: './' }
                 });

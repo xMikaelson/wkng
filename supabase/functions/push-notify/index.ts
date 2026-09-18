@@ -208,15 +208,16 @@ function slotAt(schedule: Slot[], rome: { h: number; m: number }): Slot | null {
   return schedule.find(s => s.on && vicino(s.h * 60 + s.m, nowMin)) ?? null;
 }
 
-// Titolo fisso "Awakening": iOS stampa gia' il nome dell'app sopra la
-// notifica, ripeterlo nel titolo rubava spazio al messaggio. Il promemoria
-// sta tutto nel corpo. Il tag combacia con quello delle notifiche locali di
-// index.html, cosi' ad app aperta la push sostituisce quella gia' mostrata
-// invece di affiancarsi.
+// iOS aggiunge da se' la riga "from Awakening" sotto il titolo: e' sua e non
+// si toglie. Mettere "Awakening" anche nel titolo la ripeteva e sprecava la
+// riga in grassetto, che e' quella che si legge per prima; li' ci va il
+// promemoria. Il tag combacia con quello delle notifiche locali di index.html,
+// cosi' ad app aperta la push sostituisce quella gia' mostrata invece di
+// affiancarsi.
 function payloadFor(slot: Slot): string {
   return JSON.stringify({
-    title: "Awakening",
-    body:  `${slot.title} \u00b7 ${slot.body}`,
+    title: slot.title,
+    body:  slot.body,
     tag:   `awakening-${slot.id}`,
   });
 }
