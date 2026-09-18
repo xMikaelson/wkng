@@ -1111,6 +1111,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .ob-card.locked { opacity: 0.34; cursor: not-allowed; }
         .ob-card .ob-c-ic { font-size: 1.75rem; width: 42px; text-align: center; flex-shrink: 0; }
         .ob-card .ob-c-tt { font-weight: 700; font-size: 0.92rem; color: #fff; }
+        /* I nomi dei percorsi sono sigle: la spaziatura li fa leggere come tali
+           e non come parole inglesi qualsiasi. */
+        .ob-card .ob-c-code { letter-spacing: 0.1em; font-size: 0.97rem; }
+        .ob-grouphd { font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase;
+                      color: #64748b; font-weight: 600; margin: 18px 4px 9px; }
+        .ob-grouphd:first-child { margin-top: 2px; }
         .ob-card .ob-c-dd { font-size: 0.68rem; color: #94a3b8; margin-top: 3px; line-height: 1.4; }
         .ob-eqchips { display: flex; flex-wrap: wrap; gap: 8px; }
         .ob-eqchip { background: rgba(30,41,59,0.8); border: 1.5px solid rgba(255,255,255,0.08);
@@ -4115,7 +4121,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '247';
+const APP_VERSION = '248';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -6595,18 +6601,24 @@ function planValidateFocus(){
   }
 }
 
-const AWK_GOAL_LABEL = { full_ipertrofia:'Full Ipertrofia', full_forza:'Full Forza',
-                         hybrid:'Hybrid', calisthenic:'Calisthenic',
-                         dimagrimento:'Dimagrimento',
+const AWK_GOAL_LABEL = { full_ipertrofia:'MONOLITH', full_forza:'TITAN',
+                         hybrid:'FORGE', calisthenic:'GRAVITY',
+                         dimagrimento:'SHIELD',
                          ipertrofia:'Ipertrofia', forza:'Forza' };
 const AWK_ENV_LABEL  = { palestra:'Palestra', casa:'Casa', corpolibero:'Corpo libero' };
 
 /* I protocolli creati prima del nuovo wizard non hanno i metadati di piano,
    ma il loro nome li contiene: "Hybrid - Casa - Push". Qui si recuperano. */
+/* I nomi in codice della v.248 vanno riconosciuti quanto quelli vecchi: un
+   protocollo salvato come "Hybrid - Casa - Push" e uno salvato come
+   "FORGE - Casa - Push" sono la stessa cosa, e senza le righe nuove il
+   secondo perdeva l'obiettivo e finiva in un bundle a se'. */
 const AWK_NAME_GOALS = [
-  [/\bhybrid\b/i, 'hybrid'], [/\bcalisthenic/i, 'calisthenic'],
-  [/\bdimagriment/i, 'dimagrimento'],
-  [/\bipertrofia\b/i, 'ipertrofia'], [/\bforza\b/i, 'forza']
+  [/\bforge\b/i, 'hybrid'],        [/\bhybrid\b/i, 'hybrid'],
+  [/\bgravity\b/i, 'calisthenic'], [/\bcalisthenic/i, 'calisthenic'],
+  [/\bshield\b/i, 'dimagrimento'], [/\bdimagriment/i, 'dimagrimento'],
+  [/\bmonolith\b/i, 'ipertrofia'], [/\bipertrofia\b/i, 'ipertrofia'],
+  [/\btitan\b/i, 'forza'],         [/\bforza\b/i, 'forza']
 ];
 const AWK_NAME_ENVS = [
   [/corpo\s*libero/i, 'corpolibero'], [/\bpalestra\b/i, 'palestra'], [/\bcasa\b/i, 'casa']
@@ -19434,14 +19446,26 @@ const AWK_TPL = {
   }
 };
 
+/* I nomi sono in codice, la descrizione dice di cosa si tratta: la chiave
+   interna (full_ipertrofia, hybrid...) non cambia, quindi i protocolli gia'
+   salvati continuano a funzionare. Ogni descrizione apre con il termine
+   tecnico, cosi' chi cerca "forza" o "ipertrofia" trova comunque la sua carta.
+
+   Due gruppi, perche' le sei voci non erano scelte dello stesso tipo:
+   - obiettivo: i quattro percorsi guidati, che cambiano serie, ripetizioni,
+     recuperi e volume;
+   - altro: GRAVITY, che e' una risposta sull'attrezzatura travestita da
+     obiettivo, e BLANK, che non e' un obiettivo ma il foglio bianco di chi sa
+     gia' cosa fare. In lista unica sembravano alternative a TITAN o MONOLITH.
+   La carta "Prossimamente" e' uscita: con sei percorsi reali un segnaposto
+   bloccato allunga la lista e non dice niente. */
 const AWK_GOALS = [
-  {k:'full_ipertrofia', l:'Full Ipertrofia', d:'Massimo volume, crescita muscolare', i:'🧬', tint:'#34d399'},
-  {k:'dimagrimento',    l:'Dimagrimento',    d:'Perdi grasso senza perdere muscolo', i:'⚖️', tint:'#fb7185'},
-  {k:'full_forza',      l:'Full Forza',      d:'Carichi alti, poche ripetizioni',    i:'⚡', tint:'#f59e0b'},
-  {k:'hybrid',          l:'Hybrid',          d:'Forza + ipertrofia nella stessa settimana', i:'🜛', tint:'#6366f1'},
-  {k:'calisthenic',     l:'Calisthenic',     d:'Corpo libero e progressioni skill',  i:'🤸', tint:'#22d3ee'},
-  {k:'free',            l:'Free',            d:'Costruisci tutto tu, zero vincoli',  i:'✒️', tint:'#94a3b8'},
-  {k:'soon',            l:'Prossimamente',   d:'Nuovi protocolli in arrivo',         i:'🔒', tint:'#475569', locked:true}
+  {k:'full_ipertrofia', l:'MONOLITH', d:'Ipertrofia \u00B7 massimo volume, crescita muscolare',    i:'🧬', tint:'#34d399', group:'obiettivo', code:true},
+  {k:'dimagrimento',    l:'SHIELD',   d:'Dimagrimento \u00B7 perdi grasso senza perdere muscolo',  i:'⚖️', tint:'#fb7185', group:'obiettivo', code:true},
+  {k:'full_forza',      l:'TITAN',    d:'Forza massimale \u00B7 carichi alti, poche ripetizioni',  i:'⚡', tint:'#f59e0b', group:'obiettivo', code:true},
+  {k:'hybrid',          l:'FORGE',    d:'Ibrido \u00B7 forza e ipertrofia nella stessa settimana', i:'🜛', tint:'#6366f1', group:'obiettivo', code:true},
+  {k:'calisthenic',     l:'GRAVITY',  d:'Corpo libero \u00B7 progressioni e skill, zero attrezzi', i:'🤸', tint:'#22d3ee', group:'altro', code:true},
+  {k:'free',            l:'BLANK',    d:'Nessun preset \u00B7 costruisci tutto tu',                i:'✒️', tint:'#94a3b8', group:'altro', code:true}
 ];
 
 const AWK_LEVELS = [
@@ -19563,19 +19587,27 @@ const AWK_PLACES = [
 ];
 const AWK_SLIDE_LABELS = ['Livello','Obiettivo','Attrezzatura','Protocollo'];
 
-function awkCards(box, items, sel, cb){
+function awkCards(box, items, sel, cb, append){
   if (!box) return;
-  box.innerHTML = '';
+  if (!append) box.innerHTML = '';
   items.forEach(function(o){
     const d = document.createElement('div');
     d.className = 'ob-card' + (sel === o.k ? ' selected' : '') + (o.locked ? ' locked' : '');
     if (o.tint) d.style.setProperty('--ob-tint', o.tint);
     d.innerHTML = '<div class="ob-c-ic">' + (o.i || '\u25CF') + '</div>' +
-      '<div style="flex:1; min-width:0;"><div class="ob-c-tt">' + o.l + '</div>' +
+      '<div style="flex:1; min-width:0;"><div class="ob-c-tt' + (o.code ? ' ob-c-code' : '') + '">' + o.l + '</div>' +
       '<div class="ob-c-dd">' + o.d + '</div></div>';
     if (!o.locked) d.onclick = function(){ cb(o.k); };
     box.appendChild(d);
   });
+}
+
+function awkGroupHead(box, text){
+  if (!box) return;
+  const h = document.createElement('div');
+  h.className = 'ob-grouphd';
+  h.textContent = text;
+  box.appendChild(h);
 }
 
 function awkDrawLevels(){
@@ -19587,18 +19619,28 @@ function awkDrawLevels(){
 }
 
 function awkDrawGoals(){
-  awkCards(document.getElementById('ob-goalbox'), AWK_GOALS, onboarding.goal,
-    function(k){
-      onboarding.goal = k;
-      const legacy = {full_forza:'forza', full_ipertrofia:'ipertrofia', hybrid:'hybrid',
-                      calisthenic:'ipertrofia', dimagrimento:'ipertrofia',
-                      free:'ipertrofia'}[k] || 'ipertrofia';
-      const gs = document.getElementById('goal'); if (gs) gs.value = legacy;
-      if (k === 'calisthenic' && onboarding.place !== 'corpolibero'){
-        onboarding.place = 'corpolibero'; onboarding.equip = ['sbarra','parallele'];
-      }
-      awkDrawGoals(); obUpdate(); setTimeout(function(){ obGo(3); }, 220);
-    });
+  const box = document.getElementById('ob-goalbox');
+  if (!box) return;
+  const pick = function(k){
+    onboarding.goal = k;
+    const legacy = {full_forza:'forza', full_ipertrofia:'ipertrofia', hybrid:'hybrid',
+                    calisthenic:'ipertrofia', dimagrimento:'ipertrofia',
+                    free:'ipertrofia'}[k] || 'ipertrofia';
+    const gs = document.getElementById('goal'); if (gs) gs.value = legacy;
+    if (k === 'calisthenic' && onboarding.place !== 'corpolibero'){
+      onboarding.place = 'corpolibero'; onboarding.equip = ['sbarra','parallele'];
+    }
+    awkDrawGoals(); obUpdate(); setTimeout(function(){ obGo(3); }, 220);
+  };
+  box.innerHTML = '';
+  const obiettivi = AWK_GOALS.filter(function(g){ return g.group !== 'altro'; });
+  const altri     = AWK_GOALS.filter(function(g){ return g.group === 'altro'; });
+  awkGroupHead(box, 'Obiettivo');
+  awkCards(box, obiettivi, onboarding.goal, pick, true);
+  if (altri.length){
+    awkGroupHead(box, 'Oppure');
+    awkCards(box, altri, onboarding.goal, pick, true);
+  }
 }
 
 function awkDrawPlaces(){
