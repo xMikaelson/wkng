@@ -214,11 +214,26 @@ function slotAt(schedule: Slot[], rome: { h: number; m: number }): Slot | null {
 // promemoria. Il tag combacia con quello delle notifiche locali di index.html,
 // cosi' ad app aperta la push sostituisce quella gia' mostrata invece di
 // affiancarsi.
-function payloadFor(slot: Slot): string {
+//
+// Il tag porta anche la data. Con un tag fisso la notifica di oggi
+// *sostituiva* quella di ieri rimasta in centro notifiche invece di essere un
+// messaggio nuovo, e una sostituzione iOS puo' consegnarla in silenzio, senza
+// mostrarla sulla schermata di blocco. Nello stesso giorno app e server usano
+// lo stesso tag, quindi la push continua a sostituire la notifica locale gia'
+// mostrata invece di affiancarsi.
+function romeDate(now: Date): string {
+  const p = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Rome", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(now);
+  const g = (t: string) => p.find(x => x.type === t)?.value ?? "";
+  return `${g("year")}${g("month")}${g("day")}`;
+}
+
+function payloadFor(slot: Slot, now: Date): string {
   return JSON.stringify({
     title: slot.title,
     body:  slot.body,
-    tag:   `awakening-${slot.id}`,
+    tag:   `awakening-${slot.id}-${romeDate(now)}`,
   });
 }
 
@@ -278,7 +293,7 @@ Deno.serve(async (req) => {
     if (!payloadText) {
       const slot = slotAt(scheduleFor(row.notif_settings), rome);
       if (!slot) { skipped++; continue; }
-      payloadText = payloadFor(slot);
+      payloadText = payloadFor(slot, now);
       etichetta = slot.id;
     }
     try {
