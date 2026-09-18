@@ -4115,7 +4115,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '240';
+const APP_VERSION = '241';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -4147,6 +4147,8 @@ const APP = {
     restSeconds: 0,
     exerciseTracking: [],
     loadHistory: [],   // [{k,d:'YYYY-MM-DD',w:capitolo,ex:nome,kg}] storico carichi
+    sessionLog: [],    // [{d:'YYYY-MM-DD',w:capitolo,di:giorno}] diario delle sedute chiuse
+    streakCarry: 0,    // sedute consecutive ereditate dai cicli gia' chiusi
     currentExerciseIndex: 0,
     currentSet: 1,
     savedProtocols: [],
@@ -4297,6 +4299,8 @@ function saveState() {
             nutFavorites: APP.nutFavorites || [],
             nutritionLogs: nutGetAllLogs(),
             loadHistory: APP.loadHistory || [],
+            sessionLog: APP.sessionLog || [],
+            streakCarry: APP.streakCarry || 0,
             _srMigratedV151: APP._srMigratedV151 || false
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
@@ -4469,6 +4473,8 @@ function loadState() {
         ];
         APP.exerciseTracking = saved.exerciseTracking || [];
         APP.loadHistory = saved.loadHistory || [];
+        APP.sessionLog = Array.isArray(saved.sessionLog) ? saved.sessionLog : [];
+        APP.streakCarry = saved.streakCarry || 0;
         APP._srMigratedV151 = saved._srMigratedV151 || false;
         APP.currentExerciseIndex = saved.currentExerciseIndex || 0;
         APP.savedProtocols = saved.savedProtocols || [];
@@ -4488,6 +4494,10 @@ function loadState() {
         // senza padding il loop qui sotto lancia sulla settimana Deload.
         normalizeWeekState();
         sanitizeStoredLoads();
+        // La data di inizio deve corrispondere al primo allenamento davvero
+        // registrato: i profili salvati prima della v.241 ce l'hanno solo se
+        // la prima chip era stata segnata a mano.
+        try { awSyncStartDate(); } catch(e) {}
 
         // Inizializza le frasi mancanti per settimane con allenamenti completati
         for (let w = 0; w < N_WEEKS; w++) {
@@ -6290,6 +6300,21 @@ async function onLoginSuccess(user, usernameOverride = null) {
             _merged.sort(function(a, b) { return a.d < b.d ? -1 : (a.d > b.d ? 1 : 0); });
             APP.loadHistory = _merged.slice(-800);
         }
+        // Diario delle sedute: unione per data+capitolo+giorno, come lo
+        // storico carichi. Due dispositivi non devono cancellarsi le sedute.
+        if (Array.isArray(s.sessionLog) && s.sessionLog.length) {
+            var _sSeen = {}, _sMerged = [];
+            (APP.sessionLog || []).concat(s.sessionLog).forEach(function(e) {
+                if (!e || !e.d) return;
+                var kk = e.d + '|' + e.w + '|' + e.di;
+                if (_sSeen[kk]) return;
+                _sSeen[kk] = 1; _sMerged.push(e);
+            });
+            _sMerged.sort(function(a, b) { return a.d < b.d ? -1 : (a.d > b.d ? 1 : 0); });
+            APP.sessionLog = _sMerged.slice(-1000);
+        }
+        if ((s.streakCarry || 0) > (APP.streakCarry || 0)) APP.streakCarry = s.streakCarry;
+        try { awSyncStartDate(); } catch(e) {}
     }
     const { data: protocols } = await sbClient.from('protocols').select('*').eq('user_id', user.id).order('created_at');
     if (!protocols || protocols.length === 0) {
@@ -6802,6 +6827,7 @@ function renderPlanPage(w) {
                     var hadAssign = !!APP.dayAssignments[w][di];
                     APP.chipStates[w][di] = hadAssign ? 'selected' : 'rest';
                     APP.totalWorkouts = Math.max(0, APP.totalWorkouts-1);
+                    awSessionLogRemove(w, di);
                     APP.completedWeeks[w] = false;
                     APP._weekCelebrated[w] = false;
                     chip.className = 'plan-chip' + (hadAssign ? ' assigned' : '');
@@ -6811,6 +6837,7 @@ function renderPlanPage(w) {
                     APP.totalWorkouts++;
                     chip.className = 'plan-chip done';
                     chip.textContent = '✓';
+                    awSessionLogAdd(w, di, new Date());
                     checkNextStepCompletion();
                 }
                 saveState();
@@ -6853,6 +6880,7 @@ function renderPlanPage(w) {
                 for (let d = 0; d < 7; d++) {
                     APP.dayAssignments[w][d] = null;
                     APP.chipStates[w][d] = 'rest';
+                    awSessionLogRemove(w, d);
                 }
                 APP.totalWorkouts = Math.max(0, APP.totalWorkouts - nDone);
                 APP.completedWeeks[w] = false;
@@ -17644,6 +17672,11 @@ function woCompleteSet() {
             }
         } catch (e) { awLog.warn('chip done:', e); }
 
+        // Diario delle sedute: e' l'unico punto in cui una sessione chiusa
+        // dalla pagina Allenamento lascia una data. Senza, il Profilo non
+        // sapeva nemmeno quando l'atleta aveva iniziato.
+        try { awSessionLogAdd(wIdx, di, new Date()); } catch (e) { awLog.warn('sessionLog:', e); }
+
         saveState();
 
         // Refresh completo di tutte le viste che mostrano lo stato dei workout:
@@ -18000,25 +18033,34 @@ function buildProfiloPage() {
     const username = document.getElementById('dash-username')?.textContent || 'Agente';
     const chapterNames = CHAPTER_NAMES;
     const currentChapter = chapterNames[APP.selectedViewWeek || 0] || 'Activation';
-    const startDate = APP.startDate ? APP.startDate.toLocaleDateString('it-IT') : '—';
-    // Calcola giorni con fallback: se startDate non c'è usa totalWorkouts
-    const daysSinceStart = APP.startDate
-        ? Math.max(1, Math.floor((new Date() - new Date(APP.startDate)) / (1000*60*60*24)) + 1)
-        : 0;
-    const days = daysSinceStart;
-    
+    // I tre riquadri e la riga "Dal" leggono il diario delle sedute, non piu'
+    // APP.startDate: quel campo veniva scritto solo marcando a mano una chip,
+    // quindi chi si allenava dalla pagina Allenamento restava per sempre a
+    // "Non ancora iniziato" con 0 giorni. Vedi awSessionKeys().
+    awSyncStartDate();
+    const firstTraining = awFirstTrainingDate();
+    const days = awDaysSinceFirstTraining();
+    const sessions = awTotalSessions();
+
     const el = id => document.getElementById(id);
     if (el('profile-avatar'))   el('profile-avatar').textContent   = username ? username[0].toUpperCase() : '💪';
     if (el('profile-name'))     el('profile-name').textContent     = 'Agente ' + username;
-    const startDateDisplay = APP.startDate
-        ? new Date(APP.startDate).toLocaleDateString('it-IT', {day:'2-digit',month:'short',year:'numeric'})
-        : '—';
-    if (el('profile-sub'))      el('profile-sub').textContent      = APP.startDate ? 'Dal ' + startDateDisplay : 'Non ancora iniziato';
+    const startDateDisplay = firstTraining
+        ? firstTraining.toLocaleDateString('it-IT', {day:'2-digit',month:'short',year:'numeric'})
+        : '';
+    // "Non ancora iniziato" solo se non risulta nessuna seduta. Se le sedute
+    // ci sono ma la data no (stato importato senza storico) si dice quello,
+    // invece di dichiarare fermo un atleta che si sta allenando.
+    if (el('profile-sub'))      el('profile-sub').textContent      = firstTraining
+        ? 'Dal ' + startDateDisplay
+        : (sessions > 0 ? 'Prima data non registrata' : 'Non ancora iniziato');
     if (el('profile-chapter'))  el('profile-chapter').textContent  = 'Chapter ' + (APP.selectedViewWeek+1) + ' · ' + currentChapter;
     if (el('profile-days'))     el('profile-days').textContent     = days;
-    if (el('profile-workouts')) el('profile-workouts').textContent = APP.totalWorkouts || 0;
-    const streak = el('streak-count')?.textContent || '0';
-    if (el('profile-streak'))   el('profile-streak').textContent   = streak + '🔥';
+    if (el('profile-workouts')) el('profile-workouts').textContent = sessions;
+    // Striscia di SEDUTE consecutive previste dal protocollo. Il riquadro
+    // copiava il widget Home, che conta settimane complete: due metriche
+    // diverse con la stessa etichetta.
+    if (el('profile-streak'))   el('profile-streak').textContent   = awSessionStreak() + '🔥';
     // Aggancia il listener dello slider dimensione testo (idempotente)
     if (typeof awFontScaleInitSlider === 'function') awFontScaleInitSlider();
     // Footer versione: anno dinamico + numero versione dalla costante APP_VERSION
@@ -18079,6 +18121,7 @@ function _performLogoutNow() {
     sbClient.auth.signOut();
     localStorage.removeItem(STORAGE_KEY);
     APP.userName = null; APP.exerciseData = []; APP.totalWorkouts = 0; APP.startDate = null;
+    APP.sessionLog = []; APP.streakCarry = 0;
     APP.selectedViewWeek = 0; APP.completedWeeks = [false,false,false,false,false]; APP.availableWeeks = [0];
     APP.chipStates = [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']];
     APP.exerciseTracking = []; APP.currentExerciseIndex = 0; APP.activeProtocolId = null;
@@ -18369,6 +18412,7 @@ function initDashboard() {
                     APP.chipStates[w][dayIndex] = 'rest';
                     APP.dayAssignments[w][dayIndex] = null;
                     APP.totalWorkouts = Math.max(0, APP.totalWorkouts - 1);
+                    awSessionLogRemove(w, dayIndex);
                     APP.completedWeeks[w] = false;
                     APP._weekCelebrated[w] = false;
                     const remainingDone = APP.chipStates[w].filter(s => s === 'done').length;
@@ -18383,8 +18427,8 @@ function initDashboard() {
                     setTimeout(() => { btn.style.transform = ''; }, 180);
                     APP.motivationalQuotes[w] = getMotivationalQuote();
                     checkNextStepCompletion();
-                    if (!APP.startDate) {
-                        APP.startDate = new Date();
+                    awSessionLogAdd(w, dayIndex, new Date());
+                    if (APP.startDate) {
                         document.getElementById('start-date-small').innerText = APP.startDate.toLocaleDateString('it-IT');
                     }
                 }
@@ -20036,6 +20080,11 @@ function finishOnboarding() {
     saveToSupabase({
         isUnlocked: APP.isUnlocked, exerciseData: APP.exerciseData,
         totalWorkouts: APP.totalWorkouts,
+        // Il diario viaggia con lo stato: qui si sovrascrive state_json, e
+        // senza queste due righe la creazione di un protocollo cancellava
+        // dal cloud la storia delle sedute.
+        sessionLog: APP.sessionLog || [],
+        streakCarry: APP.streakCarry || 0,
         startDate: APP.startDate ? APP.startDate.toISOString() : null,
         userName: APP.userName, selectedViewWeek: APP.selectedViewWeek,
         completedWeeks: APP.completedWeeks, availableWeeks: APP.availableWeeks,
@@ -21559,6 +21608,13 @@ function launchEpicConfetti() {
 // sbloccati, quindi il ciclo non ripartiva mai e il riepilogo di
 // progressione non poteva riapparire.
 function restartCycle() {
+    // Le chip stanno per tornare "da svolgere": se il ciclo si chiude senza
+    // sedute saltate la striscia deve proseguire nel ciclo nuovo, altrimenti
+    // ogni fine ciclo la azzererebbe pur avendo rispettato il protocollo.
+    try {
+        var _si = awSessionStreakInfo();
+        APP.streakCarry = (_si.any && !_si.gap && !_si.tail) ? _si.run : 0;
+    } catch (e) { APP.streakCarry = 0; }
     APP.completedWeeks = [false, false, false, false, false];
     APP.availableWeeks = [0];
     APP._weekCelebrated = [false, false, false, false, false];
@@ -21711,6 +21767,8 @@ async function performFullReset() {
     // di ogni esercizio sopravvivevano al reset perché saveState() li ripersisteva
     // subito dopo la pulizia di STORAGE_KEY, e le viste li leggevano dalla RAM.
     APP.loadHistory = [];         // storico carichi → grafico Progressi nei Pesi
+    APP.sessionLog = [];          // diario delle sedute → "Dal", Giorni, Sessions
+    APP.streakCarry = 0;          // sedute consecutive ereditate
     APP.personalRecords = {};     // record personali → trofei/badge PR
     APP.prMeta = {};              // meta del record (kg, reps, target, data)
     APP.prLegacy = null;          // archivio record pre-v.168
@@ -21898,6 +21956,144 @@ function logLoadHistory(wIdx) {
     (APP.exerciseData || []).forEach(function(ex) { _lhUpsert(ex, wIdx, false); });
     if (APP.loadHistory.length > 800) APP.loadHistory = APP.loadHistory.slice(-800);
 }
+
+// ── DIARIO DELLE SEDUTE (v.241) ───────────────────────────
+// Fino alla v.240 l'unica traccia temporale dell'atleta era APP.startDate, e
+// veniva scritta solo marcando a mano una chip: chi chiudeva la sessione dalla
+// pagina Allenamento non la valorizzava mai, quindi il Profilo restava su
+// "Non ancora iniziato" con 0 giorni anche dopo settimane di lavoro. Il diario
+// registra ogni seduta chiusa (data, capitolo, giorno) ed e' la sorgente di
+// "Dal", "Giorni", "Sessions" e della striscia.
+//
+// La striscia conta SEDUTE previste, non giorni di calendario: un programma di
+// forza prescrive i giorni di riposo (ACSM Position Stand 2009, "Progression
+// Models in Resistance Training for Healthy Adults", Med Sci Sports Exerc
+// 41(3):687-708 — 2-3 sedute a settimana per i principianti, con 48-72 h fra
+// due sedute sullo stesso distretto), quindi rispettare il riposo prescritto
+// non deve spezzare nulla. Si spezza solo saltando una seduta prevista.
+function awIsoDay(dt) {
+    var d = dt ? new Date(dt) : new Date();
+    if (isNaN(d.getTime())) d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function awSessionLogAdd(w, di, when) {
+    if (!Array.isArray(APP.sessionLog)) APP.sessionLog = [];
+    if (w === undefined || w === null || di === undefined || di === null) return;
+    var iso = awIsoDay(when);
+    var key = iso + '|' + w + '|' + di;
+    for (var i = 0; i < APP.sessionLog.length; i++) {
+        var s = APP.sessionLog[i];
+        if (s && (s.d + '|' + s.w + '|' + s.di) === key) return;
+    }
+    APP.sessionLog.push({ d: iso, w: w, di: di });
+    APP.sessionLog.sort(function(a, b) { return a.d < b.d ? -1 : (a.d > b.d ? 1 : 0); });
+    if (APP.sessionLog.length > 1000) APP.sessionLog = APP.sessionLog.slice(-1000);
+    try { awSyncStartDate(); } catch(e) {}
+}
+
+// Annullare il completamento di una chip deve togliere anche la riga del
+// diario, altrimenti "Sessions" resterebbe gonfiato dalla seduta ritirata.
+function awSessionLogRemove(w, di) {
+    if (!Array.isArray(APP.sessionLog)) { APP.sessionLog = []; return; }
+    for (var i = APP.sessionLog.length - 1; i >= 0; i--) {
+        var s = APP.sessionLog[i];
+        if (s && s.w === w && s.di === di) { APP.sessionLog.splice(i, 1); return; }
+    }
+}
+
+// Chiavi "data|capitolo" delle sedute svolte. Oltre al diario legge lo storico
+// carichi: chi si allenava prima della v.241 non ha il diario, ma una data con
+// almeno una riga di carico e' una seduta svolta a tutti gli effetti.
+function awSessionKeys() {
+    var keys = {};
+    (APP.sessionLog || []).forEach(function(e) { if (e && e.d) keys[e.d + '|' + e.w] = 1; });
+    (APP.loadHistory || []).forEach(function(e) { if (e && e.d) keys[e.d + '|' + e.w] = 1; });
+    return keys;
+}
+
+// Allenamenti effettuati in tutta la storia dell'atleta, non solo nel ciclo in
+// corso: il ciclo che riparte azzera le chip, il lavoro fatto no.
+function awTotalSessions() {
+    var n = Object.keys(awSessionKeys()).length;
+    // Le chip segnate a mano senza aprire l'allenamento non lasciano riga nel
+    // diario: il ciclo in corso vale comunque come minimo.
+    var chips = 0;
+    (APP.chipStates || []).forEach(function(week) {
+        (week || []).forEach(function(st) { if (st === 'done') chips++; });
+    });
+    return Math.max(n, chips);
+}
+
+// Data del primo allenamento. Null solo se non risulta NESSUNA seduta: in quel
+// caso, e solo in quello, il profilo dice "Non ancora iniziato".
+function awFirstTrainingDate() {
+    var best = null;
+    Object.keys(awSessionKeys()).forEach(function(k) {
+        var iso = k.split('|')[0];
+        if (!best || iso < best) best = iso;
+    });
+    var d = best ? new Date(best + 'T00:00:00') : null;
+    if (d && isNaN(d.getTime())) d = null;
+    // startDate delle versioni precedenti: veniva scritta alla prima chip
+    // completata, quindi e' a sua volta una data di primo allenamento.
+    if (APP.startDate) {
+        var sd = new Date(APP.startDate);
+        if (!isNaN(sd.getTime()) && (!d || sd < d)) d = sd;
+    }
+    return d;
+}
+
+// Giorni trascorsi dal primo allenamento, il giorno del primo incluso: chi si
+// e' allenato oggi per la prima volta e' al giorno 1, non al giorno 0.
+function awDaysSinceFirstTraining() {
+    var first = awFirstTrainingDate();
+    if (!first) return 0;
+    var a = new Date(first.getFullYear(), first.getMonth(), first.getDate());
+    var n = new Date();
+    var b = new Date(n.getFullYear(), n.getMonth(), n.getDate());
+    return Math.max(1, Math.round((b - a) / 86400000) + 1);
+}
+
+// Allinea APP.startDate al primo allenamento registrato: Home e badge "Un
+// Mese" leggono ancora quel campo, e senza questo restavano a zero.
+function awSyncStartDate() {
+    var first = awFirstTrainingDate();
+    if (!first) return;
+    if (!APP.startDate || new Date(APP.startDate).getTime() > first.getTime()) APP.startDate = first;
+}
+
+// Sedute consecutive rispettate. Scorre in ordine cronologico gli slot previsti
+// dal protocollo (dayAssignments) piu' le sedute svolte fuori piano, poi conta
+// all'indietro dall'ultima seduta chiusa:
+//   - un giorno previsto ma non ancora arrivato non e' un salto;
+//   - un giorno previsto e lasciato indietro spezza la striscia;
+//   - i giorni di riposo prescritti non compaiono, quindi non pesano.
+function awSessionStreakInfo() {
+    var slots = [];
+    for (var w = 0; w < N_WEEKS; w++) {
+        for (var d = 0; d < 7; d++) {
+            var done = (((APP.chipStates || [])[w] || [])[d] === 'done');
+            var planned = !!(((APP.dayAssignments || [])[w] || [])[d]);
+            if (done || planned) slots.push(done);
+        }
+    }
+    var last = -1;
+    for (var i = 0; i < slots.length; i++) if (slots[i]) last = i;
+    if (last < 0) return { run: 0, gap: false, any: false, tail: slots.length > 0 };
+    var run = 0, gap = false;
+    for (var j = last; j >= 0; j--) {
+        if (slots[j]) run++;
+        else { gap = true; break; }
+    }
+    // Ciclo precedente chiuso senza salti: la striscia prosegue oltre il reset
+    // delle chip (vedi restartCycle).
+    if (!gap) run += (APP.streakCarry || 0);
+    // tail: restano sedute previste e non svolte dopo l'ultima chiusa.
+    return { run: run, gap: gap, any: true, tail: last < slots.length - 1 };
+}
+
+function awSessionStreak() { return awSessionStreakInfo().run; }
 
 // ── STREAK A SETTIMANE (v.144) ────────────────────────────
 // La vecchia streak contava semplicemente le sessioni completate e le
