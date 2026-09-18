@@ -58,11 +58,16 @@ l'app resta aperta: servono da riserva se il push non arriva. Le due notifiche
 condividono il `tag` (`awakening-<id>`), cosi' la seconda sostituisce la prima
 invece di accumularsi.
 
-## Limite noto
+## Accesso ai dati
 
-La policy RLS su `push_subscriptions` e' `ALL` con `using (true)`: chiunque
-abbia la chiave anon puo' leggere e scrivere le righe di tutti. Va bene per
-un'app a utente singolo, va stretta prima di aprirla ad altri.
+Ogni riga di `push_subscriptions` e' leggibile e scrivibile solo da chi ha
+fatto login con l'account a cui appartiene: la policy confronta `user_id` con
+lo username del profilo di `auth.uid()`. Senza login non si vede nulla.
+
+La chiave anon che sta nel JavaScript dell'app non e' un segreto e non serve
+che lo sia: da sola non apre nessuna riga, e' il login a farlo. La edge
+function usa invece la service role, che ignora RLS, ed e' l'unica a vedere
+tutte le righe.
 
 ## Deploy
 
