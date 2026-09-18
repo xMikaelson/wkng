@@ -3617,12 +3617,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <div class="settings-row-left"><span class="settings-row-icon">🔔</span><span class="settings-row-label" id="settings-push-label">Attiva Notifiche</span></div>
       <span class="settings-row-arrow" id="settings-push-arrow">›</span>
     </div>
-    <div class="settings-row" style="margin-top:4px" onclick="toggleNotifDebug()">
-      <div class="settings-row-left"><span class="settings-row-icon">🕐</span><span class="settings-row-label">Debug Orari Notifiche</span></div>
-      <span class="settings-row-arrow" id="notif-debug-arrow">›</span>
+    <div class="settings-row" style="margin-top:4px" onclick="toggleNotifTimes()">
+      <div class="settings-row-left"><span class="settings-row-icon">🕐</span><span class="settings-row-label">Orario Notifiche</span></div>
+      <span class="settings-row-arrow" id="notif-times-arrow">›</span>
     </div>
-    <div id="notif-debug-panel" style="display:none; background:rgba(255,255,255,0.03); border-radius:10px; padding:10px 14px; margin-bottom:4px;">
-      <div id="notif-debug-list"></div>
+    <div id="notif-times-panel" style="display:none; background:rgba(255,255,255,0.03); border-radius:10px; padding:10px 14px; margin-bottom:4px;">
+      <div id="notif-times-list"></div>
     </div>
     <div class="settings-row" style="margin-top:4px" onclick="toggleProtoManager()">
       <div class="settings-row-left"><span class="settings-row-icon">📋</span><span class="settings-row-label">Gestione Protocolli</span></div>
@@ -4115,7 +4115,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '236';
+const APP_VERSION = '237';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -6431,10 +6431,12 @@ async function onLoginSuccess(user, usernameOverride = null) {
     setTimeout(() => { nutUpdateUI(); nutTlUpdateUI(); }, 50);
 
     showToast('Bentornato, ' + username + '!', 'success');
-    refreshNotifPermission();
-    updateWeightBadge();
     // La subscription push viene registrata dall'utente tramite il pulsante in Impostazioni
     refreshNotifPermission();
+    // Gli orari stanno sul server, non sul telefono: su un dispositivo nuovo o
+    // dopo una reinstallazione vanno ripresi, altrimenti l'app mostrerebbe i
+    // default mentre i push continuano ad arrivare agli orari scelti davvero.
+    notifLoadSettings();
     updateWeightBadge();
 }
 
@@ -10160,7 +10162,14 @@ function updateWeightBadge() {
     var badge = document.getElementById('weight-nav-badge');
     if (!badge) return;
     var now = new Date();
-    if (now.getHours() < 8) { badge.classList.remove('visible'); return; }
+    // Il pallino compare insieme al promemoria del peso, non a un'ora fissa:
+    // se l'utente sposta la pesata il segnale la segue. Col promemoria spento
+    // resta il vecchio riferimento delle 8, altrimenti il pallino non uscirebbe
+    // piu' e la pesata mancante non verrebbe segnalata affatto.
+    var _sl = (typeof notifSlot === 'function') ? notifSlot('peso') : null;
+    var _hh = (_sl && _sl.on) ? _sl.h : 8;
+    var _mm = (_sl && _sl.on) ? _sl.m : 0;
+    if (now.getHours()*60 + now.getMinutes() < _hh*60 + _mm) { badge.classList.remove('visible'); return; }
     var today = now.toISOString().split('T')[0];
     var log = weightGetLog();
     var hasPeso = log.some(function(e) { return e.date === today; });
@@ -10653,14 +10662,14 @@ function openDeloadManualForm() {
 }
 
 
-function toggleNotifDebug() {
-    var panel = document.getElementById('notif-debug-panel');
-    var arrow = document.getElementById('notif-debug-arrow');
+function toggleNotifTimes() {
+    var panel = document.getElementById('notif-times-panel');
+    var arrow = document.getElementById('notif-times-arrow');
     if (!panel) return;
     var open = panel.style.display === 'block';
     panel.style.display = open ? 'none' : 'block';
     if (arrow) arrow.textContent = open ? '\u203a' : '\u2039';
-    if (!open) renderNotifDebug();
+    if (!open) renderNotifTimes();
 }
 
 // ═════════ FONT SIZE (Dimensione Testo) ═════════
@@ -11029,33 +11038,79 @@ function cheatLeveling() {
     } catch(e) {}
 }
 
-function renderNotifDebug() {
-    var list = document.getElementById('notif-debug-list');
+// Una riga per promemoria: nome, ora modificabile, interruttore.
+// Via la spunta "ricevuta": guardava solo le notifiche generate dall'app
+// aperta, quindi segnava errore su tutti i promemoria arrivati a telefono
+// chiuso, che sono la normalita'. Diceva il falso, non misurava niente.
+function renderNotifTimes() {
+    var list = document.getElementById('notif-times-list');
     if (!list) return;
-    var now = new Date();
-    var todayKey = now.toISOString().split('T')[0];
-    var fired = {};
-    try { fired = JSON.parse(localStorage.getItem('aw_notif_fired') || '{}'); } catch(e) {}
-    var html = '';
-    CLIENT_NOTIF_SCHEDULE.forEach(function(notif) {
-        var hh = String(notif.h).padStart(2,'0');
-        var mm = String(notif.m).padStart(2,'0');
-        var key = todayKey + '-' + notif.h + '-' + notif.m;
-        var target = new Date(now);
-        target.setHours(notif.h, notif.m, 0, 0);
-        var isFired = !!fired[key];
-        var isPast  = target <= now;
-        var statusIcon  = isFired ? '\u2705' : (isPast ? '\u274c' : '\u23f0');
-        var statusColor = isFired ? '#34d399' : (isPast ? '#f43f5e' : '#94a3b8');
-        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05)">' +
-            '<span style="font-size:0.72rem;color:#e2e8f0">' + notif.title + ' <span style="color:#94a3b8;font-size:0.62rem">' + hh + ':' + mm + '</span></span>' +
-            '<span style="font-size:1rem;color:' + statusColor + '">' + statusIcon + '</span>' +
-            '</div>';
+    list.innerHTML = '';
+
+    notifSchedule().forEach(function(slot) {
+        var row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);';
+
+        var name = document.createElement('div');
+        name.style.cssText = 'flex:1;min-width:0;font-size:0.72rem;color:' + (slot.on ? '#e2e8f0' : '#64748b') + ';';
+        name.textContent = slot.title;
+
+        var time = document.createElement('input');
+        time.type  = 'time';
+        time.value = String(slot.h).padStart(2,'0') + ':' + String(slot.m).padStart(2,'0');
+        time.disabled = !slot.on;
+        time.setAttribute('aria-label', 'Orario ' + slot.title);
+        time.style.cssText = 'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);'
+            + 'border-radius:7px;color:' + (slot.on ? '#e2e8f0' : '#64748b') + ';font-size:0.72rem;'
+            + 'padding:4px 7px;font-family:inherit;flex-shrink:0;';
+        time.addEventListener('change', function() {
+            var parts = (time.value || '').split(':');
+            var hh = parseInt(parts[0], 10), mm = parseInt(parts[1], 10);
+            if (isNaN(hh) || isNaN(mm)) { renderNotifTimes(); return; }
+            var st = notifGetSettings();
+            st[slot.id] = { h: hh, m: mm, on: slot.on };
+            notifSaveSettings(st);
+            renderNotifTimes();
+            showToast(slot.title + ' \u2192 ' + time.value, 'success');
+        });
+
+        var sw = document.createElement('input');
+        sw.type = 'checkbox';
+        sw.checked = slot.on;
+        sw.setAttribute('aria-label', 'Attiva ' + slot.title);
+        sw.style.cssText = 'accent-color:#34d399;width:17px;height:17px;flex-shrink:0;';
+        sw.addEventListener('change', function() {
+            var st = notifGetSettings();
+            st[slot.id] = { h: slot.h, m: slot.m, on: sw.checked };
+            notifSaveSettings(st);
+            renderNotifTimes();
+            showToast(slot.title + (sw.checked ? ' attivata' : ' disattivata'), 'success');
+        });
+
+        row.appendChild(name); row.appendChild(time); row.appendChild(sw);
+        list.appendChild(row);
     });
-    var permStatus = ('Notification' in window) ? getNotifPermission() : 'non supportato';
-    var permColor  = permStatus === 'granted' ? '#34d399' : '#f43f5e';
-    html += '<div style="margin-top:8px;font-size:0.6rem;color:' + permColor + '">Permesso: ' + permStatus + '</div>';
-    list.innerHTML = html;
+
+    var reset = document.createElement('button');
+    reset.type = 'button';
+    reset.textContent = 'Ripristina orari predefiniti';
+    reset.style.cssText = 'margin-top:10px;width:100%;background:rgba(255,255,255,0.06);'
+        + 'border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#94a3b8;'
+        + 'font-size:0.68rem;padding:8px;font-family:inherit;cursor:pointer;';
+    reset.addEventListener('click', function() {
+        notifSaveSettings({});
+        renderNotifTimes();
+        showToast('Orari ripristinati', 'success');
+    });
+    list.appendChild(reset);
+
+    var note = document.createElement('div');
+    var granted = getNotifPermission() === 'granted';
+    note.style.cssText = 'margin-top:9px;font-size:0.6rem;line-height:1.5;color:' + (granted ? '#94a3b8' : '#f43f5e') + ';';
+    note.textContent = granted
+        ? 'Gli orari valgono anche ad app chiusa e sono legati al tuo account, non a questo telefono.'
+        : 'Notifiche non attive: abilitale da "Attiva Notifiche" qui sopra.';
+    list.appendChild(note);
 }
 
 // ── WEB PUSH REGISTRATION ───────────────────────────────
@@ -11102,14 +11157,83 @@ async function savePushSubscriptionToSupabase(subscription) {
 
 
 // ── NOTIFICHE CLIENT-SIDE ───────────────────────────────
-var CLIENT_NOTIF_SCHEDULE = [
-    { h:7,  m:30, title:'\u2696\ufe0f Buongiorno',    body:'Saliamo un attimo sulla bilancia?' },
-    { h:8,  m:0,  title:'\u2615 Colazione',            body:'Che si mangia? Segnalo quando hai finito.' },
-    { h:10, m:30, title:'🍎 Piccola pausa',   body:'Uno spuntino e un bicchiere d’acqua.' },
-    { h:12, m:0,  title:'🍝 È ora di pranzo', body:'Raccontami cosa c’è nel piatto.' },
-    { h:16, m:0,  title:'🍊 Metà pomeriggio', body:'Un boccone e bevi, manca poco.' },
-    { h:20, m:0,  title:'🍽️ Cena',           body:'Ultimo pasto, poi si stacca.' },
+// Gli orari di partenza: valgono finche' l'utente non li cambia dal profilo.
+// L'id e' stabile e non contiene l'ora, cosi' spostare un promemoria non ne
+// crea uno nuovo e non perde l'impostazione di acceso/spento.
+var NOTIF_DEFAULTS = [
+    { id:'peso',      h:7,  m:30, title:'\u2696\ufe0f Buongiorno',    body:'Saliamo un attimo sulla bilancia?' },
+    { id:'colazione', h:8,  m:0,  title:'\u2615 Colazione',            body:'Che si mangia? Segnalo quando hai finito.' },
+    { id:'snack1',    h:10, m:30, title:'🍎 Piccola pausa',   body:'Uno spuntino e un bicchiere d’acqua.' },
+    { id:'pranzo',    h:12, m:0,  title:'🍝 È ora di pranzo', body:'Raccontami cosa c’è nel piatto.' },
+    { id:'snack2',    h:16, m:0,  title:'🍊 Metà pomeriggio', body:'Un boccone e bevi, manca poco.' },
+    { id:'cena',      h:20, m:0,  title:'🍽\ufe0f Cena',        body:'Ultimo pasto, poi si stacca.' },
 ];
+
+// Le scelte dell'utente: { peso:{h,m,on}, ... }. Restano in locale per le
+// notifiche che genera l'app, e vengono mandate anche a Supabase: i promemoria
+// veri li spedisce il server, che deve conoscere gli stessi orari.
+function notifGetSettings() {
+    try { return JSON.parse(localStorage.getItem('aw_notif_settings') || '{}') || {}; }
+    catch(e) { return {}; }
+}
+
+// I default riempiono tutto cio' che l'utente non ha toccato: cosi' aggiungere
+// un promemoria in futuro non richiede di migrare le impostazioni salvate.
+function notifSchedule() {
+    var st = notifGetSettings();
+    return NOTIF_DEFAULTS.map(function(d) {
+        var o = st[d.id] || {};
+        return {
+            id: d.id, title: d.title, body: d.body,
+            h:  (typeof o.h === 'number') ? o.h : d.h,
+            m:  (typeof o.m === 'number') ? o.m : d.m,
+            on: (o.on === false) ? false : true
+        };
+    });
+}
+
+function notifSlot(id) {
+    var found = notifSchedule().filter(function(s){ return s.id === id; });
+    return found.length ? found[0] : null;
+}
+
+async function notifLoadSettings() {
+    var username = (typeof APP !== 'undefined' && APP.userName) ? APP.userName : null;
+    if (!username) return;
+    try {
+        var res = await sbClient.from('push_subscriptions')
+            .select('notif_settings').eq('user_id', username).maybeSingle();
+        if (res.error || !res.data || !res.data.notif_settings) return;
+        var slots = res.data.notif_settings.slots;
+        if (!slots || typeof slots !== 'object') return;
+        try { localStorage.setItem('aw_notif_settings', JSON.stringify(slots)); } catch(e) {}
+        scheduleClientNotifications();
+        updateWeightBadge();
+        var panel = document.getElementById('notif-times-panel');
+        if (panel && panel.style.display === 'block') renderNotifTimes();
+    } catch(e) { awLog.warn('[Notif] Orari non letti:', e.message); }
+}
+
+function notifSaveSettings(st) {
+    try { localStorage.setItem('aw_notif_settings', JSON.stringify(st)); } catch(e) {}
+    scheduleClientNotifications();
+    updateWeightBadge();
+    notifSyncSettings();
+}
+
+// Senza questo l'utente cambierebbe l'ora nell'app e continuerebbe a ricevere
+// i push a quella vecchia, perche' a mandarli e' il server.
+async function notifSyncSettings() {
+    var username = (typeof APP !== 'undefined' && APP.userName) ? APP.userName : null;
+    if (!username) return;
+    var slots = {};
+    notifSchedule().forEach(function(s) { slots[s.id] = { h:s.h, m:s.m, on:s.on }; });
+    try {
+        var res = await sbClient.from('push_subscriptions')
+            .upsert({ user_id: username, notif_settings: { slots: slots } }, { onConflict: 'user_id' });
+        if (res.error) awLog.warn('[Notif] Orari non sincronizzati:', res.error.message);
+    } catch(e) { awLog.warn('[Notif] Orari non sincronizzati:', e.message); }
+}
 
 var _clientNotifTimers = [];
 
@@ -11118,7 +11242,8 @@ async function scheduleClientNotifications() {
     _clientNotifTimers.forEach(function(t) { clearTimeout(t); });
     _clientNotifTimers = [];
     var now = new Date();
-    CLIENT_NOTIF_SCHEDULE.forEach(function(notif) {
+    notifSchedule().forEach(function(notif) {
+        if (!notif.on) return;
         var target = new Date(now);
         target.setHours(notif.h, notif.m, 0, 0);
         if (target <= now) return;
@@ -11126,15 +11251,15 @@ async function scheduleClientNotifications() {
         var timer = setTimeout(async function() {
             try {
                 var reg = await navigator.serviceWorker.ready;
-                await reg.showNotification(notif.title, {
-                    body: notif.body, icon: './icon-192.png', badge: './icon-192.png',
-                    tag: 'awakening-' + notif.h + '-' + notif.m, renotify: true, data: { url: './' }
+                // Titolo fisso "Awakening": iOS stampa gia' il nome dell'app
+                // sopra la notifica, ripeterlo nel titolo rubava spazio al
+                // messaggio. Il promemoria sta tutto nel corpo.
+                await reg.showNotification('Awakening', {
+                    body: notif.title + ' \u00b7 ' + notif.body,
+                    icon: './icon-192.png', badge: './icon-192.png',
+                    tag: 'awakening-' + notif.id, renotify: true, data: { url: './' }
                 });
-                var todayK = new Date().toISOString().split('T')[0];
-                var firedKey = todayK + '-' + notif.h + '-' + notif.m;
-                var fired = {}; try { fired = JSON.parse(localStorage.getItem('aw_notif_fired') || '{}'); } catch(e) {}
-                fired[firedKey] = true;
-                localStorage.setItem('aw_notif_fired', JSON.stringify(fired));
+                updateWeightBadge();
             } catch(e) { awLog.warn('[ClientNotif] Errore:', e); }
         }, msUntil);
         _clientNotifTimers.push(timer);
@@ -17738,15 +17863,19 @@ function navSwitch(tab) {
         const progPage = document.getElementById('page-progress');
         if (progPage) { progPage.classList.add('active'); updateProgressPage(); }
         updateWeightBadge();
-        updatePushSettingsRow();
-        updateWeightBadge();
-        updatePushSettingsRow();
     } else if (tab === 'piani') {
         const plPage = document.getElementById('page-plans');
         if (plPage) { plPage.classList.add('active'); renderPlanPage(APP.selectedViewWeek || 0); }
     } else if (tab === 'profilo') {
         profileHeightInit();
         buildProfiloPage();
+        // La riga delle notifiche vive qui, ma veniva aggiornata solo aprendo
+        // i Progressi: nel profilo restava sull'etichetta scritta nell'HTML e
+        // diceva "Attiva Notifiche" anche con le notifiche gia' attive.
+        refreshNotifPermission();
+        updatePushSettingsRow();
+        var _ntp = document.getElementById('notif-times-panel');
+        if (_ntp && _ntp.style.display === 'block') renderNotifTimes();
         const profPage = document.getElementById('page-profile');
         if (profPage) profPage.classList.add('active');
     } else if (tab === 'workout') {
@@ -22788,6 +22917,11 @@ document.addEventListener('visibilitychange', function() {
         updateWeightBadge();
     }
 });
+
+// Con l'app aperta a cavallo dell'orario della pesata nessun evento scattava,
+// e il pallino compariva solo al cambio di scheda. Un controllo al minuto
+// costa nulla e copre anche il passaggio di mezzanotte.
+setInterval(function() { try { updateWeightBadge(); } catch(e) {} }, 60000);
 
 if ('serviceWorker' in navigator) {
     // Guardia condivisa: SW_UPDATED e controllerchange possono scattare

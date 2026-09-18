@@ -152,27 +152,24 @@ async function sendPush(
 
 // ── Schedule ───────────────────────────────────────────────────────────────
 
-// Gli orari sono ORA LOCALE ITALIANA, non UTC. Prima erano chiavi UTC fisse
-// (6:15, 7:00, ...) che valevano solo d'inverno: da fine marzo a fine ottobre
-// l'Italia e' su CEST (UTC+2) e le notifiche arrivavano un'ora tardi. Qui si
-// legge l'ora di Europe/Rome, cosi' il cambio dell'ora e' gestito da solo.
-//
-// Il tag replica quello delle notifiche client-side in index.html
-// ('awakening-' + h + '-' + m): stesso tag = la notifica push e quella locale
-// si sovrascrivono invece di accumularsi quando l'app e' aperta.
-const SCHEDULE: { h: number; m: number; title: string; body: string }[] = [
-  { h: 7,  m: 30, title: "\u2696\ufe0f Buongiorno",        body: "Saliamo un attimo sulla bilancia?" },
-  { h: 8,  m: 0,  title: "\u2615 Colazione",                body: "Che si mangia? Segnalo quando hai finito." },
-  { h: 10, m: 30, title: "\ud83c\udf4e Piccola pausa",     body: "Uno spuntino e un bicchiere d\u2019acqua." },
-  { h: 12, m: 0,  title: "\ud83c\udf5d \u00c8 ora di pranzo", body: "Raccontami cosa c\u2019\u00e8 nel piatto." },
-  { h: 16, m: 0,  title: "\ud83c\udf4a Met\u00e0 pomeriggio", body: "Un boccone e bevi, manca poco." },
-  { h: 20, m: 0,  title: "\ud83c\udf7d\ufe0f Cena",       body: "Ultimo pasto, poi si stacca." },
+// Gli orari di partenza. Valgono per chi non li ha mai cambiati; chi li
+// modifica dal profilo se li ritrova in push_subscriptions.notif_settings.
+// L'id e' stabile e non contiene l'ora, cosi' spostare un promemoria non ne
+// crea uno nuovo e non perde l'impostazione di acceso/spento.
+type Slot = { id: string; h: number; m: number; title: string; body: string; on: boolean };
+
+const DEFAULTS: Slot[] = [
+  { id: "peso",      h: 7,  m: 30, title: "\u2696\ufe0f Buongiorno",        body: "Saliamo un attimo sulla bilancia?", on: true },
+  { id: "colazione", h: 8,  m: 0,  title: "\u2615 Colazione",                body: "Che si mangia? Segnalo quando hai finito.", on: true },
+  { id: "snack1",    h: 10, m: 30, title: "\ud83c\udf4e Piccola pausa",     body: "Uno spuntino e un bicchiere d\u2019acqua.", on: true },
+  { id: "pranzo",    h: 12, m: 0,  title: "\ud83c\udf5d \u00c8 ora di pranzo", body: "Raccontami cosa c\u2019\u00e8 nel piatto.", on: true },
+  { id: "snack2",    h: 16, m: 0,  title: "\ud83c\udf4a Met\u00e0 pomeriggio", body: "Un boccone e bevi, manca poco.", on: true },
+  { id: "cena",      h: 20, m: 0,  title: "\ud83c\udf7d\ufe0f Cena",       body: "Ultimo pasto, poi si stacca.", on: true },
 ];
 
-// Il cron parte al minuto esatto ma la chiamata HTTP puo' arrivare con qualche
-// secondo di ritardo: senza tolleranza un rilascio a cavallo del minuto fa
-// perdere la notifica. Due minuti bastano e sono ben lontani dall'ora di
-// scarto fra i due orari UTC con cui ogni job e' schedulato.
+// Il cron scatta ogni 5 minuti e la chiamata HTTP puo' arrivare con qualche
+// secondo di ritardo. Con 2 minuti di tolleranza ogni minuto scelto cade in
+// uno e un solo scatto (gli scatti distano 5): niente doppioni, niente buchi.
 const TOLERANCE_MIN = 2;
 
 function romeClock(now: Date): { h: number; m: number } {
@@ -183,14 +180,45 @@ function romeClock(now: Date): { h: number; m: number } {
   return { h: get("hour") % 24, m: get("minute") };   // %24: a mezzanotte alcuni runtime danno "24"
 }
 
-function slotFor(now: Date) {
-  const { h, m } = romeClock(now);
-  const nowMin = h * 60 + m;
-  return SCHEDULE.find(s => Math.abs((s.h * 60 + s.m) - nowMin) <= TOLERANCE_MIN) ?? null;
+// I default riempiono tutto cio' che l'utente non ha toccato, cosi' aggiungere
+// un promemoria in futuro non richiede di migrare le preferenze gia' salvate.
+function scheduleFor(settings: unknown): Slot[] {
+  const slots = (settings && typeof settings === "object")
+    ? (settings as Record<string, unknown>).slots
+    : null;
+  const over = (slots && typeof slots === "object") ? slots as Record<string, {h?:unknown;m?:unknown;on?:unknown}> : {};
+  return DEFAULTS.map(d => {
+    const o = over[d.id] ?? {};
+    const h = (typeof o.h === "number" && o.h >= 0 && o.h <= 23) ? o.h : d.h;
+    const m = (typeof o.m === "number" && o.m >= 0 && o.m <= 59) ? o.m : d.m;
+    return { ...d, h, m, on: o.on === false ? false : true };
+  });
 }
 
-function tagFor(slot: { h: number; m: number }): string {
-  return `awakening-${slot.h}-${slot.m}`;
+function slotAt(schedule: Slot[], rome: { h: number; m: number }): Slot | null {
+  const nowMin = rome.h * 60 + rome.m;
+  // La distanza va misurata sul quadrante, non sulla retta: un promemoria
+  // alle 23:58 ha lo scatto piu' vicino a mezzanotte, e con una differenza
+  // semplice risultava lontano 1438 minuti invece di 2. Non sarebbe mai
+  // partito.
+  const vicino = (a: number, b: number) => {
+    const d = Math.abs(a - b);
+    return Math.min(d, 1440 - d) <= TOLERANCE_MIN;
+  };
+  return schedule.find(s => s.on && vicino(s.h * 60 + s.m, nowMin)) ?? null;
+}
+
+// Titolo fisso "Awakening": iOS stampa gia' il nome dell'app sopra la
+// notifica, ripeterlo nel titolo rubava spazio al messaggio. Il promemoria
+// sta tutto nel corpo. Il tag combacia con quello delle notifiche locali di
+// index.html, cosi' ad app aperta la push sostituisce quella gia' mostrata
+// invece di affiancarsi.
+function payloadFor(slot: Slot): string {
+  return JSON.stringify({
+    title: "Awakening",
+    body:  `${slot.title} \u00b7 ${slot.body}`,
+    tag:   `awakening-${slot.id}`,
+  });
 }
 
 // ── Handler ────────────────────────────────────────────────────────────────
@@ -207,50 +235,63 @@ Deno.serve(async (req) => {
 
   const now  = new Date();
   const rome = romeClock(now);
+  const romeKey = `${String(rome.h).padStart(2,"0")}:${String(rome.m).padStart(2,"0")}`;
   const body = await req.json().catch(() => ({})) as Record<string, unknown>;
 
-  const slot = slotFor(now);
-  let notification = slot
-    ? { title: slot.title, body: slot.body, tag: tagFor(slot) }
+  // Override manuale: una notifica uguale per tutti, fuori dagli orari.
+  // Serve per i test e per gli avvisi una tantum.
+  const manual = (typeof body?.title === "string" && typeof body?.body === "string")
+    ? JSON.stringify({
+        title: body.title,
+        body:  body.body,
+        tag:   typeof body.tag === "string" ? body.tag : "awakening-reminder",
+      })
     : null;
 
-  // Override manuale: utile per i test e per le notifiche una tantum.
-  if (typeof body?.title === "string" && typeof body?.body === "string") {
-    notification = {
-      title: body.title,
-      body:  body.body,
-      tag:   typeof body.tag === "string" ? body.tag : "awakening-reminder",
-    };
-  }
-
-  const romeKey = `${String(rome.h).padStart(2,"0")}:${String(rome.m).padStart(2,"0")}`;
-
-  if (!notification) {
-    // Ogni orario e' schedulato su due ore UTC (una per CET, una per CEST):
-    // lo scatto che non corrisponde all'ora di Roma finisce qui, ed e' normale.
-    return new Response(JSON.stringify({ skipped: true, reason: `Nessuna notifica per le ${romeKey} (Europe/Rome)` }), { status: 200 });
-  }
-
-  // dryRun: verifica quale slot risponde a un certo momento senza inviare nulla.
-  if (body?.dryRun === true) {
-    return new Response(JSON.stringify({ dryRun: true, rome: romeKey, notification }), { status: 200 });
-  }
-
-  const { data: subs, error } = await supabase.from("push_subscriptions").select("user_id, subscription");
+  const { data: subs, error } = await supabase
+    .from("push_subscriptions")
+    .select("user_id, subscription, notif_settings");
   if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500 });
-  if (!subs || subs.length === 0) return new Response(JSON.stringify({ sent: 0, rome: romeKey }), { status: 200 });
 
-  const payloadText = JSON.stringify({ title: notification.title, body: notification.body, tag: notification.tag });
-  let sent = 0, failed = 0;
+  const rows = (subs ?? []).filter(r => r.subscription && r.subscription.endpoint);
+  if (rows.length === 0) return new Response(JSON.stringify({ sent: 0, rome: romeKey }), { status: 200 });
 
-  for (const row of subs) {
+  // dryRun: mostra chi riceverebbe cosa adesso, senza spedire niente.
+  if (body?.dryRun === true) {
+    return new Response(JSON.stringify({
+      dryRun: true, rome: romeKey,
+      utenti: rows.map(r => {
+        const s = manual ? null : slotAt(scheduleFor(r.notif_settings), rome);
+        return { user_id: r.user_id, invio: manual ? "manuale" : (s ? s.id : null) };
+      }),
+    }), { status: 200 });
+  }
+
+  let sent = 0, failed = 0, skipped = 0;
+
+  for (const row of rows) {
+    // Ogni utente ha i suoi orari: il controllo va fatto riga per riga, non
+    // una volta sola per tutta la chiamata.
+    let payloadText = manual;
+    let etichetta = "manuale";
+    if (!payloadText) {
+      const slot = slotAt(scheduleFor(row.notif_settings), rome);
+      if (!slot) { skipped++; continue; }
+      payloadText = payloadFor(slot);
+      etichetta = slot.id;
+    }
     try {
       const { status, body: resBody } = await sendPush(row.subscription, payloadText, vapidPub, vapidPriv, vapidSubject);
-      console.log(`[Push] ${row.user_id} → ${status}: ${resBody}`);
+      console.log(`[Push] ${row.user_id} ${etichetta} \u2192 ${status}: ${resBody}`);
       if (status >= 200 && status < 300) sent++;
       else {
         failed++;
-        if (status === 404 || status === 410) await supabase.from("push_subscriptions").delete().eq("user_id", row.user_id);
+        // 404/410 = subscription non piu' valida (app disinstallata, permesso
+        // revocato). Si azzera la subscription ma si tengono gli orari, cosi'
+        // riattivando le notifiche l'utente li ritrova come li aveva lasciati.
+        if (status === 404 || status === 410) {
+          await supabase.from("push_subscriptions").update({ subscription: null }).eq("user_id", row.user_id);
+        }
       }
     } catch(e) {
       failed++;
@@ -258,5 +299,5 @@ Deno.serve(async (req) => {
     }
   }
 
-  return new Response(JSON.stringify({ sent, failed, rome: romeKey, notification: notification.title }), { status: 200 });
+  return new Response(JSON.stringify({ sent, failed, skipped, rome: romeKey }), { status: 200 });
 });
