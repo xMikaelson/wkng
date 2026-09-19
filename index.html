@@ -4153,7 +4153,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '250';
+const APP_VERSION = '251';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -6899,6 +6899,28 @@ function renderPlanPage(w) {
     });
     block.appendChild(chipsEl);
 
+    /* Una seduta saltata non deve bloccare il capitolo per sempre. Quando ne
+       manca esattamente una l'app lo dice e propone di chiudere, ma non lo fa
+       da sola: la decisione resta dell'atleta, e la seduta saltata non viene
+       spacciata per fatta. */
+    if (isUnlocked && !APP.completedWeeks[w] &&
+        (APP.dayAssignments[w] || []).filter(function(a){ return !!a; }).length >= 2 &&
+        typeof woSeduteMancanti === 'function' && woSeduteMancanti(w) === 1) {
+        const tollWrap = document.createElement('div');
+        tollWrap.style.cssText = 'text-align:center;margin:-6px 0 14px;';
+        const tollNote = document.createElement('div');
+        tollNote.style.cssText = 'font-size:0.6rem;color:#94a3b8;margin-bottom:6px;line-height:1.4;';
+        tollNote.textContent = 'Ti manca una seduta per chiudere il capitolo.';
+        const tollBtn = document.createElement('button');
+        tollBtn.type = 'button';
+        tollBtn.className = 'plan-rest-btn';
+        tollBtn.textContent = '\u27a1\ufe0f Chiudi comunque il capitolo';
+        tollBtn.onclick = function() { woChiudiCapitoloConTolleranza(w); };
+        tollWrap.appendChild(tollNote);
+        tollWrap.appendChild(tollBtn);
+        block.appendChild(tollWrap);
+    }
+
     // Reset assegnazioni del capitolo. Il tap sulla chip non libera più il
     // giorno (un tocco accidentale toglieva il protocollo senza annulla):
     // questo è il punto esplicito e reversibile-per-conferma in cui si
@@ -9246,6 +9268,47 @@ function checkChapterCompletion(w) {
     if (assignments.length === 0) return;
     const done = APP.chipStates[w].filter(s => s === 'done').length;
     if (done < assignments.length) return;
+    woChiudiCapitolo(w);
+}
+
+/* Quante sedute mancano al capitolo, -1 se non ha giorni assegnati. */
+function woSeduteMancanti(w) {
+    const assegnate = (APP.dayAssignments[w] || []).filter(a => a !== null).length;
+    if (!assegnate) return -1;
+    const fatte = (APP.chipStates[w] || []).filter(s => s === 'done').length;
+    return Math.max(0, assegnate - fatte);
+}
+
+/* Chiusura con una seduta saltata, su richiesta esplicita dell'atleta.
+   Prima il capitolo si chiudeva solo con tutte le sedute fatte e non c'era
+   nessuna scadenza: saltarne una lasciava il capitolo aperto per sempre e il
+   successivo bloccato, senza via d'uscita.
+   La presenza non e' cio' che autorizza il passaggio a carichi piu' alti: lo
+   decide la regola 2-per-2 (Baechle & Earle, NSCA Essentials 3a ed. 2008 -
+   si sale solo dopo due sedute consecutive con due ripetizioni oltre il
+   target), che lavora sulle sedute davvero svolte e resta in vigore identica.
+   E una singola seduta saltata non intacca gli adattamenti: le perdite da
+   detraining si misurano dopo settimane di stop, non dopo un giorno (Mujika
+   & Padilla 2003).
+   Serve almeno una seduta fatta, altrimenti su un capitolo da un solo giorno
+   si chiuderebbe senza aver mai allenato. La seduta saltata NON viene segnata
+   come fatta: lo storico deve restare vero. */
+function woChiudiCapitoloConTolleranza(w) {
+    if (APP.completedWeeks[w]) return;
+    const assegnate = (APP.dayAssignments[w] || []).filter(a => a !== null).length;
+    if (assegnate < 2 || woSeduteMancanti(w) !== 1) return;
+    awConfirm('Ti manca una seduta per completare il capitolo.\n\nChiudendolo ora si sblocca il capitolo successivo. La seduta saltata resta non fatta nello storico, e i carichi salgono solo dove il tuo andamento lo giustifica.',
+        function(ok) {
+            if (!ok) return;
+            woChiudiCapitolo(w);
+            renderPlanPage(w);
+        },
+        { title: 'Chiudi il capitolo', okLabel: 'Chiudi comunque' });
+}
+
+/* Chiusura vera e propria del capitolo: sblocca il successivo, mette in
+   attesa la progressione se si chiude l'Overload, celebra una volta sola. */
+function woChiudiCapitolo(w) {
     APP.completedWeeks[w] = true;
     // Chiuso l'Overload: la progressione resta in attesa, verrà applicata al
     // rientro nel Chapter 1 (durante il Deload i carichi restano sul vecchio
