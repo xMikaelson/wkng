@@ -440,7 +440,8 @@
            resta com'e'. */
         #results,
         #wo-panel-train,
-        #wo-panel-nut {
+        #wo-panel-nut,
+        #onboarding-wizard {
             animation: pageIn var(--mo-dur) var(--mo-ease) backwards;
         }
         #results > * { animation: pageBlockIn var(--mo-dur) var(--mo-ease) backwards; }
@@ -466,7 +467,7 @@
         @media (prefers-reduced-motion:reduce) {
             .page.active, .page.active > *,
             #results, #results > *,
-            #wo-panel-train, #wo-panel-nut,
+            #wo-panel-train, #wo-panel-nut, #onboarding-wizard,
             #notif-times-panel, #proto-manager-panel, #mtr-manager-panel,
             #glossary-panel, #font-scale-panel, #modal-overlay { animation: none; }
             .nav-item::after { transition: none; }
@@ -4243,7 +4244,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '255';
+const APP_VERSION = '256';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -5903,7 +5904,10 @@ function getMuscles(name) {
         'dragon flag': 'core, addominali, flessori anca',
         'sit up': 'addominali, flessori anca',
         'sollevamento gambe alla sbarra': 'addominali inferiori, flessori anca',
-        'jumping jack': 'full body, polpacci, deltoidi'
+        'jumping jack': 'full body, polpacci, deltoidi',
+        'tuck planche': 'deltoide ant., petto, core',
+        'muscle-up': 'gran dorsale, petto, tricipiti, bicipiti',
+        'archer pull-up': 'gran dorsale, bicipiti, romboidi'
     };
     for (var key in muscleMap) {
         if (n.indexOf(key) !== -1) {
@@ -8726,7 +8730,9 @@ const AWK_POOL_ROLE = {
   C_ROW:'sec', C_LEG:'sec', C_LEG2:'sec',
   QUAD:'iso', HAM:'iso', CALF:'iso', CHESTISO:'iso', LATDELT:'iso',
   REARDELT:'iso', BIC:'iso', TRI:'iso',
-  CORE:'core', C_CORE:'core', C_CORE2:'core'
+  CORE:'core', C_CORE:'core', C_CORE2:'core',
+  // Una skill regge la seduta quanto una panca: non e' un complemento.
+  C_SKILL:'main'
 };
 
 let _awkCatalogIndex = null;
@@ -8956,6 +8962,11 @@ function srForChapter(ex, chIdx, proto) {
    esercizi messi all'inizio rendono di piu' a prescindere dal gruppo, il che
    e' l'altra ragione per cui i fondamentali stanno davanti. */
 var AWK_ORDER = {
+  /* Skill del calisthenics prima di tutto: sono gesti tecnici e nervosi, e
+     vanno provati da freschi. Simao et al. 2012: cio' che si esegue per
+     ultimo rende meno, e in una skill "rendere meno" non vuol dire un kg in
+     meno, vuol dire non tenere la posizione. */
+  C_SKILL:5,
   // Multiarticolari — catena inferiore, i piu' impegnativi
   SQUAT:10, HINGE:11, C_LEG:12, C_LEG2:13,
   // Multiarticolari — spinta
@@ -9810,7 +9821,8 @@ var AWK_REP_K = {
   C_PUSH:30, C_PUSH2:30, C_VPUSH:30, C_PULL:31, C_PULL2:31, C_ROW:31,
   CHESTISO:30, LATDELT:32, REARDELT:32,      // deltoidi: molto resistenti
   BIC:29, TRI:29,                            // braccia: cedono prima
-  CORE:36, C_CORE:36, C_CORE2:36
+  CORE:36, C_CORE:36, C_CORE2:36,
+  C_SKILL:30   // valore classico di Epley: la famiglia mescola spinte e tirate
 };
 function awkRepK(name) {
   var cat = (typeof awkCatalogLookup === 'function') ? awkCatalogLookup(name) : null;
@@ -19465,6 +19477,26 @@ const AWK_POOL = {
   C_CORE2: [
     {n:'Dragon Flag Negativo', eq:['panca']},
     {n:'Plank Laterale', eq:[], hold:true}
+  ],
+  /* Le progressioni che fanno del calisthenics una disciplina invece che
+     "ginnastica a corpo libero": tenute in cui si guadagna allungando la
+     leva, trazioni in cui si guadagna togliendo assistenza.
+     La giornata Skill pescava da C_PULL2, che contiene anche rematori al
+     tavolo e alzate prone: esercizi validi, ma che di skill non hanno
+     niente, e bastava la rotazione per ritrovarsi una giornata "Skill"
+     fatta di rematori.
+     Thomas et al. (2017), Isokinet Exerc Sci: il calisthenics migliora
+     forza, postura e composizione corporea. Qui la progressione non passa
+     dai kg ma dalla leva e dall'assistenza, ed e' il motivo per cui questi
+     esercizi stanno insieme invece che sparsi fra spinte e tirate. */
+  C_SKILL: [
+    {n:'Muscle-up Negativo alla Sbarra', eq:['sbarra']},
+    {n:'Archer Pull-up alla Sbarra', eq:['sbarra']},
+    {n:'Trazioni Esplosive alla Sbarra', eq:['sbarra']},
+    {n:'Front Lever Tuck', eq:['sbarra'], hold:true},
+    {n:'Front Lever Tuck agli Anelli', eq:['anelli'], hold:true},
+    {n:'Tuck Planche alle Parallele', eq:['parallele'], hold:true},
+    {n:'Handstand Hold al Muro', eq:[], hold:true}
   ]
 };
 
@@ -19623,10 +19655,10 @@ const AWK_TPL = {
       {n:'Push',  items:[['C_PUSH','main'],['C_VPUSH','sec'],['C_PUSH2','sec'],['TRI','iso']]},
       {n:'Pull',  items:[['C_PULL','main'],['C_ROW','sec'],['C_PULL2','sec'],['BIC','iso']]},
       {n:'Legs',  items:[['C_LEG','main'],['C_LEG2','sec'],['CALF','iso'],['C_CORE','core']]},
-      {n:'Skill & Core', items:[['C_VPUSH','main'],['C_PULL2','main'],['C_CORE','core'],['C_CORE2','core']]}
+      {n:'Skill & Core', items:[['C_SKILL','main'],['C_VPUSH','main'],['C_CORE','core'],['C_CORE2','core']]}
     ]},
     avanzato: { days:5, dayIdx:[0,1,2,4,5], split:'Skill / Push / Pull / Legs / Full', sessions:[
-      {n:'Skill',  items:[['C_VPUSH','main'],['C_PULL2','main'],['C_CORE','core']]},
+      {n:'Skill',  items:[['C_SKILL','main'],['C_SKILL','main'],['C_VPUSH','sec'],['C_CORE','core']]},
       {n:'Push',   items:[['C_PUSH','main'],['C_PUSH2','sec'],['C_VPUSH','sec'],['TRI','iso']]},
       {n:'Pull',   items:[['C_PULL','main'],['C_PULL2','sec'],['C_ROW','sec'],['BIC','iso']]},
       {n:'Legs',   items:[['C_LEG','main'],['C_LEG2','sec'],['CALF','iso'],['C_CORE2','core']]},
@@ -19653,7 +19685,7 @@ const AWK_GOALS = [
   {k:'dimagrimento',    l:'SHIELD',   d:'Dimagrimento \u00B7 perdi grasso senza perdere muscolo',  i:'⚖️', tint:'#fb7185', group:'obiettivo', code:true},
   {k:'full_forza',      l:'TITAN',    d:'Forza massimale \u00B7 carichi alti, poche ripetizioni',  i:'⚡', tint:'#f59e0b', group:'obiettivo', code:true},
   {k:'hybrid',          l:'FORGE',    d:'Ibrido \u00B7 forza e ipertrofia nella stessa settimana', i:'🜛', tint:'#6366f1', group:'obiettivo', code:true},
-  {k:'calisthenic',     l:'GRAVITY',  d:'Corpo libero \u00B7 progressioni e skill, zero attrezzi', i:'🤸', tint:'#22d3ee', group:'altro', code:true},
+  {k:'calisthenic',     l:'GRAVITY',  d:'Calisthenics \u00B7 skill e progressioni a sbarra e parallele', i:'🤸', tint:'#22d3ee', group:'obiettivo', code:true},
   {k:'free',            l:'BLANK',    d:'Nessun preset \u00B7 costruisci tutto tu',                i:'✒️', tint:'#94a3b8', group:'altro', code:true}
 ];
 
