@@ -2200,8 +2200,27 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .plan-close-btn { width:auto; padding:9px 20px; margin:0; border-radius:14px;
             border:1px solid rgba(129,140,248,0.45); background:rgba(99,102,241,0.14);
             color:#a5b4fc; font-family:inherit; font-size:0.66rem; font-weight:800;
-            text-transform:none; cursor:pointer; }
+            text-transform:none; cursor:pointer;
+            max-width:260px; white-space:nowrap; overflow:hidden;
+            animation:planCloseIn 0.45s cubic-bezier(0.22,0.61,0.36,1) both; }
         .plan-close-btn:active { background:rgba(99,102,241,0.28); transform:scale(0.97); }
+        /* Il pulsante si apre in larghezza invece di spuntare gia' fatto: cosi'
+           il reset accanto scivola di lato invece di saltarci via. Il margine
+           negativo iniziale annulla il gap della riga finche' e' chiuso. */
+        @keyframes planCloseIn {
+            from { opacity:0; max-width:0; padding-left:0; padding-right:0; margin-left:-8px; }
+            to   { opacity:1; max-width:260px; padding-left:20px; padding-right:20px; margin-left:0; }
+        }
+        .plan-close-note { text-align:center; font-size:0.6rem; color:#94a3b8;
+            margin:-8px 0 14px; line-height:1.4;
+            animation:planCloseNoteIn 0.4s ease-out 0.14s both; }
+        @keyframes planCloseNoteIn {
+            from { opacity:0; transform:translateY(-4px); }
+            to   { opacity:1; transform:none; }
+        }
+        @media (prefers-reduced-motion:reduce) {
+            .plan-close-btn, .plan-close-note { animation:none; }
+        }
         .plan-chips { display:flex; gap:5px; flex-wrap:wrap; justify-content:center; margin-bottom:14px; }
         .plan-chip { width:40px; height:40px; border-radius:8px; border:1px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.07); display:flex; align-items:center; justify-content:center; font-size:0.55rem; font-weight:700; color:#94a3b8; transition:all 0.18s cubic-bezier(0.34,1.56,0.64,1); cursor:not-allowed; user-select:none; }
         .plan-chip.assigned { cursor:pointer; border-color:rgba(var(--ac,99,102,241),0.4); background:rgba(var(--ac,99,102,241),0.12); color:#cbd5e1; }
@@ -4160,7 +4179,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '252';
+const APP_VERSION = '253';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -6969,7 +6988,7 @@ function renderPlanPage(w) {
 
         if (puoChiudere) {
             const tollNote = document.createElement('div');
-            tollNote.style.cssText = 'text-align:center;font-size:0.6rem;color:#94a3b8;margin:-8px 0 14px;line-height:1.4;';
+            tollNote.className = 'plan-close-note';
             tollNote.textContent = 'Ti manca una seduta per chiudere il capitolo.';
             block.appendChild(tollNote);
         }
