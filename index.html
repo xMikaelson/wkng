@@ -2162,6 +2162,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         /* ── Piani ── */
         #page-plans { padding-top: 0; }
         .plans-header { padding: max(env(safe-area-inset-top), 44px) 16px 10px; }
+        /* Azione principale dei Piani. width/padding/text-transform espliciti
+           contro la regola globale `button`, come gia' altrove in questa
+           pagina. */
+        .plan-newproto { display:flex; align-items:center; gap:12px; text-align:left;
+                         width:calc(100% - 32px); margin:0 16px 14px; padding:13px 15px;
+                         text-transform:none; letter-spacing:normal;
+                         background:linear-gradient(135deg, rgba(var(--pr),0.13), rgba(var(--ac),0.11));
+                         border:1px solid rgba(var(--pr),0.30); border-radius:14px;
+                         color:#e2e8f0; cursor:pointer; transition:0.18s; }
+        .plan-newproto:active { transform:scale(0.985); }
+        .plan-newproto .np-ic { font-size:1.25rem; flex-shrink:0; }
+        .plan-newproto .np-txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+        .plan-newproto .np-t { font-size:0.82rem; font-weight:700; color:#fff; }
+        .plan-newproto .np-s { font-size:0.62rem; font-weight:400; color:#94a3b8; line-height:1.35; }
+        .plan-newproto .np-arrow { color:#64748b; font-size:1.05rem; flex-shrink:0; }
         .plan-week-block { background:var(--card); border-radius:14px; padding:14px; }
         .plan-week-title { font-size:0.62rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.15em; margin-bottom:10px; }
         .plan-legenda { display:flex; gap:10px; margin-bottom:8px; justify-content:center; }
@@ -3384,6 +3399,18 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <div class="plans-header">
     <div class="page-title">I miei <span>piani</span></div>
   </div>
+  <!-- Creare un protocollo e' l'azione che precede tutto il resto di questa
+       pagina: prima la scheda, poi l'assegnazione ai giorni. Stava nel Profilo
+       fra le impostazioni, e la pagina stessa rimandava li' ("Creane uno dal
+       Profilo") invece di offrire il comando sul posto. -->
+  <button type="button" class="plan-newproto" onclick="openNewProtocol()">
+    <span class="np-ic">✨</span>
+    <span class="np-txt">
+      <span class="np-t">Nuovo Protocollo</span>
+      <span class="np-s">Crea una scheda con il wizard</span>
+    </span>
+    <span class="np-arrow">›</span>
+  </button>
   <div class="chapter-tabs" id="plan-tabs">
     <div class="chapter-tab active" onclick="selectPlanChapter(0)">Ch.1 Activation</div>
     <div class="chapter-tab" onclick="selectPlanChapter(1)">Ch.2 Momentum</div>
@@ -3624,11 +3651,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
   <div class="settings-list">
     <div class="settings-group-title" style="margin-bottom:8px">Impostazioni</div>
-    <div class="settings-row" onclick="closeSettingsAndNewProtocol()">
-      <div class="settings-row-left"><span class="settings-row-icon">✨</span><span class="settings-row-label">Nuovo Protocollo</span></div>
-      <span class="settings-row-arrow">›</span>
-    </div>
-    <div class="settings-row" style="margin-top:4px" onclick="activatePushNotifications()" id="settings-row-push">
+    <div class="settings-row" onclick="activatePushNotifications()" id="settings-row-push">
       <div class="settings-row-left"><span class="settings-row-icon">🔔</span><span class="settings-row-label" id="settings-push-label">Attiva Notifiche</span></div>
       <span class="settings-row-arrow" id="settings-push-arrow">›</span>
     </div>
@@ -4130,7 +4153,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '249';
+const APP_VERSION = '250';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -7033,7 +7056,10 @@ function renderPlanPage(w) {
             grouped.singles.forEach(p => protoCol.appendChild(makeProtoRow(p)));
         }
     } else {
-        protoCol.innerHTML += '<div style="font-size:0.62rem;color:#64748b;padding:8px 0">Nessun protocollo. Creane uno dal Profilo.</div>';
+        protoCol.innerHTML += '<div style="font-size:0.62rem;color:#64748b;padding:8px 0">Nessun protocollo. Creane uno con ' +
+            '<span onclick="openNewProtocol()" role="button" tabindex="0" ' +
+            'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openNewProtocol();}" ' +
+            'style="color:var(--primary);font-weight:700;text-decoration:underline;cursor:pointer">Nuovo Protocollo</span>, in cima a questa pagina.</div>';
     }
     cols.appendChild(protoCol);
 
@@ -21938,7 +21964,11 @@ function launchConfetti() {
     }
 }
 
-function closeSettingsAndNewProtocol() {
+/* Apre il wizard da qualunque punto dell'app. Si chiamava
+   closeSettingsAndNewProtocol perche' esisteva un solo punto d'ingresso, il
+   menu impostazioni; ora il comando vive nei Piani e il nome lo dice. Il
+   vecchio nome resta come alias: lo usa ancora il menu della dashboard. */
+function openNewProtocol() {
     // Chiudi dropdown
     const dd = document.getElementById('settings-dropdown');
     const sw = document.getElementById('settings-wrapper');
@@ -21953,6 +21983,7 @@ function closeSettingsAndNewProtocol() {
     document.getElementById('results').style.display = 'none';
     startOnboarding();
 }
+function closeSettingsAndNewProtocol() { openNewProtocol(); }
 
 function closeSettingsAndLogout() {
     document.getElementById('bottom-nav').classList.remove('visible');
