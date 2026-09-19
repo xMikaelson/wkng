@@ -173,6 +173,15 @@
             --sat: env(safe-area-inset-top, 0px);
             --sab: env(safe-area-inset-bottom, 0px);
             --topbar-h: calc(max(env(safe-area-inset-top), 44px) + 44px);
+            /* Tempi del movimento, in un posto solo: cambiarli qui li cambia
+               ovunque. 340ms e' la durata scelta provando il confronto fra
+               il comportamento vecchio e quello nuovo. La curva rallenta in
+               chiusura (entrate); quella elastica serve solo dove qualcosa
+               deve "arrivare", come il pallino della navbar. */
+            --mo-dur: 340ms;
+            --mo-fast: 220ms;
+            --mo-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+            --mo-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
         }
         
         /* ═══ BOTTOM NAV ═══ */
@@ -224,15 +233,21 @@
         .nav-badge { position:absolute; top:2px; right:6px; width:8px; height:8px; border-radius:50%; background:#f43f5e; border:1.5px solid #0f172a; pointer-events:none; display:none; }
         .nav-badge.visible { display:block; }
         .nav-item { position:relative; }
-        .nav-label { font-size: 0.44rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: #64748b; transition: color 0.15s; }
+        .nav-label { font-size: 0.44rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: #64748b; transition: color var(--mo-fast) ease; }
         .nav-item.active .nav-icon { transform: scale(1.15); }
         .nav-item.active .nav-label { color: var(--primary); }
-        .nav-item.active::after {
+        /* Il pallino nasceva insieme alla classe .active, quindi compariva
+           gia' fatto: un pseudo-elemento che non esiste non puo' sfumare.
+           Ora c'e' sempre, spento e rimpicciolito, e si accende. */
+        .nav-item::after {
             content: ''; position: absolute; bottom: 3px;
             width: 3px; height: 3px; border-radius: 50%;
             background: var(--primary);
             box-shadow: 0 0 6px rgba(var(--pr,0,255,136),0.9);
+            opacity: 0; transform: scale(0.3);
+            transition: opacity var(--mo-fast) ease, transform 0.24s var(--mo-spring);
         }
+        .nav-item.active::after { opacity: 1; transform: scale(1); }
         .nav-center { flex: 0 0 52px; display: flex; align-items: center; justify-content: center; }
         .nav-center-btn {
             width: 42px; height: 42px; border-radius: 50%;
@@ -405,8 +420,22 @@
            transform + overflow-y:auto + -webkit-overflow-scrolling:touch fa
            congelare il layer di scroll su WebKit iOS. Con `backwards` l'effetto
            di entrata è identico ma a fine animazione il transform sparisce. */
-        .page.active { display: block; animation: pageIn 0.2s cubic-bezier(0.22,1,0.36,1) backwards; }
-        @keyframes pageIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+        .page.active { display: block; animation: pageIn var(--mo-dur) var(--mo-ease) backwards; }
+        @keyframes pageIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+        /* I blocchi della pagina arrivano a scalare dietro di lei, non tutti
+           insieme: e' cio' che fa leggere il cambio come un passaggio invece
+           che come uno stacco. Il ritardo si ferma al terzo blocco, altrimenti
+           una pagina lunga (il profilo ha quattordici righe) trascinerebbe una
+           coda di mezzo secondo e sembrerebbe lenta, non curata. */
+        .page.active > * { animation: pageBlockIn var(--mo-dur) var(--mo-ease) backwards; }
+        .page.active > *:nth-child(2) { animation-delay: 45ms; }
+        .page.active > *:nth-child(3) { animation-delay: 90ms; }
+        .page.active > *:nth-child(n+4) { animation-delay: 120ms; }
+        @keyframes pageBlockIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+        @media (prefers-reduced-motion:reduce) {
+            .page.active, .page.active > * { animation: none; }
+            .nav-item::after { transition: none; }
+        }
         @keyframes contributeShake {
             0%,100% { transform:translateX(0); }
             15%     { transform:translateX(-6px); }
@@ -4179,7 +4208,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '253';
+const APP_VERSION = '254';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
