@@ -28,6 +28,17 @@ Ogni rilascio bumpa insieme `APP_VERSION` in `index.html` e `CACHE_NAME` in
 sulla versione vecchia o il profilo dichiara una versione che non e' quella
 installata.
 
+Il lavoro finito va su `main`, senza passare da un branch e senza chiedere il
+permesso ogni volta. Il workflow `.github/workflows/deploy.yml` parte solo su
+push a `main`: una modifica ferma su un altro branch non e' pubblicata, e
+l'app sul telefono resta alla versione precedente anche se il commit esiste.
+Un branch serve solo se e' l'utente a chiederlo.
+
+Un rilascio e' finito quando il workflow "Deploy to GitHub Pages" si chiude
+con successo, non quando il push e' andato a buon fine. Da questo ambiente
+`xmikaelson.github.io` non e' raggiungibile (il proxy risponde 403), quindi la
+verifica si fa sull'esito della run, non aprendo il sito.
+
 ## 3. Rispondere con il risultato, non con la cronaca
 
 Nella risposta va cosa e' cambiato per chi usa l'app, in linguaggio non tecnico:
