@@ -4244,7 +4244,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '256';
+const APP_VERSION = '257';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -22112,6 +22112,10 @@ function closeProgramComplete() {
     if (overlay) overlay.style.display = 'none';
     document.querySelectorAll('.confetto').forEach(function(c){ c.remove(); });
     restartCycle();
+    /* Finito il programma il ciclo riparte dal Chapter 1, e restartCycle lo
+       seleziona gia': mancava solo di portarci l'atleta, che altrimenti
+       restava sulla schermata da cui era partita l'animazione. */
+    if (typeof navSwitch === 'function') navSwitch('piani');
 }
 
 var _lastWeekCompleteIdx = -1;
@@ -22119,13 +22123,30 @@ var _lastWeekCompleteIdx = -1;
 function closeWeekComplete() {
     // Indice memorizzato invece del testo dell'intestazione: leggere
     // "CHAPTER 4" dalla stringa si romperebbe al primo ritocco di copy.
-    var wasOverload = _lastWeekCompleteIdx === OVERLOAD_WEEK;
+    var chiuso = _lastWeekCompleteIdx;
+    var wasOverload = chiuso === OVERLOAD_WEEK;
     _lastWeekCompleteIdx = -1;
     document.getElementById('week-complete-overlay').classList.remove('visible');
     // Rimuovi confetti
     document.querySelectorAll('.confetto').forEach(c => c.remove());
+
+    /* Il capitolo appena sbloccato e' il motivo per cui si e' festeggiato.
+       Chiudendo l'animazione pero' si tornava da dove si era partiti, cioe'
+       sul capitolo appena finito: per allenarsi bisognava accorgersi da soli
+       che il successivo era aperto e andarci. Ora ci si arriva diretti.
+       La condizione guarda lo stato reale dello sblocco invece di fidarsi
+       dell'indice: se per qualche motivo il capitolo dopo non fosse
+       disponibile, si resta dove si era. */
+    var prossimo = chiuso + 1;
+    if (chiuso >= 0 && prossimo < N_WEEKS &&
+        (APP.completedWeeks[chiuso] || (APP.availableWeeks || []).indexOf(prossimo) !== -1)) {
+        if (typeof navSwitch === 'function') navSwitch('piani');
+        if (typeof selectPlanChapter === 'function') selectPlanChapter(prossimo);
+    }
+
     // Momento 3a: riepilogo di sola lettura, subito dopo l'animazione di Ch.4.
     // Non scrive nulla: i nuovi MTR entrano in vigore solo al nuovo ciclo.
+    // Arriva dopo lo spostamento, cosi' si apre sopra il capitolo nuovo.
     if (wasOverload) setTimeout(woShowProgressionSummary, 350);
 }
 
