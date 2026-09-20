@@ -522,6 +522,99 @@
         .pmenu-bar { height:100%; border-radius:99px; background:var(--primary); transition:width 0.7s cubic-bezier(0.34,1.56,0.64,1); }
         .pmenu-pct { font-size:0.45rem; color:#475569; margin-top:4px; letter-spacing:0.08em; }
 
+        /* ── Diario di fine seduta (v.258) ──────────────────────
+           Le tre risposte descrivono lo stato del corpo, non il voto della
+           seduta: la scala va da fredda (faticosa) a calda (brillante), cosi'
+           il colore dice la stessa cosa delle parole. L'azzurro basso e' lo
+           stesso gia' usato dalla barra del BMI. */
+        .awd-ov { position:fixed; inset:0; z-index:9350; background:rgba(6,13,26,0.94);
+            display:flex; align-items:center; justify-content:center;
+            padding:max(env(safe-area-inset-top),44px) 18px calc(24px + env(safe-area-inset-bottom,0px));
+            box-sizing:border-box; -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+            animation:awdFade 0.22s ease backwards; }
+        .awd-ov.closing { animation:awdFade 0.22s ease forwards reverse; }
+        @keyframes awdFade { from { opacity:0; } }
+        .awd-box { background:#0f172a; border:1px solid rgba(255,255,255,0.09); border-radius:18px;
+            max-width:420px; width:100%; max-height:100%; overflow-y:auto; -webkit-overflow-scrolling:touch;
+            padding:20px 18px; box-sizing:border-box;
+            animation:awdIn 0.26s cubic-bezier(0.34,1.3,0.64,1) backwards; }
+        @keyframes awdIn { from { opacity:0; transform:translateY(14px) scale(0.98); } }
+        .awd-eyebrow { font-size:0.52rem; color:var(--primary); text-transform:uppercase;
+            letter-spacing:0.1em; font-weight:700; }
+        .awd-date { font-size:1rem; font-weight:800; color:#e2e8f0; margin:4px 0 2px; }
+        .awd-meta { font-size:0.6rem; color:#64748b; }
+        .awd-rule { height:1px; background:rgba(255,255,255,0.07); margin:15px 0; }
+        .awd-q { font-size:0.72rem; font-weight:700; color:#e2e8f0; margin-bottom:10px; }
+        .awd-q small { display:block; font-size:0.55rem; font-weight:500; color:#64748b; margin-top:3px; }
+
+        .awd-moods { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+        .awd-mood { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07);
+            border-radius:14px; padding:12px 5px 10px; text-align:center; cursor:pointer;
+            font-family:inherit; text-transform:none; -webkit-tap-highlight-color:transparent;
+            transition:border-color 0.15s, background 0.15s, transform 0.12s; }
+        .awd-mood:active { transform:scale(0.96); }
+        .awd-mood .awd-face { font-size:1.45rem; line-height:1; display:block;
+            filter:grayscale(1) opacity(0.5); transition:filter 0.18s; }
+        .awd-mood .awd-lab { display:block; font-size:0.52rem; font-weight:700; color:#64748b;
+            margin-top:7px; line-height:1.2; text-transform:uppercase; letter-spacing:0.04em; }
+        .awd-mood.on { background:rgba(255,255,255,0.055); }
+        .awd-mood.on .awd-face { filter:none; }
+        .awd-mood[data-s="faticosa"].on  { border-color:rgba(96,165,250,0.5); }
+        .awd-mood[data-s="faticosa"].on  .awd-lab { color:#60a5fa; }
+        .awd-mood[data-s="regolare"].on  { border-color:rgba(52,211,153,0.5); }
+        .awd-mood[data-s="regolare"].on  .awd-lab { color:var(--primary); }
+        .awd-mood[data-s="brillante"].on { border-color:rgba(251,191,36,0.5); }
+        .awd-mood[data-s="brillante"].on .awd-lab { color:#fbbf24; }
+
+        .awd-step { margin-top:18px; animation:awdStep 0.26s cubic-bezier(0.22,0.61,0.36,1) backwards; }
+        @keyframes awdStep { from { opacity:0; transform:translateY(8px); } }
+        .awd-chips { display:flex; flex-wrap:wrap; gap:6px; }
+        .awd-chip { border:1px solid rgba(255,255,255,0.07); background:rgba(255,255,255,0.03);
+            border-radius:99px; padding:7px 12px; font-size:0.58rem; font-weight:600; color:#94a3b8;
+            font-family:inherit; cursor:pointer; text-transform:none; letter-spacing:0;
+            transition:all 0.15s; -webkit-tap-highlight-color:transparent; }
+        .awd-chip.on { background:rgba(var(--ac),0.18); border-color:rgba(var(--ac),0.45); color:#818cf8; }
+        span.awd-chip { cursor:default; }
+        .awd-note { width:100%; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07);
+            border-radius:12px; padding:11px 12px; color:#e2e8f0; font-family:inherit;
+            font-size:0.68rem; line-height:1.5; resize:none; outline:none; box-sizing:border-box; }
+        .awd-note:focus { border-color:rgba(var(--ac),0.45); }
+        .awd-note::placeholder { color:#475569; }
+
+        .awd-acts { display:flex; gap:8px; margin-top:18px; }
+        .awd-skip { border:1px solid rgba(255,255,255,0.07); background:none; border-radius:12px;
+            padding:13px 18px; color:#64748b; font-family:inherit; font-size:0.68rem;
+            font-weight:600; cursor:pointer; text-transform:none; flex-shrink:0; }
+        .awd-save { flex:1; border:none; border-radius:12px; padding:13px; cursor:pointer;
+            font-family:inherit; background:var(--btn-grad); color:#fff; font-size:0.72rem;
+            font-weight:900; text-transform:none; transition:opacity 0.15s; }
+        .awd-save:disabled { opacity:0.32; cursor:default; }
+
+        /* ── Diario dentro il popup Progressi ── */
+        .awd-strip { display:flex; gap:4px; align-items:flex-end; margin:12px 0 5px; }
+        .awd-strip i { flex:1; border-radius:4px; display:block; min-width:3px; }
+        .awd-strip-lab { display:flex; justify-content:space-between; font-size:0.46rem; color:#475569; }
+        .awd-entry { border-left:2px solid rgba(255,255,255,0.12); padding:0 0 15px 13px;
+            position:relative; margin-left:4px; }
+        .awd-entry.awd-last { padding-bottom:0; border-left-color:transparent; }
+        .awd-entry::before { content:''; position:absolute; left:-5px; top:4px; width:8px; height:8px;
+            border-radius:50%; background:#475569; border:2px solid #0f172a; }
+        .awd-entry[data-s="faticosa"]::before  { background:#60a5fa; }
+        .awd-entry[data-s="regolare"]::before  { background:var(--primary); }
+        .awd-entry[data-s="brillante"]::before { background:#fbbf24; }
+        .awd-e-head { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+        .awd-e-date { font-size:0.6rem; font-weight:700; color:#e2e8f0; }
+        .awd-e-ch { font-size:0.46rem; color:#475569; text-transform:uppercase; letter-spacing:0.08em;
+            flex-shrink:0; }
+        .awd-e-body { font-size:0.6rem; color:#94a3b8; line-height:1.55; margin-top:4px;
+            white-space:pre-wrap; overflow-wrap:break-word; }
+        .awd-e-tags { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+        .awd-e-tags b { font-size:0.45rem; font-weight:700; color:#64748b;
+            background:rgba(255,255,255,0.05); border-radius:99px; padding:3px 8px; }
+        .awd-empty { font-size:0.62rem; color:#94a3b8; line-height:1.6;
+            background:rgba(255,255,255,0.03); border-radius:10px; padding:13px 14px; }
+        .awd-empty b { color:#e2e8f0; }
+
         /* popup categoria */
         .pmodal { position:fixed; inset:0; z-index:9500; display:none; background:rgba(6,13,26,0.94); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:max(env(safe-area-inset-top),34px) 14px calc(20px + env(safe-area-inset-bottom,0px)); }
         .pmodal.open { display:flex; }
@@ -4244,7 +4337,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '257';
+const APP_VERSION = '258';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -4277,6 +4370,11 @@ const APP = {
     exerciseTracking: [],
     loadHistory: [],   // [{k,d:'YYYY-MM-DD',w:capitolo,ex:nome,kg}] storico carichi
     sessionLog: [],    // [{d:'YYYY-MM-DD',w:capitolo,di:giorno}] diario delle sedute chiuse
+    // Diario di fine seduta (v.258): [{d,w,di,s,t:[],n}] dove s e' lo stato
+    // dichiarato ('faticosa'|'regolare'|'brillante'), t le voci scelte e n la
+    // nota libera. Sopravvive al riavvio del ciclo: le chip si azzerano, quello
+    // che l'atleta ha scritto no.
+    diary: [],
     streakCarry: 0,    // sedute consecutive ereditate dai cicli gia' chiusi
     currentExerciseIndex: 0,
     currentSet: 1,
@@ -4429,6 +4527,7 @@ function saveState() {
             nutritionLogs: nutGetAllLogs(),
             loadHistory: APP.loadHistory || [],
             sessionLog: APP.sessionLog || [],
+            diary: APP.diary || [],
             streakCarry: APP.streakCarry || 0,
             _srMigratedV151: APP._srMigratedV151 || false
         };
@@ -4603,6 +4702,7 @@ function loadState() {
         APP.exerciseTracking = saved.exerciseTracking || [];
         APP.loadHistory = saved.loadHistory || [];
         APP.sessionLog = Array.isArray(saved.sessionLog) ? saved.sessionLog : [];
+        APP.diary = Array.isArray(saved.diary) ? saved.diary : [];
         APP.streakCarry = saved.streakCarry || 0;
         APP._srMigratedV151 = saved._srMigratedV151 || false;
         APP.currentExerciseIndex = saved.currentExerciseIndex || 0;
@@ -6444,6 +6544,21 @@ async function onLoginSuccess(user, usernameOverride = null) {
             });
             _sMerged.sort(function(a, b) { return a.d < b.d ? -1 : (a.d > b.d ? 1 : 0); });
             APP.sessionLog = _sMerged.slice(-1000);
+        }
+        // Diario di fine seduta: stessa unione per data+capitolo+giorno. A
+        // parita' di chiave vince la voce che contiene di piu' (una nota
+        // scritta non deve essere sostituita da una riga con il solo stato).
+        if (Array.isArray(s.diary) && s.diary.length) {
+            var _dBest = {};
+            (APP.diary || []).concat(s.diary).forEach(function(e) {
+                if (!e || !e.d) return;
+                var kk = e.d + '|' + e.w + '|' + e.di;
+                var prev = _dBest[kk];
+                if (!prev || awdWeight(e) > awdWeight(prev)) _dBest[kk] = e;
+            });
+            var _dMerged = Object.keys(_dBest).map(function(k) { return _dBest[k]; });
+            _dMerged.sort(function(a, b) { return a.d < b.d ? -1 : (a.d > b.d ? 1 : 0); });
+            APP.diary = _dMerged.slice(-500);
         }
         if ((s.streakCarry || 0) > (APP.streakCarry || 0)) APP.streakCarry = s.streakCarry;
         try { awSyncStartDate(); } catch(e) {}
@@ -11770,6 +11885,26 @@ var PROG_MENU_ITEMS = [
         }
     },
     {
+        id: 'diario', icon: '📓', label: 'Diario',
+        getValue: function() {
+            var cov = awdCoverage();
+            if (!cov.notes) {
+                return { value: '\u2014', sub: 'nessuna nota', progress: 0, badge: false,
+                         detail: 'A fine allenamento l\'app ti chiede com\'\u00e8 andata: le risposte finiscono qui' };
+            }
+            var last = APP.diary[APP.diary.length - 1];
+            return {
+                value: cov.notes + (cov.notes === 1 ? ' nota' : ' note'),
+                sub: 'ultima: ' + awdFmtDate(last.d, false),
+                // La barra dice quante delle sedute svolte hanno una nota:
+                // e' l'unica percentuale onesta per un diario.
+                progress: Math.min(100, cov.pct),
+                badge: false,
+                detail: 'Sedute annotate: ' + cov.notes + ' su ' + cov.sessions + ' (' + cov.pct + '%)'
+            };
+        }
+    },
+    {
         id: 'badge', icon: '🏅', label: 'Badge & Achievements',
         getValue: function() {
             var earned = []; try { earned = JSON.parse(localStorage.getItem('awakening_badges')||'[]'); } catch(e){}
@@ -11869,6 +12004,8 @@ function openProgModal(id) {
         body.innerHTML = _pmStreakHtml();
     } else if (id === 'badge') {
         body.innerHTML = _pmBadgeHtml();
+    } else if (id === 'diario') {
+        body.innerHTML = _pmDiarioHtml();
     }
 
     modal.classList.add('open');
@@ -11984,6 +12121,103 @@ function renderVolExtra() {
              'Uno squilibrio marcato fra spinta e trazione e\' il segnale piu\' utile da cogliere qui.</div>';
     }
     host.innerHTML = h;
+}
+
+// ── DIARIO: contenuto del popup in Progressi ────────────
+// Tre livelli di lettura, dal colpo d'occhio alle parole: la striscia degli
+// stati, le voci che ricorrono nelle sedute faticose, e infine le note.
+function _pmDiarioHtml() {
+    var diary = (APP.diary || []).slice();
+    if (!diary.length) {
+        return '<div class="awd-empty">Il diario è ancora vuoto.<br><br>' +
+               'Alla fine del prossimo allenamento l’app ti chiederà <b>com’è andata</b>: ' +
+               'una domanda, tre risposte, un tocco. Se hai voglia puoi aggiungere le voci ' +
+               'di dettaglio e una nota, ma non serve — anche la sola risposta lascia un segno qui.</div>';
+    }
+
+    var byState = {};
+    AWD_STATES.forEach(function(st) { byState[st.s] = st; });
+    var cov = awdCoverage();
+
+    // ── striscia: le ultime 24 sedute annotate ──
+    var recent = diary.slice(-24);
+    var h = '<div class="m-sec-title" style="margin-top:0;">Come sono andate le ultime ' +
+            recent.length + ' sedute</div><div class="awd-strip">';
+    recent.forEach(function(e) {
+        var st = byState[e.s] || { col: '#475569', h: 10 };
+        h += '<i style="background:' + st.col + ';opacity:0.85;height:' + st.h + 'px;" ' +
+             'title="' + awdEsc(awdFmtDate(e.d, false) + ' · ' + (st.lab || '')) + '"></i>';
+    });
+    h += '</div><div class="awd-strip-lab"><span>' + awdFmtDate(recent[0].d, false) + '</span>' +
+         '<span>' + awdFmtDate(recent[recent.length-1].d, false) + '</span></div>';
+
+    // ── conteggio degli stati ──
+    var counts = { faticosa: 0, regolare: 0, brillante: 0 };
+    diary.forEach(function(e) { if (counts[e.s] !== undefined) counts[e.s]++; });
+    h += '<div class="m-row3" style="margin-top:14px;">';
+    AWD_STATES.forEach(function(st) {
+        h += '<div class="m-stat">' +
+                '<div class="m-stat-lab">' + st.lab + '</div>' +
+                '<div class="m-stat-val" style="color:' + st.col + ';">' + counts[st.s] + '</div>' +
+                '<div class="m-stat-sub">sedute</div>' +
+             '</div>';
+    });
+    h += '</div>';
+
+    // ── cosa ricorre quando la seduta e' faticosa ──
+    // E' il motivo per cui le voci di dettaglio esistono: una singola risposta
+    // non dice niente, dieci messe insieme mostrano una causa che si ripete.
+    var motivi = {};
+    diary.forEach(function(e) {
+        if (e.s !== 'faticosa' || !e.t) return;
+        e.t.forEach(function(t) { motivi[t] = (motivi[t] || 0) + 1; });
+    });
+    var chiavi = Object.keys(motivi).sort(function(a, b) { return motivi[b] - motivi[a]; });
+    if (chiavi.length) {
+        h += '<div class="m-sec-title">Cosa ricorre nelle sedute faticose</div>' +
+             '<div class="awd-chips">';
+        chiavi.slice(0, 6).forEach(function(k, i) {
+            h += '<span class="awd-chip' + (i < 2 ? ' on' : '') + '">' +
+                 awdEsc(k) + ' · ' + motivi[k] + '</span>';
+        });
+        h += '</div>';
+    }
+
+    // ── le note, dalla piu' recente ──
+    var scritte = diary.filter(function(e) { return e.n || (e.t && e.t.length); }).reverse();
+    if (scritte.length) {
+        h += '<div class="m-sec-title">Le tue note</div>';
+        scritte.forEach(function(e, i) {
+            var st = byState[e.s] || {};
+            var last = (i === scritte.length - 1) ? ' awd-last' : '';
+            h += '<div class="awd-entry' + last + '" data-s="' + awdEsc(e.s) + '">' +
+                    '<div class="awd-e-head">' +
+                        '<span class="awd-e-date">' + awdFmtDate(e.d, true) + '</span>' +
+                        '<span class="awd-e-ch">Cap. ' + ((e.w || 0) + 1) + '</span>' +
+                    '</div>';
+            if (e.n) h += '<div class="awd-e-body">' + awdEsc(e.n) + '</div>';
+            else     h += '<div class="awd-e-body" style="color:#475569;">' + (st.lab || '') + '</div>';
+            if (e.t && e.t.length) {
+                h += '<div class="awd-e-tags">';
+                e.t.forEach(function(t) { h += '<b>' + awdEsc(t) + '</b>'; });
+                h += '</div>';
+            }
+            h += '</div>';
+        });
+    }
+
+    var senza = diary.length - scritte.length;
+    h += '<div class="m-note"><b>Sedute annotate: ' + cov.notes + ' su ' + cov.sessions +
+         '.</b> ' + (senza ? senza + (senza === 1 ? ' porta' : ' portano') +
+         ' solo la risposta, senza dettagli: contano lo stesso nella striscia qui sopra. ' : '') +
+         'La domanda di fine seduta si può sempre saltare, e saltarla non toglie ' +
+         'l’allenamento dal conteggio.<br><br>' +
+         'Le tre risposte descrivono come stava il corpo, non quanto vali: ' +
+         '«faticosa» si sceglie senza ammettere niente. Quello che scrivi resta ' +
+         'sul tuo dispositivo e nel tuo account, e <b>non cambia i carichi</b>: gli ' +
+         'aumenti continuano a decidersi sulle ripetizioni che chiudi davvero.</div>';
+
+    return h;
 }
 
 function _pmPesiHtml() {
@@ -18023,6 +18257,12 @@ function woCompleteSet() {
                 }, 60);
             }
         }, 2200);
+
+        // Diario: la domanda arriva quando lo schermo e' libero. La
+        // celebrazione del capitolo e il riepilogo della progressione possono
+        // aprirsi subito dopo questa animazione, e sovrapporsi le sarebbe
+        // addosso; awdAskAfterWorkout aspetta che non ci sia altro.
+        try { awdAskAfterWorkout(wIdx, di); } catch (e) { awLog.warn('diario:', e); }
         return;
     }
 
@@ -18093,6 +18333,245 @@ function woShowWorkoutComplete() {
 
     // Nessuna auto-chiusura: l'overlay resta opaco finché la vista sottostante
     // non è stata sostituita, poi lo chiude la transizione di completamento.
+}
+
+// ════════════════════════════════════════════════════════════
+// DIARIO DI FINE SEDUTA (v.258)
+//
+// A fine allenamento l'app chiede una cosa sola: com'e' andata. La domanda ha
+// tre risposte, e solo dopo averne scelta una compaiono le voci di dettaglio e
+// la nota libera — entrambe facoltative. Il minimo per rispondere e' un tocco:
+// e' la condizione perche' il diario venga compilato anche nelle sere in cui
+// non c'e' niente da dire, e non solo dopo le sedute memorabili.
+//
+// Perche' proprio questa domanda. Foster et al. 2001 ("A new approach to
+// monitoring exercise training", J Strength Cond Res) hanno mostrato che una
+// singola domanda soggettiva posta a fine seduta descrive il carico di
+// allenamento quanto misure strumentali. Le voci di dettaglio (sonno, energia,
+// dolori, stress) sono quelle del questionario di Hooper & Mackinnon 1995, e
+// la rassegna di Saw, Main & Gastin 2016 (Br J Sports Med) conclude che queste
+// risposte soggettive reagiscono ai carichi prima e meglio dei parametri
+// misurati.
+//
+// Limite dichiarato, non nascosto: con tre gradini la scala e' piu' grossolana
+// di quella a dieci di Borg 1982 usata negli studi citati, quindi "regolare"
+// finira' per coprire la maggior parte delle sedute. E' un compromesso scelto
+// a favore di quante volte il diario viene compilato.
+//
+// IMPORTANTE — il diario NON tocca i carichi. Le voci "carichi troppo alti" e
+// "carichi troppo facili" vengono registrate e mostrate, ma nessun chilo si
+// muove a partire da qui: gli aumenti restano decisi dalla regola 2-per-2
+// (Baechle & Earle, NSCA Essentials 3a ed. 2008) e dalla domanda di fine
+// Chapter 4, che lavorano su ripetizioni realmente eseguite. Collegare le due
+// cose e' possibile, ma sarebbe un numero deciso a tavolino: non si fa qui.
+// ════════════════════════════════════════════════════════════
+
+var AWD_STATES = [
+    { s: 'faticosa',  icon: '🪫', lab: 'Faticosa',  col: '#60a5fa', h: 12 },
+    { s: 'regolare',  icon: '🔋', lab: 'Regolare',  col: '#34d399', h: 20 },
+    { s: 'brillante', icon: '⚡',       lab: 'Brillante', col: '#fbbf24', h: 28 }
+];
+
+var AWD_FOLLOW = {
+    faticosa:  { q: 'Cosa ti ha frenato?',
+                 opts: ['Poco sonno', 'Poca energia', 'Dolore o fastidio', 'Poco tempo', 'Carichi troppo alti', 'Stress'] },
+    regolare:  { q: 'Cosa ha retto bene?',
+                 opts: ['Buon ritmo', 'Carichi giusti', 'Tecnica pulita', 'Recuperi giusti', 'Un po’ stanco'] },
+    brillante: { q: 'Cosa ti ha spinto?',
+                 opts: ['Carichi troppo facili', 'Energia alta', 'Record battuto', 'Ben riposato', 'Recuperi brevi'] }
+};
+
+function awdEsc(t) {
+    return String(t == null ? '' : t)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function awdIso(d) {
+    var x = d || new Date();
+    return x.getFullYear() + '-' + String(x.getMonth()+1).padStart(2,'0') + '-' + String(x.getDate()).padStart(2,'0');
+}
+
+var AWD_MESI = ['gennaio','febbraio','marzo','aprile','maggio','giugno',
+                'luglio','agosto','settembre','ottobre','novembre','dicembre'];
+var AWD_GIORNI = ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'];
+
+function awdFmtDate(iso, withWeekday) {
+    var d = new Date(iso + 'T00:00:00');
+    if (isNaN(d.getTime())) return iso;
+    var base = d.getDate() + ' ' + AWD_MESI[d.getMonth()];
+    return withWeekday ? (AWD_GIORNI[d.getDay()] + ' ' + base) : base;
+}
+
+// Quanto "pesa" una voce: serve al merge fra dispositivi, dove a parita' di
+// data+capitolo+giorno deve vincere quella che contiene di piu'. Una nota
+// scritta non va mai sostituita da una riga con il solo stato.
+function awdWeight(e) {
+    if (!e) return 0;
+    return (e.s ? 1 : 0) + ((e.t && e.t.length) ? e.t.length : 0) + (e.n ? 100 + e.n.length : 0);
+}
+
+// Scrive (o sostituisce) la voce del giorno. La chiave e' data+capitolo+giorno,
+// la stessa del registro delle sedute: rifare l'allenamento riscrive la nota di
+// quel giorno invece di aggiungerne una seconda.
+function awdAdd(w, di, stato, tags, nota) {
+    if (!Array.isArray(APP.diary)) APP.diary = [];
+    var iso = awdIso(new Date());
+    var entry = { d: iso, w: w, di: di, s: stato };
+    if (tags && tags.length) entry.t = tags;
+    if (nota) entry.n = String(nota).slice(0, 2000);
+    for (var i = APP.diary.length - 1; i >= 0; i--) {
+        var e = APP.diary[i];
+        if (e && e.d === iso && e.w === w && e.di === di) { APP.diary.splice(i, 1); }
+    }
+    APP.diary.push(entry);
+    APP.diary.sort(function(a, b) { return a.d < b.d ? -1 : (a.d > b.d ? 1 : 0); });
+    if (APP.diary.length > 500) APP.diary = APP.diary.slice(-500);
+    saveState();
+}
+
+// Sullo schermo c'e' gia' qualcos'altro? La celebrazione del capitolo, il
+// riepilogo della progressione e le domande sull'ultima serie hanno la
+// precedenza: il diario aspetta che lo schermo sia libero.
+function awdBusy() {
+    var ids = ['wo-complete-overlay', 'wo-ovl-ask-overlay', 'wo-ovl-sum-overlay',
+               'wo-reps-ask-overlay', 'wo-tech-ask-overlay', 'aw-dialog',
+               'wo-countdown-overlay'];
+    for (var i = 0; i < ids.length; i++) if (document.getElementById(ids[i])) return true;
+    var wc = document.getElementById('week-complete-overlay');
+    if (wc && wc.classList.contains('visible')) return true;
+    var pc = document.getElementById('program-complete-overlay');
+    if (pc && pc.style.display && pc.style.display !== 'none') return true;
+    if (document.querySelector('.pmodal.open')) return true;
+    if (document.getElementById('awd-overlay')) return true;
+    return false;
+}
+
+// Aspetta al massimo due minuti: oltre, la seduta e' finita da troppo e la
+// domanda arriverebbe fuori tempo. La riga resta comunque nel registro sedute.
+function awdAskAfterWorkout(w, di) {
+    var tries = 0;
+    (function attempt() {
+        if (tries++ > 140) return;
+        if (awdBusy()) { setTimeout(attempt, 850); return; }
+        awdShowSheet(w, di);
+    })();
+}
+
+function awdShowSheet(w, di) {
+    var old = document.getElementById('awd-overlay');
+    if (old) old.remove();
+
+    var chosen = null;
+    var tags = [];
+
+    var ov = document.createElement('div');
+    ov.id = 'awd-overlay';
+    ov.className = 'awd-ov';
+
+    var box = document.createElement('div');
+    box.className = 'awd-box';
+
+    var assign = (APP.dayAssignments[w] || [])[di];
+    var protoName = assign && assign.protoName ? assign.protoName : '';
+    var meta = 'Capitolo ' + (w + 1) + ' · ' + (CHAPTER_NAMES[w] || '') +
+               (protoName ? ' · ' + awdEsc(protoName) : '');
+
+    var h = '<div class="awd-eyebrow">✓ Seduta registrata</div>' +
+            '<div class="awd-date">' + awdFmtDate(awdIso(new Date()), true) + '</div>' +
+            '<div class="awd-meta">' + meta + '</div>' +
+            '<div class="awd-rule"></div>' +
+            '<div class="awd-q">Com’è andata?</div>' +
+            '<div class="awd-moods">';
+    AWD_STATES.forEach(function(st) {
+        h += '<button type="button" class="awd-mood" data-s="' + st.s + '">' +
+                '<span class="awd-face">' + st.icon + '</span>' +
+                '<span class="awd-lab">' + st.lab + '</span>' +
+             '</button>';
+    });
+    h += '</div>' +
+         '<div id="awd-step" style="display:none;"></div>' +
+         '<div class="awd-acts">' +
+            '<button type="button" class="awd-skip" id="awd-skip">Salta</button>' +
+            '<button type="button" class="awd-save" id="awd-save" disabled>Salva</button>' +
+         '</div>';
+    box.innerHTML = h;
+
+    function close() {
+        ov.classList.add('closing');
+        setTimeout(function() { ov.remove(); }, 220);
+    }
+
+    // Secondo passo: le voci cambiano con la risposta data. A chi ha faticato
+    // si chiede cosa l'ha frenato, a chi era brillante cosa l'ha spinto —
+    // chiedere a tutti la stessa lista otterrebbe risposte che non c'entrano.
+    function renderStep(stato) {
+        var cfg = AWD_FOLLOW[stato];
+        var step = box.querySelector('#awd-step');
+        if (!cfg || !step) return;
+        var sh = '<div class="awd-q" style="margin-top:18px;">' + cfg.q +
+                 '<small>facoltativo, puoi sceglierne più di una</small></div>' +
+                 '<div class="awd-chips">';
+        cfg.opts.forEach(function(o) {
+            sh += '<button type="button" class="awd-chip" data-t="' + awdEsc(o) + '">' + awdEsc(o) + '</button>';
+        });
+        sh += '</div>' +
+              '<div class="awd-q" style="margin-top:18px;">Vuoi aggiungere qualcosa?' +
+              '<small>lo rileggerai fra qualche mese</small></div>' +
+              '<textarea class="awd-note" id="awd-note" rows="3" maxlength="2000" ' +
+              'placeholder="Es. la terza serie di panca è andata giù male, spalla destra rigida."></textarea>';
+        step.innerHTML = sh;
+        step.style.display = 'block';
+        step.className = 'awd-step';
+        // Riparte l'animazione anche quando si cambia risposta
+        void step.offsetWidth;
+
+        step.querySelectorAll('.awd-chip').forEach(function(c) {
+            c.onclick = function() {
+                var t = c.getAttribute('data-t');
+                var idx = tags.indexOf(t);
+                if (idx === -1) { tags.push(t); c.classList.add('on'); }
+                else { tags.splice(idx, 1); c.classList.remove('on'); }
+            };
+        });
+    }
+
+    box.querySelectorAll('.awd-mood').forEach(function(b) {
+        b.onclick = function() {
+            var stato = b.getAttribute('data-s');
+            if (chosen !== stato) tags = [];   // le voci del passo precedente non valgono piu'
+            chosen = stato;
+            box.querySelectorAll('.awd-mood').forEach(function(x) { x.classList.toggle('on', x === b); });
+            box.querySelector('#awd-save').disabled = false;
+            renderStep(stato);
+        };
+    });
+
+    box.querySelector('#awd-skip').onclick = function() { close(); };
+
+    box.querySelector('#awd-save').onclick = function() {
+        if (!chosen) return;
+        var noteEl = box.querySelector('#awd-note');
+        try {
+            awdAdd(w, di, chosen, tags, noteEl ? noteEl.value.trim() : '');
+            if (typeof showToast === 'function') showToast('Segnato nel diario');
+        } catch (e) { awLog.warn('awdAdd:', e); }
+        try { if (typeof renderProgMenu === 'function') renderProgMenu(); } catch (e) {}
+        close();
+    };
+
+    ov.appendChild(box);
+    document.body.appendChild(ov);
+}
+
+// Quante sedute risultano svolte in tutto: serve a dire quanta parte di esse
+// ha una nota. awTotalSessions() e' la stessa fonte usata dal Profilo.
+function awdCoverage() {
+    var tot = 0;
+    try { tot = awTotalSessions(); } catch (e) { tot = 0; }
+    var n = (APP.diary || []).length;
+    if (!tot || tot < n) tot = n;
+    return { notes: n, sessions: tot, pct: tot ? Math.round(n / tot * 100) : 0 };
 }
 
 function woRedoWorkout() {
@@ -18429,7 +18908,7 @@ function _performLogoutNow() {
     sbClient.auth.signOut();
     localStorage.removeItem(STORAGE_KEY);
     APP.userName = null; APP.exerciseData = []; APP.totalWorkouts = 0; APP.startDate = null;
-    APP.sessionLog = []; APP.streakCarry = 0;
+    APP.sessionLog = []; APP.diary = []; APP.streakCarry = 0;
     APP.selectedViewWeek = 0; APP.completedWeeks = [false,false,false,false,false]; APP.availableWeeks = [0];
     APP.chipStates = [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']];
     APP.exerciseTracking = []; APP.currentExerciseIndex = 0; APP.activeProtocolId = null;
@@ -20546,6 +21025,7 @@ function finishOnboarding() {
         // senza queste due righe la creazione di un protocollo cancellava
         // dal cloud la storia delle sedute.
         sessionLog: APP.sessionLog || [],
+        diary: APP.diary || [],
         streakCarry: APP.streakCarry || 0,
         startDate: APP.startDate ? APP.startDate.toISOString() : null,
         userName: APP.userName, selectedViewWeek: APP.selectedViewWeek,
@@ -22256,6 +22736,7 @@ async function performFullReset() {
     // subito dopo la pulizia di STORAGE_KEY, e le viste li leggevano dalla RAM.
     APP.loadHistory = [];         // storico carichi → grafico Progressi nei Pesi
     APP.sessionLog = [];          // diario delle sedute → "Dal", Giorni, Sessions
+    APP.diary = [];               // note di fine seduta
     APP.streakCarry = 0;          // sedute consecutive ereditate
     APP.personalRecords = {};     // record personali → trofei/badge PR
     APP.prMeta = {};              // meta del record (kg, reps, target, data)
