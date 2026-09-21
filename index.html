@@ -2472,10 +2472,25 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         }
         .plan-bottom-cols { display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:start; border-top:1px solid #334155; padding-top:12px; margin-top:4px; }
         .plan-col-label { font-size:0.52rem; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; color:#94a3b8; margin-bottom:6px; }
-        .plan-proto-item { display:flex; align-items:center; background:rgba(15,23,42,0.7); border:1px solid #1e293b; border-radius:5px; padding:4px 8px; cursor:grab; font-size:0.65rem; color:#cbd5e1; user-select:none; min-height:22px; box-sizing:border-box; transition:background 0.15s,color 0.15s; margin-bottom:2px; }
-        .plan-proto-item.active-item { border-color:var(--primary); color:var(--primary); }
-        .plan-proto-item-name { flex:1; white-space:normal; overflow:visible; word-break:break-word; line-height:1.3; }
-        .plan-proto-drag-icon { font-size:0.6rem; color:#64748b; margin-left:4px; transition:transform 0.2s; }
+        /* Il protocollo ha la stessa misura e gli stessi angoli della chip del
+           giorno (40px, raggio 8): cosi' quello che si solleva ha la forma del
+           posto in cui va lasciato. Prima era una barra a tutta larghezza, e
+           il gesto accostava due forme che non c'entravano niente.
+           In 40 pixel ci sta una sigla, non un nome: sotto la griglia c'e'
+           sempre la legenda, e il nome per esteso resta su title e aria-label. */
+        .plan-proto-grid { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:5px; }
+        .plan-proto-item { width:40px; height:40px; box-sizing:border-box; padding:0; margin:0;
+            border-radius:8px; border:1px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.07);
+            display:flex; align-items:center; justify-content:center;
+            font-size:0.58rem; font-weight:800; letter-spacing:0.02em; color:#cbd5e1;
+            cursor:grab; user-select:none; -webkit-touch-callout:none; touch-action:manipulation;
+            transition:background var(--mo-fast) ease, border-color var(--mo-fast) ease, color var(--mo-fast) ease, transform var(--mo-fast) var(--mo-ease); }
+        .plan-proto-item:active { transform:scale(0.94); }
+        .plan-proto-item.active-item { border-color:var(--primary); background:rgba(52,211,153,0.12); color:var(--primary); }
+        .plan-proto-leg { list-style:none; margin:0 0 4px 0; padding:0; display:flex; flex-direction:column; gap:2px; }
+        .plan-proto-leg li { font-size:0.52rem; line-height:1.35; color:#94a3b8; display:flex; gap:5px; }
+        .plan-proto-leg b { flex-shrink:0; min-width:24px; color:#cbd5e1; font-weight:800; }
+        .plan-proto-leg li.on b, .plan-proto-leg li.on span { color:var(--primary); }
         /* ── Bundle: protocolli raggruppati per obiettivo e attrezzatura ── */
         .plan-bnd { background:rgba(99,102,241,0.09); border:1px solid rgba(99,102,241,0.28);
                     border-radius:6px; padding:5px 8px; margin-bottom:3px; cursor:pointer;
@@ -2505,7 +2520,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         /* La freccia e' l'unico punto che apre e chiude l'elenco */
         .plan-bnd-ar { padding:3px 4px; margin:-3px -4px; }
         .plan-bnd.focused { box-shadow:0 0 0 2px rgba(99,102,241,0.35); }
-        .plan-proto-item.focused { border-color:var(--accent); background:rgba(99,102,241,0.12); color:#c7d2fe; }
+        .plan-proto-item.focused, .plan-proto-item.expanded { border-color:var(--accent); background:rgba(99,102,241,0.22); color:#c7d2fe; }
         /* Filtro attivo: i giorni estranei alla selezione si spengono */
         .plan-chip.dimmed, .plan-sched-row.dimmed { opacity:0.22; }
         .plan-sched-row.focus-hit .plan-sched-proto { color:#fff; font-weight:600; }
@@ -2753,6 +2768,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 
         .drag-ghost { position:fixed; z-index:9999; pointer-events:none; background:var(--accent); color:#fff; padding:7px 12px; border-radius:8px; font-size:0.72rem; font-weight:700; box-shadow:0 4px 20px rgba(0,0,0,0.5); white-space:nowrap; transform:translate(-50%,-50%); }
+        /* Trascinando un protocollo si solleva un riquadro identico alla chip:
+           stessa misura, stessi angoli. Il nome non ci starebbe, ma chi
+           trascina ha appena preso quel riquadro e sa cos'e'. */
+        .drag-ghost.as-chip { width:40px; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.58rem; font-weight:800; letter-spacing:0.02em; }
         .plan-proto-item.dragging { opacity:0.4; }
         @keyframes rowSwapDown {
             0%   { transform: translateY(0);                      background: transparent; }
@@ -4422,7 +4441,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '261';
+const APP_VERSION = '262';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -7036,6 +7055,33 @@ function planBundleDays(bundle, w){
   }
   return out;
 }
+/* Sigla di un protocollo per il riquadro da 40 pixel.
+   Una parola sola: le prime tre lettere, perche' "Push" e "Pull" devono
+   restare distinguibili e le iniziali darebbero "P" a entrambi.
+   Piu' parole: le iniziali, fino a tre ("Full Body A" -> FBA).
+   Se due protocolli dello stesso elenco finiscono sulla stessa sigla, al
+   secondo si aggiunge un numero: meglio "UA2" che due riquadri identici.
+   I nomi li scrive l'utente, quindi accenti, simboli e nomi vuoti vanno
+   retti senza produrre un riquadro muto. */
+function planSigle(nomi) {
+    const viste = {};
+    return (nomi || []).map(function (raw) {
+        const pulito = (raw || '').replace(/[^\p{L}\p{N} ]/gu, ' ').trim();
+        const parole = pulito.split(/\s+/).filter(Boolean);
+        let sig = parole.length >= 2
+            ? parole.slice(0, 3).map(function (p) { return p.charAt(0); }).join('')
+            : (parole[0] || '').slice(0, 3);
+        sig = sig.toUpperCase() || '?';
+        if (viste[sig]) {
+            let n = 2;
+            while (viste[sig + n]) n++;
+            sig = sig + n;
+        }
+        viste[sig] = true;
+        return sig;
+    });
+}
+
 const planDragState = { active:false, protoId:null, protoName:'', ghost:null, startX:0, startY:0, hasMoved:false, sourceElement:null };
 
 function selectPlanChapter(w) {
@@ -7279,13 +7325,19 @@ function renderPlanPage(w) {
         if (planOpenBundles === null) planOpenBundles = {};
 
         // Crea la riga di un singolo protocollo (trascinabile sui giorni)
-        const makeProtoRow = (proto) => {
+        const makeProtoRow = (proto, sigla) => {
             const item = document.createElement('div');
             const isExp = planExpandedProto === proto.id;
             const isFoc = planFocus && planFocus.type === 'p' && planFocus.id === proto.id;
-            item.className = 'plan-proto-item' + (proto.id === APP.activeProtocolId ? ' active-item' : '') + (isExp ? ' expanded' : '') + (isFoc ? ' focused' : '');
-            item.title = proto.id === APP.activeProtocolId ? 'Protocollo attivo (usato in workout)' : '';
-            item.innerHTML = `<span class="plan-proto-item-name">${escapeHTML(proto.name)}</span><span class="plan-proto-drag-icon" style="transform:rotate(${isExp?'90':'0'}deg)">›</span>`;
+            const isAtt = proto.id === APP.activeProtocolId;
+            item.className = 'plan-proto-item' + (isAtt ? ' active-item' : '') + (isExp ? ' expanded' : '') + (isFoc ? ' focused' : '');
+            // Il nome per esteso non ci sta nel riquadro, ma non deve andare
+            // perso: resta nella legenda qui sotto, nel titolo e per chi usa
+            // uno screen reader.
+            item.title = proto.name + (isAtt ? ' \u00b7 in uso' : '');
+            item.setAttribute('role', 'button');
+            item.setAttribute('aria-label', proto.name + (isAtt ? ', in uso' : ''));
+            item.textContent = sigla;
             item.addEventListener('click', () => {
                 // Il tocco apre l'editor e stringe il filtro su questo protocollo.
                 // Ritoccandolo si torna al filtro del bundle che lo contiene.
@@ -7295,8 +7347,31 @@ function renderPlanPage(w) {
                 else planFocus = { type:'p', id:proto.id };
                 renderPlanPage(w);
             });
-            if (isUnlocked) planSetupDrag(item, proto.id, proto.name);
+            if (isUnlocked) planSetupDrag(item, proto.id, proto.name, sigla);
             return item;
+        };
+
+        /* I riquadri di un gruppo si disegnano insieme, non uno per volta: le
+           sigle vanno calcolate sull'elenco intero, altrimenti due protocolli
+           diversi potrebbero finire sulla stessa senza che nessuno se ne
+           accorga. Sotto la griglia la legenda scioglie ogni sigla. */
+        const makeProtoGrid = (protos) => {
+            const box = document.createElement('div');
+            const grid = document.createElement('div');
+            grid.className = 'plan-proto-grid';
+            const leg = document.createElement('ul');
+            leg.className = 'plan-proto-leg';
+            const sigle = planSigle(protos.map(function (p) { return p.name; }));
+            protos.forEach(function (p, i) {
+                grid.appendChild(makeProtoRow(p, sigle[i]));
+                const li = document.createElement('li');
+                if (p.id === APP.activeProtocolId) li.className = 'on';
+                li.innerHTML = '<b>' + escapeHTML(sigle[i]) + '</b><span>' + escapeHTML(p.name) + '</span>';
+                leg.appendChild(li);
+            });
+            box.appendChild(grid);
+            box.appendChild(leg);
+            return box;
         };
 
         grouped.bundles.forEach(bundle => {
@@ -7337,7 +7412,7 @@ function renderPlanPage(w) {
             if (isOpen) {
                 const kids = document.createElement('div');
                 kids.className = 'plan-bnd-kids';
-                bundle.protos.forEach(p => kids.appendChild(makeProtoRow(p)));
+                kids.appendChild(makeProtoGrid(bundle.protos));
                 protoCol.appendChild(kids);
             }
         });
@@ -7349,7 +7424,7 @@ function renderPlanPage(w) {
                 sep.textContent = 'Singoli';
                 protoCol.appendChild(sep);
             }
-            grouped.singles.forEach(p => protoCol.appendChild(makeProtoRow(p)));
+            protoCol.appendChild(makeProtoGrid(grouped.singles));
         }
     } else {
         protoCol.innerHTML += '<div style="font-size:0.62rem;color:#64748b;padding:8px 0">Nessun protocollo. Creane uno con ' +
@@ -10533,7 +10608,7 @@ function generateDeloadProtocol(mode) {
 }
 
 
-function planSetupDrag(el, protoId, protoName) {
+function planSetupDrag(el, protoId, protoName, sigla) {
     // Prevent iOS context menu / text selection on long press
     el.addEventListener('contextmenu', e => e.preventDefault());
     el.style.webkitUserSelect = 'none';
@@ -10541,7 +10616,7 @@ function planSetupDrag(el, protoId, protoName) {
     // Mouse
     el.addEventListener('mousedown', e => {
         e.preventDefault();
-        planDragBegin(protoId, protoName, e.clientX, e.clientY, el);
+        planDragBegin(protoId, protoName, e.clientX, e.clientY, el, sigla);
     });
     // Touch — long press (500ms) to start drag, avoids conflict with scroll
     let longPressTimer = null;
@@ -10551,7 +10626,7 @@ function planSetupDrag(el, protoId, protoName) {
             longPressTimer = null;
             // Vibrate if supported
             if (navigator.vibrate) navigator.vibrate(30);
-            planDragBegin(protoId, protoName, t.clientX, t.clientY, el);
+            planDragBegin(protoId, protoName, t.clientX, t.clientY, el, sigla);
         }, 400);
     }, {passive:true});
     el.addEventListener('touchmove', e => {
@@ -10562,7 +10637,7 @@ function planSetupDrag(el, protoId, protoName) {
     });
 }
 
-function planDragBegin(protoId, protoName, x, y, el) {
+function planDragBegin(protoId, protoName, x, y, el, sigla) {
     planDragState.active    = true;
     planDragState.protoId   = protoId;
     planDragState.protoName = protoName;
@@ -10578,8 +10653,10 @@ function planDragBegin(protoId, protoName, x, y, el) {
     if (navigator.vibrate) navigator.vibrate(40);
     // Create ghost immediately so user sees it
     const ghost = document.createElement('div');
-    ghost.className = 'drag-ghost';
-    ghost.textContent = protoName;
+    // Con la sigla il fantasma e' un riquadro identico alla chip; senza
+    // (chiamate che non la passano) resta la targhetta col nome di prima.
+    ghost.className = 'drag-ghost' + (sigla ? ' as-chip' : '');
+    ghost.textContent = sigla || protoName;
     ghost.style.left = x + 'px';
     ghost.style.top  = y + 'px';
     ghost.style.transform = 'translate(-50%,-50%)';
