@@ -4441,7 +4441,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '262';
+const APP_VERSION = '263';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -7305,6 +7305,14 @@ function renderPlanPage(w) {
         block.appendChild(restWrap);
     }
 
+    /* Una sigla per protocollo, calcolata su TUTTO l'elenco e non gruppo per
+       gruppo: il riquadro nella lista e la riga in pianificazione devono dire
+       la stessa cosa, e due protocolli di gruppi diversi non devono poter
+       finire sulla stessa sigla. */
+    const _sigleTutte = planSigle((APP.savedProtocols || []).map(function(p){ return p.name; }));
+    const siglaDi = {};
+    (APP.savedProtocols || []).forEach(function(p, i){ siglaDi[p.id] = _sigleTutte[i]; });
+
     // Bottom cols: protocol list + schedule
     const cols = document.createElement('div');
     cols.className = 'plan-bottom-cols';
@@ -7339,12 +7347,12 @@ function renderPlanPage(w) {
             item.setAttribute('aria-label', proto.name + (isAtt ? ', in uso' : ''));
             item.textContent = sigla;
             item.addEventListener('click', () => {
-                // Il tocco apre l'editor e stringe il filtro su questo protocollo.
-                // Ritoccandolo si torna al filtro del bundle che lo contiene.
-                const wasFocus = planFocus && planFocus.type === 'p' && planFocus.id === proto.id;
+                /* Il tocco apre l'editor e mostra subito i giorni allenati da
+                   questo protocollo. Ritoccandolo si richiude l'editor, ma il
+                   filtro resta dov'e': spegnerlo al secondo tocco faceva
+                   sembrare che il protocollo si fosse deselezionato. */
                 planExpandedProto = planExpandedProto === proto.id ? null : proto.id;
-                if (wasFocus) planFocus = proto._splitGroup ? { type:'b', id:proto._splitGroup } : null;
-                else planFocus = { type:'p', id:proto.id };
+                planFocus = { type:'p', id:proto.id };
                 renderPlanPage(w);
             });
             if (isUnlocked) planSetupDrag(item, proto.id, proto.name, sigla);
@@ -7361,12 +7369,11 @@ function renderPlanPage(w) {
             grid.className = 'plan-proto-grid';
             const leg = document.createElement('ul');
             leg.className = 'plan-proto-leg';
-            const sigle = planSigle(protos.map(function (p) { return p.name; }));
             protos.forEach(function (p, i) {
-                grid.appendChild(makeProtoRow(p, sigle[i]));
+                grid.appendChild(makeProtoRow(p, siglaDi[p.id]));
                 const li = document.createElement('li');
                 if (p.id === APP.activeProtocolId) li.className = 'on';
-                li.innerHTML = '<b>' + escapeHTML(sigle[i]) + '</b><span>' + escapeHTML(p.name) + '</span>';
+                li.innerHTML = '<b>' + escapeHTML(siglaDi[p.id]) + '</b><span>' + escapeHTML(p.name) + '</span>';
                 leg.appendChild(li);
             });
             box.appendChild(grid);
@@ -7397,7 +7404,13 @@ function renderPlanPage(w) {
             // Selezionare il bundle lo mette in uso senza aprirne l'elenco:
             // sfogliare e attivare restano due gesti distinti.
             head.addEventListener('click', () => {
-                if (hasActive) { planFocus = isFocB ? null : { type:'b', id:bundle.id }; renderPlanPage(w); return; }
+                /* Un tocco solo. Prima, su un piano gia' in uso, il primo
+                   tocco lo selezionava e basta e il secondo accendeva il
+                   filtro sui giorni: il primo sembrava non aver fatto
+                   niente. Ora selezionare e mostrare i giorni allenati sono
+                   la stessa cosa, e il filtro non si spegne piu' ritoccando:
+                   si sposta scegliendo un altro piano. */
+                if (hasActive) { planFocus = { type:'b', id:bundle.id }; renderPlanPage(w); return; }
                 planActivateBundle(bundle);
             });
             // L'elenco dei protocolli si apre e si chiude solo dalla freccia
@@ -7447,8 +7460,14 @@ function renderPlanPage(w) {
         const a = APP.dayAssignments[w][di];
         const isDone = APP.chipStates[w][di] === 'done';
         if (focusDays) row.className += (focusDays.indexOf(di) >= 0 ? ' focus-hit' : ' dimmed');
+        /* Stessa sigla del riquadro nella lista: due nomi diversi per lo
+           stesso protocollo nella stessa schermata obbligavano a tradurre a
+           mente. Il nome per esteso resta nel titolo e nell'etichetta. */
+        const _nome = a ? (a.protoName || a.name || '') : '';
+        const _sig  = a ? (siglaDi[a.protoId] || _nome || '—') : '—';
+        if (a && _nome) { row.title = _nome; row.setAttribute('aria-label', d + ': ' + _nome); }
         row.innerHTML = `<span class="plan-sched-day">${d}</span>
-            <span class="plan-sched-proto ${a ? '' : 'rest'}" style="${isDone ? 'text-decoration:line-through;opacity:0.5' : ''}">${a ? escapeHTML(a.protoName||a.name||'—') : '—'}</span>`;
+            <span class="plan-sched-proto ${a ? '' : 'rest'}" style="${isDone ? 'text-decoration:line-through;opacity:0.5' : ''}">${escapeHTML(_sig)}</span>`;
         schedCol.appendChild(row);
     });
     cols.appendChild(schedCol);
