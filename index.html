@@ -4441,7 +4441,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '265';
+const APP_VERSION = '266';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -6730,12 +6730,7 @@ async function onLoginSuccess(user, usernameOverride = null) {
             || APP.savedProtocols[0];
         if (protoToActivate) {
             APP.activeProtocolId = protoToActivate.id;
-            APP.exerciseData = protoToActivate.exercises.map(ex => {
-                const loads = (ex.loads && ex.loads.length === WEEK_LOADS.length)
-                    ? ex.loads
-                    : WEEK_LOADS.map(function(p){ return Math.round((ex.baseWeight||0)*p*2)/2; });
-                return { name: ex.name, sr: ex.sr, loads, baseWeight: ex.baseWeight };
-            });
+            APP.exerciseData = protoToActivate.exercises.map(exFromProto);
             // Ricostruisce i campi input
             const inputList = document.getElementById('input-list');
             inputList.innerHTML = '';
@@ -9623,13 +9618,7 @@ function protoEditorPersist(proto) {
     }
     // Se è il protocollo attivo, aggiorna APP.exerciseData e i campi nella homepage
     if (proto.id === APP.activeProtocolId) {
-        APP.exerciseData = proto.exercises.map(function(ex) {
-            var base = parseFloat(ex.baseWeight) || 0;
-            var loads = (ex.loads && ex.loads.length === WEEK_LOADS.length)
-                ? ex.loads
-                : WEEK_LOADS.map(function(p){ return Math.round(base*p*2)/2; });
-            return { name: ex.name, sr: ex.sr, loads: loads, baseWeight: base };
-        });
+        APP.exerciseData = proto.exercises.map(exFromProto);
         var inputList = document.getElementById('input-list');
         if (inputList) {
             inputList.innerHTML = '';
@@ -9818,7 +9807,10 @@ function woRowBeat(e) {
     if (!e || e.w === DELOAD_WEEK) return false;
     var prev = (typeof e.p === 'number') ? e.p : e.kg;
     var eq   = (typeof e.eq === 'number') ? e.eq : e.kg;
-    return !!(prev > 0 && eq > prev + 0.05);
+    // Senza carico il confronto si fa sulle ripetizioni: e' l'unico asse su
+    // cui un esercizio a corpo libero puo' superare il programma.
+    if (!(prev > 0)) return !!(e.tr > 0 && e.r > e.tr);
+    return !!(eq > prev + 0.05);
 }
 
 // Regola 2-per-2 (Baechle & Earle, NSCA Essentials 3a ed. 2008): il carico
@@ -13922,6 +13914,24 @@ function updateProgressPage() {
 // ════════════════════════════════════════════════
 let woState = { exIndex:0, setIndex:0, elapsed:0, restSecs:0, restTotal:0, restRunning:false, timer:null, totalEstSecs:0, paused:false, holdSecs:0, holdTotal:0, holdRunning:false };
 
+/* Copia di un esercizio del protocollo per la sessione di allenamento.
+   Deve portarsi dietro ruolo, recupero e tipo. Senza il ruolo lo schema del
+   capitolo viene indovinato, e il piano e l'allenamento finiscono per dire
+   due cose diverse sullo stesso esercizio (3 x 8 contro 4 x 8, o due esercizi
+   che si scambiano gli schemi). Senza il recupero il timer usa un valore
+   dedotto dalle ripetizioni invece di quello prescritto: il recupero e' un
+   parametro dell'allenamento, non un dettaglio (Schoenfeld 2016 sui recuperi
+   nell'ipertrofia; Grgic 2018 sulla forza). */
+function exFromProto(ex) {
+    var base = parseFloat(ex.baseWeight) || 0;
+    var loads = (ex.loads && ex.loads.length === WEEK_LOADS.length)
+        ? ex.loads
+        : WEEK_LOADS.map(function(p) { return Math.round(base * p * 2) / 2; });
+    return { name: ex.name, sr: ex.sr, loads: loads, baseWeight: base,
+             _role: ex._role, _rest: ex._rest, _rir: ex._rir,
+             _type: ex._type, _zone: ex._zone, mtrValue: ex.mtrValue };
+}
+
 function initWorkoutPage() {
     const page = document.getElementById('page-workout');
 
@@ -13960,13 +13970,8 @@ function initWorkoutPage() {
     if (assignment) {
         const proto = APP.savedProtocols.find(p => p.id === assignment.protoId || p.name === assignment.protoName);
         if (proto && proto.exercises) {
-            exData = proto.exercises.map(ex => {
-                // Usa i loads salvati nel protocollo; ricalcola solo se mancano
-                var loads = (ex.loads && ex.loads.length === WEEK_LOADS.length)
-                    ? ex.loads
-                    : WEEK_LOADS.map(function(p){ return Math.round((ex.baseWeight||0)*p*2)/2; });
-                return { name: ex.name, sr: ex.sr, loads: loads, baseWeight: ex.baseWeight };
-            });
+            // Usa i loads salvati nel protocollo; ricalcola solo se mancano
+            exData = proto.exercises.map(exFromProto);
             // ← sync: woStartWorkout and _woBeginWorkout both read APP.exerciseData
             APP.exerciseData = exData;
         }
@@ -18078,7 +18083,11 @@ function woShouldAskReps(ex, wIdx, targetReps, usedKg) {
     if (!ex || wIdx === DELOAD_WEEK) return false;
     if (srIsTime(ex.sr)) return false;
     if (!(targetReps > 0) || targetReps > REPS_ASK_MAX) return false;
-    if (!(parseFloat(usedKg) > 0)) return false;
+    // A corpo libero la domanda ha senso quanto altrove: la progressione li'
+    // passa dalle ripetizioni, non dai chili, ed e' su quelle che lavora la
+    // regola 2-per-2 (Baechle & Earle, NSCA Essentials 3a ed. 2008). Senza
+    // carico non si calcola nessun carico equivalente: la risposta finisce
+    // solo nello storico, dove serve.
     return true;
 }
 
@@ -18516,6 +18525,14 @@ var OVL_STEP = {
     esatte:  { up: 0.025, low: 0.05 },
     fatica:  { up: 0,     low: 0 }   // invariato, non ridotto: segue un deload
 };
+
+// Quanto e' prudente ciascuna risposta, dalla piu' cautelativa alla piu'
+// generosa: serve a non sovrascrivere con una risposta ottimista una gia'
+// data piu' conservativa sullo stesso esercizio. L'ordine segue gli
+// incrementi di OVL_STEP (forbice 2-10%, Baechle & Earle, NSCA 3a ed. 2008).
+// Mancava del tutto: toccare una risposta mandava in errore il salvataggio
+// PRIMA della chiusura del riquadro, che restava aperto sullo schermo.
+var OVL_RANK = { fatica: 0, esatte: 1, margine: 2 };
 
 function woIsLowerBody(exName) {
     var p = getMovementPattern(exName);
@@ -22581,12 +22598,7 @@ function activateProtocol(protoId, preserveCurrentWeek = false) {
     APP.activeProtocolId = protoId;
 
     // Load protocol exercise data into APP state
-    APP.exerciseData = proto.exercises.map(ex => {
-        const loads = (ex.loads && ex.loads.length === WEEK_LOADS.length)
-            ? ex.loads
-            : WEEK_LOADS.map(function(p){ return Math.round((ex.baseWeight||0)*p*2)/2; });
-        return { name: ex.name, sr: ex.sr, loads, baseWeight: ex.baseWeight };
-    });
+    APP.exerciseData = proto.exercises.map(exFromProto);
     // NOTE: chipStates and dayAssignments are GLOBAL (shared across protocols), NOT overwritten here
     // Se preserveCurrentWeek è true (es. da drag&drop), mantieni la settimana corrente
     if (!preserveCurrentWeek) {
@@ -23473,12 +23485,21 @@ function _lhUpsert(ex, wIdx, onlyIfExists) {
     if (!ex) return;
     if (!Array.isArray(APP.loadHistory)) APP.loadHistory = [];
     var prev = awRoundKg(ex.loads ? (ex.loads[wIdx] || ex.baseWeight || 0) : (ex.baseWeight || 0));
-    if (!prev) return;
-    var used = (parseFloat(ex._sessionKg) > 0) ? Math.round(parseFloat(ex._sessionKg) * 10) / 10 : prev;
-    var displaySr = srForChapter(ex, wIdx, protoRef || awkActiveProto());
+    // protoRef era una variabile di un'altra funzione: qui non esiste, quindi
+    // ogni riga di storico moriva con un errore prima di essere scritta. Con
+    // essa cadevano anche i record e gli aumenti di carico, che passano di qui.
+    var displaySr = srForChapter(ex, wIdx, awkActiveProto());
     var tr = srReps(displaySr);
+    // A corpo libero il carico non c'e', ma le ripetizioni si': la riga serve
+    // lo stesso, altrimenti un ciclo intero di calisthenics non lascia traccia
+    // nei Progressi. La regola 2-per-2 (Baechle & Earle, NSCA Essentials 3a
+    // ed. 2008) lavora sulle ripetizioni, non sui chili.
+    // Resta fuori solo cio' che non ha ne' carico ne' ripetizioni, cioe' gli
+    // isometrici a tempo: non c'e' niente da confrontare.
+    if (!prev && !tr) return;
+    var used = (parseFloat(ex._sessionKg) > 0) ? Math.round(parseFloat(ex._sessionKg) * 10) / 10 : prev;
     var r  = (typeof ex._sessionReps === 'number' && ex._sessionReps > 0) ? ex._sessionReps : null;
-    var eq = (r && tr) ? woEquivalentLoad(used, r, tr) : used;
+    var eq = (r && tr && used > 0) ? woEquivalentLoad(used, r, tr) : used;
     var key = _lhIsoToday() + '|' + wIdx + '|' + ex.name;
     var row = null;
     for (var i = 0; i < APP.loadHistory.length; i++) {
