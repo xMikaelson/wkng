@@ -2373,23 +2373,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             color:#a5b4fc; font-family:inherit; font-size:0.66rem; font-weight:800;
             text-transform:none; cursor:pointer; }
         .plan-rest-btn:active { background:rgba(99,102,241,0.28); }
-        /* Il rosso non serve piu' qui: l'unica azione distruttiva del capitolo
-           e' il cestino dei giorni. Chiudere il capitolo non distrugge niente.
-           width/padding/text-transform espliciti contro la regola globale `button`. */
-        .plan-close-btn { width:auto; padding:9px 20px; margin:0; border-radius:14px;
-            border:1px solid rgba(129,140,248,0.45); background:rgba(99,102,241,0.14);
-            color:#a5b4fc; font-family:inherit; font-size:0.66rem; font-weight:800;
-            text-transform:none; cursor:pointer;
-            max-width:260px; white-space:nowrap; overflow:hidden;
-            animation:planCloseIn 0.45s cubic-bezier(0.22,0.61,0.36,1) both; }
-        .plan-close-btn:active { background:rgba(99,102,241,0.28); transform:scale(0.97); }
-        /* Il pulsante si apre in larghezza invece di spuntare gia' fatto: cosi'
-           il reset accanto scivola di lato invece di saltarci via. Il margine
-           negativo iniziale annulla il gap della riga finche' e' chiuso. */
-        @keyframes planCloseIn {
-            from { opacity:0; max-width:0; padding-left:0; padding-right:0; margin-left:-8px; }
-            to   { opacity:1; max-width:260px; padding-left:20px; padding-right:20px; margin-left:0; }
-        }
+        /* Il pulsante "Chiudi capitolo" non esiste piu': con una seduta
+           mancante e' la linguetta del capitolo successivo a chiamare. Questa
+           riga dice dove toccare, il perche' lo spiega la finestra. */
         .plan-close-note { text-align:center; font-size:0.6rem; color:#94a3b8;
             margin:-8px 0 14px; line-height:1.4;
             animation:planCloseNoteIn 0.4s ease-out 0.14s both; }
@@ -2398,7 +2384,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             to   { opacity:1; transform:none; }
         }
         @media (prefers-reduced-motion:reduce) {
-            .plan-close-btn, .plan-close-note { animation:none; }
+            .plan-close-note { animation:none; }
         }
         .plan-chips { display:flex; gap:5px; flex-wrap:wrap; justify-content:center; margin-bottom:14px; }
         /* Transizione per proprieta' invece di `all` con curva elastica:
@@ -2851,6 +2837,27 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         /* Disabled chapter tabs */
         .chapter-tab.locked-tab { opacity: 0.4; cursor: not-allowed; }
         .chapter-tab.locked-tab:hover { background: transparent !important; color: #94a3b8 !important; }
+        /* Un capitolo che si puo' sbloccare adesso non e' un capitolo chiuso:
+           si accende, pulsa piano e si tocca. Gli !important servono contro la
+           regola di sopra, che spegne le linguette chiuse anche al passaggio
+           del dito. Il pulsare e' un alone che si allarga e svanisce: niente
+           che si muova o cambi misura, per non spostare la fila. */
+        .chapter-tab.aw-unlock-call { opacity:1 !important; cursor:pointer !important;
+            color:#a5b4fc !important;
+            border-color:rgba(var(--ac,99,102,241),0.6) !important;
+            background:rgba(var(--ac,99,102,241),0.16) !important;
+            animation:awUnlockPulse 1.9s ease-in-out infinite; }
+        /* Indaco e non verde: il verde e' gia' la linguetta del capitolo che
+           stai guardando, e da ferme le due si confonderebbero. */
+        @keyframes awUnlockPulse {
+            0%   { box-shadow:0 0 0 0 rgba(var(--ac,99,102,241),0.45); }
+            70%  { box-shadow:0 0 0 6px rgba(var(--ac,99,102,241),0); }
+            100% { box-shadow:0 0 0 0 rgba(var(--ac,99,102,241),0); }
+        }
+        @media (prefers-reduced-motion:reduce) {
+            .chapter-tab.aw-unlock-call { animation:none;
+                box-shadow:0 0 0 2px rgba(var(--ac,99,102,241),0.35); }
+        }
 
 
         /* ─── Workout: today banner + start ─── */
@@ -4468,7 +4475,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '267';
+const APP_VERSION = '268';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -7127,6 +7134,9 @@ function selectPlanChapter(w) {
     // Chapter 0 è sempre disponibile; gli altri richiedono il precedente completato
     const isUnlocked = w === 0 || APP.completedWeeks[w-1] || APP.availableWeeks.includes(w);
     if (!isUnlocked) {
+        // Al capitolo precedente manca una seduta sola: invece di rifiutare
+        // il tocco, l'app propone di sbloccare e spiega perche' si puo'.
+        if (w > 0 && woPuoSbloccare(w - 1)) { woProponiSblocco(w - 1); return; }
         // Mostra solo feedback visivo: non cambiare tab
         const tab = document.querySelectorAll('#plan-tabs .chapter-tab')[w];
         if (tab) { tab.style.animation = 'shake 0.3s'; setTimeout(()=>tab.style.animation='', 400); }
@@ -7166,6 +7176,9 @@ function renderPlanPage(w) {
         t.classList.toggle('active', i===w);
         const unlocked = i===0 || APP.completedWeeks[i-1];
         t.classList.toggle('locked-tab', !unlocked);
+        // Pulsa solo la linguetta del capitolo che si puo' sbloccare adesso,
+        // e solo finche' e' davvero chiusa: la chiamata deve essere una sola.
+        t.classList.toggle('aw-unlock-call', !unlocked && i === w + 1 && woPuoSbloccare(w));
     });
 
     const isUnlocked = w === 0 || APP.completedWeeks[w-1] || APP.availableWeeks.includes(w);
@@ -7299,31 +7312,18 @@ function renderPlanPage(w) {
        pressione lunga sulla chip e il trascinamento nel cestino
        (planTrashSetup), e l'annulla della barra prende il posto della
        finestra di conferma. */
-    if (isUnlocked) {
-        const nAssigned = (APP.dayAssignments[w] || []).filter(function(a){ return !!a; }).length;
-
-        /* Chiusura con una seduta saltata: chiudere il capitolo non distrugge
-           niente, quindi il pulsante resta. Ora e' solo nella sua riga, non
-           piu' in coppia con il reset. */
-        const puoChiudere = !APP.completedWeeks[w] && nAssigned >= 2 &&
-            typeof woSeduteMancanti === 'function' && woSeduteMancanti(w) === 1;
-        if (puoChiudere) {
-            const closeWrap = document.createElement('div');
-            closeWrap.style.cssText = 'display:flex;justify-content:center;align-items:center;margin:-2px 0 14px;';
-            const tollBtn = document.createElement('button');
-            tollBtn.type = 'button';
-            tollBtn.className = 'plan-close-btn';
-            tollBtn.textContent = '➡️ Chiudi capitolo';
-            tollBtn.title = 'Ti manca una seduta: chiudi il capitolo e sblocca il successivo';
-            tollBtn.onclick = function() { woChiudiCapitoloConTolleranza(w); };
-            closeWrap.appendChild(tollBtn);
-            block.appendChild(closeWrap);
-
-            const tollNote = document.createElement('div');
-            tollNote.className = 'plan-close-note';
-            tollNote.textContent = 'Ti manca una seduta per chiudere il capitolo.';
-            block.appendChild(tollNote);
-        }
+    /* Con una sola seduta mancante non c'e' piu' un pulsante "Chiudi
+       capitolo": e' il capitolo successivo a chiamare. La sua linguetta,
+       che sarebbe spenta, si accende e pulsa; toccandola si apre la
+       finestra che spiega perche' si puo' passare avanti (woProponiSblocco).
+       Un pulsante in fondo alla schermata diceva "chiudi" senza dire cosa
+       si apriva; la linguetta che pulsa indica gia' dove si va a finire. */
+    if (isUnlocked && woPuoSbloccare(w) && w + 1 < CHAPTER_NAMES.length) {
+        const tollNote = document.createElement('div');
+        tollNote.className = 'plan-close-note';
+        tollNote.textContent = 'Ti manca una seduta. Per andare avanti lo stesso, tocca "Ch.' +
+            (w + 2) + ' ' + CHAPTER_NAMES[w + 1] + '" qui sopra.';
+        block.appendChild(tollNote);
     }
 
     // Riposo totale: solo nel Deload. Senza questo, chi sceglie il riposo
@@ -9707,17 +9707,33 @@ function woSeduteMancanti(w) {
    Serve almeno una seduta fatta, altrimenti su un capitolo da un solo giorno
    si chiuderebbe senza aver mai allenato. La seduta saltata NON viene segnata
    come fatta: lo storico deve restare vero. */
-function woChiudiCapitoloConTolleranza(w) {
-    if (APP.completedWeeks[w]) return;
+/* Vero quando al capitolo w manca esattamente una seduta e se ne e' gia'
+   fatta almeno una. E' la condizione che accende la linguetta del capitolo
+   successivo ed e' l'unica porta d'ingresso alla tolleranza. */
+function woPuoSbloccare(w) {
+    if (typeof w !== 'number' || w < 0) return false;
+    if (APP.completedWeeks[w]) return false;
     const assegnate = (APP.dayAssignments[w] || []).filter(a => a !== null).length;
-    if (assegnate < 2 || woSeduteMancanti(w) !== 1) return;
-    awConfirm('Ti manca una seduta per completare il capitolo.\n\nChiudendolo ora si sblocca il capitolo successivo. La seduta saltata resta non fatta nello storico, e i carichi salgono solo dove il tuo andamento lo giustifica.',
+    return assegnate >= 2 && woSeduteMancanti(w) === 1;
+}
+
+/* La proposta, aperta toccando la linguetta che pulsa. Dice quante sedute
+   mancano, perche' saltarne una non compromette il lavoro fatto e cosa resta
+   vero nello storico: la richiesta e' esplicita, non un automatismo. */
+function woProponiSblocco(w) {
+    if (!woPuoSbloccare(w)) return;
+    const prossimo = 'Chapter ' + (w + 2) + (CHAPTER_NAMES[w + 1] ? ' \u2014 ' + CHAPTER_NAMES[w + 1] : '');
+    const assegnate = (APP.dayAssignments[w] || []).filter(a => a !== null).length;
+    awConfirm(
+        'Nel Chapter ' + (w + 1) + ' hai fatto ' + (assegnate - 1) + ' sedute su ' + assegnate + ': ne manca una.\n\n' +
+        'Puoi passare avanti lo stesso. Una seduta saltata non disfa il lavoro gi\u00e0 fatto: le perdite da stop si misurano dopo settimane, non dopo un giorno (Mujika & Padilla 2003).\n\n' +
+        'Sbloccare il capitolo non alza i carichi da solo: salgono solo dove le ripetizioni che hai davvero eseguito lo giustificano (regola 2-per-2, Baechle & Earle 2008). E la seduta che manca resta non fatta nello storico.',
         function(ok) {
             if (!ok) return;
             woChiudiCapitolo(w);
             renderPlanPage(w);
         },
-        { title: 'Chiudi il capitolo', okLabel: 'Chiudi comunque' });
+        { title: 'Vuoi sbloccare il ' + prossimo + '?', okLabel: 'Sblocca', cancelLabel: 'Non ancora' });
 }
 
 /* Chiusura vera e propria del capitolo: sblocca il successivo, mette in
