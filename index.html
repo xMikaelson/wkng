@@ -615,6 +615,33 @@
             background:rgba(255,255,255,0.03); border-radius:10px; padding:13px 14px; }
         .awd-empty b { color:#e2e8f0; }
 
+        /* ── Riordino delle box (v.267) ──────────────────────────
+           La box si stacca tutta intera: si trasforma l'elemento, quindi
+           icona, numero, etichetta e barra viaggiano con lei senza doverli
+           spostare uno a uno. Il riquadro resta al suo posto nella griglia,
+           e sono le altre a farle largo. */
+        .pmenu-grid { position:relative; }
+        .pmenu-card { -webkit-touch-callout:none; user-select:none; -webkit-user-select:none; }
+        /* Mentre una box e' in mano il dito muove lei, non la pagina. */
+        .pmenu-grid.pm-dragging { touch-action:none; }
+        .pmenu-card.pm-drag {
+            z-index:20; cursor:grabbing;
+            transition:box-shadow var(--mo-fast) linear, border-color var(--mo-fast) linear;
+            box-shadow:0 18px 40px rgba(0,0,0,0.55);
+            border-color:rgba(var(--ac),0.55);
+        }
+        /* Al rilascio scende nello spazio libero con un rimbalzo corto. */
+        .pmenu-card.pm-settle {
+            transition:transform var(--mo-dur) var(--mo-spring),
+                       box-shadow var(--mo-fast) linear,
+                       border-color var(--mo-fast) linear;
+        }
+        /* La box in mano non deve rimpicciolirsi come fa al tocco normale. */
+        .pmenu-card.pm-drag:active, .pmenu-card.pm-settle:active { transform:none; }
+        @media (prefers-reduced-motion:reduce) {
+            .pmenu-card.pm-settle { transition-duration:1ms; }
+        }
+
         /* popup categoria */
         .pmodal { position:fixed; inset:0; z-index:9500; display:none; background:rgba(6,13,26,0.94); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:max(env(safe-area-inset-top),34px) 14px calc(20px + env(safe-area-inset-bottom,0px)); }
         .pmodal.open { display:flex; }
@@ -4441,7 +4468,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '266';
+const APP_VERSION = '267';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -4479,6 +4506,11 @@ const APP = {
     // nota libera. Sopravvive al riavvio del ciclo: le chip si azzerano, quello
     // che l'atleta ha scritto no.
     diary: [],
+    // Ordine personale delle box in Progressi (v.267): elenco di sigle.
+    // progOrderAt e' il momento dell'ultima modifica e serve al merge fra
+    // dispositivi, dove non esiste un "piu' alto" come per i contatori.
+    progOrder: [],
+    progOrderAt: 0,
     streakCarry: 0,    // sedute consecutive ereditate dai cicli gia' chiusi
     currentExerciseIndex: 0,
     currentSet: 1,
@@ -4632,6 +4664,8 @@ function saveState() {
             loadHistory: APP.loadHistory || [],
             sessionLog: APP.sessionLog || [],
             diary: APP.diary || [],
+            progOrder: APP.progOrder || [],
+            progOrderAt: APP.progOrderAt || 0,
             streakCarry: APP.streakCarry || 0,
             _srMigratedV151: APP._srMigratedV151 || false
         };
@@ -4807,6 +4841,8 @@ function loadState() {
         APP.loadHistory = saved.loadHistory || [];
         APP.sessionLog = Array.isArray(saved.sessionLog) ? saved.sessionLog : [];
         APP.diary = Array.isArray(saved.diary) ? saved.diary : [];
+        APP.progOrder = Array.isArray(saved.progOrder) ? saved.progOrder : [];
+        APP.progOrderAt = saved.progOrderAt || 0;
         APP.streakCarry = saved.streakCarry || 0;
         APP._srMigratedV151 = saved._srMigratedV151 || false;
         APP.currentExerciseIndex = saved.currentExerciseIndex || 0;
@@ -6663,6 +6699,14 @@ async function onLoginSuccess(user, usernameOverride = null) {
             var _dMerged = Object.keys(_dBest).map(function(k) { return _dBest[k]; });
             _dMerged.sort(function(a, b) { return a.d < b.d ? -1 : (a.d > b.d ? 1 : 0); });
             APP.diary = _dMerged.slice(-500);
+        }
+        // Ordine delle box: non e' un elenco da unire ma una preferenza, quindi
+        // vince semplicemente la piu' recente fra le due. Senza il momento
+        // salvato non si potrebbe dire quale sia.
+        if (Array.isArray(s.progOrder) && s.progOrder.length &&
+            (s.progOrderAt || 0) > (APP.progOrderAt || 0)) {
+            APP.progOrder = s.progOrder;
+            APP.progOrderAt = s.progOrderAt || 0;
         }
         if ((s.streakCarry || 0) > (APP.streakCarry || 0)) APP.streakCarry = s.streakCarry;
         try { awSyncStartDate(); } catch(e) {}
@@ -12478,17 +12522,241 @@ var PROG_MENU_ITEMS = [
     },
 ];
 
+// ════════════════════════════════════════════════════════════
+// RIORDINO DELLE BOX IN PROGRESSI (v.267)
+//
+// Si tiene premuta una box mezzo secondo: si stacca, segue il dito, e le
+// altre le fanno largo mentre ci passi sopra. Al rilascio scende nel posto
+// libero. Non c'e' nessuna modalita' da aprire o chiudere.
+//
+// Si sposta l'elemento vero, non una copia: trasformare la box porta con se'
+// icona, numero, etichetta e barra senza doverli muovere uno a uno, e senza
+// che nulla resti indietro o cambi aspetto a meta' strada.
+//
+// Il riordino usa la tecnica FLIP: si leggono le posizioni prima, si cambia
+// l'ordine nel DOM, si rileggono dopo, e si riporta ogni box da dov'era con
+// una transizione. Cosi' la griglia CSS resta quella che e' — due colonne,
+// altezze dal contenuto — invece di dover posizionare le box a mano.
+// ════════════════════════════════════════════════════════════
+
+var PM_HOLD_MS = 500;      // quanto tenere premuto perche' la box si stacchi
+var PM_SLOP_PX = 10;       // oltre questo spostamento e' uno scorrimento, non una presa
+var pmDrag = null;         // trascinamento in corso, o null
+var pmLastDrop = 0;        // istante dell'ultimo rilascio, per non aprire la box
+
+function pmReduced() {
+    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+    catch (e) { return false; }
+}
+
+// Posizione della box SENZA la sua trasformazione, in coordinate di pagina:
+// e' il punto da cui calcolare lo spostamento, e non cambia se la pagina scorre.
+function pmBaseRect(el) {
+    var t = el.style.transform;
+    el.style.transform = 'none';
+    var r = el.getBoundingClientRect();
+    el.style.transform = t;
+    return { left: r.left + window.scrollX, top: r.top + window.scrollY };
+}
+
+// L'ordine salvato filtrato sulle box che esistono davvero. Una box aggiunta
+// in futuro entra in fondo invece di sparire, e una sigla rimasta nell'ordine
+// di una versione vecchia viene ignorata: l'ordine salvato non deve mai poter
+// far sparire una box dalla pagina.
+function pmOrderedItems() {
+    var byId = {};
+    PROG_MENU_ITEMS.forEach(function(it) { byId[it.id] = it; });
+    var out = [];
+    (Array.isArray(APP.progOrder) ? APP.progOrder : []).forEach(function(id) {
+        if (byId[id] && out.indexOf(byId[id]) === -1) out.push(byId[id]);
+    });
+    PROG_MENU_ITEMS.forEach(function(it) { if (out.indexOf(it) === -1) out.push(it); });
+    return out;
+}
+
+function pmSaveOrder(container) {
+    var ids = [];
+    Array.prototype.forEach.call(container.querySelectorAll('.pmenu-card'), function(el) {
+        var id = el.getAttribute('data-pm-id');
+        if (id) ids.push(id);
+    });
+    if (!ids.length) return;
+    APP.progOrder = ids;
+    APP.progOrderAt = Date.now();
+    saveState();
+}
+
+function pmDragInit(container) {
+    if (container._pmBound) return;
+    container._pmBound = true;
+
+    container.addEventListener('pointerdown', pmPointerDown);
+
+    // Il clic arriva dopo il rilascio: va fermato in cattura, prima che
+    // raggiunga l'onclick della box, altrimenti spostarla la apre anche.
+    container.addEventListener('click', function(ev) {
+        if (Date.now() - pmLastDrop < 400) { ev.stopPropagation(); ev.preventDefault(); }
+    }, true);
+
+    // Su iOS non basta touch-action: finche' una box e' in mano il movimento
+    // del dito va tolto allo scorrimento in modo esplicito.
+    container.addEventListener('touchmove', function(ev) {
+        if (pmDrag) ev.preventDefault();
+    }, { passive: false });
+}
+
+function pmPointerDown(ev) {
+    if (pmDrag) return;
+    var el = ev.target && ev.target.closest ? ev.target.closest('.pmenu-card') : null;
+    if (!el) return;
+    var container = this;
+    var sx = ev.clientX, sy = ev.clientY, pid = ev.pointerId;
+    var px = ev.pageX, py = ev.pageY;
+
+    var timer = setTimeout(function() {
+        timer = null;
+        unbind();
+        pmLift(container, el, px, py, pid);
+    }, PM_HOLD_MS);
+
+    // Se il dito si muove prima che scada il tempo stava scorrendo la pagina.
+    function onMove(e2) {
+        if (Math.abs(e2.clientX - sx) > PM_SLOP_PX || Math.abs(e2.clientY - sy) > PM_SLOP_PX) stop();
+    }
+    function stop() { if (timer) { clearTimeout(timer); timer = null; } unbind(); }
+    function unbind() {
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', stop);
+        document.removeEventListener('pointercancel', stop);
+    }
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', stop);
+    document.addEventListener('pointercancel', stop);
+}
+
+function pmLift(container, el, px, py, pointerId) {
+    var base = pmBaseRect(el);
+    pmDrag = {
+        c: container, el: el,
+        ox: base.left - px,      // scarto fra dito e angolo della box
+        oy: base.top - py,
+        base: base
+    };
+    el.classList.remove('pm-settle');
+    el.classList.add('pm-drag');
+    container.classList.add('pm-dragging');
+    try { el.setPointerCapture(pointerId); } catch (e) {}
+    try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) {}
+    pmPaint(px, py);
+    document.addEventListener('pointermove', pmPointerMove);
+    document.addEventListener('pointerup', pmPointerUp);
+    document.addEventListener('pointercancel', pmPointerUp);
+}
+
+function pmPaint(px, py) {
+    var d = pmDrag;
+    if (!d) return;
+    var x = (px + d.ox) - d.base.left;
+    var y = (py + d.oy) - d.base.top;
+    d.el.style.transform = 'translate(' + x + 'px,' + y + 'px)' +
+        (pmReduced() ? '' : ' scale(1.04) rotate(1deg)');
+}
+
+function pmPointerMove(ev) {
+    if (!pmDrag) return;
+    if (ev.cancelable) ev.preventDefault();
+    pmPaint(ev.pageX, ev.pageY);
+    pmHitTest(ev.pageX, ev.pageY);
+}
+
+// Su quale box sta il dito. Si usano offsetLeft/offsetTop, che sono la
+// posizione nella griglia e non risentono delle trasformazioni in corso:
+// con getBoundingClientRect si leggerebbero le box a meta' animazione.
+function pmHitTest(px, py) {
+    var d = pmDrag, c = d.c;
+    var cr = c.getBoundingClientRect();
+    var lx = px - (cr.left + window.scrollX);
+    var ly = py - (cr.top + window.scrollY);
+    var cards = Array.prototype.slice.call(c.querySelectorAll('.pmenu-card'));
+    var target = null;
+    cards.forEach(function(k) {
+        if (k === d.el) return;
+        if (lx >= k.offsetLeft && lx <= k.offsetLeft + k.offsetWidth &&
+            ly >= k.offsetTop  && ly <= k.offsetTop  + k.offsetHeight) target = k;
+    });
+    if (target) pmReorder(target);
+}
+
+function pmReorder(target) {
+    var d = pmDrag, c = d.c;
+    var cards = Array.prototype.slice.call(c.querySelectorAll('.pmenu-card'));
+    var before = cards.map(function(k) { return { el: k, r: pmBaseRect(k) }; });
+
+    // Se la box di arrivo viene dopo, ci si infila subito dietro; se viene
+    // prima, subito davanti. E' lo scorrimento naturale della griglia.
+    var segue = !!(d.el.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_FOLLOWING);
+    if (segue) c.insertBefore(d.el, target.nextSibling);
+    else       c.insertBefore(d.el, target);
+
+    var reduced = pmReduced();
+    before.forEach(function(f) {
+        if (f.el === d.el) return;
+        var now = pmBaseRect(f.el);
+        var dx = f.r.left - now.left, dy = f.r.top - now.top;
+        if (!dx && !dy) return;
+        if (reduced) return;
+        f.el.style.transition = 'none';
+        f.el.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+        void f.el.offsetWidth;                 // forza il ridisegno prima di animare
+        f.el.style.transition = 'transform var(--mo-dur) var(--mo-ease)';
+        f.el.style.transform = '';
+        window.setTimeout(function() {
+            f.el.style.transition = '';
+            f.el.style.transform = '';
+        }, 360);
+    });
+
+    // La box in mano ora parte da un'altra casella: senza questo salterebbe.
+    d.base = pmBaseRect(d.el);
+}
+
+function pmPointerUp() {
+    var d = pmDrag;
+    if (!d) return;
+    document.removeEventListener('pointermove', pmPointerMove);
+    document.removeEventListener('pointerup', pmPointerUp);
+    document.removeEventListener('pointercancel', pmPointerUp);
+    pmDrag = null;
+
+    var el = d.el;
+    el.classList.remove('pm-drag');
+    el.classList.add('pm-settle');
+    el.style.transition = '';
+    el.style.transform = '';
+    d.c.classList.remove('pm-dragging');
+    // Anche una pressione lunga senza spostamento ha sollevato la box:
+    // lasciarla non deve aprirla.
+    pmLastDrop = Date.now();
+    window.setTimeout(function() { el.classList.remove('pm-settle'); }, 400);
+    try { if (navigator.vibrate) navigator.vibrate(8); } catch (e) {}
+    try { pmSaveOrder(d.c); } catch (e) { awLog.warn('pmSaveOrder:', e); }
+}
+
 function renderProgMenu() {
     var container = document.getElementById('prog-menu-list');
     if (!container) return;
+    // Ricostruire la griglia mentre una box e' in mano la farebbe sparire
+    // da sotto il dito: il ridisegno aspetta il rilascio.
+    if (pmDrag) return;
     container.className = 'pmenu-grid';
     container.innerHTML = '';
-    PROG_MENU_ITEMS.forEach(function(item) {
+    pmOrderedItems().forEach(function(item) {
         var data = item.getValue();
         var parts = _pmSplitValue(data.value);
         var div = document.createElement('div');
         div.className = 'pmenu-card';
         div.id = 'prog-menu-' + item.id;
+        div.setAttribute('data-pm-id', item.id);
         div.setAttribute('onclick', "openProgModal('" + item.id + "')");
         div.innerHTML =
             '<div class="pmenu-icon-wrap">' +
@@ -12505,6 +12773,7 @@ function renderProgMenu() {
             '</div>';
         container.appendChild(div);
     });
+    pmDragInit(container);
 }
 
 // Separa il numero dall'unita' ("78.4 kg" -> 78.4 + kg, "7/20" -> 7/20 + '')
@@ -19500,6 +19769,7 @@ function _performLogoutNow() {
     localStorage.removeItem(STORAGE_KEY);
     APP.userName = null; APP.exerciseData = []; APP.totalWorkouts = 0; APP.startDate = null;
     APP.sessionLog = []; APP.diary = []; APP.streakCarry = 0;
+    APP.progOrder = []; APP.progOrderAt = 0;
     APP.selectedViewWeek = 0; APP.completedWeeks = [false,false,false,false,false]; APP.availableWeeks = [0];
     APP.chipStates = [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']];
     APP.exerciseTracking = []; APP.currentExerciseIndex = 0; APP.activeProtocolId = null;
@@ -21617,6 +21887,8 @@ function finishOnboarding() {
         // dal cloud la storia delle sedute.
         sessionLog: APP.sessionLog || [],
         diary: APP.diary || [],
+        progOrder: APP.progOrder || [],
+        progOrderAt: APP.progOrderAt || 0,
         streakCarry: APP.streakCarry || 0,
         startDate: APP.startDate ? APP.startDate.toISOString() : null,
         userName: APP.userName, selectedViewWeek: APP.selectedViewWeek,
@@ -23323,6 +23595,7 @@ async function performFullReset() {
     APP.loadHistory = [];         // storico carichi → grafico Progressi nei Pesi
     APP.sessionLog = [];          // diario delle sedute → "Dal", Giorni, Sessions
     APP.diary = [];               // note di fine seduta
+    APP.progOrder = []; APP.progOrderAt = 0;   // ordine personale delle box
     APP.streakCarry = 0;          // sedute consecutive ereditate
     APP.personalRecords = {};     // record personali → trofei/badge PR
     APP.prMeta = {};              // meta del record (kg, reps, target, data)
