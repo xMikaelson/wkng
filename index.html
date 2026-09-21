@@ -2346,15 +2346,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             color:#a5b4fc; font-family:inherit; font-size:0.66rem; font-weight:800;
             text-transform:none; cursor:pointer; }
         .plan-rest-btn:active { background:rgba(99,102,241,0.28); }
-        /* width/padding/text-transform espliciti contro la regola globale `button` */
-        .plan-reset-btn { width:auto; padding:9px 20px; margin:0; border-radius:14px;
-            border:1px solid rgba(248,113,113,0.45); background:rgba(239,68,68,0.14);
-            color:#fca5a5; font-family:inherit; font-size:0.66rem; font-weight:800;
-            text-transform:none; cursor:pointer; }
-        .plan-reset-btn:active { background:rgba(239,68,68,0.28); transform:scale(0.97); }
-        .plan-reset-btn[disabled] { opacity:0.35; cursor:not-allowed; }
-        /* Stessa misura del reset, ma non rosso: chiudere il capitolo non
-           distrugge niente, e il rosso qui prometterebbe un danno che non c'e'. */
+        /* Il rosso non serve piu' qui: l'unica azione distruttiva del capitolo
+           e' il cestino dei giorni. Chiudere il capitolo non distrugge niente.
+           width/padding/text-transform espliciti contro la regola globale `button`. */
         .plan-close-btn { width:auto; padding:9px 20px; margin:0; border-radius:14px;
             border:1px solid rgba(129,140,248,0.45); background:rgba(99,102,241,0.14);
             color:#a5b4fc; font-family:inherit; font-size:0.66rem; font-weight:800;
@@ -2380,11 +2374,94 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             .plan-close-btn, .plan-close-note { animation:none; }
         }
         .plan-chips { display:flex; gap:5px; flex-wrap:wrap; justify-content:center; margin-bottom:14px; }
-        .plan-chip { width:40px; height:40px; border-radius:8px; border:1px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.07); display:flex; align-items:center; justify-content:center; font-size:0.55rem; font-weight:700; color:#94a3b8; transition:all 0.18s cubic-bezier(0.34,1.56,0.64,1); cursor:not-allowed; user-select:none; }
+        /* Transizione per proprieta' invece di `all` con curva elastica:
+           `all` animava anche width/height (la chip completata e' piu' piccola)
+           e a ogni fotogramma rimetteva in fila tutte le altre caselle, che e'
+           lo scatto che si vedeva mentre si prende un giorno in mano. */
+        .plan-chip { width:40px; height:40px; border-radius:8px; border:1px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.07); display:flex; align-items:center; justify-content:center; font-size:0.55rem; font-weight:700; color:#94a3b8; transition:opacity 0.28s var(--mo-ease), transform 0.28s var(--mo-ease), background 0.4s var(--mo-ease), border-color 0.4s var(--mo-ease), color 0.28s var(--mo-ease), box-shadow 0.45s var(--mo-ease); cursor:not-allowed; user-select:none; -webkit-touch-callout:none; touch-action:manipulation; }
         .plan-chip.assigned { cursor:pointer; border-color:rgba(var(--ac,99,102,241),0.4); background:rgba(var(--ac,99,102,241),0.12); color:#cbd5e1; }
         .plan-chip.done { width:35px; height:35px; background:var(--primary); border-color:var(--primary); color:#000; font-size:0.82rem; font-weight:900; box-shadow:0 0 0 3px rgba(var(--pr,0,255,136),0.2),0 0 14px rgba(var(--pr,0,255,136),0.5); cursor:pointer; }
         .plan-chip.locked { opacity:0.2; }
         .plan-chip.drag-over { border-color:var(--primary)!important; background:rgba(var(--pr,0,255,136),0.2)!important; transform:scale(1.14); }
+        /* ── Liberare un giorno: pressione lunga sulla chip e trascinamento
+             nel cestino. Sostituisce "Reset giorni", che svuotava tutti e
+             sette i giorni anche quando ne era sbagliato uno solo. ──
+
+           La fascia sotto le chip ha altezza fissa e contiene due cose
+           sovrapposte: l'istruzione (a riposo) e il cestino (durante la
+           presa). Si scambiano in dissolvenza, quindi il blocco non cambia
+           mai altezza e niente sotto si sposta: animare l'altezza rifaceva
+           il layout a ogni fotogramma ed e' il motivo per cui l'apparizione
+           del cestino risultava a scatti. */
+        .aw-day-slot { position:relative; height:60px; margin:-4px 0 6px; }
+        .aw-day-slot > * { position:absolute; left:50%; top:0; width:100%;
+            transform:translateX(-50%); will-change:transform,opacity; }
+        .aw-day-hint { display:block; padding-top:20px; font-size:0.54rem; line-height:1.5;
+            color:#64748b; text-align:center;
+            transition:opacity 0.26s var(--mo-ease), transform 0.3s var(--mo-ease); }
+        .aw-day-hint b { color:#94a3b8; font-weight:700; }
+        .aw-day-slot.dragging .aw-day-hint { opacity:0; transform:translateX(-50%) translateY(-6px); }
+        .aw-trash { display:flex; flex-direction:column; align-items:center; gap:5px;
+            opacity:0; pointer-events:none; transform:translateX(-50%) translateY(7px);
+            transition:opacity 0.26s var(--mo-ease), transform 0.36s var(--mo-ease); }
+        .aw-day-slot.dragging .aw-trash { opacity:1; transform:translateX(-50%) translateY(0); }
+        .aw-trash-can { width:44px; height:44px; border-radius:50%;
+            background:rgba(239,68,68,0.12); border:1.5px dashed rgba(248,113,113,0.45);
+            display:flex; align-items:center; justify-content:center;
+            transform:scale(0.86); will-change:transform;
+            transition:transform 0.36s var(--mo-ease), background 0.28s var(--mo-ease),
+                       border-color 0.28s var(--mo-ease), box-shadow 0.28s var(--mo-ease); }
+        .aw-day-slot.dragging .aw-trash-can { transform:scale(1); }
+        .aw-trash-can svg { width:21px; height:21px; overflow:visible; }
+        .aw-trash-can .bd { fill:none; stroke:#f87171; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+        .aw-trash-can .ld { fill:none; stroke:#f87171; stroke-width:2; stroke-linecap:round;
+            transform-origin:4px 7px; transition:transform 0.32s var(--mo-ease); }
+        .aw-day-slot.over .aw-trash-can { transform:scale(1.16); background:rgba(239,68,68,0.26);
+            border-style:solid; border-color:#f87171;
+            box-shadow:0 0 0 5px rgba(239,68,68,0.12), 0 0 18px rgba(239,68,68,0.34); }
+        .aw-day-slot.over .aw-trash-can .ld { transform:rotate(-22deg) translateY(-0.5px); }
+        .aw-day-slot.gulp .aw-trash-can { transform:scale(0.92); transition-duration:0.14s; }
+        .aw-trash-label { font-size:0.5rem; font-weight:700; color:#f87171; opacity:0.72; white-space:nowrap;
+            transition:opacity 0.26s var(--mo-ease), color 0.26s var(--mo-ease); }
+        .aw-day-slot.over .aw-trash-label { opacity:1; color:#fecaca; }
+        .plan-chip.aw-lifting { opacity:0.26; transform:scale(0.9); }
+        .plan-chip.aw-freed { background:rgba(239,68,68,0.18); box-shadow:0 0 0 6px rgba(239,68,68,0); }
+        /* Il riquadro trascinato esiste gia' prima della presa: al momento
+           della pressione lunga non c'e' niente da costruire, quindi il
+           gesto parte senza esitazione. */
+        /* width/max-width espliciti contro la regola globale `body > *`, che
+           allargherebbe il riquadro a tutta la colonna dell'app. */
+        .aw-day-ghost { position:fixed; top:0; left:0; z-index:9999;
+            width:max-content; max-width:calc(100% - 32px); pointer-events:none;
+            background:var(--accent); color:#fff; padding:6px 11px; border-radius:8px;
+            font-size:0.68rem; font-weight:700; box-shadow:0 5px 16px rgba(0,0,0,0.45);
+            white-space:nowrap; display:flex; align-items:center; gap:6px; opacity:0;
+            will-change:transform,opacity;
+            transition:background 0.26s var(--mo-ease), color 0.26s var(--mo-ease); }
+        .aw-day-ghost small { font-size:0.57rem; font-weight:600; opacity:0.78; }
+        .aw-day-ghost.over-trash { background:#f87171; color:#2a0606; }
+        /* Il gesto e' volontario (mezzo secondo di pressione + trascinamento):
+           al posto della finestra di conferma c'e' un annulla, che rimette
+           anche la seduta completata e la sua data nel diario. */
+        /* width/max-width espliciti contro la regola globale `body > *`:
+           senza, la barra si allarga a tutta la colonna e sembra un banner. */
+        .aw-undo { position:fixed; left:50%; z-index:9500;
+            bottom:calc(var(--nav-h) + 14px + var(--sab));
+            width:max-content; display:flex; align-items:center; gap:12px;
+            background:#0b1220; border:1px solid #334155; border-radius:12px;
+            padding:9px 10px 9px 14px; box-shadow:0 10px 30px rgba(0,0,0,0.55);
+            font-size:0.66rem; color:#e2e8f0; max-width:calc(100% - 32px);
+            opacity:0; pointer-events:none; transform:translate(-50%,12px); will-change:transform,opacity;
+            transition:opacity 0.3s var(--mo-ease), transform 0.34s var(--mo-ease); }
+        .aw-undo.show { opacity:1; transform:translate(-50%,0); pointer-events:auto; }
+        .aw-undo button { width:auto; margin:0; padding:6px 11px; font-family:inherit; font-size:0.64rem;
+            font-weight:800; text-transform:none; color:var(--primary); background:rgba(var(--pr,0,255,136),0.12);
+            border:1px solid rgba(var(--pr,0,255,136),0.4); border-radius:9px; cursor:pointer; white-space:nowrap; }
+        .aw-undo button:active { background:rgba(var(--pr,0,255,136),0.26); }
+        @media (prefers-reduced-motion:reduce) {
+            .plan-chip, .aw-day-hint, .aw-trash, .aw-trash-can, .aw-trash-can .ld,
+            .aw-trash-label, .aw-undo, .aw-day-ghost { transition-duration:0.01ms !important; }
+        }
         .plan-bottom-cols { display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:start; border-top:1px solid #334155; padding-top:12px; margin-top:4px; }
         .plan-col-label { font-size:0.52rem; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; color:#94a3b8; margin-bottom:6px; }
         .plan-proto-item { display:flex; align-items:center; background:rgba(15,23,42,0.7); border:1px solid #1e293b; border-radius:5px; padding:4px 8px; cursor:grab; font-size:0.65rem; color:#cbd5e1; user-select:none; min-height:22px; box-sizing:border-box; transition:background 0.15s,color 0.15s; margin-bottom:2px; }
@@ -4337,7 +4414,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '258';
+const APP_VERSION = '259';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -7070,6 +7147,10 @@ function renderPlanPage(w) {
         chip.dataset.week = w; chip.dataset.day = di;
         if (isUnlocked) {
             chip.onclick = () => {
+                // Il rilascio del trascinamento genera anche un click: senza
+                // questa guardia, liberare un giorno lo segnerebbe pure come
+                // svolto. Vale anche per la pressione lunga lasciata a meta'.
+                if (planTrashJustEnded()) return;
                 if (!APP.dayAssignments[w][di] && st!=='done') return;
                 if (chip.classList.contains('done')) {
                     // done → assegnato. Prima il tap cancellava anche
@@ -7103,73 +7184,48 @@ function renderPlanPage(w) {
                 }
                 checkChapterCompletion(w);
             };
+            // Pressione lunga + trascinamento nel cestino: libera questo
+            // giorno soltanto. Ha senso solo dove c'e' qualcosa da togliere.
+            if (hasA || st === 'done') planTrashSetup(chip, w, di, d);
         }
         chipsEl.appendChild(chip);
     });
     block.appendChild(chipsEl);
 
-    // Reset assegnazioni del capitolo. Il tap sulla chip non libera più il
-    // giorno (un tocco accidentale toglieva il protocollo senza annulla):
-    // questo è il punto esplicito e reversibile-per-conferma in cui si
-    // svuotano i giorni per riassegnare protocolli diversi.
+    // Fascia sotto le chip: l'istruzione a riposo, il cestino durante la
+    // presa. Compare solo se in questo capitolo c'e' un giorno da liberare.
     if (isUnlocked) {
-        const resetWrap = document.createElement('div');
-        resetWrap.style.cssText = 'display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;margin:-6px 0 14px;';
-        const resetBtn = document.createElement('button');
-        resetBtn.type = 'button';
-        resetBtn.className = 'plan-reset-btn';
-        resetBtn.textContent = '🔄 Reset giorni';
-        const nAssigned = (APP.dayAssignments[w] || []).filter(function(a){ return !!a; }).length;
-        if (nAssigned === 0) {
-            resetBtn.disabled = true;
-            resetBtn.title = 'Nessun protocollo assegnato in questo capitolo';
-        }
-        resetBtn.onclick = function() {
-            const nDone = (APP.chipStates[w] || []).filter(function(s){ return s === 'done'; }).length;
-            let msg = 'Vuoi liberare tutti i giorni di questo capitolo? I protocolli assegnati verranno rimossi e potrai riassegnarli.';
-            if (nDone > 0) {
-                msg += '\n\nAttenzione: ' + nDone + (nDone === 1 ? ' sessione già completata verrà' : ' sessioni già completate verranno') + ' azzerata' + (nDone === 1 ? '' : 'e') + '.';
-            }
-            awConfirm(msg, function(ok) {
-                if (!ok) return;
-                for (let d = 0; d < 7; d++) {
-                    APP.dayAssignments[w][d] = null;
-                    APP.chipStates[w][d] = 'rest';
-                    awSessionLogRemove(w, d);
-                }
-                APP.totalWorkouts = Math.max(0, APP.totalWorkouts - nDone);
-                APP.completedWeeks[w] = false;
-                if (APP._weekCelebrated) APP._weekCelebrated[w] = false;
-                if (APP.motivationalQuotes) APP.motivationalQuotes[w] = '';
-                saveState();
-                updateStats();
-                renderPlanPage(w);
-                if (document.getElementById('page-progress')?.classList.contains('active')) {
-                    updateProgressPage();
-                }
-                showToast('Giorni liberati: puoi assegnare nuovi protocolli.', 'success');
-            }, { title: 'Reset giorni', okLabel: 'Libera i giorni', danger: true });
-        };
-        resetWrap.appendChild(resetBtn);
+        const nLiberabili = (APP.dayAssignments[w] || []).filter(function(a){ return !!a; }).length +
+            (APP.chipStates[w] || []).filter(function(s, i){ return s === 'done' && !APP.dayAssignments[w][i]; }).length;
+        if (nLiberabili > 0) block.appendChild(planBuildTrashSlot(w));
+    }
 
-        /* Chiusura con una seduta saltata: accanto al reset, stessa misura.
-           Etichetta corta perche' i due pulsanti devono stare in riga anche
-           su schermo stretto; il perche' lo dicono la riga sotto e la
-           finestra di conferma. */
+    /* Il pulsante "Reset giorni" non c'e' piu': svuotava tutti e sette i
+       giorni del capitolo, sedute completate comprese, anche quando ne era
+       sbagliato uno solo. Adesso ogni giorno si libera per conto suo, con la
+       pressione lunga sulla chip e il trascinamento nel cestino
+       (planTrashSetup), e l'annulla della barra prende il posto della
+       finestra di conferma. */
+    if (isUnlocked) {
+        const nAssigned = (APP.dayAssignments[w] || []).filter(function(a){ return !!a; }).length;
+
+        /* Chiusura con una seduta saltata: chiudere il capitolo non distrugge
+           niente, quindi il pulsante resta. Ora e' solo nella sua riga, non
+           piu' in coppia con il reset. */
         const puoChiudere = !APP.completedWeeks[w] && nAssigned >= 2 &&
             typeof woSeduteMancanti === 'function' && woSeduteMancanti(w) === 1;
         if (puoChiudere) {
+            const closeWrap = document.createElement('div');
+            closeWrap.style.cssText = 'display:flex;justify-content:center;align-items:center;margin:-2px 0 14px;';
             const tollBtn = document.createElement('button');
             tollBtn.type = 'button';
             tollBtn.className = 'plan-close-btn';
-            tollBtn.textContent = '\u27a1\ufe0f Chiudi capitolo';
+            tollBtn.textContent = '➡️ Chiudi capitolo';
             tollBtn.title = 'Ti manca una seduta: chiudi il capitolo e sblocca il successivo';
             tollBtn.onclick = function() { woChiudiCapitoloConTolleranza(w); };
-            resetWrap.appendChild(tollBtn);
-        }
-        block.appendChild(resetWrap);
+            closeWrap.appendChild(tollBtn);
+            block.appendChild(closeWrap);
 
-        if (puoChiudere) {
             const tollNote = document.createElement('div');
             tollNote.className = 'plan-close-note';
             tollNote.textContent = 'Ti manca una seduta per chiudere il capitolo.';
@@ -10603,6 +10659,360 @@ document.addEventListener('touchend', e => {
     if (!planDragState.active) return;
     const t = e.changedTouches[0];
     planDragEnd(t.clientX, t.clientY);
+});
+
+// ════════════════════════════════════════════════
+// LIBERARE UN GIORNO — pressione lunga + cestino
+// ════════════════════════════════════════════════
+// Prende il posto di "Reset giorni", che svuotava l'intero capitolo anche
+// quando era sbagliato un giorno solo. Qui si tiene premuta la chip, sotto la
+// fila compare un cestino e ci si trascina dentro il giorno da liberare.
+// Il gesto e' abbastanza volontario da non scattare per sbaglio, quindi al
+// posto della finestra di conferma c'e' una barra "Annulla" che rimette
+// assegnazione, stato della chip e riga del diario con la sua data originale.
+
+// Nomi per esteso, con l'accento come nel resto dell'app: l'etichetta del
+// cestino e la barra dell'annulla nominano il giorno, non la sigla a tre
+// lettere della chip, perche' quello che si sta per cancellare deve essere
+// leggibile senza dover guardare quale casella si ha in mano.
+var PLAN_DAYS_LONG = ['Luned\u00ec', 'Marted\u00ec', 'Mercoled\u00ec', 'Gioved\u00ec', 'Venerd\u00ec', 'Sabato', 'Domenica'];
+
+var planTrash = {
+    active: false, dropping: false, w: -1, di: -1, source: null, over: false,
+    x: 0, y: 0, gx: 0, gy: 0, scale: 0.7, alpha: 0, off: 0, raf: 0, last: 0,
+    slot: null, can: null, rect: null, ghost: null, endedAt: 0
+};
+
+// La fascia sotto le chip: istruzione a riposo, cestino durante la presa.
+// Altezza fissa, cosi' il blocco non cambia mai dimensione e niente si sposta.
+function planBuildTrashSlot(w) {
+    var slot = document.createElement('div');
+    slot.className = 'aw-day-slot';
+    slot.id = 'aw-day-slot-' + w;
+
+    var hint = document.createElement('div');
+    hint.className = 'aw-day-hint';
+    hint.innerHTML = 'Tieni premuto un giorno e <b>trascinalo nel cestino</b> per liberarlo';
+    slot.appendChild(hint);
+
+    var trash = document.createElement('div');
+    trash.className = 'aw-trash';
+    trash.innerHTML = '<div class="aw-trash-can">' +
+        '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+        '<path class="ld" d="M3 7 L21 7 M9.5 7 L10 4.5 L14 4.5 L14.5 7"></path>' +
+        '<path class="bd" d="M5.5 7.5 L6.6 20 C6.7 20.7 7.2 21 7.8 21 L16.2 21 C16.8 21 17.3 20.7 17.4 20 L18.5 7.5 M10 11 L10.4 17.5 M14 11 L13.6 17.5"></path>' +
+        '</svg></div>' +
+        '<div class="aw-trash-label"></div>';
+    slot.appendChild(trash);
+    return slot;
+}
+
+// Un solo riquadro trascinato per tutta la vita della pagina: crearlo al
+// momento della presa costerebbe proprio il fotogramma in cui il gesto parte.
+function planTrashGhost() {
+    if (planTrash.ghost && document.body.contains(planTrash.ghost)) return planTrash.ghost;
+    var g = document.createElement('div');
+    g.className = 'aw-day-ghost';
+    g.innerHTML = '<span></span><small></small>';
+    document.body.appendChild(g);
+    planTrash.ghost = g;
+    return g;
+}
+
+function planTrashSetup(el, w, di, dayLabel) {
+    var timer = null, sx = 0, sy = 0;
+    function cancelTimer() { if (timer) { clearTimeout(timer); timer = null; } }
+    function arm(x, y) {
+        sx = x; sy = y;
+        timer = setTimeout(function() {
+            timer = null;
+            if (navigator.vibrate) { try { navigator.vibrate(26); } catch(e) {} }
+            planTrashBegin(w, di, x, y, el, dayLabel);
+        }, 400);
+    }
+    el.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+    el.addEventListener('touchstart', function(e) {
+        arm(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: true });
+    el.addEventListener('touchmove', function(e) {
+        // Movimento prima dei 400ms: sta scorrendo la pagina, non trascinando
+        var t = e.touches[0];
+        if (timer && (Math.abs(t.clientX - sx) > 8 || Math.abs(t.clientY - sy) > 8)) cancelTimer();
+    }, { passive: true });
+    el.addEventListener('touchend', cancelTimer);
+    el.addEventListener('touchcancel', cancelTimer);
+    el.addEventListener('mousedown', function(e) { e.preventDefault(); arm(e.clientX, e.clientY); });
+    el.addEventListener('mouseleave', cancelTimer);
+}
+
+function planTrashBegin(w, di, x, y, el, dayLabel) {
+    var slot = document.getElementById('aw-day-slot-' + w);
+    if (!slot) return;
+    planTrash.active = true; planTrash.dropping = false;
+    planTrash.w = w; planTrash.di = di; planTrash.source = el;
+    planTrash.over = false;
+    planTrash.slot = slot;
+    planTrash.can = slot.querySelector('.aw-trash-can');
+
+    // Il riquadro parte dal centro della casella e raggiunge il dito: nessun
+    // salto nell'istante in cui la presa scatta.
+    var r = el.getBoundingClientRect();
+    planTrash.gx = r.left + r.width / 2;
+    planTrash.gy = r.top + r.height / 2;
+    planTrash.x = x; planTrash.y = y;
+    planTrash.scale = 0.7; planTrash.alpha = 0; planTrash.off = 0;
+
+    var assign = APP.dayAssignments[w] && APP.dayAssignments[w][di];
+    var ghost = planTrashGhost();
+    ghost.classList.remove('over-trash');
+    ghost.firstChild.textContent = dayLabel;
+    ghost.lastChild.textContent = assign ? assign.protoName : 'seduta';
+    planTrashPaint();
+
+    el.classList.add('aw-lifting');
+    document.body.style.userSelect = 'none';
+    document.body.style.webkitUserSelect = 'none';
+
+    var isDone = APP.chipStates[w] && APP.chipStates[w][di] === 'done';
+    var dayLong = PLAN_DAYS_LONG[di] || dayLabel;
+    slot.querySelector('.aw-trash-label').textContent = isDone
+        ? 'Rilascia: libera ' + dayLong + ' e la seduta'
+        : 'Rilascia qui per liberare ' + dayLong;
+    slot.classList.add('dragging');
+    planUndoHide();
+
+    // Il cestino non sposta niente comparendo: la sua posizione e' gia'
+    // quella definitiva e basta misurarla una volta.
+    planTrash.rect = planTrash.can.getBoundingClientRect();
+    planTrashLoop();
+}
+
+function planTrashPaint() {
+    if (!planTrash.ghost) return;
+    planTrash.ghost.style.transform = 'translate3d(' + planTrash.gx.toFixed(2) + 'px,' +
+        (planTrash.gy + planTrash.off).toFixed(2) + 'px,0) translate(-50%,-50%) scale(' +
+        planTrash.scale.toFixed(3) + ')';
+    planTrash.ghost.style.opacity = planTrash.alpha.toFixed(3);
+}
+
+function planTrashLoop() {
+    if (planTrash.raf) return;
+    planTrash.last = 0;
+    planTrash.raf = requestAnimationFrame(planTrashTick);
+}
+
+// Un solo ciclo di disegno, con il passo corretto sul tempo realmente
+// trascorso: a 120Hz l'inseguimento ha la stessa morbidezza che a 60Hz, e il
+// riquadro non salta quando gli eventi del dito arrivano a raffica o tardi.
+function planTrashTick(now) {
+    planTrash.raf = 0;
+    var dt = planTrash.last ? Math.min(64, now - planTrash.last) : 16.7;
+    planTrash.last = now;
+    var kPos = 1 - Math.pow(1 - (planTrash.dropping ? 0.30 : 0.45), dt / 16.7);
+    var kShape = 1 - Math.pow(1 - 0.26, dt / 16.7);
+
+    planTrash.gx += (planTrash.x - planTrash.gx) * kPos;
+    planTrash.gy += (planTrash.y - planTrash.gy) * kPos;
+    var tScale = planTrash.dropping ? 0.3 : (planTrash.over ? 0.94 : 1);
+    var tAlpha = planTrash.dropping ? 0 : 1;
+    // Alzato di 30px mentre si trascina, rimesso a zero quando cade nel
+    // cestino: cosi' il dito non copre ne' il bersaglio ne' l'arrivo.
+    var tOff = planTrash.dropping ? 0 : -30;
+    planTrash.scale += (tScale - planTrash.scale) * kShape;
+    planTrash.alpha += (tAlpha - planTrash.alpha) * kShape;
+    planTrash.off += (tOff - planTrash.off) * kShape;
+    planTrashPaint();
+
+    var fermo = Math.abs(planTrash.x - planTrash.gx) < 0.5 && Math.abs(planTrash.y - planTrash.gy) < 0.5 &&
+                Math.abs(tScale - planTrash.scale) < 0.005 && Math.abs(tAlpha - planTrash.alpha) < 0.01 &&
+                Math.abs(tOff - planTrash.off) < 0.5;
+    if (!planTrash.active && fermo) {
+        planTrash.scale = tScale; planTrash.alpha = tAlpha; planTrash.off = tOff;
+        planTrashPaint();
+        return;
+    }
+    planTrash.raf = requestAnimationFrame(planTrashTick);
+}
+
+function planTrashOver(x, y) {
+    var r = planTrash.rect;
+    if (!r || !planTrash.slot || !planTrash.slot.classList.contains('dragging')) return false;
+    var pad = 24; // bersaglio piu' generoso del disegno: si punta col pollice
+    return x >= r.left - pad && x <= r.right + pad && y >= r.top - pad && y <= r.bottom + pad;
+}
+
+function planTrashMove(x, y) {
+    if (!planTrash.active) return;
+    planTrash.x = x; planTrash.y = y;
+    planTrashLoop();
+    var over = planTrashOver(x, y);
+    if (over !== planTrash.over) {
+        planTrash.over = over;
+        planTrash.slot.classList.toggle('over', over);
+        planTrash.ghost.classList.toggle('over-trash', over);
+        if (over && navigator.vibrate) { try { navigator.vibrate(14); } catch(e) {} }
+    }
+}
+
+function planTrashEnd(x, y) {
+    if (!planTrash.active) return;
+    planTrash.active = false;
+    var w = planTrash.w, di = planTrash.di, slot = planTrash.slot;
+    var dropped = planTrashOver(x, y);
+
+    document.body.style.userSelect = '';
+    document.body.style.webkitUserSelect = '';
+    planTrash.endedAt = Date.now();
+
+    if (dropped) {
+        /* Il riquadro finisce di scendere nel cestino e il giorno si libera
+           quando ci e' entrato, non un istante prima. La casella resta spenta
+           per tutta la caduta: cosi' si legge come "in viaggio" invece di
+           restare accesa mentre il riquadro sparisce. */
+        planTrash.dropping = true;
+        planTrash.x = planTrash.rect.left + planTrash.rect.width / 2;
+        planTrash.y = planTrash.rect.top + planTrash.rect.height / 2;
+        slot.classList.remove('over');
+        slot.classList.add('gulp');
+        if (navigator.vibrate) { try { navigator.vibrate(38); } catch(e) {} }
+        setTimeout(function() { slot.classList.remove('gulp', 'dragging'); }, 150);
+        setTimeout(function() { planFreeDay(w, di); }, 280);
+    } else {
+        if (planTrash.source) planTrash.source.classList.remove('aw-lifting');
+        planTrash.dropping = true; // stessa uscita in dissolvenza, senza destinazione
+        slot.classList.remove('dragging', 'over');
+    }
+    planTrashLoop();
+    planTrash.source = null;
+    planTrash.over = false;
+}
+
+// Il click di sistema arriva dopo il rilascio (su touch anche con qualche
+// decina di millisecondi di ritardo): per quel breve tratto la chip non
+// reagisce al tocco.
+function planTrashJustEnded() {
+    return !!planTrash.endedAt && (Date.now() - planTrash.endedAt) < 600;
+}
+
+// Libera un solo giorno. Fa quello che faceva il reset, ma su una casella:
+// via l'assegnazione, via la riga del diario, e il capitolo torna aperto
+// perche' senza quella seduta non e' piu' completo.
+function planFreeDay(w, di) {
+    if (!APP.dayAssignments[w] || !APP.chipStates[w]) return;
+    var prev = {
+        w: w, di: di,
+        assign: APP.dayAssignments[w][di],
+        state: APP.chipStates[w][di],
+        completed: APP.completedWeeks[w],
+        celebrated: APP._weekCelebrated ? APP._weekCelebrated[w] : false,
+        logDay: null
+    };
+    if (!prev.assign && prev.state !== 'done') return;
+
+    // La data della seduta serve per rimetterla dov'era se si annulla: il
+    // diario e' ordinato per data e ci si appoggiano storico e statistiche.
+    (APP.sessionLog || []).some(function(s) {
+        if (s && s.w === w && s.di === di) { prev.logDay = s.d; return true; }
+        return false;
+    });
+
+    if (prev.state === 'done') APP.totalWorkouts = Math.max(0, APP.totalWorkouts - 1);
+    awSessionLogRemove(w, di);
+    APP.dayAssignments[w][di] = null;
+    APP.chipStates[w][di] = 'rest';
+    APP.completedWeeks[w] = false;
+    if (APP._weekCelebrated) APP._weekCelebrated[w] = false;
+    saveState();
+    updateStats();
+    renderPlanPage(w);
+    if (document.getElementById('page-progress')?.classList.contains('active')) {
+        updateProgressPage();
+    }
+
+    // La chip e' stata ricostruita dal render: il lampo si mette su quella nuova
+    var chip = document.querySelector('#plan-pw-' + w + ' .plan-chip[data-day="' + di + '"]');
+    if (chip) {
+        chip.classList.add('aw-freed');
+        requestAnimationFrame(function() {
+            requestAnimationFrame(function() { chip.classList.remove('aw-freed'); });
+        });
+    }
+
+    var giorno = PLAN_DAYS_LONG[di] || '';
+    planUndoShow(giorno + ' liberato' + (prev.state === 'done' ? ' · seduta annullata' : ''), prev);
+}
+
+// ── Barra "Annulla" ─────────────────────────────────────
+var planUndoTimer = null;
+
+function planUndoShow(msg, prev) {
+    var bar = document.getElementById('aw-undo-bar');
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'aw-undo-bar';
+        bar.className = 'aw-undo';
+        bar.innerHTML = '<span id="aw-undo-msg"></span>' +
+                        '<button type="button" id="aw-undo-btn">Annulla</button>';
+        document.body.appendChild(bar);
+    }
+    document.getElementById('aw-undo-msg').textContent = msg;
+    document.getElementById('aw-undo-btn').onclick = function() { planUndoApply(prev); };
+    bar.classList.add('show');
+    clearTimeout(planUndoTimer);
+    planUndoTimer = setTimeout(planUndoHide, 6000);
+}
+
+function planUndoHide() {
+    var bar = document.getElementById('aw-undo-bar');
+    if (bar) bar.classList.remove('show');
+    clearTimeout(planUndoTimer);
+}
+
+function planUndoApply(prev) {
+    if (!prev || !APP.dayAssignments[prev.w]) return;
+    APP.dayAssignments[prev.w][prev.di] = prev.assign;
+    APP.chipStates[prev.w][prev.di] = prev.state;
+    if (prev.state === 'done') {
+        APP.totalWorkouts++;
+        // Stessa data di prima: rimettere "oggi" sposterebbe la seduta nel
+        // diario e falserebbe storico e statistiche.
+        var quando = prev.logDay ? new Date(prev.logDay + 'T00:00:00') : new Date();
+        if (isNaN(quando.getTime())) quando = new Date();
+        awSessionLogAdd(prev.w, prev.di, quando);
+    }
+    // Il capitolo torna com'era: se era gia' chiuso e festeggiato, non lo
+    // rifesteggia, perche' non e' successo niente di nuovo.
+    APP.completedWeeks[prev.w] = prev.completed;
+    if (APP._weekCelebrated) APP._weekCelebrated[prev.w] = prev.celebrated;
+    saveState();
+    updateStats();
+    renderPlanPage(prev.w);
+    if (document.getElementById('page-progress')?.classList.contains('active')) {
+        updateProgressPage();
+    }
+    planUndoHide();
+    if (navigator.vibrate) { try { navigator.vibrate(16); } catch(e) {} }
+}
+
+document.addEventListener('mousemove', function(e) { planTrashMove(e.clientX, e.clientY); });
+document.addEventListener('mouseup',   function(e) { planTrashEnd(e.clientX, e.clientY); });
+document.addEventListener('touchmove', function(e) {
+    if (!planTrash.active) return;
+    e.preventDefault(); // durante la presa la pagina non scorre
+    planTrashMove(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: false });
+document.addEventListener('touchend', function(e) {
+    if (!planTrash.active) return;
+    var t = e.changedTouches[0];
+    planTrashEnd(t.clientX, t.clientY);
+});
+// Se la pagina scorre con la presa attiva (mouse, rotellina), il cestino si
+// e' spostato: la posizione del bersaglio va rimisurata.
+window.addEventListener('scroll', function() {
+    if (planTrash.active && planTrash.can) planTrash.rect = planTrash.can.getBoundingClientRect();
+}, { passive: true });
+window.addEventListener('resize', function() {
+    if (planTrash.active && planTrash.can) planTrash.rect = planTrash.can.getBoundingClientRect();
 });
 
 // ════════════════════════════════════════════════
@@ -18722,6 +19132,9 @@ function woNextExAuto() {
 // BOTTOM NAV SWITCH
 // ════════════════════════════
 function navSwitch(tab) {
+    // L'annulla vale per il giorno appena liberato in questa schermata:
+    // cambiando sezione non avrebbe piu' un contesto a cui riferirsi.
+    if (typeof planUndoHide === 'function') planUndoHide();
     // Nascondi tutto
     const resultsEl = document.getElementById('results');
     if (resultsEl) resultsEl.style.display = 'none';
