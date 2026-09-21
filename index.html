@@ -2843,20 +2843,28 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
            del dito. Il pulsare e' un alone che si allarga e svanisce: niente
            che si muova o cambi misura, per non spostare la fila. */
         .chapter-tab.aw-unlock-call { opacity:1 !important; cursor:pointer !important;
-            color:#a5b4fc !important;
-            border-color:rgba(var(--ac,99,102,241),0.6) !important;
-            background:rgba(var(--ac,99,102,241),0.16) !important;
-            animation:awUnlockPulse 1.9s ease-in-out infinite; }
+            color:#eef2ff !important; font-weight:800;
+            border-color:rgba(var(--ac,99,102,241),1) !important;
+            background:rgba(var(--ac,99,102,241),0.38) !important;
+            animation:awUnlockPulse 1.45s ease-in-out infinite; }
         /* Indaco e non verde: il verde e' gia' la linguetta del capitolo che
-           stai guardando, e da ferme le due si confonderebbero. */
+           stai guardando, e da ferme le due si confonderebbero.
+           Il battito si sente su tre fronti insieme - la linguetta si gonfia,
+           l'alone si allarga e sfuma, il bagliore intorno si accende - perche'
+           il solo alone, su uno schermo al sole e con l'occhio sui giorni piu'
+           in basso, passava inosservato. scale() non sposta le altre
+           linguette: la griglia resta quella. */
         @keyframes awUnlockPulse {
-            0%   { box-shadow:0 0 0 0 rgba(var(--ac,99,102,241),0.45); }
-            70%  { box-shadow:0 0 0 6px rgba(var(--ac,99,102,241),0); }
-            100% { box-shadow:0 0 0 0 rgba(var(--ac,99,102,241),0); }
+            0%   { transform:scale(1);
+                   box-shadow:0 0 0 0 rgba(var(--ac,99,102,241),0.75), 0 0 9px 0 rgba(var(--ac,99,102,241),0.45); }
+            55%  { transform:scale(1.07);
+                   box-shadow:0 0 0 10px rgba(var(--ac,99,102,241),0), 0 0 22px 4px rgba(var(--ac,99,102,241),0.65); }
+            100% { transform:scale(1);
+                   box-shadow:0 0 0 0 rgba(var(--ac,99,102,241),0), 0 0 9px 0 rgba(var(--ac,99,102,241),0.45); }
         }
         @media (prefers-reduced-motion:reduce) {
             .chapter-tab.aw-unlock-call { animation:none;
-                box-shadow:0 0 0 2px rgba(var(--ac,99,102,241),0.35); }
+                box-shadow:0 0 0 3px rgba(var(--ac,99,102,241),0.5), 0 0 16px 2px rgba(var(--ac,99,102,241),0.45); }
         }
 
 
@@ -4475,7 +4483,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '268';
+const APP_VERSION = '269';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -7130,13 +7138,25 @@ function planSigle(nomi) {
 
 const planDragState = { active:false, protoId:null, protoName:'', ghost:null, startX:0, startY:0, hasMoved:false, sourceElement:null };
 
-function selectPlanChapter(w) {
+function selectPlanChapter(w, _propostaFatta) {
+    /* Al capitolo precedente manca una seduta sola: la proposta di sbloccare
+       viene PRIMA di guardare se questo capitolo e' raggiungibile. Il controllo
+       sotto usa anche availableWeeks, che puo' contenere un capitolo mai
+       chiuso: basta chiudere un capitolo e poi togliere la spunta a una
+       seduta (o liberare un giorno nel cestino) perche' completedWeeks torni
+       falso mentre availableWeeks resta. In quel caso la linguetta pulsava
+       ma il tocco scivolava dritto nel capitolo successivo senza aprire
+       niente, ed e' il motivo per cui la finestra non compariva.
+       Se il capitolo era gia' raggiungibile, "Non ancora" ci porta lo stesso:
+       la proposta non deve togliere una strada che c'era. */
+    if (!_propostaFatta && w > 0 && woPuoSbloccare(w - 1)) {
+        const giaRaggiungibile = !!APP.completedWeeks[w-1] || (APP.availableWeeks || []).includes(w);
+        woProponiSblocco(w - 1, giaRaggiungibile ? function() { selectPlanChapter(w, true); } : null);
+        return;
+    }
     // Chapter 0 è sempre disponibile; gli altri richiedono il precedente completato
     const isUnlocked = w === 0 || APP.completedWeeks[w-1] || APP.availableWeeks.includes(w);
     if (!isUnlocked) {
-        // Al capitolo precedente manca una seduta sola: invece di rifiutare
-        // il tocco, l'app propone di sbloccare e spiega perche' si puo'.
-        if (w > 0 && woPuoSbloccare(w - 1)) { woProponiSblocco(w - 1); return; }
         // Mostra solo feedback visivo: non cambiare tab
         const tab = document.querySelectorAll('#plan-tabs .chapter-tab')[w];
         if (tab) { tab.style.animation = 'shake 0.3s'; setTimeout(()=>tab.style.animation='', 400); }
@@ -7176,9 +7196,11 @@ function renderPlanPage(w) {
         t.classList.toggle('active', i===w);
         const unlocked = i===0 || APP.completedWeeks[i-1];
         t.classList.toggle('locked-tab', !unlocked);
-        // Pulsa solo la linguetta del capitolo che si puo' sbloccare adesso,
-        // e solo finche' e' davvero chiusa: la chiamata deve essere una sola.
-        t.classList.toggle('aw-unlock-call', !unlocked && i === w + 1 && woPuoSbloccare(w));
+        /* Pulsa la linguetta del capitolo che si puo' sbloccare adesso. Non
+           si guarda se risulta raggiungibile: un capitolo chiuso e poi
+           riaperto (spunta tolta, giorno liberato) resta in availableWeeks
+           pur non essendo completo, e proprio li' la proposta serve. */
+        t.classList.toggle('aw-unlock-call', i === w + 1 && woPuoSbloccare(w));
     });
 
     const isUnlocked = w === 0 || APP.completedWeeks[w-1] || APP.availableWeeks.includes(w);
@@ -9720,8 +9742,8 @@ function woPuoSbloccare(w) {
 /* La proposta, aperta toccando la linguetta che pulsa. Dice quante sedute
    mancano, perche' saltarne una non compromette il lavoro fatto e cosa resta
    vero nello storico: la richiesta e' esplicita, non un automatismo. */
-function woProponiSblocco(w) {
-    if (!woPuoSbloccare(w)) return;
+function woProponiSblocco(w, seRifiuta) {
+    if (!woPuoSbloccare(w)) { if (typeof seRifiuta === 'function') seRifiuta(); return; }
     const prossimo = 'Chapter ' + (w + 2) + (CHAPTER_NAMES[w + 1] ? ' \u2014 ' + CHAPTER_NAMES[w + 1] : '');
     const assegnate = (APP.dayAssignments[w] || []).filter(a => a !== null).length;
     awConfirm(
@@ -9729,7 +9751,7 @@ function woProponiSblocco(w) {
         'Puoi passare avanti lo stesso. Una seduta saltata non disfa il lavoro gi\u00e0 fatto: le perdite da stop si misurano dopo settimane, non dopo un giorno (Mujika & Padilla 2003).\n\n' +
         'Sbloccare il capitolo non alza i carichi da solo: salgono solo dove le ripetizioni che hai davvero eseguito lo giustificano (regola 2-per-2, Baechle & Earle 2008). E la seduta che manca resta non fatta nello storico.',
         function(ok) {
-            if (!ok) return;
+            if (!ok) { if (typeof seRifiuta === 'function') seRifiuta(); return; }
             woChiudiCapitolo(w);
             renderPlanPage(w);
         },
