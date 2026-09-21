@@ -2426,20 +2426,28 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .aw-day-slot.over .aw-trash-label { opacity:1; color:#fecaca; }
         .plan-chip.aw-lifting { opacity:0.26; transform:scale(0.9); }
         .plan-chip.aw-freed { background:rgba(239,68,68,0.18); box-shadow:0 0 0 6px rgba(239,68,68,0); }
-        /* Il riquadro trascinato esiste gia' prima della presa: al momento
-           della pressione lunga non c'e' niente da costruire, quindi il
-           gesto parte senza esitazione. */
-        /* width/max-width espliciti contro la regola globale `body > *`, che
-           allargherebbe il riquadro a tutta la colonna dell'app. */
-        .aw-day-ghost { position:fixed; top:0; left:0; z-index:9999;
-            width:max-content; max-width:calc(100% - 32px); pointer-events:none;
-            background:var(--accent); color:#fff; padding:6px 11px; border-radius:8px;
-            font-size:0.68rem; font-weight:700; box-shadow:0 5px 16px rgba(0,0,0,0.45);
-            white-space:nowrap; display:flex; align-items:center; gap:6px; opacity:0;
+        /* Quello che si trascina e' la casella stessa, staccata dalla fila:
+           stessa forma, stessa sigla, stessi colori della chip di partenza
+           (misura copiata dall'originale, perche' la chip completata e' piu'
+           piccola). Il fondo e' reso opaco sovrapponendo la tinta al colore
+           della scheda: trasparente si leggerebbe il testo sottostante.
+           Esiste gia' prima della presa, cosi' al momento della pressione
+           lunga non c'e' niente da costruire e il gesto parte subito.
+           width esplicita anche contro la regola globale `body > *`. */
+        .aw-day-ghost { position:fixed; top:0; left:0; z-index:9999; width:40px; height:40px;
+            display:flex; align-items:center; justify-content:center; border-radius:8px;
+            border:1px solid rgba(var(--ac,99,102,241),0.55);
+            background:linear-gradient(rgba(var(--ac,99,102,241),0.22), rgba(var(--ac,99,102,241),0.22)), var(--card);
+            color:#e2e8f0; font-size:0.55rem; font-weight:700;
+            box-shadow:0 10px 24px rgba(0,0,0,0.55); pointer-events:none; opacity:0;
             will-change:transform,opacity;
-            transition:background 0.26s var(--mo-ease), color 0.26s var(--mo-ease); }
-        .aw-day-ghost small { font-size:0.57rem; font-weight:600; opacity:0.78; }
-        .aw-day-ghost.over-trash { background:#f87171; color:#2a0606; }
+            transition:background 0.26s var(--mo-ease), border-color 0.26s var(--mo-ease),
+                       color 0.26s var(--mo-ease); }
+        .aw-day-ghost.done { background:var(--primary); border-color:var(--primary);
+            color:#000; font-size:0.82rem; font-weight:900; }
+        .aw-day-ghost.over-trash { border-color:#f87171; color:#fecaca;
+            background:linear-gradient(rgba(239,68,68,0.34), rgba(239,68,68,0.34)), var(--card); }
+        .aw-day-ghost.done.over-trash { background:#f87171; border-color:#fca5a5; color:#2a0606; }
         /* Il gesto e' volontario (mezzo secondo di pressione + trascinamento):
            al posto della finestra di conferma c'e' un annulla, che rimette
            anche la seduta completata e la sua data nel diario. */
@@ -4414,7 +4422,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '259';
+const APP_VERSION = '260';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -10713,7 +10721,6 @@ function planTrashGhost() {
     if (planTrash.ghost && document.body.contains(planTrash.ghost)) return planTrash.ghost;
     var g = document.createElement('div');
     g.className = 'aw-day-ghost';
-    g.innerHTML = '<span></span><small></small>';
     document.body.appendChild(g);
     planTrash.ghost = g;
     return g;
@@ -10760,20 +10767,22 @@ function planTrashBegin(w, di, x, y, el, dayLabel) {
     planTrash.gx = r.left + r.width / 2;
     planTrash.gy = r.top + r.height / 2;
     planTrash.x = x; planTrash.y = y;
-    planTrash.scale = 0.7; planTrash.alpha = 0; planTrash.off = 0;
+    // Parte esattamente sopra la casella, alla sua misura: la chip sembra
+    // staccarsi dalla fila invece di essere sostituita da qualcos'altro.
+    planTrash.scale = 1; planTrash.alpha = 0.9; planTrash.off = 0;
 
-    var assign = APP.dayAssignments[w] && APP.dayAssignments[w][di];
+    var isDone = APP.chipStates[w] && APP.chipStates[w][di] === 'done';
     var ghost = planTrashGhost();
-    ghost.classList.remove('over-trash');
-    ghost.firstChild.textContent = dayLabel;
-    ghost.lastChild.textContent = assign ? assign.protoName : 'seduta';
+    ghost.className = 'aw-day-ghost' + (isDone ? ' done' : '');
+    ghost.textContent = el.textContent;  // la sigla del giorno, o la spunta
+    ghost.style.width = Math.round(r.width) + 'px';
+    ghost.style.height = Math.round(r.height) + 'px';
     planTrashPaint();
 
     el.classList.add('aw-lifting');
     document.body.style.userSelect = 'none';
     document.body.style.webkitUserSelect = 'none';
 
-    var isDone = APP.chipStates[w] && APP.chipStates[w][di] === 'done';
     var dayLong = PLAN_DAYS_LONG[di] || dayLabel;
     slot.querySelector('.aw-trash-label').textContent = isDone
         ? 'Rilascia: libera ' + dayLong + ' e la seduta'
@@ -10813,11 +10822,12 @@ function planTrashTick(now) {
 
     planTrash.gx += (planTrash.x - planTrash.gx) * kPos;
     planTrash.gy += (planTrash.y - planTrash.gy) * kPos;
-    var tScale = planTrash.dropping ? 0.3 : (planTrash.over ? 0.94 : 1);
+    var tScale = planTrash.dropping ? 0.3 : (planTrash.over ? 0.92 : 1.12);
     var tAlpha = planTrash.dropping ? 0 : 1;
-    // Alzato di 30px mentre si trascina, rimesso a zero quando cade nel
-    // cestino: cosi' il dito non copre ne' il bersaglio ne' l'arrivo.
-    var tOff = planTrash.dropping ? 0 : -30;
+    // Alzata di 40px mentre si trascina (quanto basta perche' il bordo
+    // inferiore resti sopra il cestino) e rimessa a zero quando ci cade
+    // dentro: cosi' il dito non copre ne' il bersaglio ne' l'arrivo.
+    var tOff = planTrash.dropping ? 0 : -40;
     planTrash.scale += (tScale - planTrash.scale) * kShape;
     planTrash.alpha += (tAlpha - planTrash.alpha) * kShape;
     planTrash.off += (tOff - planTrash.off) * kShape;
