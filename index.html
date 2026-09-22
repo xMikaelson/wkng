@@ -4483,7 +4483,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '273';
+const APP_VERSION = '274';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -4527,6 +4527,7 @@ const APP = {
     progOrder: [],
     progOrderAt: 0,
     streakCarry: 0,    // sedute consecutive ereditate dai cicli gia' chiusi
+    workoutsCarry: 0,  // sedute chiuse su settimane poi riscritte da un altro piano
     currentExerciseIndex: 0,
     currentSet: 1,
     savedProtocols: [],
@@ -4682,6 +4683,7 @@ function saveState() {
             progOrder: APP.progOrder || [],
             progOrderAt: APP.progOrderAt || 0,
             streakCarry: APP.streakCarry || 0,
+            workoutsCarry: APP.workoutsCarry || 0,
             _srMigratedV151: APP._srMigratedV151 || false
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
@@ -4859,6 +4861,7 @@ function loadState() {
         APP.progOrder = Array.isArray(saved.progOrder) ? saved.progOrder : [];
         APP.progOrderAt = saved.progOrderAt || 0;
         APP.streakCarry = saved.streakCarry || 0;
+        APP.workoutsCarry = saved.workoutsCarry || 0;
         APP._srMigratedV151 = saved._srMigratedV151 || false;
         APP.currentExerciseIndex = saved.currentExerciseIndex || 0;
         APP.savedProtocols = saved.savedProtocols || [];
@@ -6724,6 +6727,7 @@ async function onLoginSuccess(user, usernameOverride = null) {
             APP.progOrderAt = s.progOrderAt || 0;
         }
         if ((s.streakCarry || 0) > (APP.streakCarry || 0)) APP.streakCarry = s.streakCarry;
+        if ((s.workoutsCarry || 0) > (APP.workoutsCarry || 0)) APP.workoutsCarry = s.workoutsCarry;
         try { awSyncStartDate(); } catch(e) {}
     }
     const { data: protocols } = await sbClient.from('protocols').select('*').eq('user_id', user.id).order('created_at');
@@ -6941,6 +6945,36 @@ function planBackfillPlanDays(w){
   }
 }
 
+/* Un capitolo gia' chiuso non si riscrive: e' storia, e il piano con cui e'
+   stato fatto resta il suo. Tutti gli altri passano per intero al piano nuovo,
+   spunte comprese: tenere i giorni completati legati al piano precedente
+   lasciava in settimana due piani insieme e schiacciava quello nuovo sui
+   pochi giorni rimasti liberi. Le sedute davvero fatte non si perdono, stanno
+   in APP.sessionLog (diario, striscia) e in APP.totalWorkouts, che questa
+   riscrittura non tocca. */
+function planPuoRiscrivere(wi){
+  return !(APP.completedWeeks && APP.completedWeeks[wi]);
+}
+
+/* Le sedute si contano dalle spunte in settimana (updateStats). Riscrivendo
+   una settimana quelle spunte spariscono, ma le sedute sono state fatte: il
+   loro numero passa di qui e viene risommato, cosi' "Allenamenti" non cala
+   cambiando piano. Il diario (APP.sessionLog) non si tocca: e' l'elenco vero,
+   con le date, e sopravvive da solo. */
+function planRiportaSedute(wi){
+  const riga = APP.chipStates && APP.chipStates[wi];
+  if (!riga) return;
+  let n = 0;
+  for (let d = 0; d < 7; d++){ if (riga[d] === 'done') n++; }
+  if (n) APP.workoutsCarry = (APP.workoutsCarry || 0) + n;
+}
+
+/* Un solo posto in cui si decide quante sono le sedute fatte. */
+function awCalcTotalWorkouts(){
+  return (APP.workoutsCarry || 0) +
+         APP.chipStates.flat().filter(function(st){ return st === 'done'; }).length;
+}
+
 /* Riscrive la settimana con i protocolli del bundle scelto. Senza questo la
    pianificazione restava quella del piano precedente: il bundle veniva messo
    in uso ma i giorni continuavano a mostrare i protocolli dell'altro. */
@@ -6952,16 +6986,16 @@ function planApplyBundleSchedule(bundle){
   for (let wi = 0; wi < N_WEEKS; wi++){
     if (!APP.chipStates[wi]) APP.chipStates[wi] = ['rest','rest','rest','rest','rest','rest','rest'];
     if (!APP.dayAssignments[wi]) APP.dayAssignments[wi] = [null,null,null,null,null,null,null];
-    // libera i giorni non ancora completati
+    if (!planPuoRiscrivere(wi)) continue;
+    planRiportaSedute(wi);
+    // libera la settimana
     for (let d = 0; d < 7; d++){
-      if (APP.chipStates[wi][d] === 'done') continue;
       APP.chipStates[wi][d] = 'rest';
       APP.dayAssignments[wi][d] = null;
     }
     withDay.forEach(function(p){
       const d = p._planDay;
       if (d < 0 || d > 6) return;
-      if (APP.chipStates[wi][d] === 'done') return;
       APP.chipStates[wi][d] = 'selected';
       APP.dayAssignments[wi][d] = { protoId: p.id, protoName: p.name };
       if (wi === 0) n++;
@@ -7003,15 +7037,15 @@ function planApplyProtoSchedule(proto){
   for (let wi = 0; wi < N_WEEKS; wi++){
     if (!APP.chipStates[wi]) APP.chipStates[wi] = ['rest','rest','rest','rest','rest','rest','rest'];
     if (!APP.dayAssignments[wi]) APP.dayAssignments[wi] = [null,null,null,null,null,null,null];
-    // libera i giorni non ancora completati
+    if (!planPuoRiscrivere(wi)) continue;
+    planRiportaSedute(wi);
+    // libera la settimana
     for (let d = 0; d < 7; d++){
-      if (APP.chipStates[wi][d] === 'done') continue;
       APP.chipStates[wi][d] = 'rest';
       APP.dayAssignments[wi][d] = null;
     }
     giorni.forEach(function(d){
       if (d < 0 || d > 6) return;
-      if (APP.chipStates[wi][d] === 'done') return;
       APP.chipStates[wi][d] = 'selected';
       APP.dayAssignments[wi][d] = { protoId: proto.id, protoName: proto.name };
     });
@@ -12162,7 +12196,7 @@ function cheatLeveling() {
     APP.completedWeeks = [true, true, true, true, true];
     APP._weekCelebrated = [true, true, true, true, true]; // niente popup a raffica al primo reload
     APP.availableWeeks = [0, 1, 2, 3, 4];
-    APP.totalWorkouts = APP.chipStates.flat().filter(function(s) { return s === 'done'; }).length;
+    APP.totalWorkouts = awCalcTotalWorkouts();
     APP.progressionPending = true; // Ch.4 chiuso: la prossima entrata in Ch.1 applica progressione
 
     // Trim loadHistory come fa logLoadHistory (max 800 righe)
@@ -19154,7 +19188,7 @@ function woCompleteSet() {
         try {
             if (APP.chipStates[wIdx] && APP.chipStates[wIdx][di] !== 'done') {
                 APP.chipStates[wIdx][di] = 'done';
-                APP.totalWorkouts = APP.chipStates.flat().filter(s => s === 'done').length;
+                APP.totalWorkouts = awCalcTotalWorkouts();
             }
         } catch (e) { awLog.warn('chip done:', e); }
 
@@ -19855,7 +19889,7 @@ function _performLogoutNow() {
     sbClient.auth.signOut();
     localStorage.removeItem(STORAGE_KEY);
     APP.userName = null; APP.exerciseData = []; APP.totalWorkouts = 0; APP.startDate = null;
-    APP.sessionLog = []; APP.diary = []; APP.streakCarry = 0;
+    APP.sessionLog = []; APP.diary = []; APP.streakCarry = 0; APP.workoutsCarry = 0;
     APP.progOrder = []; APP.progOrderAt = 0;
     APP.selectedViewWeek = 0; APP.completedWeeks = [false,false,false,false,false]; APP.availableWeeks = [0];
     APP.chipStates = [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']];
@@ -20275,7 +20309,7 @@ function updateStats() {
     } else {
         document.getElementById('days-count').innerText = "0";
     }
-    APP.totalWorkouts = APP.chipStates.flat().filter(s => s === 'done').length;
+    APP.totalWorkouts = awCalcTotalWorkouts();
     document.getElementById('workouts-count').innerText = APP.totalWorkouts;
     const weeksOk = APP.completedWeeks.filter(Boolean).length;
     document.getElementById('weeks-count').innerText = weeksOk;
@@ -22006,12 +22040,12 @@ function finishOnboarding() {
             /* Prima si libera la settimana, poi si assegnano i giorni nuovi.
                Senza questo passaggio il wizard scriveva solo i giorni scelti e
                lasciava sul piano quelli del protocollo precedente: creandone
-               uno da 3 giorni dopo uno da 5, ne restavano accesi 5. I giorni
-               gia' completati non si toccano, come in planApplyBundleSchedule,
-               che fa lo stesso giro quando un piano si attiva dalla pagina
-               Piani: la seduta e' stata fatta e il suo protocollo va tenuto. */
+               uno da 3 giorni dopo uno da 5, ne restavano accesi 5. Stessa
+               regola di planApplyBundleSchedule: si riscrive tutto, spunte
+               comprese, tranne i capitoli gia' chiusi. */
+            if (!planPuoRiscrivere(wIdx)) return;
+            planRiportaSedute(wIdx);
             for (let d = 0; d < 7; d++) {
-                if (APP.chipStates[wIdx][d] === 'done') continue;
                 APP.chipStates[wIdx][d] = 'rest';
                 APP.dayAssignments[wIdx][d] = null;
             }
@@ -22020,8 +22054,6 @@ function finishOnboarding() {
                     ? splitGroupProtos[i % splitGroupProtos.length]
                     : singleProto;
                 if (!proto) return;
-                // Un giorno gia' completato non va sovrascritto
-                if (APP.chipStates[wIdx][dayIndex] === 'done') return;
                 APP.chipStates[wIdx][dayIndex] = 'selected';
                 APP.dayAssignments[wIdx][dayIndex] = { protoId: proto.id, protoName: proto.name };
                 proto._planDay = dayIndex;   // il giorno appartiene al protocollo, non alla settimana
@@ -22063,6 +22095,7 @@ function finishOnboarding() {
         progOrder: APP.progOrder || [],
         progOrderAt: APP.progOrderAt || 0,
         streakCarry: APP.streakCarry || 0,
+        workoutsCarry: APP.workoutsCarry || 0,
         startDate: APP.startDate ? APP.startDate.toISOString() : null,
         userName: APP.userName, selectedViewWeek: APP.selectedViewWeek,
         completedWeeks: APP.completedWeeks, availableWeeks: APP.availableWeeks,
@@ -23777,6 +23810,7 @@ async function performFullReset() {
     APP.diary = [];               // note di fine seduta
     APP.progOrder = []; APP.progOrderAt = 0;   // ordine personale delle box
     APP.streakCarry = 0;          // sedute consecutive ereditate
+    APP.workoutsCarry = 0;        // sedute di settimane riscritte da un altro piano
     APP.personalRecords = {};     // record personali → trofei/badge PR
     APP.prMeta = {};              // meta del record (kg, reps, target, data)
     APP.prLegacy = null;          // archivio record pre-v.168
