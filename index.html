@@ -4483,7 +4483,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '272';
+const APP_VERSION = '273';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -6968,6 +6968,59 @@ function planApplyBundleSchedule(bundle){
     });
   }
   return n;
+}
+
+/* Attivare un protocollo porta con se' la sua settimana, esattamente come
+   planActivateBundle fa per un piano intero. activateProtocol non tocca
+   dayAssignments (sono globali, non per protocollo), quindi senza questo
+   passaggio cambiava il protocollo corrente e sullo sfondo restavano accese
+   le chip dei giorni del piano precedente. */
+function planApplyProtoSchedule(proto){
+  if (!proto) return;
+  const w = APP.selectedViewWeek || 0;
+  planBackfillPlanDays(w);
+
+  // Chi fa parte di un piano porta con se' tutto il piano
+  const bnd = planGroupProtocols(APP.savedProtocols).bundles.find(function(b){
+    return b.protos.some(function(p){ return p.id === proto.id; });
+  });
+  if (bnd){ planApplyBundleSchedule(bnd); planFocus = { type:'b', id: bnd.id }; return; }
+
+  /* Protocollo singolo. I giorni si cercano in quest'ordine: quelli che
+     occupa gia' in settimana (attivarlo mentre e' in uso non deve spostarlo),
+     poi _planDays, poi _planDay. _planDay e' uno solo per costruzione, quindi
+     da solo non basta a un protocollo tenuto su piu' giorni: tornandoci sopra
+     ne avrebbe recuperato uno. Se non risulta niente prende i giorni su cui
+     ci si stava allenando, la stessa regola del protocollo creato a mano:
+     meglio la frequenza gia' in uso che una settimana vuota. */
+  const riga = (APP.dayAssignments && APP.dayAssignments[w]) ? APP.dayAssignments[w] : [];
+  let giorni = [];
+  for (let d = 0; d < 7; d++){ if (riga[d] && riga[d].protoId === proto.id) giorni.push(d); }
+  if (!giorni.length && Array.isArray(proto._planDays)) giorni = proto._planDays.slice();
+  if (!giorni.length && typeof proto._planDay === 'number') giorni = [proto._planDay];
+  if (!giorni.length){ for (let d = 0; d < 7; d++){ if (riga[d]) giorni.push(d); } }
+
+  for (let wi = 0; wi < N_WEEKS; wi++){
+    if (!APP.chipStates[wi]) APP.chipStates[wi] = ['rest','rest','rest','rest','rest','rest','rest'];
+    if (!APP.dayAssignments[wi]) APP.dayAssignments[wi] = [null,null,null,null,null,null,null];
+    // libera i giorni non ancora completati
+    for (let d = 0; d < 7; d++){
+      if (APP.chipStates[wi][d] === 'done') continue;
+      APP.chipStates[wi][d] = 'rest';
+      APP.dayAssignments[wi][d] = null;
+    }
+    giorni.forEach(function(d){
+      if (d < 0 || d > 6) return;
+      if (APP.chipStates[wi][d] === 'done') return;
+      APP.chipStates[wi][d] = 'selected';
+      APP.dayAssignments[wi][d] = { protoId: proto.id, protoName: proto.name };
+    });
+  }
+  if (giorni.length){
+    proto._planDays = giorni.slice();
+    if (typeof proto._planDay !== 'number') proto._planDay = giorni[0];
+  }
+  planFocus = { type:'p', id: proto.id };
 }
 
 function planActivateBundle(bundle){
@@ -21976,6 +22029,11 @@ function finishOnboarding() {
         };
         for (let wi = 0; wi < N_WEEKS; wi++) assign(wi);
 
+        /* _planDay ne tiene uno solo: per un protocollo singolo messo su piu'
+           giorni serve l'elenco intero, altrimenti riattivandolo piu' tardi
+           tornerebbe su un giorno soltanto. */
+        if (splitGroupProtos.length <= 1 && singleProto) singleProto._planDays = sortedDays.slice();
+
         /* Il filtro dei giorni nella pagina Piani restava puntato sul piano
            precedente, che ora non occupa piu' nessun giorno: i giorni nuovi
            sarebbero apparsi tutti in ombra. Il focus passa al piano appena
@@ -22957,8 +23015,15 @@ function renderChapterProtoLists() {
             item.innerHTML = `<span class="chapter-proto-item-name">${escapeHTML(proto.name)}</span><span class="chapter-proto-drag-icon">⠿</span>`;
             // Click per attivare
             item.onclick = () => {
+                /* "Attivare" vuol dire mettere in uso il piano di questo
+                   protocollo, non solo cambiare la scheda corrente: senza la
+                   riga qui sotto i giorni restavano quelli del protocollo
+                   precedente. Il trascinamento non passa di qui, quindi un
+                   giorno appena assegnato non viene riscritto. */
+                planApplyProtoSchedule(proto);
                 activateProtocol(proto.id, true);
                 renderChapterProtoLists();
+                if (typeof renderPlanPage === 'function') renderPlanPage(APP.selectedViewWeek || 0);
             };
             // Riusa setupDrag esistente
             setupDrag(item, proto.id, proto.name);
