@@ -4483,7 +4483,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '274';
+const APP_VERSION = '275';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -4527,7 +4527,8 @@ const APP = {
     progOrder: [],
     progOrderAt: 0,
     streakCarry: 0,    // sedute consecutive ereditate dai cicli gia' chiusi
-    workoutsCarry: 0,  // sedute chiuse su settimane poi riscritte da un altro piano
+    workoutsCarry: 0,  // riporto dei salvataggi v274, prima dello stato per piano
+    planStates: {},    // { chiave piano: settimana, spunte e capitoli di quel piano }
     currentExerciseIndex: 0,
     currentSet: 1,
     savedProtocols: [],
@@ -4648,6 +4649,11 @@ function normalizeWeekState() {
 function saveState() {
     try {
         syncActiveProtocol();
+        /* La settimana in corso appartiene al piano in uso: si tiene allineata
+           a ogni salvataggio, altrimenti chiudendo l'app senza passare da un
+           cambio di piano l'archivio resterebbe indietro. Le voci dei piani
+           cancellati vanno via qui, cosi' il salvataggio non cresce a vuoto. */
+        try { planSaveState(planCurrentKey()); planPruneStates(); } catch(_) {}
         // Allinea il dizionario MTR ai protocolli PRIMA di comporre toSave:
         // così ogni MTR impostato in "I miei piani" viene persistito nello
         // stesso salvataggio, senza passare dal riscaldamento.
@@ -4684,6 +4690,7 @@ function saveState() {
             progOrderAt: APP.progOrderAt || 0,
             streakCarry: APP.streakCarry || 0,
             workoutsCarry: APP.workoutsCarry || 0,
+            planStates: APP.planStates || {},
             _srMigratedV151: APP._srMigratedV151 || false
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
@@ -4862,6 +4869,7 @@ function loadState() {
         APP.progOrderAt = saved.progOrderAt || 0;
         APP.streakCarry = saved.streakCarry || 0;
         APP.workoutsCarry = saved.workoutsCarry || 0;
+        APP.planStates = (saved.planStates && typeof saved.planStates === 'object') ? saved.planStates : {};
         APP._srMigratedV151 = saved._srMigratedV151 || false;
         APP.currentExerciseIndex = saved.currentExerciseIndex || 0;
         APP.savedProtocols = saved.savedProtocols || [];
@@ -6728,6 +6736,12 @@ async function onLoginSuccess(user, usernameOverride = null) {
         }
         if ((s.streakCarry || 0) > (APP.streakCarry || 0)) APP.streakCarry = s.streakCarry;
         if ((s.workoutsCarry || 0) > (APP.workoutsCarry || 0)) APP.workoutsCarry = s.workoutsCarry;
+        if (s.planStates && typeof s.planStates === 'object') {
+            APP.planStates = APP.planStates || {};
+            Object.keys(s.planStates).forEach(function(k){
+                if (!APP.planStates[k]) APP.planStates[k] = s.planStates[k];
+            });
+        }
         try { awSyncStartDate(); } catch(e) {}
     }
     const { data: protocols } = await sbClient.from('protocols').select('*').eq('user_id', user.id).order('created_at');
@@ -6945,34 +6959,119 @@ function planBackfillPlanDays(w){
   }
 }
 
-/* Un capitolo gia' chiuso non si riscrive: e' storia, e il piano con cui e'
-   stato fatto resta il suo. Tutti gli altri passano per intero al piano nuovo,
-   spunte comprese: tenere i giorni completati legati al piano precedente
-   lasciava in settimana due piani insieme e schiacciava quello nuovo sui
-   pochi giorni rimasti liberi. Le sedute davvero fatte non si perdono, stanno
-   in APP.sessionLog (diario, striscia) e in APP.totalWorkouts, che questa
-   riscrittura non tocca. */
-function planPuoRiscrivere(wi){
-  return !(APP.completedWeeks && APP.completedWeeks[wi]);
+/* ── STATO DELLA SETTIMANA, PIANO PER PIANO ──────────────────────────
+   chipStates e dayAssignments nascono globali: una sola settimana per tutta
+   l'app, condivisa da qualunque protocollo. Cambiando piano l'unico modo di
+   mostrare i giorni giusti era sovrascriverla, e le spunte del piano che si
+   lasciava sparivano per sempre.
+   Qui la settimana diventa roba del piano: uscendo la si mette via intera
+   (giorni, spunte, capitoli) e entrando si rimette quella del piano scelto.
+   Il reset che si vede cambiando protocollo e' quindi solo una sostituzione:
+   tornando indietro l'allenamento fatto e' ancora li', su tutti i capitoli. */
+
+function planNuovaSettimana(){
+  const cs = [], da = [];
+  for (let i = 0; i < N_WEEKS; i++){
+    cs.push(['rest','rest','rest','rest','rest','rest','rest']);
+    da.push([null,null,null,null,null,null,null]);
+  }
+  return { chipStates: cs, dayAssignments: da };
 }
 
-/* Le sedute si contano dalle spunte in settimana (updateStats). Riscrivendo
-   una settimana quelle spunte spariscono, ma le sedute sono state fatte: il
-   loro numero passa di qui e viene risommato, cosi' "Allenamenti" non cala
-   cambiando piano. Il diario (APP.sessionLog) non si tocca: e' l'elenco vero,
-   con le date, e sopravvive da solo. */
-function planRiportaSedute(wi){
-  const riga = APP.chipStates && APP.chipStates[wi];
-  if (!riga) return;
-  let n = 0;
-  for (let d = 0; d < 7; d++){ if (riga[d] === 'done') n++; }
-  if (n) APP.workoutsCarry = (APP.workoutsCarry || 0) + n;
+/* La chiave e' il piano, non il protocollo: i protocolli di uno split
+   condividono la stessa settimana, quindi la stessa voce. */
+function planKeyOf(proto){
+  if (!proto) return null;
+  const b = planGroupProtocols(APP.savedProtocols).bundles.find(function(x){
+    return x.protos.some(function(p){ return p.id === proto.id; });
+  });
+  return b ? ('b:' + b.id) : ('p:' + proto.id);
+}
+function planCurrentKey(){
+  return planKeyOf((APP.savedProtocols || []).find(function(x){ return x.id === APP.activeProtocolId; }));
 }
 
-/* Un solo posto in cui si decide quante sono le sedute fatte. */
+function planSnapshot(){
+  return {
+    chipStates: JSON.parse(JSON.stringify(APP.chipStates || [])),
+    dayAssignments: JSON.parse(JSON.stringify(APP.dayAssignments || [])),
+    completedWeeks: (APP.completedWeeks || []).slice(),
+    availableWeeks: (APP.availableWeeks || []).slice(),
+    weekCelebrated: (APP._weekCelebrated || []).slice(),
+    selectedViewWeek: APP.selectedViewWeek || 0
+  };
+}
+function planSaveState(key){
+  if (!key) return;
+  if (!APP.planStates) APP.planStates = {};
+  APP.planStates[key] = planSnapshot();
+}
+/* Le righe mancanti si completano invece di fidarsi: uno stato salvato da una
+   versione con meno capitoli non deve lasciare buchi. */
+function planRestoreState(key){
+  const s = key && APP.planStates && APP.planStates[key];
+  if (!s || !Array.isArray(s.chipStates) || !s.chipStates.length) return false;
+  const vuota = planNuovaSettimana();
+  APP.chipStates = [];
+  APP.dayAssignments = [];
+  for (let i = 0; i < N_WEEKS; i++){
+    const cs = s.chipStates[i], da = (s.dayAssignments || [])[i];
+    APP.chipStates[i] = Array.isArray(cs) && cs.length === 7 ? cs.slice() : vuota.chipStates[i];
+    APP.dayAssignments[i] = Array.isArray(da) && da.length === 7
+      ? JSON.parse(JSON.stringify(da)) : vuota.dayAssignments[i];
+  }
+  APP.completedWeeks = [];
+  APP._weekCelebrated = [];
+  for (let i = 0; i < N_WEEKS; i++){
+    APP.completedWeeks[i] = !!(s.completedWeeks || [])[i];
+    APP._weekCelebrated[i] = !!(s.weekCelebrated || [])[i];
+  }
+  APP.availableWeeks = Array.isArray(s.availableWeeks) && s.availableWeeks.length
+    ? s.availableWeeks.filter(function(w){ return w >= 0 && w < N_WEEKS; }) : [0];
+  if (!APP.availableWeeks.length) APP.availableWeeks = [0];
+  const vis = s.selectedViewWeek || 0;
+  APP.selectedViewWeek = APP.availableWeeks.indexOf(vis) >= 0 ? vis : APP.availableWeeks[APP.availableWeeks.length - 1];
+  return true;
+}
+
+/* Un piano al primo uso parte dal Capitolo 1 con la settimana pulita. */
+function planResetSettimana(){
+  const v = planNuovaSettimana();
+  APP.chipStates = v.chipStates;
+  APP.dayAssignments = v.dayAssignments;
+  APP.completedWeeks = [];
+  APP._weekCelebrated = [];
+  for (let i = 0; i < N_WEEKS; i++){ APP.completedWeeks[i] = false; APP._weekCelebrated[i] = false; }
+  APP.availableWeeks = [0];
+  APP.selectedViewWeek = 0;
+}
+
+/* Voci di piani non piu' esistenti: vanno via, altrimenti il salvataggio
+   cresce per sempre. */
+function planPruneStates(){
+  if (!APP.planStates) { APP.planStates = {}; return; }
+  const vive = {};
+  (APP.savedProtocols || []).forEach(function(p){ const k = planKeyOf(p); if (k) vive[k] = 1; });
+  Object.keys(APP.planStates).forEach(function(k){ if (!vive[k]) delete APP.planStates[k]; });
+}
+
+/* Le sedute si contano dalle spunte, ma le spunte ora stanno in piu' posti:
+   quelle del piano in uso piu' quelle messe via con gli altri piani. Cosi'
+   "Allenamenti" non cala cambiando piano e non raddoppia tornando indietro.
+   workoutsCarry e' il riporto dei salvataggi fatti con la v274, che azzerava
+   le spunte invece di metterle via. */
 function awCalcTotalWorkouts(){
-  return (APP.workoutsCarry || 0) +
-         APP.chipStates.flat().filter(function(st){ return st === 'done'; }).length;
+  const cur = planCurrentKey();
+  let n = (APP.workoutsCarry || 0);
+  n += APP.chipStates.flat().filter(function(st){ return st === 'done'; }).length;
+  const tutti = APP.planStates || {};
+  Object.keys(tutti).forEach(function(k){
+    if (k === cur) return;
+    ((tutti[k] || {}).chipStates || []).forEach(function(riga){
+      (riga || []).forEach(function(st){ if (st === 'done') n++; });
+    });
+  });
+  return n;
 }
 
 /* Riscrive la settimana con i protocolli del bundle scelto. Senza questo la
@@ -6980,19 +7079,20 @@ function awCalcTotalWorkouts(){
    in uso ma i giorni continuavano a mostrare i protocolli dell'altro. */
 function planApplyBundleSchedule(bundle){
   if (!bundle || !bundle.protos || !bundle.protos.length) return 0;
+  const key = 'b:' + bundle.id;
+  const cur = planCurrentKey();
+  if (cur === key) return 0;          // gia' in uso: la settimana e' la sua
+  if (cur) planSaveState(cur);        // quella che si lascia si mette via
+  if (planRestoreState(key)) {        // gia' allenato con questo piano
+    return (APP.dayAssignments[0] || []).filter(Boolean).length;
+  }
+
+  // Primo uso: settimana costruita sui giorni dei suoi protocolli
   const withDay = bundle.protos.filter(function(p){ return typeof p._planDay === 'number'; });
   if (!withDay.length) return 0;
+  planResetSettimana();
   let n = 0;
   for (let wi = 0; wi < N_WEEKS; wi++){
-    if (!APP.chipStates[wi]) APP.chipStates[wi] = ['rest','rest','rest','rest','rest','rest','rest'];
-    if (!APP.dayAssignments[wi]) APP.dayAssignments[wi] = [null,null,null,null,null,null,null];
-    if (!planPuoRiscrivere(wi)) continue;
-    planRiportaSedute(wi);
-    // libera la settimana
-    for (let d = 0; d < 7; d++){
-      APP.chipStates[wi][d] = 'rest';
-      APP.dayAssignments[wi][d] = null;
-    }
     withDay.forEach(function(p){
       const d = p._planDay;
       if (d < 0 || d > 6) return;
@@ -7001,6 +7101,7 @@ function planApplyBundleSchedule(bundle){
       if (wi === 0) n++;
     });
   }
+  planSaveState(key);
   return n;
 }
 
@@ -7020,6 +7121,12 @@ function planApplyProtoSchedule(proto){
   });
   if (bnd){ planApplyBundleSchedule(bnd); planFocus = { type:'b', id: bnd.id }; return; }
 
+  const key = 'p:' + proto.id;
+  const cur = planCurrentKey();
+  if (cur === key){ planFocus = { type:'p', id: proto.id }; return; }
+  if (cur) planSaveState(cur);
+  if (planRestoreState(key)){ planFocus = { type:'p', id: proto.id }; return; }
+
   /* Protocollo singolo. I giorni si cercano in quest'ordine: quelli che
      occupa gia' in settimana (attivarlo mentre e' in uso non deve spostarlo),
      poi _planDays, poi _planDay. _planDay e' uno solo per costruzione, quindi
@@ -7034,16 +7141,8 @@ function planApplyProtoSchedule(proto){
   if (!giorni.length && typeof proto._planDay === 'number') giorni = [proto._planDay];
   if (!giorni.length){ for (let d = 0; d < 7; d++){ if (riga[d]) giorni.push(d); } }
 
+  planResetSettimana();
   for (let wi = 0; wi < N_WEEKS; wi++){
-    if (!APP.chipStates[wi]) APP.chipStates[wi] = ['rest','rest','rest','rest','rest','rest','rest'];
-    if (!APP.dayAssignments[wi]) APP.dayAssignments[wi] = [null,null,null,null,null,null,null];
-    if (!planPuoRiscrivere(wi)) continue;
-    planRiportaSedute(wi);
-    // libera la settimana
-    for (let d = 0; d < 7; d++){
-      APP.chipStates[wi][d] = 'rest';
-      APP.dayAssignments[wi][d] = null;
-    }
     giorni.forEach(function(d){
       if (d < 0 || d > 6) return;
       APP.chipStates[wi][d] = 'selected';
@@ -7054,6 +7153,7 @@ function planApplyProtoSchedule(proto){
     proto._planDays = giorni.slice();
     if (typeof proto._planDay !== 'number') proto._planDay = giorni[0];
   }
+  planSaveState(key);
   planFocus = { type:'p', id: proto.id };
 }
 
@@ -19889,7 +19989,7 @@ function _performLogoutNow() {
     sbClient.auth.signOut();
     localStorage.removeItem(STORAGE_KEY);
     APP.userName = null; APP.exerciseData = []; APP.totalWorkouts = 0; APP.startDate = null;
-    APP.sessionLog = []; APP.diary = []; APP.streakCarry = 0; APP.workoutsCarry = 0;
+    APP.sessionLog = []; APP.diary = []; APP.streakCarry = 0; APP.workoutsCarry = 0; APP.planStates = {};
     APP.progOrder = []; APP.progOrderAt = 0;
     APP.selectedViewWeek = 0; APP.completedWeeks = [false,false,false,false,false]; APP.availableWeeks = [0];
     APP.chipStates = [['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest'],['rest','rest','rest','rest','rest','rest','rest']];
@@ -21952,6 +22052,12 @@ const SPLIT_PRESETS = {
 
 
 function finishOnboarding() {
+    /* Lo stato della settimana del piano in uso si mette via subito, prima
+       che il wizard cambi protocollo attivo: un piano nuovo parte pulito dal
+       Capitolo 1, e tornando su quello di prima lo si ritrova com'era. */
+    const _keyUscente = planCurrentKey();
+    const _statoUscente = planSnapshot();
+
     const nameInput = document.getElementById('ob-protocol-name');
     const baseName = nameInput ? nameInput.value.trim() : '';
     onboarding.protoName = baseName;
@@ -21963,22 +22069,13 @@ function finishOnboarding() {
            perche' il wizard manuale non ha un passo in cui sceglierli (li
            hanno solo i percorsi a template, via AWK_TPL.dayIdx): senza questo
            onboarding.days resta vuoto, il blocco qui sotto non parte e sul
-           piano restavano i giorni del protocollo precedente. E l'avanzamento
-           del ciclo, perche' autoSaveProtocol, quando crea davvero un
-           protocollo nuovo, riazzera capitoli, sedute totali e data d'inizio:
-           per un primo protocollo ha senso, per il secondo no. */
+           piano restavano i giorni del protocollo precedente. E la data
+           d'inizio, che autoSaveProtocol azzera creando un protocollo nuovo:
+           quella non appartiene al piano ma all'utente. */
         const _preAss = (APP.dayAssignments && APP.dayAssignments[0]) ? APP.dayAssignments[0] : [];
         const _giorniPrec = [];
         for (let d = 0; d < 7; d++) { if (_preAss[d]) _giorniPrec.push(d); }
-        const _prog = {
-            completedWeeks: [...(APP.completedWeeks || [])],
-            availableWeeks: [...(APP.availableWeeks || [])],
-            selectedViewWeek: APP.selectedViewWeek,
-            totalWorkouts: APP.totalWorkouts,
-            startDate: APP.startDate,
-            chipStates: JSON.parse(JSON.stringify(APP.chipStates || [])),
-            dayAssignments: JSON.parse(JSON.stringify(APP.dayAssignments || []))
-        };
+        const _dataInizio = APP.startDate;
 
         /* Il wizard crea, non riscrive: con un protocollo gia' in uso
            autoSaveProtocol si limitava a sincronizzare quello attivo, quindi
@@ -21990,25 +22087,9 @@ function finishOnboarding() {
         generate();
         if (APP.exerciseData.length === 0) { APP.activeProtocolId = _attivoPrec; return; }
 
-        // Il ciclo e' quello di prima: solo i giorni vengono riscritti, sotto.
-        APP.completedWeeks = _prog.completedWeeks;
-        APP.availableWeeks = _prog.availableWeeks;
-        APP.selectedViewWeek = _prog.selectedViewWeek;
-        APP.totalWorkouts = _prog.totalWorkouts;
-        APP.startDate = _prog.startDate;
-        APP.chipStates = _prog.chipStates;
-        APP.dayAssignments = _prog.dayAssignments;
-
+        APP.startDate = _dataInizio;
         const _nuovo = APP.savedProtocols.find(p => p.id === APP.activeProtocolId);
-        if (_nuovo) {
-            if (baseName) _nuovo.name = baseName;
-            // La copia dentro il protocollo deve dire quello che dice APP
-            _nuovo.completedWeeks = [..._prog.completedWeeks];
-            _nuovo.availableWeeks = [..._prog.availableWeeks];
-            _nuovo.selectedViewWeek = _prog.selectedViewWeek;
-            _nuovo.totalWorkouts = _prog.totalWorkouts;
-            _nuovo.startDate = _prog.startDate ? _prog.startDate.toISOString() : null;
-        }
+        if (_nuovo && baseName) _nuovo.name = baseName;
 
         /* Un protocollo manuale e' uno solo: prende i giorni su cui ci si
            allenava, non una frequenza inventata qui. Se non c'era ancora
@@ -22025,6 +22106,13 @@ function finishOnboarding() {
     // solo per il Chapter 1 ed erano subordinati alla presenza di un nome
     // utente: il bundle appariva senza giorni assegnati.
     if (onboarding.days.length > 0) {
+        // Quella che si lascia va messa via, poi si riparte puliti
+        if (_keyUscente && _keyUscente !== planCurrentKey()) {
+            APP.planStates = APP.planStates || {};
+            APP.planStates[_keyUscente] = _statoUscente;
+        }
+        planResetSettimana();
+
         const sortedDays = [...onboarding.days].sort((a, b) => a - b);
         /* Senza il controllo su _splitGroupId il filtro poteva agganciare il
            gruppo del wizard precedente: in modalita' manuale nessuno lo
@@ -22034,21 +22122,10 @@ function finishOnboarding() {
             : [];
         const singleProto = APP.savedProtocols.find(p => p.id === APP.activeProtocolId);
 
+        /* La settimana e' gia' pulita: qui si assegnano solo i giorni scelti,
+           su tutti i capitoli. Il piano precedente non lascia residui perche'
+           il suo stato e' stato messo via intero, non cancellato. */
         const assign = (wIdx) => {
-            if (!APP.chipStates[wIdx]) APP.chipStates[wIdx] = ['rest','rest','rest','rest','rest','rest','rest'];
-            if (!APP.dayAssignments[wIdx]) APP.dayAssignments[wIdx] = [null,null,null,null,null,null,null];
-            /* Prima si libera la settimana, poi si assegnano i giorni nuovi.
-               Senza questo passaggio il wizard scriveva solo i giorni scelti e
-               lasciava sul piano quelli del protocollo precedente: creandone
-               uno da 3 giorni dopo uno da 5, ne restavano accesi 5. Stessa
-               regola di planApplyBundleSchedule: si riscrive tutto, spunte
-               comprese, tranne i capitoli gia' chiusi. */
-            if (!planPuoRiscrivere(wIdx)) return;
-            planRiportaSedute(wIdx);
-            for (let d = 0; d < 7; d++) {
-                APP.chipStates[wIdx][d] = 'rest';
-                APP.dayAssignments[wIdx][d] = null;
-            }
             sortedDays.forEach((dayIndex, i) => {
                 const proto = (splitGroupProtos.length > 1)
                     ? splitGroupProtos[i % splitGroupProtos.length]
@@ -22066,6 +22143,9 @@ function finishOnboarding() {
            tornerebbe su un giorno soltanto. */
         if (splitGroupProtos.length <= 1 && singleProto) singleProto._planDays = sortedDays.slice();
 
+        // Lo stato del piano appena creato entra subito nell'archivio
+        planSaveState(planCurrentKey());
+
         /* Il filtro dei giorni nella pagina Piani restava puntato sul piano
            precedente, che ora non occupa piu' nessun giorno: i giorni nuovi
            sarebbero apparsi tutti in ombra. Il focus passa al piano appena
@@ -22079,6 +22159,12 @@ function finishOnboarding() {
         initDashboard();
         restoreChipStates();
     }
+
+    /* autoSaveProtocol azzera il contatore creando un protocollo nuovo, e il
+       piano appena creato non ha spunte: senza questa riga "Allenamenti"
+       restava a zero fino al primo ricalcolo, pur avendo alle spalle le sedute
+       degli altri piani, che stanno in APP.planStates. */
+    APP.totalWorkouts = awCalcTotalWorkouts();
 
     saveState();
     // Salva TUTTI i protocolli su Supabase (aspetta che siano tutti salvati)
@@ -22096,6 +22182,7 @@ function finishOnboarding() {
         progOrderAt: APP.progOrderAt || 0,
         streakCarry: APP.streakCarry || 0,
         workoutsCarry: APP.workoutsCarry || 0,
+        planStates: APP.planStates || {},
         startDate: APP.startDate ? APP.startDate.toISOString() : null,
         userName: APP.userName, selectedViewWeek: APP.selectedViewWeek,
         completedWeeks: APP.completedWeeks, availableWeeks: APP.availableWeeks,
@@ -23810,7 +23897,8 @@ async function performFullReset() {
     APP.diary = [];               // note di fine seduta
     APP.progOrder = []; APP.progOrderAt = 0;   // ordine personale delle box
     APP.streakCarry = 0;          // sedute consecutive ereditate
-    APP.workoutsCarry = 0;        // sedute di settimane riscritte da un altro piano
+    APP.workoutsCarry = 0;        // riporto dei salvataggi precedenti
+    APP.planStates = {};          // settimana e capitoli di ogni piano
     APP.personalRecords = {};     // record personali → trofei/badge PR
     APP.prMeta = {};              // meta del record (kg, reps, target, data)
     APP.prLegacy = null;          // archivio record pre-v.168
