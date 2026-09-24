@@ -4483,7 +4483,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '277';
+const APP_VERSION = '278';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -10286,6 +10286,24 @@ function srDuration(sr) {
     var m = (sr || '').match(/(\d+)\s*[xX×]\s*(\d+)(?:\s*[–—-]\s*\d+)?\s*s/i);
     return m ? parseInt(m[2]) : null;
 }
+// Isometrici eseguiti un lato alla volta. La durata prescritta vale per
+// ciascun lato: e' cosi' che il plank laterale viene misurato e prescritto
+// (McGill, Childs & Liebenson 1999, Arch Phys Med Rehabil — tempi di tenuta
+// del side bridge rilevati separatamente a destra e a sinistra). Lo stesso
+// vale per gli isometrici a un braccio o a una gamba del catalogo. Le parole
+// chiave coprono anche gli esercizi aggiunti a mano con nomi simili.
+var WO_PER_SIDE_HOLDS = ['plank laterale', 'rematore isometrico allo stipite',
+                         'curl isometrico con asciugamano'];
+function exIsPerSide(name) {
+    var n = String(name || '').toLowerCase();
+    if (WO_PER_SIDE_HOLDS.indexOf(n) !== -1) return true;
+    return /laterale|monopodalic|unilateral|singol[oa]|un braccio|una gamba|per lato|alternat/.test(n);
+}
+// Pausa fra un lato e l'altro, il tempo di girarsi. Non e' un recupero e
+// non viene da uno studio: e' il tempo pratico di cambio posizione, fissato
+// dall'utente (5 s).
+const WO_SIDE_SWITCH_SECS = 5;
+
 // Estrae le ripetizioni dallo schema serie×ripetizioni ("4 x 8" → 8).
 // Restituisce null sugli isometrici: 45 secondi non sono 45 ripetizioni.
 function srReps(sr) {
@@ -14596,7 +14614,8 @@ function initWorkoutPage() {
             const _isHold = srIsTime(ex.sr);
             const reps = _isHold ? 0 : (srM ? parseInt(srM[2]) : 10);
             const isForza = !_isHold && reps <= 6;
-            const setTime  = _isHold ? (srDuration(ex.sr) || 40) : (isForza ? 45 : 35);
+            let setTime  = _isHold ? (srDuration(ex.sr) || 40) : (isForza ? 45 : 35);
+            if (_isHold && exIsPerSide(ex.name)) setTime = setTime * 2 + WO_SIDE_SWITCH_SECS;
             const restTime = isForza ? 180 : 120;
             totalWorkSecs += sets * setTime;
             totalRestSecs += (sets - 1) * restTime;
@@ -18308,7 +18327,9 @@ function _woBeginWorkout() {
         const _isHold = srIsTime(ex.sr);
         const reps = _isHold ? 0 : (srM ? parseInt(srM[2]) : 10);
         const isForza = !_isHold && reps <= 6;
-        estSecs += sets * (_isHold ? (srDuration(ex.sr) || 40) : (isForza ? 45 : 35));
+        let _setT = _isHold ? (srDuration(ex.sr) || 40) : (isForza ? 45 : 35);
+        if (_isHold && exIsPerSide(ex.name)) _setT = _setT * 2 + WO_SIDE_SWITCH_SECS;
+        estSecs += sets * _setT;
         estSecs += (sets - 1) * (isForza ? 180 : 120);
     });
 
@@ -18336,7 +18357,7 @@ function _woEndWorkoutNow() {
     woKeepAliveStop();
     woState.exIndex = 0; woState.setIndex = 0; woState.elapsed = 0;
     woState.restSecs = 0; woState.restRunning = false; woState.restTotal = 0;
-    woState.holdSecs = 0; woState.holdRunning = false; woState.holdTotal = 0;
+    woState.holdSecs = 0; woState.holdRunning = false; woState.holdTotal = 0; woState._holdPhase = null;
     woState.paused = false;
     const rw = document.getElementById('wo-rest-wrap');
     if (rw) rw.style.display = 'none';
@@ -18376,17 +18397,19 @@ function woRenderEx() {
     // proto name already set in initWorkoutPage
     document.getElementById('wo-ex-num').textContent = `Esercizio ${woState.exIndex+1} di ${totalEx}`;
     document.getElementById('wo-ex-name').textContent = exDisplay(ex.name);
-    document.getElementById('wo-ex-scheme').textContent = displaySr + (w === DELOAD_WEEK ? ' 🔄' : '');
+    document.getElementById('wo-ex-scheme').textContent = displaySr +
+        (srIsTime(displaySr) && exIsPerSide(ex.name) ? ' per lato' : '') + (w === DELOAD_WEEK ? ' 🔄' : '');
     // Isometrico: nessun carico, nessun MTR, si tiene la posizione a tempo
     const isHold = srIsTime(displaySr);
     const holdDur = isHold ? srDuration(displaySr) : null;
+    const perSide = isHold && exIsPerSide(ex.name);
     // Carico editabile (solo esercizi a ripetizioni)
     const prEl = APP.personalRecords[ex.name];
     const isPR = prEl && parseFloat(kg) >= prEl;
     document.getElementById('wo-weight-val').innerHTML = isHold
         ? `<div style="text-align:center;">` +
-          `<div class="wo-hold-info">Isometrico · corpo libero</div>` +
-          `<button class="wo-hold-btn" id="wo-hold-btn" onclick="woStartHold()">▶ Tieni ${holdDur}s</button>` +
+          `<div class="wo-hold-info">${perSide ? 'Isometrico · un lato alla volta' : 'Isometrico · corpo libero'}</div>` +
+          `<button class="wo-hold-btn" id="wo-hold-btn" onclick="woStartHold()">▶ Tieni ${holdDur}s${perSide ? ' per lato' : ''}</button>` +
           `</div>`
         : `<button class="wo-kg-btn" onclick="woAdjustKg(-0.5)">−</button>` +
           `<input id="wo-kg-input" class="wo-kg-input" type="number" step="0.5" min="0" value="${parseFloat(kg).toFixed(1)}"` +
@@ -18466,13 +18489,44 @@ function woStartHold() {
     woState.holdRunning = true;
     woState._holdEndsAt = Date.now() + (woState.holdSecs || 0) * 1000;
     woState._lastBeepSec = null;
+    // Per lato: primo lato, cambio, secondo lato. La serie si chiude solo
+    // alla fine del secondo.
+    woState._holdPhase = exIsPerSide(ex.name) ? 'side1' : null;
     const btn = document.getElementById('wo-hold-btn');
-    if (btn) { btn.disabled = true; btn.textContent = 'In posizione…'; }
+    if (btn) { btn.disabled = true; btn.textContent = woState._holdPhase ? 'Primo lato…' : 'In posizione…'; }
     const t = document.getElementById('wo-timer');
     const l = document.getElementById('wo-timer-lbl');
     if (t) { t.textContent = '00:' + String(dur).padStart(2, '0'); t.style.color = '#22d3ee'; }
-    if (l) l.textContent = 'Tieni la posizione';
+    if (l) l.textContent = woState._holdPhase ? 'Primo lato · tieni la posizione' : 'Tieni la posizione';
     _woBeep(660, 0.15, 'sine');
+}
+
+// Fine di una fase dell'isometrico per lato. Restituisce true se la serie
+// continua (cambio lato o secondo lato), false quando e' davvero finita.
+function woHoldNextPhase() {
+    const phase = woState._holdPhase;
+    if (phase !== 'side1' && phase !== 'switch') return false;
+    const t = document.getElementById('wo-timer');
+    const l = document.getElementById('wo-timer-lbl');
+    const hb = document.getElementById('wo-hold-btn');
+    const next = phase === 'side1' ? 'switch' : 'side2';
+    const secs = next === 'switch' ? WO_SIDE_SWITCH_SECS : woState.holdTotal;
+    woState._holdPhase = next;
+    woState.holdSecs = secs;
+    woState._holdEndsAt = Date.now() + secs * 1000;
+    woState._lastBeepSec = null;
+    woState.holdRunning = true;
+    if (t) { t.textContent = '00:' + String(secs).padStart(2, '0'); t.style.color = next === 'switch' ? '#fbbf24' : '#22d3ee'; }
+    if (next === 'switch') {
+        if (l) l.innerHTML = '<span class="wo-preparati">CAMBIA LATO</span>';
+        if (hb) hb.textContent = 'Cambio lato…';
+        _woBeep(880, 0.3, 'sine');
+    } else {
+        if (l) l.textContent = 'Secondo lato · tieni la posizione';
+        if (hb) hb.textContent = 'Secondo lato…';
+        _woBeep(660, 0.15, 'sine');
+    }
+    return true;
 }
 
 function woRenderExList() {
@@ -18498,7 +18552,7 @@ function woRenderExList() {
         <div class="wo-ex-row ${i < woState.exIndex ? 'completed' : i===woState.exIndex ? 'active' : ''}" onclick="exVideoOpen('${escapeHTML(e.name).replace(/'/g,'\\&apos;')}')">
             <div class="wo-dot"></div>
             <span class="wo-ex-rname">${escapeHTML(exDisplay(e.name))}</span>
-            <span class="wo-ex-rsr">${escapeHTML(rowSr)}</span>
+            <span class="wo-ex-rsr">${escapeHTML(rowSr)}${srIsTime(rowSr) && exIsPerSide(e.name) ? ' per lato' : ''}</span>
             ${kgCol}
         </div>`;
     }).join('');
@@ -19256,6 +19310,17 @@ function woCompleteSet() {
     const srParts = displaySr ? displaySr.match(/(\d+)\s*[xX×]\s*(\d+)/) : null;
     const totalSets = srParts ? parseInt(srParts[1]) : 3;
 
+    // "Serie completata" toccato mentre l'isometrico scorre: la serie finisce
+    // qui. Senza fermare il countdown, alla sua scadenza la serie veniva
+    // chiusa una seconda volta e se ne saltava una.
+    if (woState.holdRunning) {
+        woState.holdRunning = false;
+        woState._holdPhase = null;
+        woState._holdEndsAt = 0;
+        const hb = document.getElementById('wo-hold-btn');
+        if (hb) { hb.disabled = false; hb.textContent = '▶ Ripeti'; }
+    }
+
     // ── v.168: qui veniva registrato un "record" pari al carico PRESCRITTO,
     // cioè MTR × percentuale del capitolo — un numero che l'app calcolava da
     // sé e che non descriveva nessuna prestazione. La registrazione è stata
@@ -19784,6 +19849,8 @@ function woTick() {
         if (ht) ht.textContent = '00:' + String(Math.max(woState.holdSecs, 0)).padStart(2, '0');
         if (woState.holdSecs > 0 && woState.holdSecs <= 3) woCountdownBeep(woState.holdSecs);
         if (woState.holdSecs === 0) {
+            if (woHoldNextPhase()) return;
+            woState._holdPhase = null;
             woState.holdRunning = false;
             _woBeep(880, 0.3, 'sine');
             const hb = document.getElementById('wo-hold-btn');
