@@ -2958,6 +2958,39 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wo-ovl-opt.skip { margin-top:6px; border-color:rgba(255,255,255,0.07); color:#94a3b8; font-size:0.66rem; }
 
         .wc-body { padding:12px 16px 14px; }
+        /* Riscaldamento generale e mobilita' (v.279) */
+        .wp-sec { border-bottom:1px solid rgba(255,255,255,0.06); padding:12px 16px; }
+        .wp-head { display:flex; align-items:center; gap:8px; }
+        .wp-num { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.55rem; font-weight:900; background:rgba(255,255,255,0.06); color:#94a3b8; flex-shrink:0; }
+        .wp-sec.cur .wp-num { background:rgba(var(--pr),0.18); color:var(--primary); }
+        .wp-sec.ok .wp-num { background:rgba(var(--pr),0.18); color:var(--primary); }
+        .wp-title { font-size:0.72rem; font-weight:800; color:#e2e8f0; flex:1; min-width:0; }
+        .wp-sec.ok .wp-title, .wp-sec.wait .wp-title { color:#94a3b8; }
+        .wp-meta { font-size:0.56rem; color:#64748b; font-weight:700; white-space:nowrap; }
+        .wp-sub { font-size:0.6rem; color:#94a3b8; line-height:1.5; margin:8px 0 10px; }
+        .wp-sub b { color:#e2e8f0; }
+        .wp-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+        .wp-chip { width:auto; margin:0; flex:0 0 auto; letter-spacing:0; box-shadow:none; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.12); color:#cbd5e1; border-radius:999px; padding:6px 11px; font-size:0.6rem; font-weight:700; font-family:inherit; cursor:pointer; text-transform:none; }
+        .wp-chip.on { background:rgba(var(--pr),0.12); border-color:rgba(var(--pr),0.5); color:var(--primary); }
+        .wp-lbl { font-size:0.5rem; color:#64748b; text-transform:uppercase; letter-spacing:0.1em; font-weight:800; margin-bottom:6px; }
+        .wp-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-top:1px solid rgba(255,255,255,0.05); }
+        .wp-row:first-child { border-top:none; }
+        .wp-row .n { font-size:0.66rem; font-weight:700; color:#e2e8f0; }
+        .wp-row .d { font-size:0.56rem; color:#94a3b8; line-height:1.4; }
+        .wp-row .r { font-size:0.56rem; font-weight:800; color:#22d3ee; white-space:nowrap; }
+        .wp-row .r.mod { color:#fbbf24; }
+        .wp-row.cur .n { color:#22d3ee; }
+        .wp-go { width:34px; height:34px; border-radius:50%; border:1.5px solid rgba(255,255,255,0.2); background:none; color:#e2e8f0; font-size:0.62rem; font-weight:900; font-family:inherit; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; }
+        .wp-go.done { border-color:var(--primary); background:rgba(var(--pr),0.15); color:var(--primary); }
+        .wp-go.run { border-color:#22d3ee; color:#22d3ee; }
+        .wp-clock { text-align:center; font-size:2rem; font-weight:900; color:var(--primary); font-variant-numeric:tabular-nums; margin:6px 0 4px; }
+        .wp-clock.run { color:#22d3ee; }
+        .wp-bar { height:5px; border-radius:3px; background:rgba(255,255,255,0.07); overflow:hidden; margin-bottom:10px; }
+        .wp-bar i { display:block; height:100%; background:var(--primary); }
+        .wp-btns { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+        .wp-b1 { border:none; border-radius:10px; background:var(--btn-grad); color:#fff; font-weight:800; font-size:0.64rem; padding:11px 6px; font-family:inherit; cursor:pointer; text-transform:none; }
+        .wp-b1:disabled { opacity:0.4; }
+        .wp-b2 { border:1px solid rgba(255,255,255,0.1); border-radius:10px; background:rgba(255,255,255,0.03); color:#94a3b8; font-weight:800; font-size:0.64rem; padding:11px 6px; font-family:inherit; cursor:pointer; text-transform:none; }
         /* Intestazione esercizio (V3): riquadro interno con bordo e angoli tondi */
         .wc-ex-head {
             border:1px solid rgba(var(--ac),0.28);
@@ -4487,7 +4520,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '278';
+const APP_VERSION = '279';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -5168,6 +5201,14 @@ function woWarmupInfo() {
         '<div style="font-size:0.52rem;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">🔥 Riscaldamento specifico</div>' +
         '<div style="font-size:1rem;font-weight:800;color:#e2e8f0;margin-top:4px;">Come funziona e perché</div>' +
 
+        H('I tre passi') +
+        P('<b style="color:#e2e8f0;">1 · Generale</b>, da 5 a 10 minuti a scelta: attività leggera che sale piano, finché riesci ancora a parlare. ' +
+          'In palestra una macchina cardio, altrimenti cinque movimenti senza attrezzi che si danno il cambio.<br>' +
+          '<b style="color:#e2e8f0;">2 · Mobilità</b>: movimenti dinamici per la parte del corpo che lavora oggi, 30 secondi ciascuno. ' +
+          'Niente allungamenti tenuti a lungo: oltre i 60 secondi per muscolo riducono la forza subito dopo.<br>' +
+          '<b style="color:#e2e8f0;">3 · Avvicinamento</b>: le serie leggere del primo esercizio con carico, spiegate qui sotto. ' +
+          'I primi due passi sono facoltativi.') +
+
         H('A cosa serve') +
         P('Alza la temperatura muscolare, prepara il sistema nervoso e ti fa ripassare il gesto con carichi crescenti. ' +
           'Arrivi alla prima serie di lavoro già dentro il movimento, senza però aver consumato energie.') +
@@ -5195,7 +5236,12 @@ function woWarmupInfo() {
         H('Fonti') +
         '<div style="font-size:0.62rem;color:#cbd5e1;line-height:1.6;">' +
         'Baechle T. & Earle R., <i>Essentials of Strength Training and Conditioning</i>, NSCA, 3ª ed., 2008 — struttura delle serie di avvicinamento.<br><br>' +
-        'Rippetoe M., <i>Starting Strength</i> — metodologia delle warm-up sets a carico crescente e ripetizioni decrescenti.' +
+        'Rippetoe M., <i>Starting Strength</i> — metodologia delle warm-up sets a carico crescente e ripetizioni decrescenti.<br><br>' +
+        'Bishop D., <i>Sports Medicine</i> 2003 — riscaldamento attivo a intensità bassa-moderata per 5–10 minuti, senza arrivare alla fatica.<br><br>' +
+        'Jeffreys I., <i>Professional Strength & Conditioning</i> 2007 — metodo RAMP: fase iniziale a intensità crescente con movimenti vari.<br><br>' +
+        'Persinger R. et al., <i>Med Sci Sports Exerc</i> 2004 — il test della parola indica un\'intensità moderata.<br><br>' +
+        'Behm D. et al., <i>Appl Physiol Nutr Metab</i> 2016 — allungamento statico oltre 60 s per muscolo riduce la forza; lo stretching dinamico no.<br><br>' +
+        'Il numero di secondi per movimento di mobilità (30 s) è una convenzione pratica: gli studi non ne fissano uno.' +
         '</div>';
 
     var closeBtn = document.createElement('button');
@@ -5247,6 +5293,270 @@ function woOverloadNoticeDismiss() {
     APP.overloadNoticeSeen = true;
     saveState();
 }
+
+// ════════════════════════════════════════════════════════════
+// RISCALDAMENTO GENERALE E MOBILITA' (v.279)
+//
+// Prima delle serie di avvicinamento, due passi facoltativi.
+// 1. Generale: da 5 a 10 minuti a scelta, a intensita' bassa-moderata che
+//    sale per gradi (Baechle & Earle, NSCA 2008: riscaldamento generale
+//    seguito da uno specifico; Bishop 2003, Sports Med: 5-10 min senza
+//    arrivare alla fatica; Jeffreys 2007, metodo RAMP: fase iniziale a
+//    intensita' crescente). Ritmo di riferimento il "test della parola"
+//    (Persinger et al. 2004, Med Sci Sports Exerc).
+//    In palestra una macchina cardio; senza macchine (casa, corpo libero,
+//    scheda senza luogo dichiarato) cinque movimenti che si danno il cambio,
+//    dal piu' facile al moderato: nessun attrezzo, va bene ovunque.
+// 2. Mobilita': solo movimenti dinamici. L'allungamento statico oltre 60 s
+//    per muscolo riduce la forza subito dopo (Behm et al. 2016, Appl Physiol
+//    Nutr Metab). Gli studi non fissano quante ripetizioni fare per
+//    movimento: i movimenti sono dosati a tempo, 30 s ciascuno (per lato
+//    dove serve), una convenzione pratica e non un numero di letteratura.
+//    La lista segue la seduta del giorno: parte alta, parte bassa o mista.
+// Nessuno dei due passi blocca INIZIA: restano facoltativi.
+// ════════════════════════════════════════════════════════════
+var WP_MOB = {
+    alta: [
+        { n: 'Circonduzioni delle braccia', d: 'Braccia tese, cerchi ampi: metà avanti, metà indietro.', t: 30 },
+        { n: 'Aperture con elastico', d: 'Elastico davanti al petto, apri fino alle spalle.', t: 30, elastico: true },
+        { n: 'Rotazioni del busto', d: 'Braccia al petto, ruota senza muovere il bacino.', t: 30 },
+        { n: 'Gatto-cammello', d: 'A quattro zampe, inarca e arrotonda la schiena.', t: 30 },
+        { n: 'Piegamenti al muro', d: 'Mani al muro all\'altezza delle spalle, lenti.', t: 30 }
+    ],
+    bassa: [
+        { n: 'Circonduzioni delle anche', d: 'In appoggio su una gamba, cerchi ampi con il ginocchio.', t: 30, lati: true },
+        { n: 'Slanci della gamba avanti-dietro', d: 'Mano al muro, oscillazione controllata.', t: 30, lati: true },
+        { n: 'Slanci laterali', d: 'Di fronte al muro, la gamba oscilla da un lato all\'altro.', t: 30, lati: true },
+        { n: 'Squat a corpo libero', d: 'Lento, fin dove la schiena resta neutra.', t: 30 },
+        { n: 'Affondi alternati senza peso', d: 'Passo lungo, ginocchio dietro vicino a terra.', t: 30 },
+        { n: 'Ponte glutei', d: 'Schiena a terra, spingi con i talloni.', t: 30 }
+    ],
+    mista: [
+        { n: 'Circonduzioni delle braccia', d: 'Braccia tese, cerchi ampi: metà avanti, metà indietro.', t: 30 },
+        { n: 'Circonduzioni delle anche', d: 'In appoggio su una gamba, cerchi ampi con il ginocchio.', t: 30, lati: true },
+        { n: 'Gatto-cammello', d: 'A quattro zampe, inarca e arrotonda la schiena.', t: 30 },
+        { n: 'Rotazioni del busto', d: 'Braccia al petto, ruota senza muovere il bacino.', t: 30 },
+        { n: 'Squat a corpo libero', d: 'Lento, fin dove la schiena resta neutra.', t: 30 }
+    ]
+};
+var WP_GYM = [
+    { a: 'Cyclette', d: 'Resistenza bassa, pedalata sciolta.' },
+    { a: 'Vogatore', d: 'Ritmo tranquillo, tirata lunga.' },
+    { a: 'Tapis roulant', d: 'Camminata in salita o corsa lenta.' },
+    { a: 'Ellittica', d: 'Passo regolare, senza forzare.' },
+    { a: 'Corda', d: 'Saltelli leggeri, pause quando serve.' }
+];
+var WP_SEQ = [
+    { a: 'Marcia sul posto', d: 'Passo tranquillo, braccia che accompagnano.', i: 'molto facile' },
+    { a: 'Corsa leggera sul posto', d: 'Ginocchia basse, appoggio morbido.', i: 'facile' },
+    { a: 'Jumping jack lenti', d: 'Ritmo regolare, senza fretta.', i: 'facile' },
+    { a: 'Skip leggero', d: 'Ginocchia a metà altezza, braccia sciolte.', i: 'moderato' },
+    { a: 'Shadow boxing con passi', d: 'Colpi leggeri, piedi sempre in movimento.', i: 'moderato' }
+];
+var woPrep = null, _wpTimer = null;
+
+function wpMinutes() {
+    try { var v = parseInt(localStorage.getItem('aw_warm_min'), 10); if (v >= 5 && v <= 10) return v; } catch (e) {}
+    return 5;
+}
+// Dove ci si allena, dalla scheda del giorno. Senza indicazione si usa la
+// sequenza senza macchine: va bene anche in palestra, la cyclette in
+// salotto no.
+function wpEnv(proto) {
+    var e = proto && proto._env;
+    return e === 'palestra' ? 'palestra' : 'nomac';
+}
+function wpHasElastici(proto) {
+    if (!proto) return false;
+    if (proto._env === 'palestra') return true;
+    return Array.isArray(proto._awkEquip) && proto._awkEquip.indexOf('elastici') !== -1;
+}
+// Parte alta, bassa o mista: prima la scheda (upper/lower, push/pull/legs),
+// poi i pattern degli esercizi. Solo isometrici o nessun pattern: mista.
+function wpZone(proto, exercises) {
+    var slot = '';
+    try { slot = proto ? protoResolveSlot(proto) : ''; } catch (e) {}
+    if (slot === 'upper' || slot === 'push' || slot === 'pull') return 'alta';
+    if (slot === 'lower' || slot === 'legs') return 'bassa';
+    var up = 0, low = 0;
+    (exercises || []).forEach(function(ex) {
+        var pt = getMovementPattern(ex.name);
+        if (pt === 'quad' || pt === 'hinge') low++;
+        else if (pt) up++;
+    });
+    if (up && !low) return 'alta';
+    if (low && !up) return 'bassa';
+    return 'mista';
+}
+function wpMobList(p) {
+    return WP_MOB[p.zone].map(function(m) {
+        if (m.elastico && !p.elastici) {
+            return { n: 'Aperture a braccia tese', d: 'Braccia davanti al petto, apri fino alle spalle stringendo le scapole.', t: 30 };
+        }
+        return m;
+    });
+}
+// Per i movimenti a due lati il timer mostra quanto manca al lato in corso.
+function wpSideLeft(mv, left) { return (mv && mv.lati && left > mv.t) ? left - mv.t : left; }
+function wpStop() { if (_wpTimer) { clearInterval(_wpTimer); _wpTimer = null; } if (woPrep) woPrep.run = null; }
+function wpFmt(s) { s = Math.max(0, s); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+function wpLeft() { return Math.max(0, Math.ceil((woPrep.endsAt - Date.now() - 50) / 1000)); }
+
+// Stato della preparazione per la seduta di oggi. Sopravvive ai ridisegni
+// della card (conferma dell'MTR), si azzera cambiando seduta o giorno.
+function wpState(exercises) {
+    var proto = null;
+    try { proto = woSessionProto(); } catch (e) {}
+    var key = new Date().toDateString() + '|' + (proto && proto.id || '') + '|' + (exercises || []).length;
+    if (!woPrep || woPrep.key !== key) {
+        wpStop();
+        woPrep = { key: key, step: 1, env: wpEnv(proto), elastici: wpHasElastici(proto),
+                   zone: wpZone(proto, exercises), min: wpMinutes(), act: null,
+                   left: wpMinutes() * 60, endsAt: 0, run: null, mob: {}, mobRun: -1, lastBeep: null, block: -1 };
+    }
+    return woPrep;
+}
+
+function wpRender() {
+    var el = document.getElementById('wo-prep');
+    if (!el || !woPrep) return;
+    var p = woPrep, h = '';
+    var tot = p.min * 60;
+    // ── 1 · Generale ──
+    var c1 = p.step === 1 ? 'cur' : 'ok';
+    h += '<div class="wp-sec ' + c1 + '"><div class="wp-head"><div class="wp-num">' + (p.step > 1 ? '✓' : '1') + '</div>' +
+         '<div class="wp-title">Riscaldamento generale</div><div class="wp-meta">' + p.min + ' min</div></div>';
+    if (p.step === 1) {
+        h += '<div class="wp-sub">Intensità che sale piano: al ritmo giusto <b>riesci ancora a parlare</b>.</div>';
+        if (p.run !== 'gen' && p.left === tot) {
+            h += '<div class="wp-lbl">Durata</div><div class="wp-chips">';
+            for (var m = 5; m <= 10; m++) h += '<button type="button" class="wp-chip' + (m === p.min ? ' on' : '') + '" data-min="' + m + '">' + m + ' min</button>';
+            h += '</div>';
+        }
+        if (p.env === 'palestra') {
+            h += '<div class="wp-lbl">Macchina</div><div class="wp-chips">';
+            WP_GYM.forEach(function(g) { h += '<button type="button" class="wp-chip' + (p.act === g.a ? ' on' : '') + '" data-act="' + g.a + '">' + g.a + '</button>'; });
+            h += '</div>';
+            var g = WP_GYM.filter(function(x) { return x.a === p.act; })[0];
+            if (g) h += '<div class="wp-sub" style="margin-top:-4px;">' + g.d + ' Parti piano e aumenta un poco ogni minuto.</div>';
+        } else {
+            var blk = Math.round(tot / 5), bi = Math.min(4, Math.floor((tot - p.left) / blk));
+            h += '<div class="wp-lbl">Senza attrezzi · ' + blk + ' s ciascuno, senza pause</div><div>';
+            WP_SEQ.forEach(function(x, k) {
+                var st = (p.left === 0 || k < bi) ? 'done' : (k === bi && p.left < tot ? 'cur' : '');
+                h += '<div class="wp-row' + (st === 'cur' ? ' cur' : '') + '"><div style="flex:1;min-width:0;"><div class="n">' + (k + 1) + '. ' + x.a + '</div><div class="d">' + x.d + '</div></div>' +
+                     '<div class="r' + (x.i === 'moderato' ? ' mod' : '') + '">' + x.i + '</div>' +
+                     '<div class="wp-go' + (st === 'done' ? ' done' : (st === 'cur' ? ' run' : '')) + '" aria-hidden="true">' + (st === 'done' ? '✓' : (st === 'cur' ? '▶' : '')) + '</div></div>';
+            });
+            h += '</div>';
+        }
+        h += '<div class="wp-clock' + (p.run === 'gen' ? ' run' : '') + '" id="wp-clock">' + wpFmt(p.left) + '</div>' +
+             '<div class="wp-bar"><i id="wp-bar" style="width:' + Math.round((tot - p.left) / tot * 100) + '%"></i></div>' +
+             '<div class="wp-btns"><button type="button" class="wp-b1" id="wp-gen"' + (p.env === 'palestra' && !p.act ? ' disabled' : '') + '>' +
+             (p.run === 'gen' ? '⏸ Pausa' : (p.left < tot ? '▶ Riprendi' : '▶ Avvia ' + p.min + ' min')) + '</button>' +
+             '<button type="button" class="wp-b2" id="wp-gen-next">' + (p.left === 0 ? 'Avanti →' : 'Salta') + '</button></div>';
+    }
+    h += '</div>';
+    // ── 2 · Mobilita' ──
+    var list = wpMobList(p);
+    var c2 = p.step === 2 ? 'cur' : (p.step > 2 ? 'ok' : 'wait');
+    var secs = list.reduce(function(a, m) { return a + m.t * (m.lati ? 2 : 1); }, 0);
+    h += '<div class="wp-sec ' + c2 + '"><div class="wp-head"><div class="wp-num">' + (p.step > 2 ? '✓' : '2') + '</div>' +
+         '<div class="wp-title">Mobilità · ' + (p.zone === 'alta' ? 'parte alta' : p.zone === 'bassa' ? 'parte bassa' : 'tutto il corpo') + '</div>' +
+         '<div class="wp-meta">' + wpFmt(secs) + '</div></div>';
+    if (p.step === 2) {
+        h += '<div class="wp-sub">Movimenti ampi e controllati, senza tenere le posizioni. Tocca ▶ e segui il timer.</div><div>';
+        list.forEach(function(mv, i) {
+            var run = p.mobRun === i, done = !!p.mob[i];
+            var lab = run ? wpFmt(wpSideLeft(mv, p.left)) : (done ? '✓' : '▶');
+            h += '<div class="wp-row' + (run ? ' cur' : '') + '"><div style="flex:1;min-width:0;"><div class="n">' + mv.n + '</div><div class="d">' +
+                 (run && mv.lati ? (p.left > mv.t ? 'Primo lato' : '<b style="color:#fbbf24;">Secondo lato</b>') : mv.d) + '</div></div>' +
+                 '<div class="r">' + mv.t + 's' + (mv.lati ? ' per lato' : '') + '</div>' +
+                 '<button type="button" class="wp-go' + (done ? ' done' : (run ? ' run' : '')) + '" data-mob="' + i + '" aria-label="' + mv.n + '">' + lab + '</button></div>';
+        });
+        var nDone = list.filter(function(_, i) { return p.mob[i]; }).length;
+        h += '</div><div class="wp-btns" style="margin-top:10px;"><button type="button" class="wp-b1" id="wp-mob-next"' + (nDone === list.length ? '' : ' disabled') + '>Avanti → (' + nDone + '/' + list.length + ')</button>' +
+             '<button type="button" class="wp-b2" id="wp-mob-skip">Salta</button></div>';
+    }
+    h += '</div>';
+    el.innerHTML = h;
+    wpWire();
+}
+
+function wpWire() {
+    var el = document.getElementById('wo-prep'); if (!el) return;
+    var p = woPrep;
+    el.querySelectorAll('[data-min]').forEach(function(b) { b.onclick = function() {
+        p.min = parseInt(b.getAttribute('data-min'), 10); p.left = p.min * 60;
+        try { localStorage.setItem('aw_warm_min', String(p.min)); } catch (e) {}
+        wpRender();
+    }; });
+    el.querySelectorAll('[data-act]').forEach(function(b) { b.onclick = function() { p.act = b.getAttribute('data-act'); wpRender(); }; });
+    var g = document.getElementById('wp-gen');
+    if (g) g.onclick = function() {
+        if (p.run === 'gen') { p.left = wpLeft(); wpStop(); wpRender(); return; }
+        if (p.left <= 0) return;
+        wpStop();
+        p.run = 'gen'; p.endsAt = Date.now() + p.left * 1000; p.lastBeep = null;
+        p.block = Math.min(4, Math.floor((p.min * 60 - p.left) / Math.round(p.min * 12)));
+        _woBeep(660, 0.15, 'sine');
+        _wpTimer = setInterval(wpTick, 250);
+        wpRender();
+    };
+    var gn = document.getElementById('wp-gen-next');
+    if (gn) gn.onclick = function() { wpStop(); p.step = 2; wpRender(); };
+    el.querySelectorAll('[data-mob]').forEach(function(b) { b.onclick = function() {
+        var i = parseInt(b.getAttribute('data-mob'), 10);
+        if (p.mobRun === i) { wpStop(); p.mobRun = -1; wpRender(); return; }   // secondo tocco: ferma
+        if (p.mob[i]) { p.mob[i] = false; wpRender(); return; }                // togli la spunta
+        var mv = wpMobList(p)[i];
+        wpStop();
+        p.mobRun = i; p.run = 'mob'; p.left = mv.t * (mv.lati ? 2 : 1);
+        p.endsAt = Date.now() + p.left * 1000; p.lastBeep = null; p.side2 = false;
+        _woBeep(660, 0.15, 'sine');
+        _wpTimer = setInterval(wpTick, 250);
+        wpRender();
+    }; });
+    var mn = document.getElementById('wp-mob-next'); if (mn) mn.onclick = function() { wpStop(); p.step = 3; wpRender(); };
+    var ms = document.getElementById('wp-mob-skip'); if (ms) ms.onclick = function() { wpStop(); p.mobRun = -1; p.step = 3; wpRender(); };
+}
+
+function wpTick() {
+    var p = woPrep;
+    if (!p || !document.getElementById('wo-prep')) { wpStop(); return; }
+    var left = wpLeft();
+    if (p.run === 'gen') {
+        p.left = left;
+        var tot = p.min * 60;
+        var ck = document.getElementById('wp-clock'), br = document.getElementById('wp-bar');
+        if (ck) ck.textContent = wpFmt(left);
+        if (br) br.style.width = Math.round((tot - left) / tot * 100) + '%';
+        if (left > 0 && left <= 3 && p.lastBeep !== left) { p.lastBeep = left; woCountdownBeepFree(); }
+        if (p.env !== 'palestra') {
+            var bi = Math.min(4, Math.floor((tot - left) / Math.round(tot / 5)));
+            if (bi !== p.block) { p.block = bi; if (left > 0) { _woBeep(880, 0.25, 'sine'); wpRender(); } }
+        }
+        if (left === 0) {
+            wpStop(); p.left = 0;
+            _woBeep(660, 0.12, 'sine'); setTimeout(function(){ _woBeep(880, 0.25, 'sine'); }, 140);
+            p.step = 2; wpRender();
+        }
+    } else if (p.run === 'mob') {
+        var mv = wpMobList(p)[p.mobRun];
+        p.left = left;
+        if (mv && mv.lati && !p.side2 && left <= mv.t) { p.side2 = true; _woBeep(880, 0.25, 'sine'); wpRender(); return; }
+        var btn = document.querySelector('#wo-prep [data-mob="' + p.mobRun + '"]');
+        if (btn) btn.textContent = wpFmt(wpSideLeft(mv, left));
+        if (left > 0 && left <= 3 && p.lastBeep !== left) { p.lastBeep = left; woCountdownBeepFree(); }
+        if (left === 0) {
+            p.mob[p.mobRun] = true; p.mobRun = -1; wpStop();
+            _woBeep(660, 0.12, 'sine'); setTimeout(function(){ _woBeep(880, 0.25, 'sine'); }, 140);
+            wpRender();
+        }
+    }
+}
+// Beep del conto alla rovescia senza passare da woState, che qui non e' ancora attivo.
+function woCountdownBeepFree() { _woBeep(440, 0.12, 'square'); }
 
 function renderWarmupBlock(exName, exercises, container) {
     // Usa sempre il contenitore stabile: evita che i re-render risalgano il DOM
@@ -5307,11 +5617,26 @@ function renderWarmupBlock(exName, exercises, container) {
     // ── Header ──
     var hdr = document.createElement('div');
     hdr.className = 'wc-ex-header';
-    hdr.innerHTML = '<div class="wc-ex-num"><span style="flex-shrink:0;white-space:nowrap;">🔥 Riscaldamento specifico</span>' +
+    hdr.innerHTML = '<div class="wc-ex-num"><span style="flex-shrink:0;white-space:nowrap;">🔥 Riscaldamento</span>' +
         '<span class="wc-sci-badge">NSCA 2008 · Rippetoe</span>' +
         '<button type="button" class="wc-info-btn" onclick="woWarmupInfo()" aria-label="Informazioni sul riscaldamento">i</button></div>' +
         '<div class="wc-ex-name">Prima di iniziare l\'allenamento</div>';
     card.appendChild(hdr);
+
+    // ── Passi 1 e 2: generale e mobilita' ──
+    var prepEl = document.createElement('div');
+    prepEl.id = 'wo-prep';
+    card.appendChild(prepEl);
+    wpState(exercises);
+
+    // ── Passo 3: avvicinamento (le serie al 40/60/80% dell'MTR) ──
+    var s3 = document.createElement('div');
+    s3.className = 'wp-sec cur';
+    s3.style.borderBottom = 'none';
+    s3.style.paddingBottom = '0';
+    s3.innerHTML = '<div class="wp-head"><div class="wp-num">3</div><div class="wp-title">Serie di avvicinamento</div>' +
+        '<div class="wp-meta">con i pesi</div></div>';
+    card.appendChild(s3);
 
     // ── Analisi protocollo ──
     var analysisEl = document.createElement('div');
@@ -5542,6 +5867,7 @@ function renderWarmupBlock(exName, exercises, container) {
     card.appendChild(bodyEl);
     block.appendChild(card);
     container.appendChild(block);
+    wpRender();
 
     // ── Footer ancorato: mostra barra progresso + skip + start ──
     var progWrap = document.getElementById('wo-warmup-fixed-footer');
@@ -18393,6 +18719,7 @@ function woStartWorkout() {
 }
 
 function _woBeginWorkout() {
+    try { wpStop(); } catch (e) {}
     const page = document.getElementById('page-workout');
     page.classList.add('wo-running');
 
