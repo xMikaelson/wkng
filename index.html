@@ -2969,6 +2969,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wp-step.ok { color:#94a3b8; }
         .wp-step.ok b::before { content:'✓ '; color:var(--primary); }
         .wp-step.skip { color:#64748b; }
+        /* Salta, barra dei set e INIZIA servono solo all'ultimo passo */
+        .wo-action-footer.wp-hide { display:none !important; }
         .wp-done { text-align:center; padding:18px 16px; font-size:0.66rem; color:#94a3b8; }
         .wp-done b { display:block; font-size:0.8rem; color:var(--primary); margin-bottom:4px; }
         .wp-head { display:flex; align-items:center; gap:8px; }
@@ -4531,7 +4533,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '281';
+const APP_VERSION = '282';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -5449,6 +5451,10 @@ function wpRender() {
     // Il passo 3 (le serie con i pesi) vive fuori da qui: si mostra solo quando tocca a lui.
     var s3 = document.getElementById('wo-step3');
     if (s3) s3.style.display = (p.step >= 3 && p.ramp) ? '' : 'none';
+    // Il piede della card (barra dei set, Salta, INIZIA) appartiene al passo
+    // finale: durante generale e mobilita' resta nascosto.
+    var ftr = document.getElementById('wo-action-footer');
+    if (ftr) ftr.classList.toggle('wp-hide', p.step < 3);
     if (p.step >= 3 && !p.ramp) {
         h += '<div class="wp-done"><b>✓ Riscaldamento fatto</b>Puoi iniziare l\'allenamento.</div>';
     }
@@ -5927,6 +5933,8 @@ function renderWarmupBlock(exName, exercises, container) {
 // così i bordi laterali sono per forza continui (nessun disallineamento possibile).
 function woShowActionFooter(show, joined, hostEl) {
     var footer = document.getElementById('wo-action-footer');
+    // Fuori dal riscaldamento a passi il piede non deve restare nascosto.
+    if (footer && !document.getElementById('wo-prep')) footer.classList.remove('wp-hide');
     var panel  = document.getElementById('wo-panel-train');
     if (footer) {
         footer.style.display = show ? 'block' : 'none';
