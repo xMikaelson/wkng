@@ -4483,7 +4483,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '275';
+const APP_VERSION = '276';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -14422,6 +14422,32 @@ function exFromProto(ex) {
              _type: ex._type, _zone: ex._zone, mtrValue: ex.mtrValue };
 }
 
+/* Protocollo della seduta di oggi, non quello "attivo".
+   In un piano diviso (Hybrid) il protocollo attivo e' uno solo, di solito
+   Upper, mentre la seduta del giorno puo' essere Push. Lo schema del capitolo
+   dipende dalla scheda: Upper e Lower in forza, Push, Pull e Legs in
+   ipertrofia. Chiedendolo al protocollo attivo, gli esercizi di Push
+   ricevevano le ripetizioni della forza (5 x 5 al posto di 4 x 10 nel
+   Chapter 2), e con loro sbagliavano anche lo storico, i record e il
+   ricalcolo dei carichi, che leggono le ripetizioni previste da qui. */
+function woSessionProto() {
+    var list = APP.savedProtocols || [];
+    var id = woState && woState._todayProtoId;
+    if (id) {
+        var byId = list.find(function(p) { return p.id === id; });
+        if (byId) return byId;
+    }
+    var rawDay = new Date().getDay();
+    var di = (woState && woState._todayDayIdx != null) ? woState._todayDayIdx : (rawDay === 0 ? 6 : rawDay - 1);
+    var w = APP.selectedViewWeek || 0;
+    var a = APP.dayAssignments && APP.dayAssignments[w] ? APP.dayAssignments[w][di] : null;
+    if (a) {
+        var byDay = list.find(function(p) { return p.id === a.protoId || p.name === a.protoName; });
+        if (byDay) return byDay;
+    }
+    return awkActiveProto();
+}
+
 function initWorkoutPage() {
     const page = document.getElementById('page-workout');
 
@@ -14465,6 +14491,10 @@ function initWorkoutPage() {
             // ← sync: woStartWorkout and _woBeginWorkout both read APP.exerciseData
             APP.exerciseData = exData;
         }
+        // Prima di disegnare: gli schemi qui sotto passano da woSessionProto,
+        // che deve gia' sapere quale scheda si allena oggi.
+        woState._todayProtoId = (proto && proto.id) || assignment.protoId || null;
+        woState._todayDayIdx  = todayMon;
     }
 
     const bannerEl  = document.getElementById('wo-today-banner');
@@ -14531,7 +14561,7 @@ function initWorkoutPage() {
                 const mins = Math.round((woState.elapsed || 0) / 60);
                 if (exList.length && mins > 0) {
                     const wNow = APP.selectedViewWeek || 0;
-                    const protoNow = (typeof awkActiveProto === 'function') ? awkActiveProto() : null;
+                    const protoNow = woSessionProto();
                     let sets = 0;
                     exList.forEach(function(e) {
                         const sr = (typeof srForChapter === 'function') ? srForChapter(e, wNow, protoNow) : e.sr;
@@ -14645,7 +14675,7 @@ function initWorkoutPage() {
                         </div>
                         <div style="text-align:right;">
                             <div style="font-size:0.65rem;color:var(--primary);font-weight:700;">${kg} kg</div>
-                            <div style="font-size:0.55rem;color:#94a3b8;">${escapeHTML(srForChapter(ex, DELOAD_WEEK, awkActiveProto()))}</div>
+                            <div style="font-size:0.55rem;color:#94a3b8;">${escapeHTML(srForChapter(ex, DELOAD_WEEK, woSessionProto()))}</div>
                         </div>
                     </div>`;
                 }).join('')}`;
@@ -14663,7 +14693,7 @@ function initWorkoutPage() {
         woState._exListHtml = `<div style="font-size:0.55rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;font-weight:700;">Programma · ${protoName}</div>
         ${exData.map((ex,i) => {
             const kg = ex.loads ? ex.loads[kgW].toFixed(1) : (ex.baseWeight||0);
-            const srDisplay = srForChapter(ex, kgW, awkActiveProto());
+            const srDisplay = srForChapter(ex, kgW, woSessionProto());
             return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
                 <div style="display:flex;gap:8px;align-items:center;">
                     <div style="width:20px;height:20px;border-radius:6px;background:rgba(var(--pr,52,211,153),0.12);border:1px solid rgba(var(--pr,52,211,153),0.25);display:flex;align-items:center;justify-content:center;font-size:0.55rem;font-weight:800;color:var(--primary);">${i+1}</div>
@@ -18336,7 +18366,7 @@ function woRenderEx() {
     const kg = ex.loads ? ex.loads[w].toFixed(1) : (ex.baseWeight||0);
     const totalEx = exData.length;
     // In deload week: usa serie ridotte
-    const displaySr = srForChapter(ex, w, awkActiveProto());
+    const displaySr = srForChapter(ex, w, woSessionProto());
     const srParts = displaySr ? displaySr.match(/(\d+)\s*[xX×]\s*(\d+)/) : null;
     const totalSets = srParts ? parseInt(srParts[1]) : 3;
 
@@ -18425,7 +18455,7 @@ function woStartHold() {
     const ex = exData[woState.exIndex];
     if (!ex || woState.holdRunning) return;
     const w = APP.selectedViewWeek || 0;
-    const displaySr = srForChapter(ex, w, awkActiveProto());
+    const displaySr = srForChapter(ex, w, woSessionProto());
     const dur = srDuration(displaySr);
     if (!dur) return;
     woState.holdSecs = dur;
@@ -18447,7 +18477,7 @@ function woRenderExList() {
     const listEl = document.getElementById('wo-ex-list-body');
     if (!listEl) return;
     const w = APP.selectedViewWeek || 0;
-    const proto = (typeof awkActiveProto === 'function') ? awkActiveProto() : null;
+    const proto = woSessionProto();
     listEl.innerHTML = exData.map((e,i) => {
         // carico pianificato: SEMPRE dal piano, mai modificato dalla sessione
         const plannedKg = parseFloat(e.loads ? e.loads[w] : (e.baseWeight||0)).toFixed(1);
@@ -18661,27 +18691,44 @@ function woAdjustFutureLoads(exName, eq, targetReps, wIdx) {
 
     // Dal riferimento allo schema al nuovo MTR, sulla base di ripetizioni
     // con cui l'MTR è stato registrato (Epley, come per la conversione).
+    // Coefficiente del gruppo muscolare, lo stesso di mtrForReps e di
+    // woComputePlanLoad: prima qui c'era 30 fisso, e lo stesso MTR riletto
+    // dall'altra strada dava un numero diverso.
     var baseReps = (typeof mtrRepsGet === 'function' && mtrRepsGet(exName)) || targetReps;
-    var newMtr = awRoundKg(ref * (1 + targetReps / 30) / (1 + baseReps / 30));
+    var k = awkRepK(exName);
+    var newMtr = awRoundKg(ref * (1 + targetReps / k) / (1 + baseReps / k));
     var curMtr = parseFloat(mtrGet(exName)) || 0;
     if (!(newMtr > curMtr)) return 0;
 
     mtrSet(exName, newMtr);
+    if (!mtrRepsGet(exName)) mtrRepsSet(exName, baseReps);
     if (!APP.mtrAdjusted) APP.mtrAdjusted = {};
     APP.mtrAdjusted[exName] = wIdx;
 
+    // Lo stesso esercizio compare in schede con schemi diversi: in un Hybrid
+    // la Panca e' 5 x 3 in Upper e 4 x 12 in Push. Il riferimento ricavato da
+    // questa seduta vale per le sue ripetizioni; prima veniva copiato tale e
+    // quale nelle altre schede, per cui un record in Push abbassava i carichi
+    // di Upper al livello dell'ipertrofia, e un record in Upper portava Push a
+    // carichi da forza. Ora ogni scheda lo riceve riportato alle proprie
+    // ripetizioni (Epley 1985, come woApplyPlanLoad).
     var changed = 0;
-    function applyTo(e) {
+    function applyTo(e, proto) {
         if (!e || !e.name || !exSameExercise(e.name, exName)) return;
         if (!Array.isArray(e.loads) || e.loads.length !== WEEK_LOADS.length) return;
+        var eReps = srReps(srForChapter(e, wIdx, proto || null)) || srReps(e.sr);
+        var eRef = (eReps && eReps !== targetReps)
+            ? (mtrForReps(exName, eReps) || ref)
+            : ref;
         for (var i = wIdx + 1; i < WEEK_LOADS.length; i++) {
-            e.loads[i] = awRoundKg(ref * WEEK_LOADS[i]);
+            e.loads[i] = awRoundKg(eRef * WEEK_LOADS[i]);
         }
         e.mtrValue = newMtr;
         changed++;
     }
-    (APP.exerciseData || []).forEach(applyTo);
-    (APP.savedProtocols || []).forEach(function(p) { (p.exercises || []).forEach(applyTo); });
+    var sessProto = woSessionProto();
+    (APP.exerciseData || []).forEach(function(e) { applyTo(e, sessProto); });
+    (APP.savedProtocols || []).forEach(function(p) { (p.exercises || []).forEach(function(e) { applyTo(e, p); }); });
     saveState();
 
     var nextIdx = wIdx + 1;
@@ -18724,7 +18771,7 @@ function woComputePlanLoad(exName, newKg, wIdx) {
     // ricalcolare, il numero digitato resta la zavorra di oggi.
     if (!(prevKg > 0)) return null;
     if (Math.abs(newKg - prevKg) < 0.5) return null;
-    var targetReps = srReps(srForChapter(ex, wIdx, awkActiveProto())) || srReps(ex.sr);
+    var targetReps = srReps(srForChapter(ex, wIdx, woSessionProto())) || srReps(ex.sr);
     if (!(targetReps > 0)) return null;   // isometrico: si misura in secondi
 
     var ref = newKg / pct;                // riferimento dichiarato dall'atleta
@@ -18779,7 +18826,7 @@ function woApplyPlanLoad(exName, newKg, wIdx) {
         return true;
     }
 
-    var activeProto = awkActiveProto();
+    var activeProto = woSessionProto();
     (APP.exerciseData || []).forEach(function(e) { applyTo(e, activeProto); });
     var touched = [];
     (APP.savedProtocols || []).forEach(function(p) {
@@ -19202,7 +19249,7 @@ function woCompleteSet() {
     const ex = exData[woState.exIndex];
     if (!ex) return;
     const w = APP.selectedViewWeek || 0;
-    const displaySr = srForChapter(ex, w, awkActiveProto());
+    const displaySr = srForChapter(ex, w, woSessionProto());
     const srParts = displaySr ? displaySr.match(/(\d+)\s*[xX×]\s*(\d+)/) : null;
     const totalSets = srParts ? parseInt(srParts[1]) : 3;
 
@@ -24063,7 +24110,7 @@ function _lhUpsert(ex, wIdx, onlyIfExists) {
     // protoRef era una variabile di un'altra funzione: qui non esiste, quindi
     // ogni riga di storico moriva con un errore prima di essere scritta. Con
     // essa cadevano anche i record e gli aumenti di carico, che passano di qui.
-    var displaySr = srForChapter(ex, wIdx, awkActiveProto());
+    var displaySr = srForChapter(ex, wIdx, woSessionProto());
     var tr = srReps(displaySr);
     // A corpo libero il carico non c'e', ma le ripetizioni si': la riga serve
     // lo stesso, altrimenti un ciclo intero di calisthenics non lascia traccia
