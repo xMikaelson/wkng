@@ -8319,7 +8319,7 @@ function buildProtoEditorBox(proto, weekIdx) {
                scritto subito dopo risultava gia' deciso a tempo e il riquadro
                della scelta non tornava piu'. */
             var _vuoto = !(ex.name && ex.name.trim());
-            if (_vuoto) { if (ex._type) delete ex._type; if (ex.sr) ex.sr = ''; }
+            if (_vuoto) { if (ex._type) delete ex._type; delete ex._perSide; if (ex.sr) ex.sr = ''; }
             var _daScegliere = (!_noto && (_vuoto || !_tipoDeciso));
             /* Il controllo del tipo si vede solo finche' la scelta non e'
                stata fatta. Appena si sceglie, l'esercizio e' impostato con
@@ -8347,7 +8347,7 @@ function buildProtoEditorBox(proto, weekIdx) {
                 tipoWrap.innerHTML = peTipoLabelHtml();
                 tipoWrap.title = 'Scegli se questo esercizio si misura a ripetizioni o a tempo';
 
-                function setTipo(aTempo) {
+                function setTipo(aTempo, perLato) {
                     var m = (draft[idx].sr || '').match(/(\d+)\s*[xX\u00D7]\s*(\d+)/);
                     var s = m ? m[1] : '3';
                     var v = m ? m[2] : (aTempo ? '30' : '10');
@@ -8359,6 +8359,8 @@ function buildProtoEditorBox(proto, weekIdx) {
                     if (!m || eraTempo !== aTempo) v = aTempo ? '30' : '10';
                     draft[idx].sr = s + ' x ' + v + (aTempo ? 's' : '');
                     draft[idx]._type = aTempo ? 'time' : 'reps';
+                    if (aTempo) draft[idx]._perSide = !!perLato;
+                    else delete draft[idx]._perSide;
 
                     if (aTempo) { draft[idx].baseWeight = 0; delete draft[idx].loads; delete draft[idx].mtrValue; }
                     onManualEdit();
@@ -8382,8 +8384,10 @@ function buildProtoEditorBox(proto, weekIdx) {
             } else if (srIsTime(ex.sr)) {
                 var holdTag = document.createElement('div');
                 holdTag.className = 'pe-hold-tag';
-                holdTag.textContent = '⏱ a tempo';
-                holdTag.title = 'Esercizio isometrico: si misura in secondi, senza carico';
+                holdTag.textContent = exIsPerSide(ex) ? '⏱ per lato' : '⏱ a tempo';
+                holdTag.title = exIsPerSide(ex)
+                    ? 'Isometrico a un lato alla volta: la durata vale per ciascun lato'
+                    : 'Esercizio isometrico: si misura in secondi, senza carico';
                 vStack.appendChild(holdTag);
                 // Niente carico, quindi niente bersaglio da impostare.
                 if (mtrBtn.parentNode) mtrBtn.parentNode.removeChild(mtrBtn);
@@ -8445,6 +8449,7 @@ function buildProtoEditorBox(proto, weekIdx) {
                 var _ricOra = peExRiconosciuto(this.value);
                 if (_vuotoOra) {
                     if (draft[idx]._type) delete draft[idx]._type;
+                    delete draft[idx]._perSide;
                     // Come sopra: lo schema di prima non deve decidere per il prossimo.
                     if (draft[idx].sr) { draft[idx].sr = ''; srInput.value = ''; }
                 }
@@ -9607,7 +9612,7 @@ function awkVerifyCoachList(suggested, draft, proto){
       if (norm(srO) !== norm(o.sr)) {
         corretti.push({ name: o.name, motivo: 'serie e ripetizioni allineate al tipo di scheda' });
       }
-      out.push({ name: o.name, sr: srO, baseWeight: o.baseWeight, _type: typeO, _role: roleO || o._role, _zone: zoneO });
+      out.push({ name: o.name, sr: srO, baseWeight: o.baseWeight, _type: typeO, _role: roleO || o._role, _zone: zoneO, _perSide: o._perSide });
       return;
     }
 
@@ -9666,7 +9671,7 @@ function awkVerifyCoachList(suggested, draft, proto){
       typeM = asTimeM ? 'time' : 'reps';
       zoneM = asTimeM ? pM.z : (roleM === 'core' ? (pM.zDyn || pM.z) : pM.z);
     }
-    out.push({ name: o.name, sr: srM, baseWeight: o.baseWeight, _type: typeM, _role: roleM || o._role, _zone: zoneM });
+    out.push({ name: o.name, sr: srM, baseWeight: o.baseWeight, _type: typeM, _role: roleM || o._role, _zone: zoneM, _perSide: o._perSide });
     mantenuti.push({ name: o.name, motivo: 'mantenuto: il Coach non lo ha citato' });
   });
 
@@ -10292,10 +10297,16 @@ function srDuration(sr) {
 // del side bridge rilevati separatamente a destra e a sinistra). Lo stesso
 // vale per gli isometrici a un braccio o a una gamba del catalogo. Le parole
 // chiave coprono anche gli esercizi aggiunti a mano con nomi simili.
+// Per un esercizio fuori catalogo decide l'atleta al momento di crearlo
+// (_perSide): la sua risposta vale sempre piu' del nome.
 var WO_PER_SIDE_HOLDS = ['plank laterale', 'rematore isometrico allo stipite',
                          'curl isometrico con asciugamano'];
-function exIsPerSide(name) {
-    var n = String(name || '').toLowerCase();
+function exIsPerSide(exOrName) {
+    if (exOrName && typeof exOrName === 'object') {
+        if (typeof exOrName._perSide === 'boolean') return exOrName._perSide;
+        exOrName = exOrName.name;
+    }
+    var n = String(exOrName || '').toLowerCase();
     if (WO_PER_SIDE_HOLDS.indexOf(n) !== -1) return true;
     return /laterale|monopodalic|unilateral|singol[oa]|un braccio|una gamba|per lato|alternat/.test(n);
 }
@@ -10562,7 +10573,15 @@ function tipoOpen(exName, tipoCorrente, callback) {
     var cr = document.getElementById('tipo-ch-rip'), cs = document.getElementById('tipo-ch-sec');
     if (cr) cr.className = 'tipo-choice' + (tipoCorrente === 'reps' ? ' on' : '');
     if (cs) cs.className = 'tipo-choice' + (tipoCorrente === 'time' ? ' on' : '');
+    tipoShowStep(1);
     ov.classList.add('active');
+}
+// Secondo passo, solo per "a tempo": un lato alla volta o tutti e due
+// insieme. Decide se la seduta fa partire un countdown o due.
+function tipoShowStep(n) {
+    var a = document.getElementById('tipo-step1'), b = document.getElementById('tipo-step2');
+    if (a) a.style.display = n === 1 ? '' : 'none';
+    if (b) b.style.display = n === 2 ? '' : 'none';
 }
 function tipoClose() {
     var ov = document.getElementById('tipo-overlay');
@@ -10570,9 +10589,15 @@ function tipoClose() {
     _tipoCb = null;
 }
 function tipoPick(aTempo) {
+    if (aTempo && document.getElementById('tipo-step2')) { tipoShowStep(2); return; }
     var cb = _tipoCb;
     tipoClose();
-    if (cb) cb(!!aTempo);
+    if (cb) cb(!!aTempo, false);
+}
+function tipoPickSide(perLato) {
+    var cb = _tipoCb;
+    tipoClose();
+    if (cb) cb(true, !!perLato);
 }
 
 function swapClose() {
@@ -14440,7 +14465,7 @@ function exFromProto(ex) {
         : WEEK_LOADS.map(function(p) { return Math.round(base * p * 2) / 2; });
     return { name: ex.name, sr: ex.sr, loads: loads, baseWeight: base,
              _role: ex._role, _rest: ex._rest, _rir: ex._rir,
-             _type: ex._type, _zone: ex._zone, mtrValue: ex.mtrValue };
+             _type: ex._type, _zone: ex._zone, mtrValue: ex.mtrValue, _perSide: ex._perSide };
 }
 
 /* Protocollo della seduta di oggi, non quello "attivo".
@@ -14615,7 +14640,7 @@ function initWorkoutPage() {
             const reps = _isHold ? 0 : (srM ? parseInt(srM[2]) : 10);
             const isForza = !_isHold && reps <= 6;
             let setTime  = _isHold ? (srDuration(ex.sr) || 40) : (isForza ? 45 : 35);
-            if (_isHold && exIsPerSide(ex.name)) setTime = setTime * 2 + WO_SIDE_SWITCH_SECS;
+            if (_isHold && exIsPerSide(ex)) setTime = setTime * 2 + WO_SIDE_SWITCH_SECS;
             const restTime = isForza ? 180 : 120;
             totalWorkSecs += sets * setTime;
             totalRestSecs += (sets - 1) * restTime;
@@ -18328,7 +18353,7 @@ function _woBeginWorkout() {
         const reps = _isHold ? 0 : (srM ? parseInt(srM[2]) : 10);
         const isForza = !_isHold && reps <= 6;
         let _setT = _isHold ? (srDuration(ex.sr) || 40) : (isForza ? 45 : 35);
-        if (_isHold && exIsPerSide(ex.name)) _setT = _setT * 2 + WO_SIDE_SWITCH_SECS;
+        if (_isHold && exIsPerSide(ex)) _setT = _setT * 2 + WO_SIDE_SWITCH_SECS;
         estSecs += sets * _setT;
         estSecs += (sets - 1) * (isForza ? 180 : 120);
     });
@@ -18398,11 +18423,11 @@ function woRenderEx() {
     document.getElementById('wo-ex-num').textContent = `Esercizio ${woState.exIndex+1} di ${totalEx}`;
     document.getElementById('wo-ex-name').textContent = exDisplay(ex.name);
     document.getElementById('wo-ex-scheme').textContent = displaySr +
-        (srIsTime(displaySr) && exIsPerSide(ex.name) ? ' per lato' : '') + (w === DELOAD_WEEK ? ' 🔄' : '');
+        (srIsTime(displaySr) && exIsPerSide(ex) ? ' per lato' : '') + (w === DELOAD_WEEK ? ' 🔄' : '');
     // Isometrico: nessun carico, nessun MTR, si tiene la posizione a tempo
     const isHold = srIsTime(displaySr);
     const holdDur = isHold ? srDuration(displaySr) : null;
-    const perSide = isHold && exIsPerSide(ex.name);
+    const perSide = isHold && exIsPerSide(ex);
     // Carico editabile (solo esercizi a ripetizioni)
     const prEl = APP.personalRecords[ex.name];
     const isPR = prEl && parseFloat(kg) >= prEl;
@@ -18491,7 +18516,7 @@ function woStartHold() {
     woState._lastBeepSec = null;
     // Per lato: primo lato, cambio, secondo lato. La serie si chiude solo
     // alla fine del secondo.
-    woState._holdPhase = exIsPerSide(ex.name) ? 'side1' : null;
+    woState._holdPhase = exIsPerSide(ex) ? 'side1' : null;
     const btn = document.getElementById('wo-hold-btn');
     if (btn) { btn.disabled = true; btn.textContent = woState._holdPhase ? 'Primo lato…' : 'In posizione…'; }
     const t = document.getElementById('wo-timer');
@@ -18552,7 +18577,7 @@ function woRenderExList() {
         <div class="wo-ex-row ${i < woState.exIndex ? 'completed' : i===woState.exIndex ? 'active' : ''}" onclick="exVideoOpen('${escapeHTML(e.name).replace(/'/g,'\\&apos;')}')">
             <div class="wo-dot"></div>
             <span class="wo-ex-rname">${escapeHTML(exDisplay(e.name))}</span>
-            <span class="wo-ex-rsr">${escapeHTML(rowSr)}${srIsTime(rowSr) && exIsPerSide(e.name) ? ' per lato' : ''}</span>
+            <span class="wo-ex-rsr">${escapeHTML(rowSr)}${srIsTime(rowSr) && exIsPerSide(e) ? ' per lato' : ''}</span>
             ${kgCol}
         </div>`;
     }).join('');
@@ -25190,6 +25215,7 @@ function homeRefreshData() {
 
     <div id="tipo-overlay" onclick="if(event.target===this)tipoClose()">
         <div id="tipo-sheet">
+            <div id="tipo-step1">
             <h3>Come si misura?</h3>
             <p class="tipo-sub"><b id="tipo-name">Questo esercizio</b> non è in catalogo, quindi l'app non sa come contarlo.</p>
             <button class="tipo-choice" id="tipo-ch-rip" onclick="tipoPick(false)">
@@ -25201,6 +25227,20 @@ function homeRefreshData() {
                 <span><span class="t">A tempo</span><span class="d">Serie in secondi. Nessun carico: si progredisce allungando la durata.</span></span>
             </button>
             <button class="tipo-cancel" onclick="tipoClose()">Annulla</button>
+            </div>
+            <div id="tipo-step2" style="display:none;">
+            <h3>Un lato alla volta?</h3>
+            <p class="tipo-sub">Se si esegue alternando gamba o braccio, durante la seduta il timer va prima su un lato, lascia 5 secondi per girarti e riparte sull'altro.</p>
+            <button class="tipo-choice" onclick="tipoPickSide(true)">
+                <span class="ic">🔀</span>
+                <span><span class="t">Sì, alternato per lato</span><span class="d">La durata vale per ciascun lato: 30s = 30s a destra e 30s a sinistra.</span></span>
+            </button>
+            <button class="tipo-choice" onclick="tipoPickSide(false)">
+                <span class="ic">⏺️</span>
+                <span><span class="t">No, tutti e due insieme</span><span class="d">Un solo countdown per serie, come il plank.</span></span>
+            </button>
+            <button class="tipo-cancel" onclick="tipoShowStep(1)">Indietro</button>
+            </div>
         </div>
     </div>
 
