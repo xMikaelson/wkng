@@ -15105,6 +15105,18 @@ function initWorkoutPage() {
                         </div>
                     </div>`;
                 }).join('')}`;
+                // Anche nel Deload il riscaldamento generale e la mobilita':
+                // il volume cala, l'intensita' resta (Bosquet et al. 2007), e
+                // i carichi da preparare ci sono comunque. Le serie di
+                // avvicinamento restano fuori, come prima.
+                var _dCard = document.createElement('div');
+                _dCard.className = 'wo-warmup-card';
+                _dCard.innerHTML = '<div class="wc-ex-header"><div class="wc-ex-num"><span style="flex-shrink:0;white-space:nowrap;">🔥 Riscaldamento</span>' +
+                    '<button type="button" class="wc-info-btn" onclick="woWarmupInfo()" aria-label="Informazioni sul riscaldamento">i</button></div>' +
+                    '<div class="wc-ex-name">Prima di iniziare l\'allenamento</div></div><div id="wo-prep"></div>';
+                prevList.insertBefore(_dCard, prevList.firstChild);
+                wpState(exData);
+                wpRender();
             }
             } // fine else (ricostruzione warmup)
 
