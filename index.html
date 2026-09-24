@@ -4483,7 +4483,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '276';
+const APP_VERSION = '277';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -6475,7 +6475,10 @@ function _sbOfflineClient() {
 const sbClient = (window.supabase && typeof window.supabase.createClient === 'function')
     ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
     : _sbOfflineClient();
-if (sbClient._offline) awLog.warn('Supabase non disponibile: l\'app funziona in modalità locale.');
+// console e non awLog: awLog e' dichiarato piu' avanti nello stesso script,
+// qui vale ancora undefined, e l'eccezione fermava l'intero avvio proprio
+// nel caso (Supabase non caricato) che questo ramo doveva salvare.
+if (sbClient._offline) console.warn('Supabase non disponibile: l\'app funziona in modalità locale.');
 
 function openLogin() {
     const m = document.getElementById('login-modal');
@@ -19560,9 +19563,14 @@ function awdAdd(w, di, stato, tags, nota) {
 // precedenza: il diario aspetta che lo schermo sia libero.
 function awdBusy() {
     var ids = ['wo-complete-overlay', 'wo-ovl-ask-overlay', 'wo-ovl-sum-overlay',
-               'wo-reps-ask-overlay', 'wo-tech-ask-overlay', 'aw-dialog',
-               'wo-countdown-overlay'];
+               'wo-reps-ask-overlay', 'wo-tech-ask-overlay', 'aw-dialog'];
     for (var i = 0; i < ids.length; i++) if (document.getElementById(ids[i])) return true;
+    // Il conto alla rovescia di partenza, a differenza degli overlay sopra,
+    // sta fisso nella pagina e si mostra con la classe 'visible': contarlo
+    // per la sola presenza teneva lo schermo sempre "occupato", e dalla
+    // v.258 alla v.276 il diario non si e' mai aperto.
+    var cd = document.getElementById('wo-countdown-overlay');
+    if (cd && cd.classList.contains('visible')) return true;
     var wc = document.getElementById('week-complete-overlay');
     if (wc && wc.classList.contains('visible')) return true;
     var pc = document.getElementById('program-complete-overlay');
