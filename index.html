@@ -2664,6 +2664,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .tipo-choice .ic { font-size:1.05rem; line-height:1.1; flex-shrink:0; margin-top:1px; }
         .tipo-choice .t { font-size:0.7rem; font-weight:800; margin-bottom:2px; display:block; }
         .tipo-choice .d { font-size:0.58rem; color:#94a3b8; line-height:1.45; display:block; }
+        .tipo-rests { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin-bottom:12px; }
+        .tipo-rest { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.12); border-radius:10px; color:#cbd5e1; font-family:inherit; font-size:0.66rem; font-weight:800; padding:10px 0; cursor:pointer; text-transform:none; }
+        .tipo-rest.on { background:rgba(251,191,36,0.14); border-color:rgba(251,191,36,0.5); color:#fbbf24; }
+        .tipo-ok { justify-content:center; text-align:center; }
         .tipo-cancel { width:100%; background:none; border:none; color:#64748b; font-size:0.62rem; font-weight:700; font-family:inherit; padding:9px 0 2px; cursor:pointer; text-transform:none; }
         .pe-hold-tag { background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.25); border-radius:6px; color:#a5b4fc; font-size:0.5rem; font-weight:700; letter-spacing:0.02em; height:26px; width:56px; padding:0 4px; display:flex; align-items:center; justify-content:center; flex-shrink:0; white-space:nowrap; }
         /* Corpo libero: puro (grigio, nessun carico) e zavorrabile (ambra, +kg) */
@@ -8373,7 +8377,7 @@ function buildProtoEditorBox(proto, weekIdx) {
                 tipoWrap.innerHTML = peTipoLabelHtml();
                 tipoWrap.title = 'Scegli se questo esercizio si misura a ripetizioni o a tempo';
 
-                function setTipo(aTempo, perLato) {
+                function setTipo(aTempo, perLato, recupero) {
                     var m = (draft[idx].sr || '').match(/(\d+)\s*[xX\u00D7]\s*(\d+)/);
                     var s = m ? m[1] : '3';
                     var v = m ? m[2] : (aTempo ? '30' : '10');
@@ -8387,6 +8391,7 @@ function buildProtoEditorBox(proto, weekIdx) {
                     draft[idx]._type = aTempo ? 'time' : 'reps';
                     if (aTempo) draft[idx]._perSide = !!perLato;
                     else delete draft[idx]._perSide;
+                    if (aTempo && perLato && recupero > 0) draft[idx]._rest = recupero;
 
                     if (aTempo) { draft[idx].baseWeight = 0; delete draft[idx].loads; delete draft[idx].mtrValue; }
                     onManualEdit();
@@ -8414,6 +8419,7 @@ function buildProtoEditorBox(proto, weekIdx) {
                 holdTag.title = exIsPerSide(ex)
                     ? 'Isometrico a un lato alla volta: la durata vale per ciascun lato'
                     : 'Esercizio isometrico: si misura in secondi, senza carico';
+                if (exIsPerSide(ex) && ex._rest > 0) holdTag.title += ' · recupero ' + ex._rest + 's dopo i due lati';
                 vStack.appendChild(holdTag);
                 // Niente carico, quindi niente bersaglio da impostare.
                 if (mtrBtn.parentNode) mtrBtn.parentNode.removeChild(mtrBtn);
@@ -9638,7 +9644,7 @@ function awkVerifyCoachList(suggested, draft, proto){
       if (norm(srO) !== norm(o.sr)) {
         corretti.push({ name: o.name, motivo: 'serie e ripetizioni allineate al tipo di scheda' });
       }
-      out.push({ name: o.name, sr: srO, baseWeight: o.baseWeight, _type: typeO, _role: roleO || o._role, _zone: zoneO, _perSide: o._perSide });
+      out.push({ name: o.name, sr: srO, baseWeight: o.baseWeight, _type: typeO, _role: roleO || o._role, _zone: zoneO, _perSide: o._perSide, _rest: o._rest });
       return;
     }
 
@@ -9697,7 +9703,7 @@ function awkVerifyCoachList(suggested, draft, proto){
       typeM = asTimeM ? 'time' : 'reps';
       zoneM = asTimeM ? pM.z : (roleM === 'core' ? (pM.zDyn || pM.z) : pM.z);
     }
-    out.push({ name: o.name, sr: srM, baseWeight: o.baseWeight, _type: typeM, _role: roleM || o._role, _zone: zoneM, _perSide: o._perSide });
+    out.push({ name: o.name, sr: srM, baseWeight: o.baseWeight, _type: typeM, _role: roleM || o._role, _zone: zoneM, _perSide: o._perSide, _rest: o._rest });
     mantenuti.push({ name: o.name, motivo: 'mantenuto: il Coach non lo ha citato' });
   });
 
@@ -10605,9 +10611,12 @@ function tipoOpen(exName, tipoCorrente, callback) {
 // Secondo passo, solo per "a tempo": un lato alla volta o tutti e due
 // insieme. Decide se la seduta fa partire un countdown o due.
 function tipoShowStep(n) {
-    var a = document.getElementById('tipo-step1'), b = document.getElementById('tipo-step2');
+    var a = document.getElementById('tipo-step1'), b = document.getElementById('tipo-step2'),
+        c = document.getElementById('tipo-step3');
     if (a) a.style.display = n === 1 ? '' : 'none';
     if (b) b.style.display = n === 2 ? '' : 'none';
+    if (c) c.style.display = n === 3 ? '' : 'none';
+    if (n === 3) tipoPickRest(_tipoRest || 60);
 }
 function tipoClose() {
     var ov = document.getElementById('tipo-overlay');
@@ -10621,9 +10630,27 @@ function tipoPick(aTempo) {
     if (cb) cb(!!aTempo, false);
 }
 function tipoPickSide(perLato) {
+    // Per lato: prima di chiudere si chiede il recupero dopo i due lati.
+    if (perLato && document.getElementById('tipo-step3')) { tipoShowStep(3); return; }
     var cb = _tipoCb;
     tipoClose();
     if (cb) cb(true, !!perLato);
+}
+// Recupero dopo aver completato entrambi i lati. Lo decide l'atleta: e' lo
+// stesso campo _rest che i protocolli usano per il recupero dichiarato
+// (vedi _woGetRestTime). Parte da 60 s, il valore che l'app usa gia' per gli
+// isometrici quando il protocollo non ne dichiara uno.
+var _tipoRest = 60;
+function tipoPickRest(sec) {
+    _tipoRest = sec;
+    document.querySelectorAll('#tipo-step3 .tipo-rest').forEach(function(b) {
+        b.classList.toggle('on', parseInt(b.getAttribute('data-s'), 10) === sec);
+    });
+}
+function tipoConfirmRest() {
+    var cb = _tipoCb;
+    tipoClose();
+    if (cb) cb(true, true, _tipoRest);
 }
 
 function swapClose() {
@@ -25266,6 +25293,19 @@ function homeRefreshData() {
                 <span><span class="t">No, tutti e due insieme</span><span class="d">Un solo countdown per serie, come il plank.</span></span>
             </button>
             <button class="tipo-cancel" onclick="tipoShowStep(1)">Indietro</button>
+            </div>
+            <div id="tipo-step3" style="display:none;">
+            <h3>Quanto recupero?</h3>
+            <p class="tipo-sub">Il riposo dopo aver completato <b>entrambi i lati</b>, prima della serie successiva. Fra un lato e l'altro restano i 5 secondi per girarti.</p>
+            <div class="tipo-rests">
+                <button type="button" class="tipo-rest" data-s="30" onclick="tipoPickRest(30)">30s</button>
+                <button type="button" class="tipo-rest" data-s="45" onclick="tipoPickRest(45)">45s</button>
+                <button type="button" class="tipo-rest on" data-s="60" onclick="tipoPickRest(60)">60s</button>
+                <button type="button" class="tipo-rest" data-s="90" onclick="tipoPickRest(90)">90s</button>
+                <button type="button" class="tipo-rest" data-s="120" onclick="tipoPickRest(120)">2 min</button>
+            </div>
+            <button class="tipo-choice tipo-ok" onclick="tipoConfirmRest()"><span><span class="t">Conferma</span></span></button>
+            <button class="tipo-cancel" onclick="tipoShowStep(2)">Indietro</button>
             </div>
         </div>
     </div>
