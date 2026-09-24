@@ -2960,6 +2960,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wc-body { padding:12px 16px 14px; }
         /* Riscaldamento generale e mobilita' (v.279) */
         .wp-sec { border-bottom:1px solid rgba(255,255,255,0.06); padding:12px 16px; }
+        /* Un passo alla volta (v.281): la barra dice dove sei, il resto aspetta */
+        .wp-steps { display:grid; gap:6px; padding:10px 16px 12px; border-bottom:1px solid rgba(255,255,255,0.06); }
+        .wp-step { width:auto; margin:0; padding:7px 4px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); color:#64748b; font-family:inherit; text-transform:none; letter-spacing:0; text-align:center; cursor:pointer; box-shadow:none; }
+        .wp-step b { display:block; font-size:0.6rem; font-weight:800; }
+        .wp-step span { display:block; font-size:0.5rem; font-weight:600; margin-top:1px; }
+        .wp-step.cur { border-color:rgba(var(--pr),0.55); background:rgba(var(--pr),0.08); color:var(--primary); }
+        .wp-step.ok { color:#94a3b8; }
+        .wp-step.ok b::before { content:'✓ '; color:var(--primary); }
+        .wp-step.skip { color:#64748b; }
+        .wp-done { text-align:center; padding:18px 16px; font-size:0.66rem; color:#94a3b8; }
+        .wp-done b { display:block; font-size:0.8rem; color:var(--primary); margin-bottom:4px; }
         .wp-head { display:flex; align-items:center; gap:8px; }
         .wp-num { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.55rem; font-weight:900; background:rgba(255,255,255,0.06); color:#94a3b8; flex-shrink:0; }
         .wp-sec.cur .wp-num { background:rgba(var(--pr),0.18); color:var(--primary); }
@@ -4520,7 +4531,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '280';
+const APP_VERSION = '281';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -5404,7 +5415,7 @@ function wpLeft() { return Math.max(0, Math.ceil((woPrep.endsAt - Date.now() - 5
 
 // Stato della preparazione per la seduta di oggi. Sopravvive ai ridisegni
 // della card (conferma dell'MTR), si azzera cambiando seduta o giorno.
-function wpState(exercises) {
+function wpState(exercises, ramp) {
     var proto = null;
     try { proto = woSessionProto(); } catch (e) {}
     var key = new Date().toDateString() + '|' + (proto && proto.id || '') + '|' + (exercises || []).length;
@@ -5414,6 +5425,7 @@ function wpState(exercises) {
                    zone: wpZone(proto, exercises), min: wpMinutes(), act: null,
                    left: wpMinutes() * 60, endsAt: 0, run: null, mob: {}, mobRun: -1, lastBeep: null, block: -1 };
     }
+    woPrep.ramp = ramp !== false;
     return woPrep;
 }
 
@@ -5422,11 +5434,28 @@ function wpRender() {
     if (!el || !woPrep) return;
     var p = woPrep, h = '';
     var tot = p.min * 60;
+    var list = wpMobList(p);
+    var secs = list.reduce(function(a, m) { return a + m.t * (m.lati ? 2 : 1); }, 0);
+    // ── Barra dei passi: uno alla volta, toccandoli si torna indietro ──
+    var steps = [['Generale', p.min + ' min'], ['Mobilità', wpFmt(secs)]];
+    if (p.ramp) steps.push(['Avvicinamento', 'con i pesi']);
+    h += '<div class="wp-steps" style="grid-template-columns:repeat(' + steps.length + ',1fr);">';
+    steps.forEach(function(st, k) {
+        var n = k + 1, saltato = n < p.step && p.skipped && p.skipped[n];
+        var cls = n === p.step ? 'cur' : (saltato ? 'skip' : (n < p.step ? 'ok' : ''));
+        h += '<button type="button" class="wp-step ' + cls + '" data-step="' + n + '"><b>' + n + ' · ' + st[0] + '</b><span>' + (saltato ? 'saltato' : st[1]) + '</span></button>';
+    });
+    h += '</div>';
+    // Il passo 3 (le serie con i pesi) vive fuori da qui: si mostra solo quando tocca a lui.
+    var s3 = document.getElementById('wo-step3');
+    if (s3) s3.style.display = (p.step >= 3 && p.ramp) ? '' : 'none';
+    if (p.step >= 3 && !p.ramp) {
+        h += '<div class="wp-done"><b>✓ Riscaldamento fatto</b>Puoi iniziare l\'allenamento.</div>';
+    }
     // ── 1 · Generale ──
-    var c1 = p.step === 1 ? 'cur' : 'ok';
-    h += '<div class="wp-sec ' + c1 + '"><div class="wp-head"><div class="wp-num">' + (p.step > 1 ? '✓' : '1') + '</div>' +
-         '<div class="wp-title">Riscaldamento generale</div><div class="wp-meta">' + p.min + ' min</div></div>';
     if (p.step === 1) {
+        h += '<div class="wp-sec cur"><div class="wp-head"><div class="wp-num">1</div>' +
+             '<div class="wp-title">Riscaldamento generale</div><div class="wp-meta">' + p.min + ' min</div></div>';
         h += '<div class="wp-sub">Intensità che sale piano: al ritmo giusto <b>riesci ancora a parlare</b>.</div>';
         if (p.run !== 'gen' && p.left === tot) {
             h += '<div class="wp-lbl">Durata</div><div class="wp-chips">';
@@ -5455,16 +5484,13 @@ function wpRender() {
              '<div class="wp-btns"><button type="button" class="wp-b1" id="wp-gen"' + (p.env === 'palestra' && !p.act ? ' disabled' : '') + '>' +
              (p.run === 'gen' ? '⏸ Pausa' : (p.left < tot ? '▶ Riprendi' : '▶ Avvia ' + p.min + ' min')) + '</button>' +
              '<button type="button" class="wp-b2" id="wp-gen-next">' + (p.left === 0 ? 'Avanti →' : 'Salta') + '</button></div>';
+        h += '</div>';
     }
-    h += '</div>';
     // ── 2 · Mobilita' ──
-    var list = wpMobList(p);
-    var c2 = p.step === 2 ? 'cur' : (p.step > 2 ? 'ok' : 'wait');
-    var secs = list.reduce(function(a, m) { return a + m.t * (m.lati ? 2 : 1); }, 0);
-    h += '<div class="wp-sec ' + c2 + '"><div class="wp-head"><div class="wp-num">' + (p.step > 2 ? '✓' : '2') + '</div>' +
-         '<div class="wp-title">Mobilità · ' + (p.zone === 'alta' ? 'parte alta' : p.zone === 'bassa' ? 'parte bassa' : 'tutto il corpo') + '</div>' +
-         '<div class="wp-meta">' + wpFmt(secs) + '</div></div>';
     if (p.step === 2) {
+        h += '<div class="wp-sec cur"><div class="wp-head"><div class="wp-num">2</div>' +
+             '<div class="wp-title">Mobilità · ' + (p.zone === 'alta' ? 'parte alta' : p.zone === 'bassa' ? 'parte bassa' : 'tutto il corpo') + '</div>' +
+             '<div class="wp-meta">' + wpFmt(secs) + '</div></div>';
         h += '<div class="wp-sub">Movimenti ampi e controllati, senza tenere le posizioni. Tocca ▶ e segui il timer.</div><div>';
         list.forEach(function(mv, i) {
             var run = p.mobRun === i, done = !!p.mob[i];
@@ -5477,8 +5503,8 @@ function wpRender() {
         var nDone = list.filter(function(_, i) { return p.mob[i]; }).length;
         h += '</div><div class="wp-btns" style="margin-top:10px;"><button type="button" class="wp-b1" id="wp-mob-next"' + (nDone === list.length ? '' : ' disabled') + '>Avanti → (' + nDone + '/' + list.length + ')</button>' +
              '<button type="button" class="wp-b2" id="wp-mob-skip">Salta</button></div>';
+        h += '</div>';
     }
-    h += '</div>';
     el.innerHTML = h;
     wpWire();
 }
@@ -5486,6 +5512,12 @@ function wpRender() {
 function wpWire() {
     var el = document.getElementById('wo-prep'); if (!el) return;
     var p = woPrep;
+    el.querySelectorAll('[data-step]').forEach(function(b) { b.onclick = function() {
+        var n = parseInt(b.getAttribute('data-step'), 10);
+        if (n === p.step) return;
+        wpStop(); p.mobRun = -1;
+        p.step = n; wpRender();
+    }; });
     el.querySelectorAll('[data-min]').forEach(function(b) { b.onclick = function() {
         p.min = parseInt(b.getAttribute('data-min'), 10); p.left = p.min * 60;
         try { localStorage.setItem('aw_warm_min', String(p.min)); } catch (e) {}
@@ -5504,7 +5536,9 @@ function wpWire() {
         wpRender();
     };
     var gn = document.getElementById('wp-gen-next');
-    if (gn) gn.onclick = function() { wpStop(); p.step = 2; wpRender(); };
+    if (gn) gn.onclick = function() {
+        wpStop(); p.skipped = p.skipped || {}; p.skipped[1] = p.left > 0; p.step = 2; wpRender();
+    };
     el.querySelectorAll('[data-mob]').forEach(function(b) { b.onclick = function() {
         var i = parseInt(b.getAttribute('data-mob'), 10);
         if (p.mobRun === i) { wpStop(); p.mobRun = -1; wpRender(); return; }   // secondo tocco: ferma
@@ -5517,8 +5551,8 @@ function wpWire() {
         _wpTimer = setInterval(wpTick, 250);
         wpRender();
     }; });
-    var mn = document.getElementById('wp-mob-next'); if (mn) mn.onclick = function() { wpStop(); p.step = 3; wpRender(); };
-    var ms = document.getElementById('wp-mob-skip'); if (ms) ms.onclick = function() { wpStop(); p.mobRun = -1; p.step = 3; wpRender(); };
+    var mn = document.getElementById('wp-mob-next'); if (mn) mn.onclick = function() { wpStop(); p.skipped = p.skipped || {}; p.skipped[2] = false; p.step = 3; wpRender(); };
+    var ms = document.getElementById('wp-mob-skip'); if (ms) ms.onclick = function() { wpStop(); p.mobRun = -1; p.skipped = p.skipped || {}; p.skipped[2] = true; p.step = 3; wpRender(); };
 }
 
 function wpTick() {
@@ -5539,6 +5573,7 @@ function wpTick() {
         if (left === 0) {
             wpStop(); p.left = 0;
             _woBeep(660, 0.12, 'sine'); setTimeout(function(){ _woBeep(880, 0.25, 'sine'); }, 140);
+            p.skipped = p.skipped || {}; p.skipped[1] = false;
             p.step = 2; wpRender();
         }
     } else if (p.run === 'mob') {
@@ -5636,7 +5671,11 @@ function renderWarmupBlock(exName, exercises, container) {
     s3.style.paddingBottom = '0';
     s3.innerHTML = '<div class="wp-head"><div class="wp-num">3</div><div class="wp-title">Serie di avvicinamento</div>' +
         '<div class="wp-meta">con i pesi</div></div>';
-    card.appendChild(s3);
+    // Il passo 3 sta in un contenitore suo: compare solo quando tocca a lui.
+    var step3 = document.createElement('div');
+    step3.id = 'wo-step3';
+    card.appendChild(step3);
+    step3.appendChild(s3);
 
     // ── Analisi protocollo ──
     var analysisEl = document.createElement('div');
@@ -5651,7 +5690,7 @@ function renderWarmupBlock(exName, exercises, container) {
             (info.needsWarmup ? '→ riscalda (' + info.reason + ')' : info.reason) + '</div>';
         analysisEl.appendChild(row);
     });
-    card.appendChild(analysisEl);
+    step3.appendChild(analysisEl);
 
     // ── Set per ogni esercizio da riscaldare ──
     var bodyEl = document.createElement('div');
@@ -5864,7 +5903,7 @@ function renderWarmupBlock(exName, exercises, container) {
         if (mtrBackfilled) saveState();
     }
 
-    card.appendChild(bodyEl);
+    step3.appendChild(bodyEl);
     block.appendChild(card);
     container.appendChild(block);
     wpRender();
@@ -15115,7 +15154,7 @@ function initWorkoutPage() {
                     '<button type="button" class="wc-info-btn" onclick="woWarmupInfo()" aria-label="Informazioni sul riscaldamento">i</button></div>' +
                     '<div class="wc-ex-name">Prima di iniziare l\'allenamento</div></div><div id="wo-prep"></div>';
                 prevList.insertBefore(_dCard, prevList.firstChild);
-                wpState(exData);
+                wpState(exData, false);
                 wpRender();
             }
             } // fine else (ricostruzione warmup)
