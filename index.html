@@ -18570,6 +18570,9 @@ function woStartHold() {
     // Per lato: primo lato, cambio, secondo lato. La serie si chiude solo
     // alla fine del secondo.
     woState._holdPhase = exIsPerSide(ex) ? 'side1' : null;
+    // Il tick riparte da questo tocco: altrimenti il primo secondo durava
+    // quanto mancava al tick successivo in piu', fino a quasi due secondi.
+    if (woState.timer) { clearInterval(woState.timer); woState.timer = setInterval(woTick, 1000); }
     const btn = document.getElementById('wo-hold-btn');
     if (btn) { btn.disabled = true; btn.textContent = woState._holdPhase ? 'Primo lato…' : 'In posizione…'; }
     const t = document.getElementById('wo-timer');
@@ -19919,7 +19922,12 @@ function woTick() {
     // ── Countdown isometrico ──
     if (woState.holdRunning && woState.holdSecs > 0) {
         if (woState._holdEndsAt) {
-            woState.holdSecs = Math.max(0, Math.round((woState._holdEndsAt - Date.now()) / 1000));
+            // Per eccesso, non al piu' vicino: con Math.round ogni fase (lato,
+            // cambio lato) finiva mezzo secondo prima e il primo numero restava
+            // a schermo solo mezzo secondo, e il conto sembrava correre.
+            // I 50 ms tolgono l'incertezza del tick che cade proprio sul
+            // secondo: le scadenze fissate dentro un tick sono allineate.
+            woState.holdSecs = Math.max(0, Math.ceil((woState._holdEndsAt - Date.now() - 50) / 1000));
         } else {
             woState.holdSecs--;
         }
@@ -19942,7 +19950,7 @@ function woTick() {
         // Anche il recupero si misura sull'orologio: tornando dall'app dopo
         // due minuti il timer deve risultare finito, non fermo dov'era.
         if (woState._restEndsAt) {
-            woState.restSecs = Math.max(0, Math.round((woState._restEndsAt - Date.now()) / 1000));
+            woState.restSecs = Math.max(0, Math.ceil((woState._restEndsAt - Date.now() - 50) / 1000));
         } else {
             woState.restSecs--;
         }
