@@ -3206,7 +3206,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <p class="highlight">35 GIORNI. 5 FASI. IL TUO RITORNO.</p>
         <p>Un protocollo di progressione intelligente che calibra i carichi settimana dopo settimana: quattro capitoli in salita e una settimana di scarico per consolidare. Tu scegli gli esercizi, Awakening costruisce il percorso.</p>
         <div style="display: flex; justify-content: center; gap: 20px; margin: 20px 0; flex-wrap: wrap;">
-            <div style="text-align: center; flex: 1; min-width: 120px;"><span class="highlight" style="font-size: 1.5rem;">72→90%</span><br><span style="font-size: 0.75rem; color: #cbd5e1;">Del tuo MTR</span></div>
+            <div style="text-align: center; flex: 1; min-width: 120px;"><span class="highlight ch-range" style="font-size: 1.5rem;">85→97%</span><br><span style="font-size: 0.75rem; color: #cbd5e1;">Del tuo MTR</span></div>
             <div style="text-align: center; flex: 1; min-width: 120px;"><span class="highlight" style="font-size: 1.5rem;">4+1</span><br><span style="font-size: 0.75rem; color: #cbd5e1;">Capitoli + scarico</span></div>
             <div style="text-align: center; flex: 1; min-width: 120px;"><span class="highlight" style="font-size: 1.5rem;">∞</span><br><span style="font-size: 0.75rem; color: #cbd5e1;">Protocolli salvabili</span></div>
         </div>
@@ -4520,7 +4520,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '279';
+const APP_VERSION = '280';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -15090,7 +15090,7 @@ function initWorkoutPage() {
                 var _dProg = document.getElementById('wo-warmup-fixed-footer');
                 if (_dProg) _dProg.style.display = 'none';
                 woShowActionFooter(true, false);
-                prevList.innerHTML = `<div style="background:rgba(99,102,241,0.09);border:1px solid rgba(99,102,241,0.22);border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:0.6rem;color:#818cf8;font-weight:700;">🔄 Deload Week — carico 85% · serie dimezzate</div>
+                prevList.innerHTML = `<div style="background:rgba(99,102,241,0.09);border:1px solid rgba(99,102,241,0.22);border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:0.6rem;color:#818cf8;font-weight:700;">🔄 Deload Week — carico ${Math.round(WEEK_LOADS[DELOAD_WEEK] * 100)}% · serie dimezzate</div>
                 <div style="font-size:0.55rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;font-weight:700;">Programma · ${protoName}</div>
                 ${exData.map((ex,i) => {
                     const kg = ex.loads ? ex.loads[kgW].toFixed(1) : (ex.baseWeight||0);
@@ -18499,7 +18499,12 @@ function renderChapterPcts() {
         if (isNaN(i) || !(WEEK_LOADS[i] > 0)) return;
         el.textContent = Math.round(WEEK_LOADS[i] * 100) + '%';
     });
+    // Benvenuto: dal primo capitolo al picco (Chapter 4). Scritto a mano
+    // era rimasto "72→90%", la scala di prima.
+    var lo = Math.round(WEEK_LOADS[0] * 100), hi = Math.round(WEEK_LOADS[OVERLOAD_WEEK] * 100);
+    document.querySelectorAll('.ch-range').forEach(function(el) { el.textContent = lo + '\u2192' + hi + '%'; });
 }
+document.addEventListener('DOMContentLoaded', function() { try { renderChapterPcts(); } catch (e) {} });
 
 function updateChapterTip(w) {
     const row = document.getElementById('chapter-tips-row');
