@@ -73,3 +73,17 @@ tutte le righe.
 
 Le modifiche qui **non** si applicano da sole: la function va ridistribuita su
 Supabase e la migration eseguita sul database.
+
+## Fine recupero (app v.285)
+
+Per lasciare suonare la musica l'app non tiene piu' viva la pagina con una
+traccia audio, quindi a schermo spento non puo' mandarsi da sola la
+notifica di fine recupero. La manda il server:
+
+1. All'inizio di un recupero l'app scrive in `rest_push` (una riga per
+   utente, chiave lo username) l'ora in cui finira'. Se il recupero finisce
+   con l'app aperta, o viene messo in pausa, la riga si cancella.
+2. Il job `fine-recupero` gira **ogni 5 secondi** e chiama `push-notify` con
+   `{"mode":"rest"}` solo se c'e' una riga scaduta: a vuoto costa una query.
+3. La function spedisce il push con tag `wo-rest` (lo stesso della notifica
+   locale) e cancella la riga.

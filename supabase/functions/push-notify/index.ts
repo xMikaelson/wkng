@@ -254,13 +254,43 @@ Deno.serve(async (req) => {
   const romeKey = `${String(rome.h).padStart(2,"0")}:${String(rome.m).padStart(2,"0")}`;
   const body = await req.json().catch(() => ({})) as Record<string, unknown>;
 
+  // Fine recupero (v.285 dell'app). La chiama il job "fine-recupero" ogni 5
+  // secondi, solo quando in rest_push c'e' una riga scaduta. Una riga per
+  // utente: l'app la scrive all'inizio del recupero e la toglie se il
+  // recupero finisce con l'app aperta. Qui si spedisce e si cancella, anche
+  // se l'invio fallisce: un recupero finito da minuti non va riproposto.
+  if (body?.mode === "rest") {
+    const { data: due, error: dueErr } = await supabase
+      .from("rest_push").select("user_id, title, body")
+      .lte("fire_at", new Date().toISOString());
+    if (dueErr) return new Response(JSON.stringify({ error: dueErr.message }), { status: 500 });
+    let restSent = 0;
+    for (const r of due ?? []) {
+      await supabase.from("rest_push").delete().eq("user_id", r.user_id);
+      const { data: sub } = await supabase
+        .from("push_subscriptions").select("subscription").eq("user_id", r.user_id).maybeSingle();
+      if (!sub?.subscription?.endpoint) continue;
+      try {
+        // Stesso tag della notifica locale dell'app: se entrambe arrivano,
+        // la seconda sostituisce la prima invece di affiancarsi.
+        const payload = JSON.stringify({ title: r.title || "⏱️ Recupero finito", body: r.body || "Riparti con la serie successiva", tag: "wo-rest" });
+        const { status, body: resBody } = await sendPush(sub.subscription, payload, vapidPub, vapidPriv, vapidSubject);
+        console.log(`[Rest] ${r.user_id} → ${status}: ${resBody}`);
+        if (status >= 200 && status < 300) restSent++;
+      } catch (e) {
+        console.error(`[Rest] ERROR ${r.user_id}:`, String(e));
+      }
+    }
+    return new Response(JSON.stringify({ rest: restSent, due: (due ?? []).length }), { status: 200 });
+  }
+
   // Override manuale: una notifica uguale per tutti, fuori dagli orari.
   // Serve per i test e per gli avvisi una tantum.
   const manual = (typeof body?.title === "string" && typeof body?.body === "string")
     ? JSON.stringify({
         title: body.title,
         body:  body.body,
-        tag:   typeof body.tag === "string" ? body.tag : "awakening-reminder",
+        tag:   typeof body.tag === "string" ? body.tag : `awakening-manuale-${Date.now()}`,
       })
     : null;
 

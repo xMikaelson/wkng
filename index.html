@@ -18664,12 +18664,13 @@ function _awAudio() {
 
 // Il contesto va sbloccato da un gesto dell'utente: lo agganciamo al primo
 // tocco sulla pagina, cosi' e' gia' pronto quando il timer chiede un beep.
+// Sbloccato, torna subito sospeso: un contesto acceso senza motivo tiene
+// aperta la sessione audio e su iOS puo' disturbare la musica.
 ['pointerdown', 'touchend', 'keydown'].forEach(function(evt) {
-    document.addEventListener(evt, function() { _awAudio(); }, { passive: true });
-});
-// Tornando in primo piano il contesto puo' essere stato sospeso dal sistema.
-document.addEventListener('visibilitychange', function() {
-    if (!document.hidden && _awAudioCtx) _awAudio();
+    document.addEventListener(evt, function() {
+        if (_awAudioCtx && _awAudioCtx.state === 'running') return;
+        _awAudio(); if (typeof _woAudioRelease === 'function') _woAudioRelease(300);
+    }, { passive: true });
 });
 
 // AudioContext per beep sintetici
@@ -18680,7 +18681,7 @@ function _woBeep(freq, duration, type) {
     // ogni beep dell'app senza doverlo ripetere a ogni chiamata.
     if (document.hidden) return;
     try {
-        const ctx = _awAudio();
+        const ctx = _woAudioDuck();
         if (!ctx) return;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
@@ -18691,6 +18692,7 @@ function _woBeep(freq, duration, type) {
         gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
         osc.start(ctx.currentTime);
         osc.stop(ctx.currentTime + duration);
+        _woAudioRelease(duration * 1000 + 450);
     } catch(e) {}
 }
 
@@ -18701,52 +18703,104 @@ function _woBeepGo() {
     setTimeout(function() { _woBeep(880, 0.35, 'sine'); }, 150);
 }
 
-// ── SESSIONE VIVA DURANTE L'ALLENAMENTO ──
-// Uscendo dall'app iOS congela il JavaScript della pagina: il recupero non
-// suona e nessuna notifica parte, perche' il timer semplicemente non gira.
-// Con una traccia in riproduzione la pagina resta viva — e' il modo in cui
-// lavorano i timer da palestra. La traccia e' inudibile: serve solo a tenere
-// aperta la sessione audio, non a farsi sentire.
-var _woKeepAliveEl = null, _woSilentUrl = null;
+// ── AUDIO CHE CONVIVE CON LA MUSICA (v.285) ──
+// Prima una traccia inudibile in loop, con la sessione audio in 'playback',
+// teneva viva la pagina a schermo spento. Su iOS pero' 'playback' prende il
+// controllo dell'audio: Spotify o Apple Music si fermavano appena si apriva
+// l'allenamento. Ora l'app non tiene mai l'audio per se':
+// - fra un beep e l'altro il contesto audio e' sospeso e la sessione e'
+//   'ambient', quindi la musica suona a volume pieno;
+// - per il beep la sessione passa a 'transient' (iOS 16.4+: suoni brevi che
+//   abbassano l'audio degli altri), il contesto riparte, suona, e poco dopo
+//   torna sospeso: la musica risale da sola.
+// Il prezzo, detto all'utente: i beep seguono lo switch del silenzioso, e a
+// schermo spento la pagina si ferma. Il segnale di fine recupero fuori
+// dall'app arriva come notifica inviata dal server (woRestPushSchedule).
+// Per ridurre i casi, durante l'allenamento lo schermo resta acceso.
+var _woAudioIdleT = null, _woWakeLock = null, _woWorkoutAudio = false;
 
-function _woSilentTrack() {
-    if (_woSilentUrl) return _woSilentUrl;
-    var rate = 8000, n = rate;                  // un secondo, poi va in loop
-    var buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
-    function tag(off, txt) { for (var i = 0; i < txt.length; i++) v.setUint8(off + i, txt.charCodeAt(i)); }
-    tag(0, 'RIFF');  v.setUint32(4, 36 + n * 2, true);  tag(8, 'WAVE');
-    tag(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
-    v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true);
-    v.setUint16(32, 2, true); v.setUint16(34, 16, true);
-    tag(36, 'data'); v.setUint32(40, n * 2, true);
-    // Ampiezza 1 su 32767, cioe' circa -90 dB: inudibile, ma non silenzio
-    // digitale, che iOS tratta come "niente da riprodurre" e sospende.
-    for (var i = 0; i < n; i++) v.setInt16(44 + i * 2, (i % 2) ? 1 : -1, true);
-    _woSilentUrl = URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
-    return _woSilentUrl;
+function _woSessionType(t) {
+    try { if (navigator.audioSession && navigator.audioSession.type !== t) navigator.audioSession.type = t; } catch (e) {}
+}
+// Chiamata prima di ogni beep: sessione che abbassa la musica, contesto acceso.
+function _woAudioDuck() {
+    clearTimeout(_woAudioIdleT);
+    _woSessionType('transient');
+    return _awAudio();
+}
+// Dopo l'ultimo beep di una serie ravvicinata: contesto sospeso, musica su.
+function _woAudioRelease(ms) {
+    clearTimeout(_woAudioIdleT);
+    _woAudioIdleT = setTimeout(function() {
+        try { if (_awAudioCtx && _awAudioCtx.state === 'running') _awAudioCtx.suspend(); } catch (e) {}
+        _woSessionType(_woWorkoutAudio ? 'ambient' : 'auto');
+    }, ms || 400);
 }
 
-function woKeepAliveStart() {
+async function _woWakeLockOn() {
     try {
-        if (!_woKeepAliveEl) {
-            _woKeepAliveEl = document.createElement('audio');
-            _woKeepAliveEl.loop = true;
-            _woKeepAliveEl.setAttribute('playsinline', '');
-            _woKeepAliveEl.src = _woSilentTrack();
-        }
-        // iOS 16.4+: 'playback' tiene il suono acceso anche con lo switch del
-        // silenzioso attivo — altrimenti i beep del recupero non si sentono.
-        if (navigator.audioSession) navigator.audioSession.type = 'playback';
-        var pr = _woKeepAliveEl.play();
-        if (pr && pr.catch) pr.catch(function() {});
-    } catch (e) {}
+        if (!_woWorkoutAudio || document.hidden || _woWakeLock || !('wakeLock' in navigator)) return;
+        _woWakeLock = await navigator.wakeLock.request('screen');
+        _woWakeLock.addEventListener('release', function() { _woWakeLock = null; });
+    } catch (e) { _woWakeLock = null; }
+}
+// Il blocco dello schermo decade uscendo dall'app: si richiede al rientro.
+document.addEventListener('visibilitychange', function() { if (!document.hidden) _woWakeLockOn(); });
+
+// Stessi nomi di prima: li chiamano l'allenamento e il timer di recupero.
+function woKeepAliveStart() {
+    _woWorkoutAudio = true;
+    _woSessionType('ambient');
+    _awAudio();                 // il tocco che avvia sblocca il contesto
+    _woAudioRelease(600);
+    _woWakeLockOn();
 }
 
 function woKeepAliveStop() {
+    _woWorkoutAudio = false;
+    _woAudioRelease(50);
+    try { if (_woWakeLock) _woWakeLock.release(); } catch (e) {}
+    _woWakeLock = null;
+    try { if (typeof woRestPushCancel === 'function') woRestPushCancel(); } catch (e) {}
+}
+
+// ── FINE RECUPERO DAL SERVER (v.285) ──
+// Senza la traccia che teneva viva la pagina, a schermo spento il JavaScript
+// si ferma e la notifica locale non parte. All'inizio di ogni recupero l'app
+// lascia su Supabase l'ora in cui finira' (tabella rest_push, una riga per
+// utente); un job ogni 5 secondi manda il push appena l'ora e' passata e
+// cancella la riga. Se il recupero finisce con l'app aperta, o viene
+// interrotto, la riga si cancella da qui e il push non parte.
+// Serve essere registrati e aver attivato le notifiche; senza, resta il
+// segnale al rientro nell'app.
+var _woRestPushOn = false;
+function woRestPushSchedule(secs, body) {
     try {
-        if (_woKeepAliveEl) _woKeepAliveEl.pause();
-        if (navigator.audioSession) navigator.audioSession.type = 'auto';
+        if (!APP || !APP.userName || !sbClient || sbClient._offline) return;
+        if (typeof getNotifPermission === 'function' && getNotifPermission() !== 'granted') return;
+        _woRestPushOn = true;
+        // 1,5 s di margine: se l'app e' aperta il recupero finisce qui e la
+        // riga viene tolta prima che il job la veda.
+        var fire = new Date(Date.now() + secs * 1000 + 1500).toISOString();
+        sbClient.from('rest_push').upsert({
+            user_id: APP.userName, fire_at: fire,
+            title: '\u23f1\ufe0f Recupero finito', body: body || 'Riparti con la serie successiva'
+        }, { onConflict: 'user_id' }).then(function(r) {
+            if (r && r.error) awLog.warn('[rest_push]', r.error.message);
+        });
+    } catch (e) { awLog.warn('[rest_push]', e && e.message); }
+}
+function woRestPushCancel() {
+    try {
+        if (!_woRestPushOn || !APP || !APP.userName || !sbClient || sbClient._offline) return;
+        _woRestPushOn = false;
+        sbClient.from('rest_push').delete().eq('user_id', APP.userName).then(function() {});
     } catch (e) {}
+}
+// Testo del push: l'esercizio e la serie da riprendere.
+function woRestPushText() {
+    var ex = (APP.exerciseData || [])[woState.exIndex];
+    return ex ? ('Riparti: ' + exDisplay(ex.name) + ' \u00b7 serie ' + ((woState.setIndex || 0) + 1)) : '';
 }
 
 // Notifica di fine recupero. Solo fuori dall'app: se sei sulla schermata il
@@ -20031,6 +20085,7 @@ function woCompleteSet() {
     woState.restRunning = true;
     woState._restEndsAt = Date.now() + restTime * 1000;
     woState._lastBeepSec = null;
+    woRestPushSchedule(restTime, woRestPushText());
     // Mostra barra recupero
     const rw=document.getElementById('wo-rest-wrap');
     if (rw) rw.style.display='flex';
@@ -20352,10 +20407,14 @@ function woPause() {
         // In pausa memorizziamo quanto manca; alla ripresa le scadenze
         // vengono spostate in avanti, così il tempo in pausa non viene contato.
         woState._pausedAt = Date.now();
+        if (woState.restRunning) woRestPushCancel();   // in pausa il recupero non finisce
     } else if (woState._pausedAt) {
         const gap = Date.now() - woState._pausedAt;
         if (woState._startedAt)  woState._startedAt  += gap;
         if (woState._restEndsAt) woState._restEndsAt += gap;
+        if (woState.restRunning && woState._restEndsAt) {
+            woRestPushSchedule(Math.max(0, (woState._restEndsAt - Date.now()) / 1000), woRestPushText());
+        }
         if (woState._holdEndsAt) woState._holdEndsAt += gap;
         woState._pausedAt = 0;
     }
@@ -20449,6 +20508,7 @@ function woTick() {
         }
         if (woState.restSecs === 0) {
             woState.restRunning=false;
+            woRestPushCancel();   // finito con l'app aperta: il push non serve
             const rw=document.getElementById('wo-rest-wrap'); if (rw) rw.style.display='none';
             if (wt) { wt.textContent='VAI!'; wt.style.color='var(--primary)'; }
             document.getElementById('wo-timer-lbl').textContent='Al lavoro 💪';
@@ -23670,7 +23730,8 @@ function startRestTimer(duration) {
     APP.restSeconds = duration;
     restEndsAt = Date.now() + duration * 1000;
     updateRestDisplay();
-    woKeepAliveStart();   // il recupero deve scorrere anche fuori dall'app
+    woKeepAliveStart();
+    woRestPushSchedule(duration, 'Recupero finito: riparti con la serie successiva');
 
     // Highlight active preset
     document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active-rest'));
@@ -23692,6 +23753,7 @@ function tickRest() {
         clearInterval(restInterval);
         restInterval = null;
         restEndsAt = 0;
+        woRestPushCancel();
         document.getElementById('rest-timer').textContent = '✓ Fatto!';
         completeSet();
         _woBeepGo();
@@ -23711,6 +23773,7 @@ function tickRest() {
 
 function stopRestTimer() {
     if (restInterval) { clearInterval(restInterval); restInterval = null; }
+    woRestPushCancel();
     APP.restSeconds = 0;
     restEndsAt = 0;
     if (!workoutInterval) woKeepAliveStop();
