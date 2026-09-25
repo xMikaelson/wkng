@@ -2774,8 +2774,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .proto-coach-keep:hover { color:#cbd5e1; background:rgba(255,255,255,0.07); }
         .plan-sched-row { display:flex; justify-content:space-between; align-items:center; padding:3px 8px; border-radius:5px; min-height:22px; box-sizing:border-box; font-size:0.64rem; margin-bottom:2px; }
         .plan-sched-row:nth-child(odd) { background:rgba(255,255,255,0.02); }
-        .plan-sched-day { color:#94a3b8; font-weight:700; min-width:26px; font-size:0.6rem; }
-        .plan-sched-proto { color:var(--primary); font-weight:600; font-size:0.6rem; white-space:normal; word-break:break-word; line-height:1.3; }
+        .plan-sched-day { color:#94a3b8; font-weight:700; min-width:26px; font-size:0.6rem; flex-shrink:0; }
+        .plan-sched-proto { color:var(--primary); font-weight:600; font-size:0.6rem; white-space:normal; line-height:1.3;
+            /* Le parole non si spezzano a meta' ("MONOLIT / H" a 320 px): si va
+               a capo fra le parole e, solo se una non entra, con il trattino. */
+            word-break:normal; overflow-wrap:normal; hyphens:auto; -webkit-hyphens:auto;
+            flex:1; min-width:0; text-align:right; margin-left:6px; }
         .plan-sched-proto.rest { color:#64748b; font-style:italic; font-weight:normal; }
         .plan-drag-tip { text-align:center; padding:8px 0 0; font-size:0.6rem; color:#94a3b8; font-weight:600; }
 
@@ -3340,13 +3344,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <div class="chapter-banner" id="chapter-banner">
             <!-- Layer precedente (fade out) -->
             <div class="banner-layer" id="banner-layer-prev">
-                <div class="chapter-banner-ghost">28</div>
+                <div class="chapter-banner-ghost">35</div>
                 <div class="banner-sub" id="banner-label-prev">CHAPTER 1 · ACTIVATION</div>
                 <div class="banner-title">SETTIMANA<br><span id="banner-week-prev">01</span> DI 05</div>
             </div>
             <!-- Layer attuale (fade in) -->
             <div class="banner-layer" id="banner-layer-curr">
-                <div class="chapter-banner-ghost">28</div>
+                <div class="chapter-banner-ghost">35</div>
                 <div class="banner-sub" id="banner-chapter-label">CHAPTER 1 · ACTIVATION</div>
                 <div class="banner-title">SETTIMANA<br><span id="banner-week-num">01</span> DI 05</div>
             </div>
@@ -3356,7 +3360,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <div class="chapter-tips-row" id="chapter-tips-row">
             <div class="chapter-tip-card" id="tip-ch-0">
                 <div class="tip-chapter-label">💡 Chapter 1 · Activation — <span class="ch-pct" data-ch="0">—</span></div>
-                <div class="tip-chapter-text">Non avere fretta. Se il <span class="ch-pct" data-ch="0">—</span> ti sembra troppo leggero, resisti alla tentazione di caricare di più. Il tuo corpo sta risvegliando schemi motori dimenticati. <strong>Concentrati sulla tecnica perfetta</strong>, sulla stabilità, sul controllo. Ogni ripetizione deve essere una dichiarazione di intenti. Questo è il momento in cui ricostruisci le fondamenta.</div>
+                <div class="tip-chapter-text">Non avere fretta. Se l’<span class="ch-pct" data-ch="0">—</span> ti sembra troppo leggero, resisti alla tentazione di caricare di più. Il tuo corpo sta risvegliando schemi motori dimenticati. <strong>Concentrati sulla tecnica perfetta</strong>, sulla stabilità, sul controllo. Ogni ripetizione deve essere una dichiarazione di intenti. Questo è il momento in cui ricostruisci le fondamenta.</div>
             </div>
             <div class="chapter-tip-card" id="tip-ch-1">
                 <div class="tip-chapter-label">💡 Chapter 2 · Momentum — <span class="ch-pct" data-ch="1">—</span></div>
@@ -3423,7 +3427,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
                 <div class="nut-home-emoji">🥗</div>
                 <div class="nut-home-kcal-val" id="nut-home-kcal-cur">0</div>
                 <div class="nut-home-kcal-lbl">/ <span id="nut-home-kcal-tgt">2400</span> kcal</div>
-                <div class="nut-kcal-remaining" id="nut-kcal-remaining">−2400 rimanenti</div>
+                <div class="nut-kcal-remaining" id="nut-kcal-remaining">2400 rimanenti</div>
                 <div class="nut-kcal-bar-wrap"><div class="nut-kcal-bar-fill" id="nut-kcal-bar" style="width:0%"></div></div>
                 <span class="nut-goal-badge maintain" id="nut-goal-badge" onclick="tdeeOpen()">Mantenimento</span>
             </div>
@@ -4033,7 +4037,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
   <div class="profile-stats">
     <div class="profile-stat"><span class="profile-stat-val" id="profile-days">0</span><span class="profile-stat-lbl">Giorni</span></div>
-    <div class="profile-stat"><span class="profile-stat-val" id="profile-workouts">0</span><span class="profile-stat-lbl">Sessions</span></div>
+    <div class="profile-stat"><span class="profile-stat-val" id="profile-workouts">0</span><span class="profile-stat-lbl">Sedute</span></div>
     <div class="profile-stat"><span class="profile-stat-val" id="profile-streak">0🔥</span><span class="profile-stat-lbl">Streak</span></div>
   </div>
   <div class="settings-list">
@@ -4072,14 +4076,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
              style="margin-bottom:10px; font-size:0.78rem; padding:9px 11px;">
       <div id="glossary-list"></div>
     </div>
-    <div class="settings-row" style="margin-top:4px" onclick="cheatLeveling()">
-      <div class="settings-row-left"><span class="settings-row-icon">🎮</span><span class="settings-row-label" style="color:#fbbf24;">Cheat Leveling <span style="font-size:0.55rem;color:#94a3b8;font-weight:400;">solo test</span></span></div>
-      <span class="settings-row-arrow">›</span>
-    </div>
-    <div class="settings-row" style="margin-top:4px" role="button" tabindex="0" aria-label="Reset termini, solo test" onclick="resetLegalConsent()">
-      <div class="settings-row-left"><span class="settings-row-icon">♻️</span><span class="settings-row-label" style="color:#fbbf24;">Reset termini <span style="font-size:0.55rem;color:#94a3b8;font-weight:400;">solo test</span></span></div>
-      <span class="settings-row-arrow">›</span>
-    </div>
+    <!-- Cheat Leveling e Reset termini erano strumenti di collaudo ("solo
+         test"): tolti dal Profilo. Le funzioni restano richiamabili dalla
+         console per i test. -->
     <div class="settings-row" style="margin-top:4px" onclick="toggleFontScalePanel()">
       <div class="settings-row-left"><span class="settings-row-icon">🔤</span><span class="settings-row-label">Dimensione Testo</span></div>
       <span class="settings-row-arrow" id="font-scale-arrow">›</span>
@@ -4540,7 +4539,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '286';
+const APP_VERSION = '287';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -4748,7 +4747,8 @@ function saveState() {
             streakCarry: APP.streakCarry || 0,
             workoutsCarry: APP.workoutsCarry || 0,
             planStates: APP.planStates || {},
-            _srMigratedV151: APP._srMigratedV151 || false
+            _srMigratedV151: APP._srMigratedV151 || false,
+            _holdMigratedV287: APP._holdMigratedV287 || false
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
         saveToSupabase(toSave);
@@ -4928,6 +4928,7 @@ function loadState() {
         APP.workoutsCarry = saved.workoutsCarry || 0;
         APP.planStates = (saved.planStates && typeof saved.planStates === 'object') ? saved.planStates : {};
         APP._srMigratedV151 = saved._srMigratedV151 || false;
+        APP._holdMigratedV287 = saved._holdMigratedV287 || false;
         APP.currentExerciseIndex = saved.currentExerciseIndex || 0;
         APP.savedProtocols = saved.savedProtocols || [];
         APP.activeProtocolId = saved.activeProtocolId || null;
@@ -5045,6 +5046,7 @@ function migrateMtrLoads() {
     if (!APP.savedProtocols) return;
     // v.151: converte i range di ripetizioni ereditati in numeri secchi
     try { awkMigrateSr(); } catch (e) { awLog.warn('migrazione sr:', e && e.message); }
+    try { if (awkMigrateHolds()) saveState(); } catch (e) { awLog.warn('migrazione isometrici:', e && e.message); }
     if (!APP.mtrValues) APP.mtrValues = {};
     var changed = mtrCanonicalizeDict();
     if (mtrSyncFromProtocols()) changed = true;
@@ -5701,7 +5703,7 @@ function renderWarmupBlock(exName, exercises, container) {
         var row = document.createElement('div');
         row.className = 'wc-a-row';
         row.innerHTML = '<div class="wc-a-dot ' + (info.needsWarmup ? 'warm' : 'skip') + '"></div>' +
-            '<div class="wc-a-name ' + (info.needsWarmup ? 'warm' : 'skip') + '">' + info.name + '</div>' +
+            '<div class="wc-a-name ' + (info.needsWarmup ? 'warm' : 'skip') + '">' + escapeHTML(exDisplay(info.name)) + '</div>' +
             '<div class="wc-a-why ' + (info.needsWarmup ? 'warm' : 'skip') + '">' +
             (info.needsWarmup ? '→ riscalda (' + info.reason + ')' : info.reason) + '</div>';
         analysisEl.appendChild(row);
@@ -7105,6 +7107,7 @@ async function onLoginSuccess(user, usernameOverride = null) {
         // Storico carichi: unione per chiave, cosi' due dispositivi diversi
         // non si cancellano le sedute a vicenda.
         if (s._srMigratedV151) APP._srMigratedV151 = true;
+        if (s._holdMigratedV287) APP._holdMigratedV287 = true;
         if (s.loadHistory && s.loadHistory.length) {
             var _seen = {}, _merged = [];
             (APP.loadHistory || []).concat(s.loadHistory).forEach(function(e) {
@@ -9798,6 +9801,13 @@ function awkGoalToTable(goal) {
          : 'ipertrofia';
 }
 
+/* Tabella dei parametri del protocollo (obiettivo e livello). */
+function awkParamsTable(proto) {
+  var pg = awkGoalToTable(awkGoalOfProto(proto));
+  var lvl = (proto && proto._awkLevel) || 'intermedio';
+  return (AWK_PARAMS[pg] && AWK_PARAMS[pg][lvl]) || null;
+}
+
 function awkParamsFor(proto, role, chIdx){
   const goal = awkGoalOfProto(proto);
   const pg = awkGoalToTable(goal);
@@ -10036,11 +10046,11 @@ function awkVerifyCoachList(suggested, draft, proto){
 
       var srO = o.sr, typeO = o._type, zoneO = o._zone;
       if (pO) {
-        var asTimeO = !!(catO && catO.hold) && pO.t === 'time';
-        var repsO   = asTimeO ? pO.r : (roleO === 'core' ? (pO.rDyn || pO.r) : pO.r);
+        var asTimeO = !!(catO && catO.hold);
+        var repsO   = asTimeO ? awkHoldSecs(awkParamsTable(proto), pO) : (roleO === 'core' ? (pO.rDyn || pO.r) : pO.r);
         srO   = pO.s + ' x ' + repsO + (asTimeO ? 's' : '');
         typeO = asTimeO ? 'time' : 'reps';
-        zoneO = asTimeO ? pO.z : (roleO === 'core' ? (pO.zDyn || pO.z) : pO.z);
+        zoneO = asTimeO ? 'iso_time' : (roleO === 'core' ? (pO.zDyn || pO.z) : pO.z);
       }
 
       if (norm(srO) !== norm(o.sr)) {
@@ -10063,8 +10073,8 @@ function awkVerifyCoachList(suggested, draft, proto){
     }
     // 4. Parametri e carico presi dalle tabelle, non dal modello
     const p = awkParamsFor(proto, cat.role, APP.selectedViewWeek || 0);
-    const asTime = !!cat.hold && p && p.t === 'time';
-    const reps = p ? (asTime ? p.r : (cat.role === 'core' ? (p.rDyn || p.r) : p.r)) : null;
+    const asTime = !!cat.hold && !!p;
+    const reps = p ? (asTime ? awkHoldSecs(awkParamsTable(proto), p) : (cat.role === 'core' ? (p.rDyn || p.r) : p.r)) : null;
     const sr = p ? (p.s + ' x ' + reps + (asTime ? 's' : '')) : e.sr;
     const kg = asTime ? 0 : awkDefaultKg(cat.name, proto._awkLevel || 'intermedio');
     if (p && (norm(sr) !== norm(e.sr) || kg !== (e.baseWeight || 0))) {
@@ -10073,7 +10083,7 @@ function awkVerifyCoachList(suggested, draft, proto){
     out.push({
       name: cat.name, sr: sr, baseWeight: kg,
       _type: asTime ? 'time' : 'reps', _role: cat.role,
-      _zone: p ? (asTime ? p.z : (cat.role === 'core' ? (p.zDyn || p.z) : p.z)) : undefined
+      _zone: p ? (asTime ? 'iso_time' : (cat.role === 'core' ? (p.zDyn || p.z) : p.z)) : undefined
     });
   });
 
@@ -10099,11 +10109,11 @@ function awkVerifyCoachList(suggested, draft, proto){
 
     var srM = o.sr, typeM = o._type, zoneM = o._zone;
     if (pM) {
-      var asTimeM = !!(catM && catM.hold) && pM.t === 'time';
-      var repsM   = asTimeM ? pM.r : (roleM === 'core' ? (pM.rDyn || pM.r) : pM.r);
+      var asTimeM = !!(catM && catM.hold);
+      var repsM   = asTimeM ? awkHoldSecs(awkParamsTable(proto), pM) : (roleM === 'core' ? (pM.rDyn || pM.r) : pM.r);
       srM   = pM.s + ' x ' + repsM + (asTimeM ? 's' : '');
       typeM = asTimeM ? 'time' : 'reps';
-      zoneM = asTimeM ? pM.z : (roleM === 'core' ? (pM.zDyn || pM.z) : pM.z);
+      zoneM = asTimeM ? 'iso_time' : (roleM === 'core' ? (pM.zDyn || pM.z) : pM.z);
     }
     out.push({ name: o.name, sr: srM, baseWeight: o.baseWeight, _type: typeM, _role: roleM || o._role, _zone: zoneM, _perSide: o._perSide, _rest: o._rest });
     mantenuti.push({ name: o.name, motivo: 'mantenuto: il Coach non lo ha citato' });
@@ -16511,7 +16521,7 @@ function nutUpdateUI() {
         hKcalCur.textContent = t.kcal;
         document.getElementById('nut-home-kcal-tgt').textContent = g.kcal;
         document.getElementById('nut-kcal-remaining').textContent =
-            remaining > 0 ? '−' + remaining + ' rimanenti' : '✓ obiettivo raggiunto';
+            remaining > 0 ? remaining + ' rimanenti' : '✓ obiettivo raggiunto';
         const kBar = document.getElementById('nut-kcal-bar');
         if (kBar) kBar.style.width = pct(t.kcal, g.kcal);
         document.getElementById('nut-home-p-val').textContent = t.p + '/' + g.p + 'g';
@@ -19231,7 +19241,7 @@ function woAskTechnique(exName, eq, usedKg, reps, targetReps, wIdx) {
         'padding:20px 18px;box-sizing:border-box;';
     box.innerHTML =
         '<div style="font-size:0.52rem;color:#fbbf24;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">Oltre il programma</div>' +
-        '<div style="font-size:0.95rem;font-weight:800;color:#e2e8f0;margin:4px 0 3px;">' + exName + '</div>' +
+        '<div style="font-size:0.95rem;font-weight:800;color:#e2e8f0;margin:4px 0 3px;">' + escapeHTML(exDisplay(exName)) + '</div>' +
         '<div style="font-size:0.7rem;color:#cbd5e1;line-height:1.6;margin-bottom:14px;">' +
         _fmtKg(usedKg) + ' kg \u00d7 ' + reps + ' vale <b style="color:#fbbf24;">' + _fmtKg(eq) +
         ' kg</b> sulle ' + targetReps + ' previste.<br>Hai chiuso <b style="color:#e2e8f0;">tutte</b> le ripetizioni con tecnica pulita?</div>' +
@@ -19502,7 +19512,7 @@ function woAskExtraReps(exName, targetReps, usedKg, onDone) {
         'padding:20px 18px;box-sizing:border-box;';
 
     var h = '<div style="font-size:0.52rem;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">Ultima serie</div>' +
-        '<div style="font-size:0.95rem;font-weight:800;color:#e2e8f0;margin:4px 0 3px;">' + exName + '</div>' +
+        '<div style="font-size:0.95rem;font-weight:800;color:#e2e8f0;margin:4px 0 3px;">' + escapeHTML(exDisplay(exName)) + '</div>' +
         '<div style="font-size:0.7rem;color:#cbd5e1;line-height:1.6;margin-bottom:14px;">Hai chiuso piu\u0027 delle <b style="color:#e2e8f0;">' +
         targetReps + ' ripetizioni</b> previste con ' + _fmtKg(usedKg) + ' kg?</div>' +
         '<div id="wo-reps-chips" style="display:flex;gap:6px;margin-bottom:10px;"></div>' +
@@ -19590,7 +19600,7 @@ function _woRegisterRecord(exName, eq, usedKg, reps, targetReps, wIdx) {
     }
     if (isNew) {
         var viaReps = (reps > targetReps);
-        var msg = '\uD83C\uDFC6 Record \u00b7 ' + exName + ' \u2014 ' + _fmtKg(usedKg) + ' kg \u00d7 ' + reps +
+        var msg = '\uD83C\uDFC6 Record \u00b7 ' + exDisplay(exName) + ' \u2014 ' + _fmtKg(usedKg) + ' kg \u00d7 ' + reps +
                   (viaReps ? ' equivale a ' + _fmtKg(eq) + ' kg sulle ' + targetReps + ' previste' : '');
         showToast(msg, 'success');
         if (typeof woRenderExList === 'function') woRenderExList();
@@ -19621,7 +19631,7 @@ function woAskOverloadFeedback(exName, targetReps) {
     ];
     var html =
         '<div style="font-size:0.52rem;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">\u26a1 Overload \u00b7 ultima serie</div>' +
-        '<div style="font-size:0.95rem;font-weight:800;color:#e2e8f0;margin:4px 0 3px;">' + exName + '</div>' +
+        '<div style="font-size:0.95rem;font-weight:800;color:#e2e8f0;margin:4px 0 3px;">' + escapeHTML(exDisplay(exName)) + '</div>' +
         '<div style="font-size:0.7rem;color:#cbd5e1;line-height:1.6;margin-bottom:16px;">Com\u2019\u00e8 andata l\u2019ultima serie?' + tgt + '</div>';
     opts.forEach(function(o) {
         html += '<button type="button" data-a="' + o[0] + '" class="wo-ovl-opt">' + o[1] +
@@ -19818,7 +19828,7 @@ function woShowProgressionSummary() {
         h += '<div class="ovlp-card' + flat + wide + '">' +
                 '<div class="ovlp-delta">' + pctTxt + '</div>' +
                 '<div class="ovlp-val">' + r.newMtr + '<small>kg</small></div>' +
-                '<div class="ovlp-name">' + r.name + '</div>' +
+                '<div class="ovlp-name">' + escapeHTML(exDisplay(r.name)) + '</div>' +
                 '<div class="ovlp-area">' + (r.lower ? 'Arti inferiori' : 'Parte superiore') + '</div>' +
              '</div>';
     });
@@ -21962,11 +21972,61 @@ function awkPick(key, equip, used, usedFam, allowSkip, level){
   }
   let c = ok.find(ex => !used.has(ex.n) && (!ex.fam || !usedFam.has(ex.fam)));
   if (!c) c = ok.find(ex => !used.has(ex.n));
-  if (!c && allowSkip) return null;          // isolamento/core: meglio togliere che duplicare
-  if (!c) c = ok[0] || null;
+  // Mai lo stesso esercizio due volte nella stessa seduta: prima, per gli
+  // slot principali, si ripiegava sul primo disponibile anche se era gia'
+  // stato scelto, e in GRAVITY avanzato a corpo libero la seduta Skill
+  // conteneva due volte l'Handstand Hold al Muro. Meglio uno slot in meno.
   if (!c) return null;
   used.add(c.n); if (c.fam) usedFam.add(c.fam);
   return c;
+}
+
+/* Secondi per serie di un isometrico. Lo slot core ha gia' la sua durata;
+   negli altri slot si usa la stessa del core di quel livello, cioe' la zona
+   iso_time (20-60 s per serie, Oranchuk et al. 2019: negli isometrici
+   conta il tempo sotto tensione). Nessuna durata nuova inventata qui. */
+function awkHoldSecs(P, p) {
+  if (p && p.t === 'time' && p.r) return p.r;
+  return (P && P.core && P.core.r) || 30;
+}
+
+/* v.287: gli isometrici nei ruoli principali delle schede gia' create erano
+   salvati a ripetizioni (5 x 5). Una sola volta si portano a secondi, con
+   le stesse serie e la durata del core di quel livello (vedi awkHoldSecs). */
+function awkMigrateHolds() {
+  if (APP._holdMigratedV287) return 0;
+  var changed = 0;
+  (APP.savedProtocols || []).forEach(function(p) {
+    if (!p || !p._awkGoal || !p._awkLevel) return;
+    var pg = awkGoalToTable(p._awkGoal);
+    var P = AWK_PARAMS[pg] && AWK_PARAMS[pg][p._awkLevel];
+    if (!P) return;
+    // Le schede generate prima della v.287 potevano contenere lo stesso
+    // esercizio due volte (vedi awkPick): si tiene il primo.
+    var _visti = {};
+    var _prima = (p.exercises || []).length;
+    p.exercises = (p.exercises || []).filter(function(e) {
+      var k = e && e.name ? exNormKey(exCanonical(e.name)) : '';
+      if (!k) return true;
+      if (_visti[k]) return false;
+      _visti[k] = true; return true;
+    });
+    changed += _prima - p.exercises.length;
+    (p.exercises || []).forEach(function(e) {
+      if (!e || !e.sr || srIsTime(e.sr)) return;
+      var cat = awkCatalogLookup(e.name);
+      if (!cat || !cat.hold) return;
+      var m = e.sr.match(/(\d+)\s*[xX\u00d7]/);
+      var sets = m ? parseInt(m[1]) : 3;
+      e.sr = sets + ' x ' + awkHoldSecs(P, null) + 's';
+      e._type = 'time'; e._zone = 'iso_time'; e._rir = '';
+      e.baseWeight = 0;
+      if (Array.isArray(e.loads)) e.loads = e.loads.map(function() { return 0; });
+      changed++;
+    });
+  });
+  APP._holdMigratedV287 = true;
+  return changed;
 }
 
 function awkFmtRest(s){ return s>=60 ? (s%60===0 ? (s/60)+' min' : Math.floor(s/60)+':'+String(s%60).padStart(2,'0')+' min') : s+'s'; }
@@ -21988,13 +22048,17 @@ function awkBuildProtocol(goal, level, equipIn){
       if (!c) return;
       // La durata si applica solo agli esercizi realmente isometrici: un
       // hanging leg raise e' a ripetizioni anche se occupa lo slot "core".
-      const asTime = (p.t === 'time') && !!c.hold;
+      // Vale in ogni ruolo: prima solo lo slot core aveva i secondi, e un
+      // isometrico in uno slot principale (Handstand Hold, Front Lever Tuck,
+      // Rematore Isometrico) veniva prescritto a ripetizioni, 5 x 5.
+      const asTime = !!c.hold;
+      const holdSecs = awkHoldSecs(P, p);
       exercises.push({ name:c.n, eq:c.eq, role,
                        sets: p.s,
-                       reps: asTime ? p.r : (p.rDyn || p.r),
+                       reps: asTime ? holdSecs : (p.rDyn || p.r),
                        rest: p.rest, rir: asTime ? '' : (p.rir || 'RIR 1\u20132'),
                        type: asTime ? 'time' : 'reps',
-                       zone: asTime ? p.z : (p.zDyn || p.z) });
+                       zone: asTime ? 'iso_time' : (p.zDyn || p.z) });
     });
     return {
       name: sess.n,
@@ -22006,11 +22070,11 @@ function awkBuildProtocol(goal, level, equipIn){
   const warn = [];
   const hasVPull = ['sbarra','anelli','macchine','cavi','elastici'].some(k=>equip.includes(k));
   const hasHPull = hasVPull || equip.includes('appoggio') || equip.includes('bilanciere') || equip.includes('manubri');
-  if (!hasHPull) warn.push('Con quello che hai selezionato la schiena non e allenabile: ogni trazione richiede almeno un tavolo robusto sotto cui passare, o una sbarra. Al momento restano solo isometrie ed esercizi proni, che non bastano. Aggiungi almeno "Tavolo, sedie o gradino".');
-  else if (!hasVPull) warn.push('Puoi allenare la trazione orizzontale (rematori) ma non quella verticale. Una sbarra da porta e l\'aggiunta piu utile al tuo setup.');
+  if (!hasHPull) warn.push('Con quello che hai selezionato la schiena non \u00e8 allenabile: ogni trazione richiede almeno un tavolo robusto sotto cui passare, o una sbarra. Al momento restano solo isometrie ed esercizi proni, che non bastano. Aggiungi almeno "Tavolo, sedie o gradino".');
+  else if (!hasVPull) warn.push('Puoi allenare la trazione orizzontale (rematori) ma non quella verticale. Una sbarra da porta \u00e8 l\'aggiunta pi\u00f9 utile al tuo setup.');
   const hasLoad = ['bilanciere','manubri','kettlebell','macchine','cavi','elastici'].some(k=>equip.includes(k));
-  if (!hasLoad && goal!=='calisthenic') warn.push('Con zero sovraccarichi la progressione avviene cambiando leva e difficolta dell\'esercizio, non aggiungendo kg. Il protocollo Calisthenic e strutturato per questo.');
-  if (goal==='full_forza' && !equip.includes('bilanciere')) warn.push('La forza massimale richiede incrementi di carico piccoli e misurabili: senza bilanciere la progressione sara meno precisa.');
+  if (!hasLoad && goal!=='calisthenic') warn.push('Con zero sovraccarichi la progressione avviene cambiando leva e difficolt\u00e0 dell\'esercizio, non aggiungendo kg. Il protocollo Calisthenic \u00e8 strutturato per questo.');
+  if (goal==='full_forza' && !equip.includes('bilanciere')) warn.push('La forza massimale richiede incrementi di carico piccoli e misurabili: senza bilanciere la progressione sar\u00e0 meno precisa.');
   return { goal, level, split: tpl.split, days: tpl.days, dayIdx: tpl.dayIdx, sessions, totalSets, warn };
 }
 
@@ -24743,7 +24807,7 @@ const BADGES_CONFIG = [
     { id: 'ten_workouts',   icon: '💪', name: '10 Workout',     desc: '10 allenamenti completati',       check: () => APP.totalWorkouts >= 10 },
     { id: 'chapter2',       icon: '⚡', name: 'Chapter II',     desc: 'Completa la settimana 1',         check: () => APP.completedWeeks[0] === true },
     { id: 'one_month',      icon: '🏅', name: 'Un Mese',        desc: "30 giorni dall'inizio",          check: () => APP.startDate && ((new Date() - new Date(APP.startDate)) / 86400000) >= 30 },
-    { id: 'awaken',         icon: '👑', name: 'Awaken',         desc: 'Completa il programma 28gg',      check: () => APP.completedWeeks.every(Boolean) },
+    { id: 'awaken',         icon: '👑', name: 'Awaken',         desc: 'Completa il programma di 35 giorni', check: () => APP.completedWeeks.every(Boolean) },
     // Peso corporeo
     { id: 'weight_first',   icon: '⚖️',  name: 'Prima Pesata',   desc: 'Registra il primo peso',           check: () => { try { return JSON.parse(localStorage.getItem('aw_weight_log')||'[]').length >= 1; } catch(e) { return false; } } },
     { id: 'weight_1kg',     icon: '📉',  name: 'Primo kg',       desc: 'Perdi 1 kg dal primo peso',        check: () => { try { const l=JSON.parse(localStorage.getItem('aw_weight_log')||'[]'); return l.length>=2 && l[0].kg-l[l.length-1].kg>=1; } catch(e) { return false; } } },
