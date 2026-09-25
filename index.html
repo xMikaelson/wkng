@@ -584,7 +584,8 @@
         .awd-acts { display:flex; gap:8px; margin-top:18px; }
         .awd-skip { border:1px solid rgba(255,255,255,0.07); background:none; border-radius:12px;
             padding:13px 18px; color:#64748b; font-family:inherit; font-size:0.68rem;
-            font-weight:600; cursor:pointer; text-transform:none; flex-shrink:0; }
+            font-weight:600; cursor:pointer; text-transform:none; flex-shrink:0;
+            width:auto; /* la regola globale button{width:100%} spingeva Salva fuori schermo */ }
         .awd-save { flex:1; border:none; border-radius:12px; padding:13px; cursor:pointer;
             font-family:inherit; background:var(--btn-grad); color:#fff; font-size:0.72rem;
             font-weight:900; text-transform:none; transition:opacity 0.15s; }
@@ -1287,6 +1288,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .onboarding-step { width: 25%; flex-shrink: 0; padding: 0 3px; animation: none; }
         .ob-track.ob-free .onboarding-step { visibility: hidden; }
         .ob-track.ob-free #ob-step-4 { visibility: visible; }
+        /* Con overflow visibile gli slide nascosti, piu' alti del quarto,
+           restavano sopra ad "ATTIVA PROTOCOLLO" e ne intercettavano il tocco:
+           invisibili ma non trasparenti al dito. */
+        .ob-track.ob-free { pointer-events: none; }
+        .ob-track.ob-free #ob-step-4 { pointer-events: auto; }
         .ob-card { background: linear-gradient(150deg, rgba(30,41,59,0.9), rgba(17,26,46,0.9));
                    border: 1.5px solid rgba(255,255,255,0.07); border-radius: 18px; padding: 16px 14px;
                    margin-bottom: 10px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 13px; }
@@ -4534,7 +4540,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '284';
+const APP_VERSION = '285';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -7756,6 +7762,12 @@ function selectPlanChapter(w) {
         return;
     }
     APP.selectedViewWeek = w;
+    // Il capitolo scelto va salvato subito. Prima restava solo in memoria:
+    // chiudendo l'app dopo la festa di fine capitolo (che porta qui da sola)
+    // alla riapertura si tornava sul capitolo appena finito, con tutte le
+    // sedute gia' fatte, e il successivo non partiva finche' non lo si
+    // toccava a mano in Piani.
+    saveState();
     // Nuovo ciclo: qui e solo qui i nuovi MTR entrano in vigore. Indipendente
     // da quante sedute di scarico sono state fatte — il riposo totale è un
     // deload valido quanto lo scarico a carichi leggeri.
@@ -9871,6 +9883,19 @@ function srForChapter(ex, chIdx, proto) {
     if (cat && cat.role) role = cat.role;
   }
   if (!role) role = awkRoleGuess(ex.name);
+  // Core a ripetizioni (hanging leg raise e simili): la tabella tiene due
+  // valori, r per gli isometrici in secondi e rDyn per le ripetizioni. Qui
+  // veniva letto r, cosi' un 3 x 12 diventava 3 x 40 ripetizioni in seduta.
+  // rDyn e' lo stesso valore che il generatore usa creando la scheda
+  // (zona iper_wide, Schoenfeld et al. 2017). Nel deload le serie si
+  // dimezzano come per gli altri esercizi (Bosquet et al. 2007).
+  if (role === 'core' && proto) {
+    var pc = awkParamsFor(proto, 'core', 0);
+    if (pc && pc.s && (pc.rDyn || pc.r)) {
+      var coreSr = pc.s + ' x ' + (pc.rDyn || pc.r);
+      return (chIdx === DELOAD_WEEK) ? woDeloadSr(coreSr) : coreSr;
+    }
+  }
   var p = (role && proto) ? awkParamsFor(proto, role, chIdx) : null;
   if (p && p.s && p.r) return p.s + ' x ' + p.r;
   // Senza ruolo noto si conserva il comportamento precedente.
