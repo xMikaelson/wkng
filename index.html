@@ -704,6 +704,34 @@
         .aw-dlg-btn.cancel { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#94a3b8; }
         .aw-dlg-btn.ok { background:linear-gradient(135deg,#059669,#4f46e5); border:none; color:#fff; }
         .aw-dlg-btn.danger { background:rgba(248,113,113,0.15); border:1px solid rgba(248,113,113,0.4); color:#fca5a5; }
+        /* Link fra testo e pulsanti: non e' una terza scelta, quindi non ha la
+           forma di un pulsante. width/padding/text-transform espliciti contro
+           la regola globale `button`. */
+        .aw-dlg-link { display:block; width:100%; margin:12px 0 0; padding:0; background:none; border:none;
+            font-family:inherit; font-size:0.63rem; font-weight:700; color:#a5b4fc;
+            text-align:left; text-transform:none; cursor:pointer; }
+        .aw-dlg-link:active { color:#c7d2fe; }
+        /* Le spiegazioni con le fonti stanno sopra la proposta di sblocco,
+           che resta aperta sotto: chi legge il perche' torna dove stava
+           decidendo. z-index piu' alto di .aw-dlg (9900). */
+        .aw-why-dlg { z-index:9950; }
+        .aw-why-item { padding:10px 0; border-top:1px solid rgba(255,255,255,0.07); }
+        .aw-why-item:first-of-type { border-top:none; padding-top:2px; }
+        .aw-why-item h3 { margin:0 0 3px; font-size:0.68rem; font-weight:800; color:#e2e8f0; line-height:1.4; }
+        .aw-why-item p { margin:0; font-size:0.63rem; line-height:1.6; color:#cbd5e1; }
+        .aw-why-item cite { display:block; margin-top:4px; font-style:normal; font-size:0.55rem;
+            color:#818cf8; font-weight:700; }
+        /* La "i" in fondo alla riga sotto i giorni: cerchio piccolo, ma il
+           bersaglio del dito e' piu' largo del disegno (::after) senza
+           allargare la riga di testo. */
+        .aw-why { display:inline-flex; align-items:center; justify-content:center;
+            width:16px; height:16px; padding:0; margin:0 0 -3px 5px; border-radius:50%;
+            background:rgba(var(--ac,99,102,241),0.16); border:1px solid rgba(var(--ac,99,102,241),0.5);
+            color:#a5b4fc; font-family:Georgia,"Times New Roman",serif; font-style:italic;
+            font-size:0.58rem; font-weight:700; line-height:1; text-transform:none;
+            cursor:pointer; position:relative; vertical-align:baseline; }
+        .aw-why::after { content:''; position:absolute; inset:-8px; }
+        .aw-why:active { background:rgba(var(--ac,99,102,241),0.3); color:#e0e7ff; }
 
         /* ── Testi legali e accettazione (v.176) ── */
         #legal-modal, #legal-gate { position:fixed; inset:0; z-index:9800; display:none;
@@ -4539,7 +4567,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '290';
+const APP_VERSION = '291';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -7949,10 +7977,22 @@ function renderPlanPage(w) {
        Un pulsante in fondo alla schermata diceva "chiudi" senza dire cosa
        si apriva; la linguetta che pulsa indica gia' dove si va a finire. */
     if (isUnlocked && woPuoSbloccare(w) && w + 1 < CHAPTER_NAMES.length) {
+        const nMancanti = woMancanti(w);
         const tollNote = document.createElement('div');
         tollNote.className = 'plan-close-note';
-        tollNote.textContent = 'Ti manca una seduta. Per andare avanti lo stesso, tocca "Ch.' +
-            (w + 2) + ' ' + CHAPTER_NAMES[w + 1] + '" qui sopra.';
+        tollNote.appendChild(document.createTextNode(
+            'Ti ' + (nMancanti === 1 ? 'manca una seduta' : 'mancano ' + nMancanti + ' sedute') +
+            '. Per andare avanti lo stesso, tocca "Ch.' + (w + 2) + ' ' + CHAPTER_NAMES[w + 1] + '" qui sopra.'));
+        /* La "i" sta in fondo alla riga come fosse l'ultima parola: su una
+           riga sua sembrerebbe un pulsante staccato e nessuno la collegherebbe
+           alla frase. Apre le spiegazioni con le fonti (awPercheSaltare). */
+        const why = document.createElement('button');
+        why.type = 'button';
+        why.className = 'aw-why';
+        why.textContent = 'i';
+        why.setAttribute('aria-label', 'Perch\u00e9 saltare una seduta non compromette il lavoro fatto');
+        why.onclick = awPercheSaltare;
+        tollNote.appendChild(why);
         block.appendChild(tollNote);
     }
 
@@ -10364,33 +10404,114 @@ function woSeduteMancanti(w) {
    Serve almeno una seduta fatta, altrimenti su un capitolo da un solo giorno
    si chiuderebbe senza aver mai allenato. La seduta saltata NON viene segnata
    come fatta: lo storico deve restare vero. */
-/* Vero quando al capitolo w manca esattamente una seduta e se ne e' gia'
-   fatta almeno una. E' la condizione che accende la linguetta del capitolo
-   successivo ed e' l'unica porta d'ingresso alla tolleranza. */
+/* Vero quando al capitolo w mancano una o due sedute e almeno una e' stata
+   svolta. E' la condizione che accende la linguetta del capitolo successivo
+   ed e' l'unica porta d'ingresso alla tolleranza.
+
+   Fino alla v.290 il limite era una sola seduta: con due il capitolo restava
+   aperto per sempre e il successivo bloccato, e l'unica uscita era togliere
+   un giorno dal piano col cestino, cosa che nessuno spiegava.
+   Che due sedute saltate non compromettano il lavoro fatto lo dicono gli
+   studi (vedi awPercheSaltare, dove sono citati per esteso): le perdite da
+   stop si misurano in settimane, non in giorni (Mujika & Padilla 2000), e un
+   terzo del volume abituale mantiene forza e massa (Bickel, Cross & Bamman
+   2011). Quello che manca e' volume, e il volume e' proporzionale al
+   risultato (Schoenfeld, Ogborn & Krieger 2016, 2017): la settimana vale come
+   mantenimento, non come progresso.
+   Dove mettere il limite, invece, nessuno studio lo dice: DUE E' UNA SCELTA
+   NOSTRA, presa dall'utente sapendo che non c'e' una fonte per il numero.
+   Serve almeno una seduta fatta: senza, si salterebbe un capitolo intero. */
 function woPuoSbloccare(w) {
     if (typeof w !== 'number' || w < 0) return false;
     if (APP.completedWeeks[w]) return false;
     const assegnate = (APP.dayAssignments[w] || []).filter(a => a !== null).length;
-    return assegnate >= 2 && woSeduteMancanti(w) === 1;
+    if (assegnate < 2) return false;
+    const mancanti = woSeduteMancanti(w);
+    const fatte = assegnate - mancanti;
+    return mancanti >= 1 && mancanti <= 2 && fatte >= 1;
 }
 
-/* La proposta, aperta toccando la linguetta che pulsa. Dice quante sedute
-   mancano, perche' saltarne una non compromette il lavoro fatto e cosa resta
-   vero nello storico: la richiesta e' esplicita, non un automatismo. */
+/* Quante sedute mancano al capitolo w, per i testi. */
+function woMancanti(w) { return woSeduteMancanti(w); }
+
+/* La proposta, aperta toccando la linguetta che pulsa. Deve far decidere, non
+   insegnare: quante sedute mancano, cosa comporta, cosa resta nello storico.
+   Gli studi stanno dietro "Perche' si puo'" e dietro la "i" sotto i giorni
+   (awPercheSaltare): infilarli qui allungava la finestra di tre paragrafi
+   proprio nel momento in cui si deve solo scegliere. */
 function woProponiSblocco(w) {
     if (!woPuoSbloccare(w)) return;
     const prossimo = 'Chapter ' + (w + 2) + (CHAPTER_NAMES[w + 1] ? ' \u2014 ' + CHAPTER_NAMES[w + 1] : '');
     const assegnate = (APP.dayAssignments[w] || []).filter(a => a !== null).length;
-    awConfirm(
-        'Nel Chapter ' + (w + 1) + ' hai fatto ' + (assegnate - 1) + ' sedute su ' + assegnate + ': ne manca una.\n\n' +
-        'Puoi passare avanti lo stesso. Una seduta saltata non disfa il lavoro gi\u00e0 fatto: le perdite da stop si misurano dopo settimane, non dopo un giorno (Mujika & Padilla 2003).\n\n' +
-        'Sbloccare il capitolo non alza i carichi da solo: salgono solo dove le ripetizioni che hai davvero eseguito lo giustificano (regola 2-per-2, Baechle & Earle 2008). E la seduta che manca resta non fatta nello storico.',
+    const mancanti = woMancanti(w);
+    const fatte = assegnate - mancanti;
+
+    const riga1 = 'Nel Chapter ' + (w + 1) + ' hai fatto ' + fatte + (fatte === 1 ? ' seduta' : ' sedute') +
+        ' su ' + assegnate + ': ne ' + (mancanti === 1 ? 'manca una' : 'mancano ' + mancanti) + '.';
+    const riga2 = mancanti === 1
+        ? 'Puoi passare avanti lo stesso: una seduta saltata non disfa il lavoro gi\u00e0 fatto.'
+        : 'Puoi passare avanti lo stesso, ma con ' + mancanti + ' sedute in meno questa settimana vale come mantenimento, non come progresso.';
+    const riga3 = 'I carichi non salgono per il fatto di cambiare capitolo, e ' +
+        (mancanti === 1 ? 'la seduta che manca resta non fatta' : 'le sedute che mancano restano non fatte') +
+        ' nello storico.';
+
+    awConfirm(riga1 + '\n\n' + riga2 + '\n\n' + riga3,
         function(ok) {
             if (!ok) return;  // si resta sul capitolo in corso
             woChiudiCapitolo(w);
             renderPlanPage(w);
         },
-        { title: 'Vuoi sbloccare il ' + prossimo + '?', okLabel: 'Sblocca', cancelLabel: 'Non ancora' });
+        { title: 'Vuoi sbloccare il ' + prossimo + '?', okLabel: 'Sblocca', cancelLabel: 'Non ancora',
+          linkLabel: 'Perch\u00e9 si pu\u00f2 \u2192', onLink: awPercheSaltare });
+}
+
+/* Cosa comporta saltare una seduta: le fonti per esteso, una voce per
+   concetto. Si apre dalla "i" in fondo alla riga sotto i giorni e dal link
+   dentro la proposta di sblocco, e si sovrappone a quella senza chiuderla:
+   chi legge il perche' torna esattamente dove stava decidendo. */
+function awPercheSaltare() {
+    var old = document.getElementById('aw-why');
+    if (old) old.remove();
+
+    var VOCI = [
+        { t: 'Quello che hai costruito non si disfa',
+          p: 'Le perdite da interruzione si misurano in settimane, non in giorni: nelle prime settimane senza allenamento la forza resta sostanzialmente intatta.',
+          f: 'Mujika & Padilla, 2000 \u2014 Sports Medicine' },
+        { t: 'Una settimana a mezzo servizio mantiene',
+          p: 'Un terzo del volume abituale, cio\u00e8 una sola seduta a settimana, \u00e8 bastato a mantenere forza e massa nei giovani adulti per 32 settimane.',
+          f: 'Bickel, Cross & Bamman, 2011 \u2014 Med Sci Sports Exerc' },
+        { t: 'Quello che perdi \u00e8 volume, non progresso',
+          p: 'A volume settimanale pari la frequenza conta poco: \u00e8 il totale delle serie a fare la differenza, in proporzione alla dose. Le sedute saltate sono serie in meno, non un capitolo da rifare.',
+          f: 'Schoenfeld, Ogborn & Krieger, 2016 e 2017' },
+        { t: 'I carichi non salgono per il calendario',
+          p: 'Cambiare capitolo non alza niente da solo: i chili salgono solo dove le ripetizioni che hai davvero eseguito lo giustificano.',
+          f: 'Regola 2-per-2 \u2014 Baechle & Earle, 2008, NSCA Essentials' },
+        { t: 'Lo storico resta vero',
+          p: 'Le sedute che mancano restano non fatte: non vengono segnate come svolte e non entrano nel conteggio.',
+          f: '' }
+    ];
+
+    var ov = document.createElement('div');
+    ov.id = 'aw-why';
+    ov.className = 'aw-dlg aw-why-dlg';
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-modal', 'true');
+
+    var h = '<div class="aw-dlg-box">' +
+            '<div class="aw-dlg-title">Saltare una seduta: cosa comporta</div>';
+    VOCI.forEach(function(v) {
+        h += '<div class="aw-why-item"><h3>' + v.t + '</h3><p>' + v.p + '</p>' +
+             (v.f ? '<cite>' + v.f + '</cite>' : '') + '</div>';
+    });
+    h += '<div class="aw-dlg-btns" style="margin-top:14px;">' +
+         '<button type="button" class="aw-dlg-btn cancel" id="aw-why-close">Chiudi</button>' +
+         '</div></div>';
+    ov.innerHTML = h;
+    document.body.appendChild(ov);
+
+    function chiudi() { var el = document.getElementById('aw-why'); if (el) el.remove(); }
+    ov.querySelector('#aw-why-close').onclick = chiudi;
+    ov.onclick = function(e) { if (e.target === ov) chiudi(); };
 }
 
 /* Chiusura vera e propria del capitolo: sblocca il successivo, mette in
@@ -14273,6 +14394,10 @@ function _awDialog(opts) {
     var h = '<div class="aw-dlg-title">' + escapeHTML(opts.title || '') + '</div>';
     if (opts.message) h += '<div class="aw-dlg-msg">' + escapeHTML(opts.message).split('\n').join('<br>') + '</div>';
     if (opts.input) h += '<input type="text" class="aw-dlg-input" id="aw-dlg-input" autocomplete="off" autocapitalize="characters" spellcheck="false" value="' + escapeHTML(opts.value || '') + '">';
+    // Link facoltativo fra testo e pulsanti: serve dove la finestra deve
+    // restare corta ma l'approfondimento deve essere a un tocco (lo sblocco
+    // del capitolo). Non chiude la finestra: si sovrappone e basta.
+    if (opts.linkLabel) h += '<button type="button" class="aw-dlg-link" id="aw-dlg-link">' + escapeHTML(opts.linkLabel) + '</button>';
     h += '<div class="aw-dlg-btns">' +
          '<button type="button" class="aw-dlg-btn cancel" id="aw-dlg-no">' + escapeHTML(opts.cancelLabel || 'Annulla') + '</button>' +
          '<button type="button" class="aw-dlg-btn ' + (opts.danger ? 'danger' : 'ok') + '" id="aw-dlg-yes">' + escapeHTML(opts.okLabel || 'Conferma') + '</button>' +
@@ -14297,6 +14422,8 @@ function _awDialog(opts) {
         } else close(true);
     };
     if (no) no.onclick = function() { close(opts.input ? null : false); };
+    var link = box.querySelector('#aw-dlg-link');
+    if (link && typeof opts.onLink === 'function') link.onclick = function(e) { e.stopPropagation(); opts.onLink(); };
     ov.onclick = function(e) { if (e.target === ov) close(opts.input ? null : false); };
     if (opts.input) setTimeout(function() {
         var inp = document.getElementById('aw-dlg-input');
@@ -14312,6 +14439,8 @@ function awConfirm(message, onDone, opts) {
         okLabel: opts.okLabel || 'Conferma',
         cancelLabel: opts.cancelLabel || 'Annulla',
         danger: !!opts.danger,
+        linkLabel: opts.linkLabel || '',
+        onLink: opts.onLink,
         onDone: function(v) { if (typeof onDone === 'function') onDone(v === true); }
     });
 }
