@@ -587,7 +587,7 @@
             font-weight:600; cursor:pointer; text-transform:none; flex-shrink:0;
             width:auto; /* la regola globale button{width:100%} spingeva Salva fuori schermo */ }
         .awd-save { flex:1; border:none; border-radius:12px; padding:13px; cursor:pointer;
-            font-family:inherit; background:var(--btn-grad); color:#fff; font-size:0.72rem;
+            font-family:inherit; background:var(--btn-grad); color:var(--btn-ink,#fff); font-size:0.72rem;
             font-weight:900; text-transform:none; transition:opacity 0.15s; }
         .awd-save:disabled { opacity:0.32; cursor:default; }
 
@@ -2178,6 +2178,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             position: relative; z-index: 3; letter-spacing: -0.02em;
         }
         .banner-title span { color: rgba(255,255,255,0.35); text-shadow: 0 0 6px rgba(255,255,255,0.3); }
+        /* Testo scuro sul banner giallo di Momentum (CHAPTER_THEMES, ink):
+           il bagliore bianco su giallo impasterebbe le lettere, quindi via. */
+        .banner-layer.ink-dark .banner-sub { color: rgba(28,25,23,0.72); text-shadow: none; }
+        .banner-layer.ink-dark .banner-title { color: #1c1917; text-shadow: 0 1px 0 rgba(255,255,255,0.35); }
+        .banner-layer.ink-dark .banner-title span { color: rgba(28,25,23,0.42); text-shadow: none; }
 
         /* ═══ STAT CARDS GLOW ═══ */
         .stat-card::before {
@@ -2985,7 +2990,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wo-ovl-note b { color:#cbd5e1; }
         /* width/padding/text-transform espliciti: la regola globale `button` li imporrebbe */
         .wo-ovl-btn { width:100%; padding:13px; margin:12px 0 0; border:none; border-radius:11px;
-            background:var(--btn-grad); color:#fff; font-family:inherit;
+            background:var(--btn-grad); color:var(--btn-ink,#fff); font-family:inherit;
             font-size:0.78rem; font-weight:900; text-transform:none; cursor:pointer; }
 
         /* Opzioni della domanda Overload — width/padding/text-transform
@@ -3043,7 +3048,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wp-bar { height:5px; border-radius:3px; background:rgba(255,255,255,0.07); overflow:hidden; margin-bottom:10px; }
         .wp-bar i { display:block; height:100%; background:var(--primary); }
         .wp-btns { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-        .wp-b1 { border:none; border-radius:10px; background:var(--btn-grad); color:#fff; font-weight:800; font-size:0.64rem; padding:11px 6px; font-family:inherit; cursor:pointer; text-transform:none; }
+        .wp-b1 { border:none; border-radius:10px; background:var(--btn-grad); color:var(--btn-ink,#fff); font-weight:800; font-size:0.64rem; padding:11px 6px; font-family:inherit; cursor:pointer; text-transform:none; }
         .wp-b1:disabled { opacity:0.4; }
         .wp-b2 { border:1px solid rgba(255,255,255,0.1); border-radius:10px; background:rgba(255,255,255,0.03); color:#94a3b8; font-weight:800; font-size:0.64rem; padding:11px 6px; font-family:inherit; cursor:pointer; text-transform:none; }
         /* Intestazione esercizio (V3): riquadro interno con bordo e angoli tondi */
@@ -3076,7 +3081,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wc-mtr-box-desc { font-size:0.58rem; color:#cbd5e1; line-height:1.5; margin-bottom:14px; }
         .wc-mtr-box-input { width:100%; background:rgba(255,255,255,0.06); border:1.5px solid rgba(var(--ac),0.4); border-radius:10px; padding:12px; color:#e2e8f0; font-size:1.4rem; font-weight:900; text-align:center; outline:none; font-family:inherit; margin-bottom:6px; letter-spacing:0.05em; box-sizing:border-box; }
         .wc-mtr-box-unit { font-size:0.6rem; color:#cbd5e1; margin-bottom:14px; }
-        .wc-mtr-box-btn { width:100%; padding:12px; background:var(--btn-grad); border:none; border-radius:10px; color:#fff; font-size:0.8rem; font-weight:900; cursor:pointer; font-family:inherit; }
+        .wc-mtr-box-btn { width:100%; padding:12px; background:var(--btn-grad); border:none; border-radius:10px; color:var(--btn-ink,#fff); font-size:0.8rem; font-weight:900; cursor:pointer; font-family:inherit; }
         /* Set rows */
         .wc-set-row { display:flex; align-items:center; gap:10px; padding:10px 0; }
         .wc-set-row:last-of-type { border:none; }
@@ -3099,7 +3104,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wo-warmup-fill.complete { background:var(--primary); }
         .wo-warmup-prog-lbl { font-size:0.5rem; color:#94a3b8; white-space:nowrap; }
         .wo-start-btn.warmup-locked { background:rgba(255,255,255,0.05) !important; color:#334155 !important; cursor:not-allowed !important; pointer-events:none; box-shadow:none !important; animation:none !important; }
-        .wo-start-btn.warmup-unlocked { background:var(--btn-grad) !important; color:#fff !important; pointer-events:auto; animation:woStartPulse 1.8s ease-in-out infinite; }
+        .wo-start-btn.warmup-unlocked { background:var(--btn-grad) !important; color:var(--btn-ink,#fff) !important; pointer-events:auto; animation:woStartPulse 1.8s ease-in-out infinite; }
         @keyframes woStartPulse {
             0%, 100% { box-shadow:0 4px 16px rgba(var(--pr),0.28); }
             50%      { box-shadow:0 6px 26px rgba(var(--pr),0.55); }
@@ -4570,7 +4575,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '292';
+const APP_VERSION = '293';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -4659,11 +4664,18 @@ const CHAPTER_NAMES = ['Activation', 'Momentum', 'The Peak', 'Overload', 'Deload
    Momentum, il capitolo accanto (la linguetta che pulsa ha il colore del
    capitolo successivo, quindi capitoli vicini non devono somigliarsi).
 
-   banner = sfondo della Home, con testo bianco sopra: toni scuri della
-   stessa coppia. Activation (blu-viola) e Momentum (verde-ambra) avevano un
-   banner che non c'entrava col capitolo.
-   I toni dei pulsanti tengono il testo bianco a contrasto 5:1 o piu', tranne
-   Activation (#059669, 3,8:1) rimasto com'era: e' testo grande e in grassetto. */
+   banner = sfondo della Home. Di norma toni scuri della coppia, con testo
+   bianco: Activation (blu-viola) e Momentum (verde-ambra) avevano un banner
+   che non c'entrava col capitolo.
+
+   ink = colore del testo su banner e pulsanti del capitolo. 'dark' solo per
+   Momentum: il giallo scurito abbastanza da reggere il testo bianco diventa
+   marrone (con arancio, viola e acquamarina non succede, restano riconoscibili
+   anche scuri). Cosi' il capitolo non si leggeva giallo, mentre la linguetta
+   che lo chiama pulsa gialla. Qui banner e pulsanti sono gialli veri e il
+   testo e' scuro (#1c1917): contrasto 8,5:1 o piu'.
+   Col testo bianco i pulsanti stanno a 5:1 o piu', tranne Activation
+   (#059669, 3,8:1) rimasto com'era: e' testo grande e in grassetto. */
 const CHAPTER_THEMES = [
     // Ch1 Activation — verde + indaco (invariato)
     { primary: '#34d399', accent: '#6366f1',
@@ -4671,12 +4683,14 @@ const CHAPTER_THEMES = [
       progGrad: 'linear-gradient(90deg,#34d399,#6366f1)',
       btnGrad:  'linear-gradient(135deg,#059669,#4f46e5)',
       banner:   'linear-gradient(135deg,#047857,#4f46e5)' },
-    // Ch2 Momentum — oro + blu
+    // Ch2 Momentum — oro + blu. Banner e pulsanti gialli veri, testo scuro:
+    // vedi la nota sopra su "ink".
     { primary: '#fbbf24', accent: '#3b82f6',
       pr: '251,191,36',   ac: '59,130,246',
       progGrad: 'linear-gradient(90deg,#fbbf24,#3b82f6)',
-      btnGrad:  'linear-gradient(135deg,#b45309,#1d4ed8)',
-      banner:   'linear-gradient(135deg,#b45309,#1d4ed8)' },
+      btnGrad:  'linear-gradient(135deg,#fbbf24,#f59e0b)',
+      banner:   'linear-gradient(135deg,#fcd34d,#f59e0b)',
+      ink: 'dark' },
     // Ch3 The Peak — arancio fuoco + azzurro
     { primary: '#f97316', accent: '#38bdf8',
       pr: '249,115,22',   ac: '56,189,248',
@@ -5357,7 +5371,7 @@ function woWarmupInfo() {
     closeBtn.type = 'button';
     closeBtn.textContent = 'Ho capito';
     closeBtn.style.cssText = 'width:100%;margin-top:20px;padding:13px;border:none;border-radius:11px;' +
-        'background:var(--btn-grad);color:#fff;font-family:inherit;' +
+        'background:var(--btn-grad);color:var(--btn-ink,#fff);font-family:inherit;' +
         'font-size:0.78rem;font-weight:900;cursor:pointer;text-transform:none;';
     closeBtn.onclick = function() { ov.remove(); };
     box.appendChild(closeBtn);
@@ -20163,7 +20177,7 @@ function woShowProgressionSummary() {
     btn.type = 'button';
     btn.textContent = 'Avanti verso il Deload';
     btn.style.cssText = 'width:100%;margin-top:18px;padding:13px;border:none;border-radius:11px;' +
-        'background:var(--btn-grad);color:#fff;font-family:inherit;' +
+        'background:var(--btn-grad);color:var(--btn-ink,#fff);font-family:inherit;' +
         'font-size:0.78rem;font-weight:900;cursor:pointer;text-transform:none;';
     btn.onclick = function() { ov.remove(); };
     box.appendChild(btn);
@@ -25394,6 +25408,8 @@ function applyChapterTheme(w) {
     root.style.setProperty('--pr',      t.pr);
     root.style.setProperty('--ac',      t.ac);
     root.style.setProperty('--btn-grad', t.btnGrad);
+    const ink = t.ink === 'dark' ? '#1c1917' : '#fff';
+    root.style.setProperty('--btn-ink', ink);
 
     // Streak widget
     const streakW = document.getElementById('streak-widget');
@@ -25407,6 +25423,7 @@ function applyChapterTheme(w) {
     // Bottone principale wizard/nav
     document.querySelectorAll('.btn-primary, .btn-generate, .nav-center-btn').forEach(b => {
         b.style.background = t.btnGrad;
+        b.style.color = ink;
     });
     // Progress bars
     document.querySelectorAll('.prog-bar, .carico-prog-bar, .wo-prog-bar').forEach(b => {
@@ -25421,6 +25438,17 @@ function restartBannerAnimations() {
     if (prev) prev.classList.remove('crossfading');
     if (curr) curr.classList.remove('crossfading');
 }
+/* Sfondo e colore del testo di uno strato del banner, dal tema del capitolo.
+   Per strato e non sull'intero banner: durante il passaggio animato fra due
+   capitoli i due strati mostrano capitoli diversi, e Momentum ha il testo
+   scuro mentre gli altri lo hanno bianco. */
+function bannerPaint(el, w) {
+    if (!el) return;
+    const t = CHAPTER_THEMES[w] || CHAPTER_THEMES[0];
+    el.style.background = t.banner;
+    el.classList.toggle('ink-dark', t.ink === 'dark');
+}
+
 function updateChapterBannerSilent() {
     const names = CHAPTER_NAMES.map(n => n.toUpperCase());
     const pcts  = WEEK_LOADS.map(function(p){ return Math.round(p * 100); });
@@ -25442,7 +25470,7 @@ function updateChapterBannerSilent() {
     const layerCurr = document.getElementById('banner-layer-curr');
     const layerPrev = document.getElementById('banner-layer-prev');
     if (banner)    banner.style.background    = bannerGrads[w];
-    if (layerCurr) { layerCurr.style.background = bannerGrads[w]; layerCurr.style.opacity = '1'; }
+    if (layerCurr) { bannerPaint(layerCurr, w); layerCurr.style.opacity = '1'; }
     if (layerPrev) layerPrev.style.opacity = '0';
 
     applyChapterTheme(w);
@@ -25482,8 +25510,8 @@ function updateChapterBanner(animate) {
         // Mostra subito il gradient fisso
         layerPrev.classList.remove('crossfading');
         layerCurr.classList.remove('crossfading');
-        layerPrev.style.background = bannerGrads[w];
-        layerCurr.style.background = bannerGrads[w];
+        bannerPaint(layerPrev, w);
+        bannerPaint(layerCurr, w);
         banner.style.background    = bannerGrads[w];
         layerPrev.style.opacity = '0';
         layerCurr.style.opacity = '1';
@@ -25501,14 +25529,14 @@ function updateChapterBanner(animate) {
     const tp = bannerGrads[prevW];
     layerPrev.classList.remove('crossfading');
     layerCurr.classList.remove('crossfading');
-    layerPrev.style.background = tp;
+    bannerPaint(layerPrev, prevW);
     layerPrev.style.opacity    = '1';
     banner.style.background    = tp;
     const lblPrev = document.getElementById('banner-label-prev');
     const numPrev = document.getElementById('banner-week-prev');
     if (lblPrev) lblPrev.textContent = `CHAPTER ${prevW+1} · ${names[prevW]}`;
     if (numPrev) numPrev.textContent = String(prevW+1).padStart(2,'0');
-    layerCurr.style.background = bannerGrads[w];
+    bannerPaint(layerCurr, w);
     layerCurr.style.opacity    = '0';
     void layerPrev.offsetWidth;
     requestAnimationFrame(() => {
