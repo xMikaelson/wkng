@@ -708,9 +708,9 @@
            forma di un pulsante. width/padding/text-transform espliciti contro
            la regola globale `button`. */
         .aw-dlg-link { display:block; width:100%; margin:12px 0 0; padding:0; background:none; border:none;
-            font-family:inherit; font-size:0.63rem; font-weight:700; color:#a5b4fc;
+            font-family:inherit; font-size:0.63rem; font-weight:700; color:var(--primary);
             text-align:left; text-transform:none; cursor:pointer; }
-        .aw-dlg-link:active { color:#c7d2fe; }
+        .aw-dlg-link:active { opacity:0.75; }
         /* Le spiegazioni con le fonti stanno sopra la proposta di sblocco,
            che resta aperta sotto: chi legge il perche' torna dove stava
            decidendo. z-index piu' alto di .aw-dlg (9900). */
@@ -720,18 +720,20 @@
         .aw-why-item h3 { margin:0 0 3px; font-size:0.68rem; font-weight:800; color:#e2e8f0; line-height:1.4; }
         .aw-why-item p { margin:0; font-size:0.63rem; line-height:1.6; color:#cbd5e1; }
         .aw-why-item cite { display:block; margin-top:4px; font-style:normal; font-size:0.55rem;
-            color:#818cf8; font-weight:700; }
+            color:var(--primary); font-weight:700; }
         /* La "i" in fondo alla riga sotto i giorni: cerchio piccolo, ma il
            bersaglio del dito e' piu' largo del disegno (::after) senza
            allargare la riga di testo. */
         .aw-why { display:inline-flex; align-items:center; justify-content:center;
             width:16px; height:16px; padding:0; margin:0 0 -3px 5px; border-radius:50%;
             background:rgba(var(--ac,99,102,241),0.16); border:1px solid rgba(var(--ac,99,102,241),0.5);
-            color:#a5b4fc; font-family:Georgia,"Times New Roman",serif; font-style:italic;
+            color:#f1f5f9; font-family:Georgia,"Times New Roman",serif; font-style:italic;
             font-size:0.58rem; font-weight:700; line-height:1; text-transform:none;
             cursor:pointer; position:relative; vertical-align:baseline; }
         .aw-why::after { content:''; position:absolute; inset:-8px; }
-        .aw-why:active { background:rgba(var(--ac,99,102,241),0.3); color:#e0e7ff; }
+        /* Lettera chiara fissa: il cerchio segue il secondo colore del capitolo,
+           una lettera lilla fissa ci stava bene solo sull'indaco di Activation. */
+        .aw-why:active { background:rgba(var(--ac,99,102,241),0.3); }
 
         /* ── Testi legali e accettazione (v.176) ── */
         #legal-modal, #legal-gate { position:fixed; inset:0; z-index:9800; display:none;
@@ -2885,12 +2887,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
            del dito. Il pulsare e' un alone che si allarga e svanisce: niente
            che si muova o cambi misura, per non spostare la fila. */
         .chapter-tab.aw-unlock-call { opacity:1 !important; cursor:pointer !important;
-            color:#eef2ff !important; font-weight:800;
-            border-color:rgba(var(--ac,99,102,241),1) !important;
-            background:rgba(var(--ac,99,102,241),0.38) !important;
+            color:#f8fafc !important; font-weight:800;
+            border-color:rgba(var(--call,99,102,241),1) !important;
+            background:rgba(var(--call,99,102,241),0.38) !important;
             animation:awUnlockPulse 1.45s ease-in-out infinite; }
-        /* Indaco e non verde: il verde e' gia' la linguetta del capitolo che
-           stai guardando, e da ferme le due si confonderebbero.
+        /* Il colore (--call) e' quello del capitolo che si sblocca, messo da
+           renderPlanPage: diverso per forza dalla linguetta attiva, che ha il
+           colore del capitolo in cui si e', e anticipa dove si va.
            Il battito si sente su tre fronti insieme - la linguetta si gonfia,
            l'alone si allarga e sfuma, il bagliore intorno si accende - perche'
            il solo alone, su uno schermo al sole e con l'occhio sui giorni piu'
@@ -2898,15 +2901,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
            linguette: la griglia resta quella. */
         @keyframes awUnlockPulse {
             0%   { transform:scale(1);
-                   box-shadow:0 0 0 0 rgba(var(--ac,99,102,241),0.75), 0 0 9px 0 rgba(var(--ac,99,102,241),0.45); }
+                   box-shadow:0 0 0 0 rgba(var(--call,99,102,241),0.75), 0 0 9px 0 rgba(var(--call,99,102,241),0.45); }
             55%  { transform:scale(1.07);
-                   box-shadow:0 0 0 10px rgba(var(--ac,99,102,241),0), 0 0 22px 4px rgba(var(--ac,99,102,241),0.65); }
+                   box-shadow:0 0 0 10px rgba(var(--call,99,102,241),0), 0 0 22px 4px rgba(var(--call,99,102,241),0.65); }
             100% { transform:scale(1);
-                   box-shadow:0 0 0 0 rgba(var(--ac,99,102,241),0), 0 0 9px 0 rgba(var(--ac,99,102,241),0.45); }
+                   box-shadow:0 0 0 0 rgba(var(--call,99,102,241),0), 0 0 9px 0 rgba(var(--call,99,102,241),0.45); }
         }
         @media (prefers-reduced-motion:reduce) {
             .chapter-tab.aw-unlock-call { animation:none;
-                box-shadow:0 0 0 3px rgba(var(--ac,99,102,241),0.5), 0 0 16px 2px rgba(var(--ac,99,102,241),0.45); }
+                box-shadow:0 0 0 3px rgba(var(--call,99,102,241),0.5), 0 0 16px 2px rgba(var(--call,99,102,241),0.45); }
         }
 
 
@@ -4567,7 +4570,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '291';
+const APP_VERSION = '292';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -4638,6 +4641,62 @@ const APP = {
 
 const DAYS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
 const CHAPTER_NAMES = ['Activation', 'Momentum', 'The Peak', 'Overload', 'Deload'];
+/* Colori dei capitoli, in un posto solo: tema dell'app, banner della Home e
+   linguetta che pulsa leggono tutti da qui.
+
+   primary = giorni completati, capitolo attivo, conferme.
+   accent  = giorni assegnati, secondo colore.
+   I due DEVONO essere di tinta diversa: la legenda "Assegnato / Completato"
+   e le caselle dei giorni si distinguono solo per colore. Fino alla v.291
+   Momentum, The Peak e Overload usavano due toni della stessa tinta (ambra
+   su ambra, rosso su rosso, viola su viola): differenza percepita (CIE ΔE)
+   17, 21 e 27, dove sotto 20 due colori sembrano lo stesso. Ora 144, 124 e
+   83, come Activation (130) e Deload (129).
+
+   The Peak era #f87171, identico al rosso del cestino e degli errori: i
+   giorni completati sembravano cancellati e le conferme sembravano errori.
+   Ora e' arancio (#f97316): ΔE 42 dal rosso del "cancella" e 42 dall'oro di
+   Momentum, il capitolo accanto (la linguetta che pulsa ha il colore del
+   capitolo successivo, quindi capitoli vicini non devono somigliarsi).
+
+   banner = sfondo della Home, con testo bianco sopra: toni scuri della
+   stessa coppia. Activation (blu-viola) e Momentum (verde-ambra) avevano un
+   banner che non c'entrava col capitolo.
+   I toni dei pulsanti tengono il testo bianco a contrasto 5:1 o piu', tranne
+   Activation (#059669, 3,8:1) rimasto com'era: e' testo grande e in grassetto. */
+const CHAPTER_THEMES = [
+    // Ch1 Activation — verde + indaco (invariato)
+    { primary: '#34d399', accent: '#6366f1',
+      pr: '52,211,153',   ac: '99,102,241',
+      progGrad: 'linear-gradient(90deg,#34d399,#6366f1)',
+      btnGrad:  'linear-gradient(135deg,#059669,#4f46e5)',
+      banner:   'linear-gradient(135deg,#047857,#4f46e5)' },
+    // Ch2 Momentum — oro + blu
+    { primary: '#fbbf24', accent: '#3b82f6',
+      pr: '251,191,36',   ac: '59,130,246',
+      progGrad: 'linear-gradient(90deg,#fbbf24,#3b82f6)',
+      btnGrad:  'linear-gradient(135deg,#b45309,#1d4ed8)',
+      banner:   'linear-gradient(135deg,#b45309,#1d4ed8)' },
+    // Ch3 The Peak — arancio fuoco + azzurro
+    { primary: '#f97316', accent: '#38bdf8',
+      pr: '249,115,22',   ac: '56,189,248',
+      progGrad: 'linear-gradient(90deg,#f97316,#38bdf8)',
+      btnGrad:  'linear-gradient(135deg,#c2410c,#0369a1)',
+      banner:   'linear-gradient(135deg,#c2410c,#0369a1)' },
+    // Ch4 Overload — viola + ciano
+    { primary: '#c084fc', accent: '#22d3ee',
+      pr: '192,132,252',  ac: '34,211,238',
+      progGrad: 'linear-gradient(90deg,#c084fc,#22d3ee)',
+      btnGrad:  'linear-gradient(135deg,#7e22ce,#0e7490)',
+      banner:   'linear-gradient(135deg,#7e22ce,#0e7490)' },
+    // Ch5 Deload — acquamarina + indaco: recupero attivo (invariato)
+    { primary: '#2dd4bf', accent: '#4f46e5',
+      pr: '45,212,191',   ac: '79,70,229',
+      progGrad: 'linear-gradient(90deg,#0d9488,#4f46e5)',
+      btnGrad:  'linear-gradient(135deg,#0f766e,#4338ca)',
+      banner:   'linear-gradient(135deg,#0f766e,#4f46e5)' },
+];
+
 const N_WEEKS = 5;
 const DELOAD_WEEK = 4; // indice (0-based) della settimana deload
 const OVERLOAD_WEEK = DELOAD_WEEK - 1; // Chapter 4: ultima settimana di carico
@@ -7836,7 +7895,14 @@ function renderPlanPage(w) {
            si guarda se risulta raggiungibile: un capitolo chiuso e poi
            riaperto (spunta tolta, giorno liberato) resta in availableWeeks
            pur non essendo completo, e proprio li' la proposta serve. */
-        t.classList.toggle('aw-unlock-call', i === w + 1 && woPuoSbloccare(w));
+        const chiama = i === w + 1 && woPuoSbloccare(w);
+        t.classList.toggle('aw-unlock-call', chiama);
+        // Il colore e' quello del capitolo che si sblocca, non di quello in
+        // cui si e': prima era il secondo colore del capitolo corrente, che in
+        // Momentum, The Peak e Overload era della stessa tinta della linguetta
+        // attiva, e le due si confondevano.
+        if (chiama && CHAPTER_THEMES[i]) t.style.setProperty('--call', CHAPTER_THEMES[i].pr);
+        else t.style.removeProperty('--call');
     });
 
     const isUnlocked = w === 0 || APP.completedWeeks[w-1] || APP.availableWeeks.includes(w);
@@ -25321,34 +25387,7 @@ function computeWeekStreak() {
 function getStreak()     { return computeWeekStreak().current; }
 
 function applyChapterTheme(w) {
-    const themes = [
-        // Ch1 Activation — verde + viola
-        { primary: '#34d399', accent: '#6366f1',
-          pr: '52,211,153',   ac: '99,102,241',
-          progGrad: 'linear-gradient(90deg,#34d399,#6366f1)',
-          btnGrad:  'linear-gradient(135deg,#059669,#4f46e5)' },
-        // Ch2 Momentum — gold/ambra
-        { primary: '#fbbf24', accent: '#f59e0b',
-          pr: '251,191,36',   ac: '245,158,11',
-          progGrad: 'linear-gradient(90deg,#f59e0b,#d97706)',
-          btnGrad:  'linear-gradient(135deg,#d97706,#b45309)' },
-        // Ch3 The Peak — rosso fuoco
-        { primary: '#f87171', accent: '#ef4444',
-          pr: '248,113,113',  ac: '239,68,68',
-          progGrad: 'linear-gradient(90deg,#ef4444,#dc2626)',
-          btnGrad:  'linear-gradient(135deg,#dc2626,#991b1b)' },
-        // Ch4 Overload — viola intenso + rosso
-        { primary: '#c084fc', accent: '#a855f7',
-          pr: '192,132,252',  ac: '168,85,247',
-          progGrad: 'linear-gradient(90deg,#a855f7,#dc2626)',
-          btnGrad:  'linear-gradient(135deg,#7c3aed,#b91c1c)' },
-        // Ch5 Deload — teal + indigo: recupero attivo
-        { primary: '#2dd4bf', accent: '#4f46e5',
-          pr: '45,212,191',   ac: '79,70,229',
-          progGrad: 'linear-gradient(90deg,#0d9488,#4f46e5)',
-          btnGrad:  'linear-gradient(135deg,#0f766e,#4338ca)' },
-    ];
-    const t = themes[w] || themes[0];
+    const t = CHAPTER_THEMES[w] || CHAPTER_THEMES[0];
     const root = document.documentElement;
     root.style.setProperty('--primary', t.primary);
     root.style.setProperty('--accent',  t.accent);
@@ -25385,13 +25424,7 @@ function restartBannerAnimations() {
 function updateChapterBannerSilent() {
     const names = CHAPTER_NAMES.map(n => n.toUpperCase());
     const pcts  = WEEK_LOADS.map(function(p){ return Math.round(p * 100); });
-    const bannerGrads = [
-        'linear-gradient(135deg,#1d4ed8,#7c3aed)',
-        'linear-gradient(135deg,#065f46,#b45309)',
-        'linear-gradient(135deg,#991b1b,#d97706)',
-        'linear-gradient(135deg,#6d28d9,#dc2626)',
-        'linear-gradient(135deg,#0f766e,#4f46e5)'
-    ];
+    const bannerGrads = CHAPTER_THEMES.map(function(t) { return t.banner; });
     const w = APP.selectedViewWeek || 0;
 
     const lbl = document.getElementById('banner-chapter-label');
@@ -25419,13 +25452,7 @@ function updateChapterBannerSilent() {
 function updateChapterBanner(animate) {
     const names = CHAPTER_NAMES.map(n => n.toUpperCase());
     const pcts  = WEEK_LOADS.map(function(p){ return Math.round(p * 100); });
-    const bannerGrads = [
-        'linear-gradient(135deg,#1d4ed8,#7c3aed)',
-        'linear-gradient(135deg,#065f46,#b45309)',
-        'linear-gradient(135deg,#991b1b,#d97706)',
-        'linear-gradient(135deg,#6d28d9,#dc2626)',
-        'linear-gradient(135deg,#0f766e,#4f46e5)'
-    ];
+    const bannerGrads = CHAPTER_THEMES.map(function(t) { return t.banner; });
 
     const w = (APP.selectedViewWeek !== undefined && APP.selectedViewWeek !== null)
         ? APP.selectedViewWeek : 0;
