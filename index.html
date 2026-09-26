@@ -2178,6 +2178,41 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             position: relative; z-index: 3; letter-spacing: -0.02em;
         }
         .banner-title span { color: rgba(255,255,255,0.35); text-shadow: 0 0 6px rgba(255,255,255,0.3); }
+        /* ═══ BANNER AURORA (v.295) ═══
+           Quattro grandi aloni di colore che vagano e si sovrappongono sul
+           fondo del capitolo (CHAPTER_THEMES[w].aurora, messi come --au0..4 da
+           bannerPaint). Ogni strato del banner ha la sua aurora: durante il
+           passaggio animato fra due capitoli i due strati mostrano colori
+           diversi e sfumano l'uno nell'altro.
+           Solo transform nelle animazioni: il telefono sposta livelli gia'
+           pronti invece di ridisegnarli. */
+        .banner-layer { isolation: isolate; overflow: hidden; border-radius: inherit; }
+        .aurora-fx { position: absolute; inset: 0; z-index: 0; overflow: hidden; border-radius: inherit;
+            pointer-events: none; }
+        .aurora-fx i { position: absolute; width: 130%; aspect-ratio: 1; border-radius: 50%;
+            background: radial-gradient(circle at center, var(--auc) 0%, transparent 62%);
+            will-change: transform; }
+        .aurora-fx .au1 { --auc: var(--au1, #059669); left: -55%; top: -95%; animation: aurora1 13s ease-in-out infinite alternate; }
+        .aurora-fx .au2 { --auc: var(--au2, #34d399); left: 20%;  top: -60%; animation: aurora2 17s ease-in-out infinite alternate; }
+        .aurora-fx .au3 { --auc: var(--au3, #4f46e5); left: -20%; top: -10%; animation: aurora3 15s ease-in-out infinite alternate; }
+        .aurora-fx .au4 { --auc: var(--au4, #6366f1); left: 45%;  top: 10%;  animation: aurora4 19s ease-in-out infinite alternate; }
+        @keyframes aurora1 { to { transform: translate(38%, 28%) scale(1.15); } }
+        @keyframes aurora2 { to { transform: translate(-34%, 30%) scale(0.9); } }
+        @keyframes aurora3 { to { transform: translate(30%, -32%) scale(1.2); } }
+        @keyframes aurora4 { to { transform: translate(-40%, -26%) scale(1.05); } }
+        /* Velo sotto il testo: i colori chiari passano dietro alle lettere
+           mentre si muovono, e il bianco deve restare leggibile sempre */
+        .aurora-scrim { position: absolute; inset: 0; z-index: 1; pointer-events: none;
+            background: linear-gradient(100deg, rgba(2,6,23,0.34) 0%, rgba(2,6,23,0.16) 50%, rgba(2,6,23,0) 78%); }
+        .banner-layer.ink-dark .aurora-scrim {
+            background: linear-gradient(100deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 60%); }
+        .banner-layer .chapter-banner-ghost { z-index: 2; }
+        /* Fermo quando non serve: strato nascosto, banner fuori schermo */
+        #banner-layer-prev:not(.crossfading) .aurora-fx i,
+        .chapter-banner.aurora-ferma .aurora-fx i { animation-play-state: paused; }
+        @media (prefers-reduced-motion: reduce) {
+            .aurora-fx i { animation: none; }
+        }
         /* Testo scuro sul banner giallo di Momentum (CHAPTER_THEMES, ink):
            il bagliore bianco su giallo impasterebbe le lettere, quindi via. */
         .banner-layer.ink-dark .banner-sub { color: rgba(28,25,23,0.72); text-shadow: none; }
@@ -3380,12 +3415,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <div class="chapter-banner" id="chapter-banner">
             <!-- Layer precedente (fade out) -->
             <div class="banner-layer" id="banner-layer-prev">
+                <div class="aurora-fx" aria-hidden="true"><i class="au1"></i><i class="au2"></i><i class="au3"></i><i class="au4"></i></div><div class="aurora-scrim"></div>
                 <div class="chapter-banner-ghost">35</div>
                 <div class="banner-sub" id="banner-label-prev">CHAPTER 1 · ACTIVATION</div>
                 <div class="banner-title">SETTIMANA<br><span id="banner-week-prev">01</span> DI 05</div>
             </div>
             <!-- Layer attuale (fade in) -->
             <div class="banner-layer" id="banner-layer-curr">
+                <div class="aurora-fx" aria-hidden="true"><i class="au1"></i><i class="au2"></i><i class="au3"></i><i class="au4"></i></div><div class="aurora-scrim"></div>
                 <div class="chapter-banner-ghost">35</div>
                 <div class="banner-sub" id="banner-chapter-label">CHAPTER 1 · ACTIVATION</div>
                 <div class="banner-title">SETTIMANA<br><span id="banner-week-num">01</span> DI 05</div>
@@ -4575,7 +4612,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '294';
+const APP_VERSION = '295';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -4673,6 +4710,10 @@ const CHAPTER_NAMES = ['Activation', 'Momentum', 'The Peak', 'Overload', 'Deload
    bianco: Activation (blu-viola) e Momentum (verde-ambra) avevano un banner
    che non c'entrava col capitolo.
 
+   aurora = colori del banner animato della Home: fondo e quattro toni che
+   vagano e si mescolano (vedi .aurora-fx). banner resta come sfondo sotto
+   gli strati, visibile solo se l'aurora non parte.
+
    ink = colore del testo su banner e pulsanti del capitolo. 'dark' solo per
    Momentum: il giallo scurito abbastanza da reggere il testo bianco diventa
    marrone (con arancio, viola e acquamarina non succede, restano riconoscibili
@@ -4687,7 +4728,8 @@ const CHAPTER_THEMES = [
       pr: '52,211,153',   ac: '99,102,241',
       progGrad: 'linear-gradient(90deg,#34d399,#6366f1)',
       btnGrad:  'linear-gradient(135deg,#059669,#4f46e5)',
-      banner:   'linear-gradient(135deg,#047857,#4f46e5)' },
+      banner:   'linear-gradient(135deg,#047857,#4f46e5)',
+      aurora:   ['#064e3b','#059669','#34d399','#4f46e5','#6366f1'] },
     // Ch2 Momentum — oro + blu. Banner e pulsanti gialli veri, testo scuro:
     // vedi la nota sopra su "ink".
     { primary: '#fbbf24', accent: '#3b82f6',
@@ -4695,6 +4737,7 @@ const CHAPTER_THEMES = [
       progGrad: 'linear-gradient(90deg,#fbbf24,#3b82f6)',
       btnGrad:  'linear-gradient(135deg,#fbbf24,#f59e0b)',
       banner:   'linear-gradient(135deg,#fcd34d,#f59e0b)',
+      aurora:   ['#d97706','#fcd34d','#fbbf24','#f59e0b','#fde68a'],
       ink: 'dark' },
     // Ch3 The Peak — rosso fuoco + azzurro. Rosso per scelta dell'utente
     // (v.294, dopo l'arancio della 292): vedi la nota sopra.
@@ -4702,19 +4745,25 @@ const CHAPTER_THEMES = [
       pr: '248,113,113',  ac: '56,189,248',
       progGrad: 'linear-gradient(90deg,#ef4444,#dc2626)',
       btnGrad:  'linear-gradient(135deg,#dc2626,#991b1b)',
-      banner:   'linear-gradient(135deg,#991b1b,#d97706)' },
+      // Banner: rosso che sfuma nel lilla di Overload, il capitolo dopo
+      // (richiesta dell'utente). Fondo vinaccia, a meta' strada fra i due,
+      // cosi' il passaggio non attraversa un grigio.
+      banner:   'linear-gradient(135deg,#b91c1c,#a855f7)',
+      aurora:   ['#4c0519','#b91c1c','#f87171','#a855f7','#c084fc'] },
     // Ch4 Overload — viola + ciano
     { primary: '#c084fc', accent: '#22d3ee',
       pr: '192,132,252',  ac: '34,211,238',
       progGrad: 'linear-gradient(90deg,#c084fc,#22d3ee)',
       btnGrad:  'linear-gradient(135deg,#7e22ce,#0e7490)',
-      banner:   'linear-gradient(135deg,#7e22ce,#0e7490)' },
+      banner:   'linear-gradient(135deg,#7e22ce,#0e7490)',
+      aurora:   ['#3b0764','#7e22ce','#c084fc','#0e7490','#22d3ee'] },
     // Ch5 Deload — acquamarina + indaco: recupero attivo (invariato)
     { primary: '#2dd4bf', accent: '#4f46e5',
       pr: '45,212,191',   ac: '79,70,229',
       progGrad: 'linear-gradient(90deg,#0d9488,#4f46e5)',
       btnGrad:  'linear-gradient(135deg,#0f766e,#4338ca)',
-      banner:   'linear-gradient(135deg,#0f766e,#4f46e5)' },
+      banner:   'linear-gradient(135deg,#0f766e,#4f46e5)',
+      aurora:   ['#134e4a','#0f766e','#2dd4bf','#4338ca','#4f46e5'] },
 ];
 
 const N_WEEKS = 5;
@@ -25451,9 +25500,30 @@ function restartBannerAnimations() {
 function bannerPaint(el, w) {
     if (!el) return;
     const t = CHAPTER_THEMES[w] || CHAPTER_THEMES[0];
-    el.style.background = t.banner;
+    const au = t.aurora;
+    if (au) {
+        el.style.background = au[0];
+        for (let i = 1; i < au.length; i++) el.style.setProperty('--au' + i, au[i]);
+    } else {
+        el.style.background = t.banner;
+    }
     el.classList.toggle('ink-dark', t.ink === 'dark');
 }
+
+/* L'aurora si ferma quando il banner non si vede: esce dallo schermo
+   scorrendo la Home, o la Home non e' la sezione aperta (in quel caso il
+   banner e' dentro un contenitore nascosto e il browser non lo disegna). */
+(function awAuroraOsserva() {
+    function avvia() {
+        const b = document.getElementById('chapter-banner');
+        if (!b || !('IntersectionObserver' in window)) return;
+        new IntersectionObserver(function(voci) {
+            voci.forEach(function(v) { b.classList.toggle('aurora-ferma', !v.isIntersecting); });
+        }).observe(b);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', avvia);
+    else avvia();
+})();
 
 function updateChapterBannerSilent() {
     const names = CHAPTER_NAMES.map(n => n.toUpperCase());
