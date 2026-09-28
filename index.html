@@ -4612,7 +4612,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '296';
+const APP_VERSION = '297';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -19103,6 +19103,7 @@ function woKeepAliveStop() {
     try { if (_woWakeLock) _woWakeLock.release(); } catch (e) {}
     _woWakeLock = null;
     try { if (typeof woRestPushCancel === 'function') woRestPushCancel(); } catch (e) {}
+    try { awLiveEnd(); } catch (e) {}
 }
 
 // ── FINE RECUPERO DAL SERVER (v.285) ──
@@ -19115,7 +19116,142 @@ function woKeepAliveStop() {
 // Serve essere registrati e aver attivato le notifiche; senza, resta il
 // segnale al rientro nell'app.
 var _woRestPushOn = false;
+// ── APP NATIVA iOS: TIMER SULLA SCHERMATA DI BLOCCO (v.297) ──
+// Nell'app installata (Capacitor, cartella native/) il recupero compare sulla
+// schermata di blocco e nell'isola dinamica come Live Activity, con la stessa
+// scheda scelta nelle anteprime: sessione, esercizio, serie fatte, prossimo
+// carico, conto alla rovescia e tempo della seduta. Allo scadere la scheda
+// resta la stessa e dice "Tocca a te": lo decide iOS da solo alla data di
+// fine (staleDate), senza che l'app debba essere sveglia.
+// Suono e vibrazione di fine recupero arrivano da una notifica locale
+// programmata all'ora di fine: scatta anche a telefono bloccato, cosa che
+// una pagina web su iPhone non puo' fare. La notifica si programma solo
+// quando l'app va in secondo piano e si toglie quando torna davanti: con
+// l'app aperta basta il beep, come prima.
+// Sul sito (GitHub Pages) AW_NATIVE e' falso e niente di questo si attiva.
+var AW_NATIVE = (function() {
+    try { return !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform()); }
+    catch (e) { return false; }
+})();
+var AW_REST_NOTIF_ID = 7301;
+var _awLive = null, _awNotif = null, _awAppPl = null, _awLiveLast = null;
+
+function awNativePlugins() {
+    if (!AW_NATIVE) return false;
+    try {
+        if (!_awLive)  _awLive  = Capacitor.registerPlugin('AwakeningLive');
+        if (!_awNotif) _awNotif = Capacitor.registerPlugin('LocalNotifications');
+        if (!_awAppPl) _awAppPl = Capacitor.registerPlugin('App');
+        return true;
+    } catch (e) { awLog.warn('[native]', e && e.message); return false; }
+}
+
+// Dati della scheda: la serie che viene dopo il recupero in corso.
+function awLiveRestPayload(secs) {
+    var exData = APP.exerciseData || [];
+    var ex = exData[woState.exIndex];
+    if (!ex) return null;
+    var w = APP.selectedViewWeek || 0;
+    var sr = srForChapter(ex, w, woSessionProto()) || ex.sr || '';
+    var m = String(sr).match(/(\d+)\s*[xX×]\s*(\d+)\s*(s?)/);
+    var setsTotal = m ? parseInt(m[1], 10) : 3;
+    var reps = m ? (m[2] + (m[3] ? ' s' : '')) : '';
+    var kg = parseFloat(ex._sessionKg) || (ex.loads ? (ex.loads[w] || ex.baseWeight || 0) : (ex.baseWeight || 0));
+    var next = (kg > 0 ? _fmtKg(kg) + ' kg' : 'corpo libero') + (reps ? ' × ' + reps : '');
+    var end = woState._restEndsAt || (Date.now() + secs * 1000);
+    var start = end - Math.max(1, woState.restTotal || secs) * 1000;
+    var _sp = (typeof woSessionProto === 'function') ? woSessionProto() : null;
+    var proto = String((_sp && _sp.name) || woState._protoName || 'Allenamento');
+    var sess = proto.indexOf('·') >= 0 ? proto.split('·').pop().trim() : proto;
+    var name = exDisplay(ex.name);
+    var setNow = Math.min((woState.setIndex || 0) + 1, setsTotal);
+    return {
+        sessionName: sess.toUpperCase(),
+        sessionStartMs: woState._startedAt || Date.now(),
+        restStartMs: start,
+        restEndMs: end,
+        exerciseName: name,
+        exerciseIndex: (woState.exIndex || 0) + 1,
+        exerciseCount: exData.length,
+        nextLabel: next,
+        setsDone: Math.min(woState.setIndex || 0, setsTotal),
+        setsTotal: setsTotal,
+        notifBody: name + ' · serie ' + setNow + ' di ' + setsTotal + ' · ' + next
+    };
+}
+
+function awLiveNotifSchedule() {
+    if (!awNativePlugins() || !_awLiveLast) return;
+    if (!(_awLiveLast.restEndMs > Date.now() + 500)) return;
+    _awNotif.schedule({ notifications: [{
+        id: AW_REST_NOTIF_ID,
+        title: 'Recupero finito: tocca a te',
+        body: _awLiveLast.notifBody,
+        schedule: { at: new Date(_awLiveLast.restEndMs), allowWhileIdle: true },
+        sound: 'default'
+    }] }).catch(function(e) { awLog.warn('[notif]', e && e.message); });
+}
+function awLiveNotifCancel() {
+    if (!awNativePlugins()) return;
+    _awNotif.cancel({ notifications: [{ id: AW_REST_NOTIF_ID }] }).catch(function() {});
+}
+
+// Inizio (o nuova scadenza) di un recupero durante l'allenamento.
+function awLiveRest(secs) {
+    if (!awNativePlugins() || !woState || woState.timer === null) return;
+    var p = awLiveRestPayload(secs);
+    if (!p) return;
+    _awLiveLast = p;
+    _awLive.startRest(p).catch(function(e) { awLog.warn('[live]', e && e.message); });
+    awLiveNotifCancel();
+    if (document.hidden) awLiveNotifSchedule();
+}
+
+// Fine dell'allenamento o pausa: la scheda sparisce, la notifica anche.
+function awLiveEnd() {
+    if (!awNativePlugins()) return;
+    _awLiveLast = null;
+    awLiveNotifCancel();
+    _awLive.end().catch(function() {});
+}
+
+// Primo allenamento nell'app: iOS chiede il permesso per le notifiche.
+function awNativePrepare() {
+    if (!awNativePlugins()) return;
+    _awNotif.requestPermissions().catch(function() {});
+}
+
+if (AW_NATIVE) {
+    document.addEventListener('visibilitychange', function() {
+        if (!awNativePlugins()) return;
+        if (document.hidden) {
+            if (woState && woState.timer !== null && woState.restRunning && !woState.paused) awLiveNotifSchedule();
+        } else {
+            awLiveNotifCancel();
+        }
+    });
+    // Tocchi sulla scheda: awakening://seduta apre l'allenamento,
+    // awakening://serie-fatta segna la serie appena eseguita e fa partire il
+    // recupero dopo, come il pulsante "Serie completata" nell'app.
+    window.addEventListener('load', function() {
+        if (!awNativePlugins()) return;
+        _awAppPl.addListener('appUrlOpen', function(ev) {
+            var url = String((ev && ev.url) || '');
+            if (!/^awakening:/i.test(url)) return;
+            try { if (typeof navSwitch === 'function') navSwitch('workout'); } catch (e) {}
+            if (!/serie-fatta/i.test(url)) return;
+            // Un attimo per far ripartire i tick: se l'app era sospesa il
+            // recupero risulta chiuso solo dopo il primo aggiornamento.
+            setTimeout(function() {
+                if (woState && woState.timer !== null && !woState.restRunning && !woState.paused &&
+                    typeof woCompleteSet === 'function') woCompleteSet();
+            }, 700);
+        });
+    });
+}
+
 function woRestPushSchedule(secs, body) {
+    try { awLiveRest(secs); } catch (e) { awLog.warn('[live]', e && e.message); }
     try {
         if (!APP || !APP.userName || !sbClient || sbClient._offline) return;
         if (typeof getNotifPermission === 'function' && getNotifPermission() !== 'granted') return;
@@ -19132,6 +19268,7 @@ function woRestPushSchedule(secs, body) {
     } catch (e) { awLog.warn('[rest_push]', e && e.message); }
 }
 function woRestPushCancel() {
+    try { awLiveNotifCancel(); } catch (e) {}
     try {
         if (!_woRestPushOn || !APP || !APP.userName || !sbClient || sbClient._offline) return;
         _woRestPushOn = false;
@@ -19248,6 +19385,7 @@ function woStartWorkout() {
 
 function _woBeginWorkout() {
     try { wpStop(); } catch (e) {}
+    try { awNativePrepare(); } catch (e) {}
     const page = document.getElementById('page-workout');
     page.classList.add('wo-running');
 
@@ -20689,6 +20827,7 @@ function woPause() {
         // vengono spostate in avanti, così il tempo in pausa non viene contato.
         woState._pausedAt = Date.now();
         if (woState.restRunning) woRestPushCancel();   // in pausa il recupero non finisce
+        try { awLiveEnd(); } catch (e) {}
     } else if (woState._pausedAt) {
         const gap = Date.now() - woState._pausedAt;
         if (woState._startedAt)  woState._startedAt  += gap;
@@ -26512,8 +26651,9 @@ document.addEventListener('visibilitychange', function() {
 // costa nulla e copre anche il passaggio di mezzanotte.
 setInterval(function() { try { updateWeightBadge(); } catch(e) {} }, 60000);
 
-if ('serviceWorker' in navigator) {
-    // Guardia condivisa: SW_UPDATED e controllerchange possono scattare
+if ('serviceWorker' in navigator && !(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform())) {
+    // Nell'app nativa (Capacitor) i file sono gia' sul telefono: niente
+    // service worker. Guardia condivisa: SW_UPDATED e controllerchange possono scattare
     // entrambi per lo stesso aggiornamento. Senza questa flag la pagina si
     // ricaricherebbe due volte di fila.
     let _swReloaded = false;

@@ -1,0 +1,14 @@
+{
+  "appId": "com.xmikaelson.awakening",
+  "appName": "Awakening",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#0f172a"
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "sound": "default"
+    }
+  }
+}
