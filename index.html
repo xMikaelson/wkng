@@ -4612,7 +4612,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '295';
+const APP_VERSION = '296';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -4676,6 +4676,8 @@ const APP = {
     personalRecords: {},
     prMeta: {},          // dettaglio del record: carico usato, ripetizioni, data
     mtrAdjusted: {},     // esercizi con riferimento gia' alzato in questo ciclo
+    twoForTwoAt: {},     // data dell'ultimo aumento per esercizio: il 2-per-2 riparte da li'
+    mtrCycleLog: {},     // aumenti 2-per-2 del ciclo: { nome: {from, to, lower} }
     legalAccepted: null, // { v: versione dei testi, d: data ISO }
     prLegacy: null,      // archivio pre-v.168 (carichi prescritti), non compete
     _prMigrated: false
@@ -4886,6 +4888,8 @@ function saveState() {
             personalRecords: APP.personalRecords || {},
             prMeta: APP.prMeta || {},
             mtrAdjusted: APP.mtrAdjusted || {},
+            twoForTwoAt: APP.twoForTwoAt || {},
+            mtrCycleLog: APP.mtrCycleLog || {},
             legalAccepted: APP.legalAccepted || null,
             _weekCelebrated: APP._weekCelebrated || [],
             prLegacy: APP.prLegacy || null,
@@ -5120,6 +5124,8 @@ function loadState() {
         APP.personalRecords = saved.personalRecords || {};
         APP.prMeta      = saved.prMeta || {};
         APP.mtrAdjusted = saved.mtrAdjusted || {};
+        APP.twoForTwoAt = saved.twoForTwoAt || {};
+        APP.mtrCycleLog = saved.mtrCycleLog || {};
         APP.legalAccepted = saved.legalAccepted || null;
         // Senza questo, l'animazione di settimana completata ripartiva a ogni riavvio.
         APP._weekCelebrated = Array.isArray(saved._weekCelebrated) ? saved._weekCelebrated : [];
@@ -5456,10 +5462,11 @@ function buildOverloadNotice() {
                 Math.round(WEEK_LOADS[OVERLOAD_WEEK] * 100) + '% del tuo MTR</b>: \u00e8 il carico pi\u00f9 alto ' +
                 'del ciclo. Il margine rispetto al tuo massimo tecnico \u00e8 voluto \u2014 l\u2019MTR \u00e8 un valore da ' +
                 'singola serie, mentre qui le serie da completare sono tutte.</div>' +
-            '<div class="wo-ovl-p">Alla fine ti chieder\u00f2 com\u2019\u00e8 andato ogni esercizio. Poi ti riposi con la settimana ' +
-                'di <b>Deload</b>, e al ritorno il nuovo ciclo riparte con i carichi aggiornati.</div>' +
-            '<div class="wo-ovl-note">Non serve fare nulla di diverso adesso. Allenati normalmente e fai attenzione ' +
-                'a come chiudi <b>l\u2019ultima serie</b> di ogni esercizio: \u00e8 quella che conta per la valutazione.</div>' +
+            '<div class="wo-ovl-p">Poi ti riposi con la settimana di <b>Deload</b>, e al ritorno il nuovo ciclo ' +
+                'riparte dai carichi raggiunti.</div>' +
+            '<div class="wo-ovl-note">Non serve fare nulla di diverso adesso. Come sempre, dopo <b>l\u2019ultima serie</b> ' +
+                'ti chiedo quante ripetizioni hai chiuso: due sedute di fila con almeno due in pi\u00f9 alzano il carico ' +
+                '(regola 2-per-2, NSCA 2008).</div>' +
             '<button type="button" class="wo-ovl-btn" onclick="woOverloadNoticeDismiss()">Ho capito</button>' +
         '</div>';
     return box;
@@ -7253,6 +7260,8 @@ async function onLoginSuccess(user, usernameOverride = null) {
         }
         if (s.prMeta)   APP.prMeta   = Object.assign({}, s.prMeta, APP.prMeta || {});
         if (s.mtrAdjusted) APP.mtrAdjusted = Object.assign({}, s.mtrAdjusted, APP.mtrAdjusted || {});
+        if (s.twoForTwoAt) APP.twoForTwoAt = Object.assign({}, s.twoForTwoAt, APP.twoForTwoAt || {});
+        if (s.mtrCycleLog) APP.mtrCycleLog = Object.assign({}, s.mtrCycleLog, APP.mtrCycleLog || {});
         if (s.legalAccepted && !APP.legalAccepted) APP.legalAccepted = s.legalAccepted;
         if (Array.isArray(s._weekCelebrated)) APP._weekCelebrated = s._weekCelebrated;
         if (s.prLegacy && !APP.prLegacy) APP.prLegacy = s.prLegacy;
@@ -7927,7 +7936,7 @@ function selectPlanChapter(w) {
     // sedute gia' fatte, e il successivo non partiva finche' non lo si
     // toccava a mano in Piani.
     saveState();
-    // Nuovo ciclo: qui e solo qui i nuovi MTR entrano in vigore. Indipendente
+    // Nuovo ciclo: la scala dei carichi si riallinea agli aumenti del ciclo. Indipendente
     // da quante sedute di scarico sono state fatte — il riposo totale è un
     // deload valido quanto lo scarico a carichi leggeri.
     if (w === 0 && APP.progressionPending) {
@@ -7935,7 +7944,7 @@ function selectPlanChapter(w) {
         APP.progressionPending = false;
         saveState();
         if (_nApplied && typeof showToast === 'function') {
-            showToast('Carichi aggiornati: ' + _nApplied + (_nApplied === 1 ? ' esercizio' : ' esercizi'), 'success');
+            showToast('Nuovo ciclo: si riparte dai carichi raggiunti (' + _nApplied + (_nApplied === 1 ? ' esercizio' : ' esercizi') + ')', 'success');
         }
     }
     document.querySelectorAll('#plan-tabs .chapter-tab').forEach((t,i) => {
@@ -10788,15 +10797,33 @@ function woRowBeat(e) {
 
 // Regola 2-per-2 (Baechle & Earle, NSCA Essentials 3a ed. 2008): il carico
 // va aumentato quando l'atleta chiude due o piu' ripetizioni oltre il target
-// in due sedute consecutive. E' un dato oggettivo e ha la precedenza sulla
-// risposta soggettiva di fine Chapter 4.
+// in due sedute consecutive, nell'ultima serie. E' l'unico criterio che
+// alza i carichi nell'app.
+//
+// v.296 — La regola si applica alla lettera:
+//  - "due sedute consecutive": le ultime due sedute di quell'esercizio,
+//    tutte. Prima si guardavano solo quelle con le ripetizioni registrate,
+//    quindi due sedute separate da altre senza dato risultavano "di fila";
+//  - si riparte da zero dopo ogni aumento: contano solo le sedute successive
+//    (APP.twoForTwoAt), come nel testo, dove il carico sale e il conteggio
+//    ricomincia al nuovo peso;
+//  - una serie dichiarata "forzata" non vale (row.nt): la regola parla di
+//    ripetizioni eseguite, e l'MTR e' definito con tecnica pulita.
+// Il Deload non soddisfa mai la regola (superare il programma durante lo
+// scarico contraddice il taper, Bosquet et al. 2007), ma resta nella
+// sequenza: una seduta di scarico in mezzo interrompe il "di fila", come
+// qualsiasi seduta. Toglierla dall'elenco rendeva consecutive l'ultima
+// seduta del Chapter 4 e la prima del ciclo dopo.
 function woTwoForTwo(name) {
+    var since = (APP.twoForTwoAt || {})[name] || '';
     var rows = (APP.loadHistory || []).filter(function(e) {
-        return e && e.ex && exSameExercise(e.ex, name) && e.w !== DELOAD_WEEK && typeof e.r === 'number';
+        return e && e.ex && exSameExercise(e.ex, name) && (!since || e.d > since);
     }).sort(function(a, b) { return a.d < b.d ? -1 : (a.d > b.d ? 1 : 0); });
     if (rows.length < 2) return false;
     var last2 = rows.slice(-2);
-    return last2.every(function(e) { return e.tr > 0 && e.r >= e.tr + 2; });
+    return last2.every(function(e) {
+        return e.w !== DELOAD_WEEK && typeof e.r === 'number' && e.tr > 0 && e.r >= e.tr + 2 && !e.nt;
+    });
 }
 
 /* ── Esercizi a corpo libero ────────────────────────────────────────────
@@ -14147,7 +14174,7 @@ function _pmPesiHtml() {
          'Tocca un esercizio per vedere l\'andamento del carico nel tempo.<br><br>' +
          'L\'MTR e\' il massimo tecnico di riferimento: da qui derivano tutti i carichi del ciclo ' +
          '(' + Math.round(Math.min.apply(null, WEEK_LOADS) * 100) + '\u2013' +
-         Math.round(Math.max.apply(null, WEEK_LOADS) * 100) + '% dell\'MTR). Si aggiorna alla fine del Chapter 4.</div>';
+         Math.round(Math.max.apply(null, WEEK_LOADS) * 100) + '% dell\'MTR). Sale con la regola 2-per-2: due sedute di fila con almeno due ripetizioni oltre il target (NSCA 2008).</div>';
     return h;
 }
 
@@ -14429,17 +14456,12 @@ function renderExChartBody() {
              'prima non veniva registrata la data delle sedute.</div>';
     }
 
-    // Consiglio dalla regola 2-per-2, se il dato lo soddisfa.
-    if (woTwoForTwo(name)) {
-        var _mtrNow = parseFloat(mtrGet(name));
-        var _low = (typeof woIsLowerBody === 'function') ? woIsLowerBody(name) : false;
-        var _pct = _low ? OVL_STEP.margine.low : OVL_STEP.margine.up;
-        if (_mtrNow > 0) {
-            h += '<div class="ex-advice">\uD83C\uDFC6 <b>Due sedute di fila oltre il programma.</b><br>' +
-                 'Alla fine del ciclo il carico di riferimento sale da ' + _fmtKg(_mtrNow) + ' a ' +
-                 _fmtKg(Math.round(_mtrNow * (1 + _pct) * 2) / 2) + ' kg (+' + Math.round(_pct * 100) + '%). ' +
-                 'L\'aumento non viene applicato prima: cambiare l\'MTR a metà ciclo spezzerebbe la scala dei carichi.</div>';
-        }
+    // Aumenti del ciclo dalla regola 2-per-2 (applicati alla seduta dopo).
+    var _lg = (APP.mtrCycleLog || {})[name];
+    if (_lg && _lg.to > _lg.from) {
+        h += '<div class="ex-advice">\uD83C\uDFC6 <b>Regola 2-per-2 soddisfatta in questo ciclo.</b><br>' +
+             'Riferimento salito da ' + _fmtKg(_lg.from) + ' a ' + _fmtKg(_lg.to) + ' kg: due sedute di fila con ' +
+             'almeno due ripetizioni oltre il target (Baechle &amp; Earle, NSCA 2008).</div>';
     }
     h += '<div class="m-note">La barra è sempre lunga uguale: si ferma alla soglia quando hai seguito il programma, ' +
          'e si riempie oltre quando l\'hai superato — con più carico, con più ripetizioni o entrambi. ' +
@@ -14447,25 +14469,10 @@ function renderExChartBody() {
          '(formula di Epley, attendibile entro le ~10 ripetizioni e su serie vicine al limite tecnico). ' +
          'Nel Deload non si registrano superamenti: lo scarico serve a recuperare.</div>';
 
-    // ── proiezione ──
-    var mtr = mtrGet(name);
-    if (mtr) {
-        var lower = (typeof woIsLowerBody === 'function') ? woIsLowerBody(name) : false;
-        var lo = lower ? OVL_STEP.esatte.low : OVL_STEP.esatte.up;
-        var hi = lower ? OVL_STEP.margine.low : OVL_STEP.margine.up;
-        h += '<div class="m-sec-title">Proiezione MTR</div>';
-        [1, 2, 3].forEach(function(n) {
-            var a = mtr * Math.pow(1 + lo, n), b = mtr * Math.pow(1 + hi, n);
-            h += '<div class="fc-row"><div class="fc-lab">Fra ' + n + ' ' + (n > 1 ? 'cicli' : 'ciclo') +
-                 ' <span style="color:#64748b">(' + (n * N_WEEKS) + ' settimane)</span></div>' +
-                 '<div class="fc-val">' + a.toFixed(1) + '\u2013' + b.toFixed(1) + ' kg</div></div>';
-        });
-        h += '<div class="exwarn">Non e\' una previsione fisiologica: e\' la <b>regola di progressione dell\'app</b> ' +
-             'proiettata in avanti, e parte sempre dall\'MTR attuale (' + mtr + ' kg), non dal periodo filtrato qui sopra. ' +
-             'La forbice (' + (lo * 100) + '\u2013' + (hi * 100) + '% per ciclo su questo esercizio) ' +
-             'e\' quella raccomandata da Baechle &amp; Earle (NSCA, 3\u00aa ed.) e dall\'ACSM. I guadagni <b>rallentano con ' +
-             'l\'esperienza di allenamento</b>: oltre il primo o secondo ciclo il valore alto della forbice diventa poco realistico.</div>';
-    }
+    // v.296: tolta la "Proiezione MTR". Moltiplicava l'MTR per la forbice
+    // dell'aumento ciclo dopo ciclo, ma con la regola 2-per-2 l'aumento
+    // dipende dalle sedute davvero fatte: nessuno studio da' una curva da
+    // disegnare in anticipo, e la sezione stessa diceva di non esserlo.
 
     if (pts.some(function(p) { return p.recon; })) {
         h += '<div class="m-note">I dati mostrati sono <b>ricostruiti</b> dai carichi programmati del ciclo in corso: ' +
@@ -19564,31 +19571,17 @@ function woUpdatePrBadge(kg) {
     }
 }
 
-function woOverloadRecord(exName, answer) {
-    if (!exName || !OVL_RANK.hasOwnProperty(answer)) return;
-    if (!APP.overloadAnswers) APP.overloadAnswers = {};
-    var prev = APP.overloadAnswers[exName];
-    if (prev && OVL_RANK[prev] <= OVL_RANK[answer]) return; // già più conservativa
-    APP.overloadAnswers[exName] = answer;
-    // Se l'Overload risulta già chiuso, la risposta è arrivata dopo:
-    // riarma comunque la progressione per il prossimo Chapter 1.
-    if (APP.completedWeeks && APP.completedWeeks[OVERLOAD_WEEK]) {
-        APP.progressionPending = true;
-    }
-    saveState();
-}
-
-
 // ── DOMANDA RIPETIZIONI (v.168) ───────────────────────────
-// Compare sull'ultima serie: e' l'unica vicina al limite tecnico, sulle
-// serie iniziali restano ripetizioni di riserva e la conversione
-// sottostimerebbe. Non compare nel Deload, sugli esercizi a tempo, su quelli
-// senza carico (a corpo libero la conversione non avrebbe un asse su cui
-// salire) e sopra le 10 ripetizioni previste, dove Epley perde affidabilita'.
+// Compare sull'ultima serie: e' quella su cui la regola 2-per-2 misura le
+// ripetizioni oltre il target (NSCA 2008). Non compare nel Deload ne' sugli
+// esercizi a tempo.
 function woShouldAskReps(ex, wIdx, targetReps, usedKg) {
     if (!ex || wIdx === DELOAD_WEEK) return false;
     if (srIsTime(ex.sr)) return false;
-    if (!(targetReps > 0) || targetReps > REPS_ASK_MAX) return false;
+    // Nessun tetto sulle ripetizioni previste: la regola 2-per-2 vale per
+    // qualsiasi obiettivo, anche 3 x 12. REPS_ASK_MAX limita solo il carico
+    // equivalente di Epley usato per i record (vedi woAskTechnique).
+    if (!(targetReps > 0)) return false;
     // A corpo libero la domanda ha senso quanto altrove: la progressione li'
     // passa dalle ripetizioni, non dai chili, ed e' su quelle che lavora la
     // regola 2-per-2 (Baechle & Earle, NSCA Essentials 3a ed. 2008). Senza
@@ -19611,9 +19604,16 @@ function woAskTechnique(exName, eq, usedKg, reps, targetReps, wIdx) {
         if (done) return; done = true;
         var el = document.getElementById('wo-tech-ask-overlay');
         if (el) el.remove();
+        var row = _lhRowToday(exName, wIdx);
+        if (row) { if (clean) delete row.nt; else row.nt = true; }
         if (!clean) { saveState(); return; }
-        _woRegisterRecord(exName, eq, usedKg, reps, targetReps, wIdx);
-        woAdjustFutureLoads(exName, eq, targetReps, wIdx);
+        // Il record passa dal carico equivalente di Epley, attendibile solo
+        // entro le ~10 ripetizioni: oltre si registra la seduta ma non il record.
+        if (targetReps <= REPS_ASK_MAX) _woRegisterRecord(exName, eq, usedKg, reps, targetReps, wIdx);
+        // Il carico non sale per una seduta sola: sale se questa e la
+        // precedente soddisfano la regola 2-per-2 (NSCA 2008; ACSM 2009).
+        if (reps >= targetReps + 2) woApplyTwoForTwo(exName, wIdx);
+        else saveState();
     }
 
     var ov = document.createElement('div');
@@ -19631,8 +19631,12 @@ function woAskTechnique(exName, eq, usedKg, reps, targetReps, wIdx) {
         '<div style="font-size:0.52rem;color:#fbbf24;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">Oltre il programma</div>' +
         '<div style="font-size:0.95rem;font-weight:800;color:#e2e8f0;margin:4px 0 3px;">' + escapeHTML(exDisplay(exName)) + '</div>' +
         '<div style="font-size:0.7rem;color:#cbd5e1;line-height:1.6;margin-bottom:14px;">' +
-        _fmtKg(usedKg) + ' kg \u00d7 ' + reps + ' vale <b style="color:#fbbf24;">' + _fmtKg(eq) +
-        ' kg</b> sulle ' + targetReps + ' previste.<br>Hai chiuso <b style="color:#e2e8f0;">tutte</b> le ripetizioni con tecnica pulita?</div>' +
+        (targetReps <= REPS_ASK_MAX
+            ? _fmtKg(usedKg) + ' kg \u00d7 ' + reps + ' vale <b style="color:#fbbf24;">' + _fmtKg(eq) +
+              ' kg</b> sulle ' + targetReps + ' previste.'
+            : _fmtKg(usedKg) + ' kg \u00d7 ' + reps + ': <b style="color:#fbbf24;">' + (reps - targetReps) +
+              ' ripetizioni</b> oltre le ' + targetReps + ' previste.') +
+        '<br>Hai chiuso <b style="color:#e2e8f0;">tutte</b> le ripetizioni con tecnica pulita?</div>' +
         '<div id="wo-tech-btns" style="display:flex;gap:8px;"></div>';
 
     var wrap = box.querySelector('#wo-tech-btns');
@@ -19654,78 +19658,115 @@ function woAskTechnique(exName, eq, usedKg, reps, targetReps, wIdx) {
     document.body.appendChild(ov);
 }
 
-// Alza il carico di riferimento e ricalcola SOLO i capitoli ancora da fare.
-// I capitoli già svolti restano com'erano: la scala 72/78/85/90% non si
-// spezza, cambia il riferimento da cui i capitoli successivi derivano.
-function woAdjustFutureLoads(exName, eq, targetReps, wIdx) {
-    if (wIdx === DELOAD_WEEK) return 0;
-    var pct = WEEK_LOADS[wIdx];
-    if (!(pct > 0)) return 0;
+// ── REGOLA 2-PER-2: L'AUMENTO (v.296) ─────────────────────
+// Quando le ultime due sedute consecutive di un esercizio chiudono l'ultima
+// serie con due o piu' ripetizioni oltre il target, il carico sale dalla
+// seduta successiva (Baechle & Earle, NSCA Essentials 3a ed. 2008, regola
+// 2-per-2). Di quanto: fra il 2 e il 10%, con la percentuale piu' bassa per
+// gli esercizi di piccole masse muscolari e la piu' alta per quelli di grandi
+// masse (ACSM Position Stand 2009, Med Sci Sports Exerc 41:687-708); NSCA
+// indica aumenti minori per la parte superiore e maggiori per l'inferiore.
+// L'app usa il valore piu' prudente di ciascuna fascia: 2,5% per la parte
+// superiore, 5% per l'inferiore. Il valore basso e' una scelta dentro la
+// forbice, non un numero nuovo: la regola e' descritta come conservativa e
+// qui puo' scattare piu' volte nello stesso ciclo, sopra una scala di
+// capitoli che sale gia' dall'85 al 97%.
+// Arrotondamento: i carichi vanno a mezzo chilo. Se il 2,5% di un carico
+// piccolo si perde nell'arrotondamento (8 kg -> 8,2 -> 8), si sale del mezzo
+// chilo minimo purche' resti entro il 10% dell'ACSM; altrimenti il carico
+// resta invariato e l'aumento arrivera' con le ripetizioni.
+// Prima qui un'unica seduta con una ripetizione in piu' alzava il riferimento
+// di quanto diceva la formula di Epley, fino al +25%, e a fine ciclo si
+// aggiungeva un altro 5-10% dalla risposta soggettiva del Chapter 4: nessuna
+// delle due cose e' scritta negli studi.
+var TFT_STEP = { up: 0.025, low: 0.05 };
+var TFT_MAX  = 0.10;
 
-    var ex = (APP.exerciseData || []).find(function(x) { return exSameExercise(x.name, exName); });
-    var prevKg = ex && ex.loads ? (ex.loads[wIdx] || ex.baseWeight || 0) : 0;
-    if (!(prevKg > 0)) return 0;
+function tftNextKg(kg, pct) {
+    kg = parseFloat(kg) || 0;
+    if (!(kg > 0)) return kg;
+    var n = awRoundKg(kg * (1 + pct));
+    if (n > kg) return n;
+    var min = awRoundKg(kg + 0.5);
+    return (min - kg) / kg <= TFT_MAX + 1e-9 ? min : kg;
+}
 
-    var ref    = eq / pct;          // riferimento implicito nella prestazione
-    var refOld = prevKg / pct;      // riferimento attuale
-    // Rete di sicurezza contro un carico digitato per errore: oltre il +25%
-    // in una sola seduta è quasi certamente un refuso, non un progresso.
-    var CAP = 1.25;
-    var capped = false;
-    if (ref > refOld * CAP) { ref = refOld * CAP; capped = true; }
-    if (ref <= refOld + 0.05) return 0;
+function woApplyTwoForTwo(exName, wIdx) {
+    if (wIdx === DELOAD_WEEK || !woTwoForTwo(exName)) { saveState(); return 0; }
+    var lower = woIsLowerBody(exName);
+    var pct = lower ? TFT_STEP.low : TFT_STEP.up;
 
-    // Dal riferimento allo schema al nuovo MTR, sulla base di ripetizioni
-    // con cui l'MTR è stato registrato (Epley, come per la conversione).
-    // Coefficiente del gruppo muscolare, lo stesso di mtrForReps e di
-    // woComputePlanLoad: prima qui c'era 30 fisso, e lo stesso MTR riletto
-    // dall'altra strada dava un numero diverso.
-    var baseReps = (typeof mtrRepsGet === 'function' && mtrRepsGet(exName)) || targetReps;
-    var k = awkRepK(exName);
-    var newMtr = awRoundKg(ref * (1 + targetReps / k) / (1 + baseReps / k));
+    var ex0 = (APP.exerciseData || []).find(function(x) { return exSameExercise(x.name, exName); });
+    var fromKg = woPlannedKg(ex0, wIdx);
+    var toKg = tftNextKg(fromKg, pct);
+    if (!(toKg > fromKg)) { saveState(); return 0; }
+
+    // Il riferimento (MTR) sale della stessa percentuale, cosi' i carichi che
+    // l'app ricalcola da li' restano allineati a quelli scritti qui.
     var curMtr = parseFloat(mtrGet(exName)) || 0;
-    if (!(newMtr > curMtr)) return 0;
+    var newMtr = curMtr > 0 ? tftNextKg(curMtr, pct) : 0;
+    if (newMtr > 0) mtrSet(exName, newMtr);
 
-    mtrSet(exName, newMtr);
-    if (!mtrRepsGet(exName)) mtrRepsSet(exName, baseReps);
+    // Dalla seduta successiva: capitolo in corso compreso. I capitoli gia'
+    // chiusi non si toccano adesso; al nuovo ciclo li riallinea
+    // woApplyProgression.
+    var changed = 0;
+    function applyTo(e) {
+        if (!e || !e.name || !exSameExercise(e.name, exName)) return false;
+        if (!Array.isArray(e.loads) || e.loads.length !== WEEK_LOADS.length) {
+            e.loads = WEEK_LOADS.map(function(q) { return awRoundKg((e.baseWeight || 0) * q); });
+        }
+        for (var i = wIdx; i < WEEK_LOADS.length; i++) e.loads[i] = tftNextKg(e.loads[i], pct);
+        if (newMtr > 0) e.mtrValue = newMtr;
+        changed++;
+        return true;
+    }
+    (APP.exerciseData || []).forEach(applyTo);
+    var touched = [];
+    (APP.savedProtocols || []).forEach(function(p) {
+        var hit = false;
+        (p.exercises || []).forEach(function(e) { if (applyTo(e)) hit = true; });
+        if (hit) touched.push(p);
+    });
+
+    // Il conteggio riparte al nuovo carico.
+    if (!APP.twoForTwoAt) APP.twoForTwoAt = {};
+    APP.twoForTwoAt[exName] = _lhIsoToday();
     if (!APP.mtrAdjusted) APP.mtrAdjusted = {};
     APP.mtrAdjusted[exName] = wIdx;
+    // Registro del ciclo per il riepilogo di fine Chapter 4.
+    if (!APP.mtrCycleLog) APP.mtrCycleLog = {};
+    var log = APP.mtrCycleLog[exName];
+    // Senza MTR si registra il riferimento implicito (carico / percentuale
+    // del capitolo): confrontare direttamente i carichi di capitoli diversi
+    // mescolerebbe l'aumento con la normale salita dall'85 al 97%.
+    var pctCh = WEEK_LOADS[wIdx] || 1;
+    var refFrom = curMtr > 0 ? curMtr : awRoundKg(fromKg / pctCh);
+    var refTo   = newMtr > 0 ? newMtr : awRoundKg(toKg / pctCh);
+    if (!log) APP.mtrCycleLog[exName] = { from: refFrom, to: refTo, lower: lower };
+    else { log.to = refTo; log.lower = lower; }
 
-    // Lo stesso esercizio compare in schede con schemi diversi: in un Hybrid
-    // la Panca e' 5 x 3 in Upper e 4 x 12 in Push. Il riferimento ricavato da
-    // questa seduta vale per le sue ripetizioni; prima veniva copiato tale e
-    // quale nelle altre schede, per cui un record in Push abbassava i carichi
-    // di Upper al livello dell'ipertrofia, e un record in Upper portava Push a
-    // carichi da forza. Ora ogni scheda lo riceve riportato alle proprie
-    // ripetizioni (Epley 1985, come woApplyPlanLoad).
-    var changed = 0;
-    function applyTo(e, proto) {
-        if (!e || !e.name || !exSameExercise(e.name, exName)) return;
-        if (!Array.isArray(e.loads) || e.loads.length !== WEEK_LOADS.length) return;
-        var eReps = srReps(srForChapter(e, wIdx, proto || null)) || srReps(e.sr);
-        var eRef = (eReps && eReps !== targetReps)
-            ? (mtrForReps(exName, eReps) || ref)
-            : ref;
-        for (var i = wIdx + 1; i < WEEK_LOADS.length; i++) {
-            e.loads[i] = awRoundKg(eRef * WEEK_LOADS[i]);
-        }
-        e.mtrValue = newMtr;
-        changed++;
-    }
-    var sessProto = woSessionProto();
-    (APP.exerciseData || []).forEach(function(e) { applyTo(e, sessProto); });
-    (APP.savedProtocols || []).forEach(function(p) { (p.exercises || []).forEach(function(e) { applyTo(e, p); }); });
     saveState();
-
-    var nextIdx = wIdx + 1;
-    var msg = 'Riferimento aggiornato: ' + _fmtKg(curMtr) + ' \u2192 ' + _fmtKg(newMtr) + ' kg';
-    if (nextIdx < WEEK_LOADS.length && ex && ex.loads) {
-        msg += ' \u00b7 ' + (CH_LABELS[nextIdx] || ('Ch' + (nextIdx + 1))) + ': ' + _fmtKg(ex.loads[nextIdx]) + ' kg';
-    }
-    if (capped) msg += ' (aumento limitato al +25%)';
-    showToast(msg, 'success');
+    touched.forEach(function(p) {
+        if (typeof saveProtocolToSupabase !== 'function') return;
+        try { saveProtocolToSupabase(p); } catch (err) { awLog.warn('saveProtocolToSupabase:', err); }
+    });
+    showToast('Regola 2-per-2 · ' + exDisplay(exName) + ': ' + _fmtKg(fromKg) + ' → ' +
+              _fmtKg(toKg) + ' kg dalla prossima seduta', 'success');
+    if (typeof renderPlanPage === 'function') { try { renderPlanPage(APP.selectedViewWeek || 0); } catch (e) {} }
     if (typeof updateChart === 'function') updateChart();
     return changed;
+}
+
+/* Riga di storico di oggi per un esercizio, se c'e'. */
+function _lhRowToday(exName, wIdx) {
+    var d = _lhIsoToday();
+    var list = APP.loadHistory || [];
+    for (var i = list.length - 1; i >= 0; i--) {
+        var e = list[i];
+        if (e && e.d === d && e.w === wIdx && exSameExercise(e.ex, exName)) return e;
+    }
+    return null;
 }
 
 // ── CORREZIONE DEL CARICO DALLA BOX (v.228) ───────────────
@@ -19737,7 +19778,7 @@ function woAdjustFutureLoads(exName, eq, targetReps, wIdx) {
 // quelli che seguono.
 // I capitoli gia' svolti non si toccano: la scala 85/89/93/97% non si spezza,
 // cambia il riferimento da cui i capitoli derivano. E' la stessa regola di
-// woAdjustFutureLoads, applicata pero' anche al capitolo presente, perche' qui
+// woApplyTwoForTwo, applicata pero' anche al capitolo presente, perche' qui
 // non si registra una prestazione passata: si dichiara il carico di oggi.
 function woPlannedKg(ex, wIdx) {
     if (!ex) return 0;
@@ -19792,8 +19833,10 @@ function woApplyPlanLoad(exName, newKg, wIdx) {
     if (!mtrRepsGet(exName)) mtrRepsSet(exName, plan.baseReps);
     if (!APP.mtrAdjusted) APP.mtrAdjusted = {};
     // Una correzione dichiarata dall'atleta vale piu' dello storico del ciclo:
-    // la regola 2-per-2 non ci somma sopra un altro aumento a fine Chapter 4.
+    // il conteggio della regola 2-per-2 riparte dal carico appena dichiarato.
     APP.mtrAdjusted[exName] = wIdx;
+    if (!APP.twoForTwoAt) APP.twoForTwoAt = {};
+    APP.twoForTwoAt[exName] = _lhIsoToday();
 
     function applyTo(e, proto) {
         if (!e || !e.name || !exSameExercise(e.name, exName)) return false;
@@ -19944,19 +19987,19 @@ function woRecordSessionReps(exName, reps, targetReps, usedKg) {
     var ex = (APP.exerciseData || []).find(function(x) { return exSameExercise(x.name, exName); });
     if (ex) {
         ex._sessionReps = reps; ex._sessionTargetReps = targetReps;
-        // Sull'ultimo esercizio della sessione lo storico viene scritto prima
-        // che la domanda riceva risposta: aggiorna la riga se esiste gia'.
-        _lhUpsert(ex, APP.selectedViewWeek || 0, true);
+        // La riga di storico si scrive subito, non a fine seduta: la regola
+        // 2-per-2 deve poter contare anche la seduta di oggi.
+        _lhUpsert(ex, APP.selectedViewWeek || 0, false);
     }
 
     var wIdx = APP.selectedViewWeek || 0;
     var prevKg = ex && ex.loads ? (ex.loads[wIdx] || ex.baseWeight || 0) : (ex ? (ex.baseWeight || 0) : 0);
     var eq = woEquivalentLoad(usedKg, reps, targetReps);
     if (!(prevKg > 0) || wIdx === DELOAD_WEEK) { saveState(); return; }
-    if (eq <= prevKg + 0.05) { saveState(); return; }
+    if (!(reps > targetReps)) { saveState(); return; }
 
     // v.175 — la registrazione passa dalla conferma della tecnica: solo una
-    // prestazione pulita diventa record e alza i carichi dei capitoli successivi.
+    // prestazione pulita diventa record e conta per la regola 2-per-2.
     woAskTechnique(exName, eq, usedKg, reps, targetReps, wIdx);
 }
 
@@ -19995,70 +20038,9 @@ function _woRegisterRecord(exName, eq, usedKg, reps, targetReps, wIdx) {
     }
 }
 
-function woAskOverloadFeedback(exName, targetReps) {
-    var old = document.getElementById('wo-ovl-ask-overlay');
-    if (old) old.remove();
-
-    var ov = document.createElement('div');
-    ov.id = 'wo-ovl-ask-overlay';
-    ov.style.cssText = 'position:fixed;inset:0;background:rgba(6,13,26,0.94);z-index:9300;' +
-        'display:flex;align-items:center;justify-content:center;' +
-        'padding:max(env(safe-area-inset-top),44px) 18px calc(24px + env(safe-area-inset-bottom,0px));' +
-        'box-sizing:border-box;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);';
-
-    var box = document.createElement('div');
-    box.style.cssText = 'background:#0f172a;border:1px solid rgba(255,255,255,0.09);border-radius:16px;' +
-        'max-width:420px;width:100%;max-height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;' +
-        'padding:20px 18px;box-sizing:border-box;';
-
-    var tgt = targetReps ? (' Il target era di <b style="color:#e2e8f0;">' + targetReps + ' ripetizioni</b>.') : '';
-    var opts = [
-        ['margine', 'Avevo ancora margine', 'Ho chiuso con 2 o pi\u00f9 ripetizioni oltre il target'],
-        ['esatte',  'Le ho chiuse esatte',  'Target centrato, ma ero al limite'],
-        ['fatica',  'Non le ho completate tutte', 'Mi sono fermato prima del target']
-    ];
-    var html =
-        '<div style="font-size:0.52rem;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">\u26a1 Overload \u00b7 ultima serie</div>' +
-        '<div style="font-size:0.95rem;font-weight:800;color:#e2e8f0;margin:4px 0 3px;">' + escapeHTML(exDisplay(exName)) + '</div>' +
-        '<div style="font-size:0.7rem;color:#cbd5e1;line-height:1.6;margin-bottom:16px;">Com\u2019\u00e8 andata l\u2019ultima serie?' + tgt + '</div>';
-    opts.forEach(function(o) {
-        html += '<button type="button" data-a="' + o[0] + '" class="wo-ovl-opt">' + o[1] +
-                '<small>' + o[2] + '</small></button>';
-    });
-    html += '<button type="button" class="wo-ovl-opt skip" data-a="">Preferisco non rispondere<small>Il carico resta invariato</small></button>';
-    box.innerHTML = html;
-
-    box.querySelectorAll('.wo-ovl-opt').forEach(function(b) {
-        b.onclick = function() {
-            var a = b.getAttribute('data-a');
-            if (a) woOverloadRecord(exName, a);
-            ov.remove();
-        };
-    });
-
-    ov.appendChild(box);
-    document.body.appendChild(ov);
-}
-
-// ── Momento 3: dal Chapter 4 al nuovo ciclo ──
-// Incrementi entro la forbice 2–10% di Baechle & Earle (NSCA, 3ª ed. 2008):
-// fascia bassa per la parte superiore, alta per gli arti inferiori.
-var OVL_STEP = {
-    margine: { up: 0.05,  low: 0.10 },
-    esatte:  { up: 0.025, low: 0.05 },
-    fatica:  { up: 0,     low: 0 }   // invariato, non ridotto: segue un deload
-};
-
-// Quanto e' prudente ciascuna risposta, dalla piu' cautelativa alla piu'
-// generosa: serve a non sovrascrivere con una risposta ottimista una gia'
-// data piu' conservativa sullo stesso esercizio. L'ordine segue gli
-// incrementi di OVL_STEP (forbice 2-10%, Baechle & Earle, NSCA 3a ed. 2008).
-// Mancava del tutto: toccare una risposta mandava in errore il salvataggio
-// PRIMA della chiusura del riquadro, che restava aperto sullo schermo.
-var OVL_RANK = { fatica: 0, esatte: 1, margine: 2 };
-
-/* Arti inferiori per gli incrementi di fine ciclo (NSCA, Baechle & Earle
-   2008: 5-10% per la parte inferiore, 2,5-5% per la superiore). Prima
+/* Arti inferiori per l'aumento della regola 2-per-2 (NSCA, Baechle & Earle
+   2008: aumenti maggiori per la parte inferiore; ACSM 2009: percentuale piu'
+   alta per le grandi masse muscolari). Vedi TFT_STEP. Prima
    contavano solo gli schemi squat e stacco, e leg extension, leg curl e
    calf raise finivano fra la "parte superiore" con l'incremento piu' basso.
    Ora si guarda anche la famiglia del catalogo e il gruppo muscolare. */
@@ -20073,78 +20055,47 @@ function woIsLowerBody(exName) {
     return AW_LOWER_MUSCLE.indexOf(g) !== -1;
 }
 
-// Calcola cosa cambierebbe, SENZA scrivere nulla.
-// Usato sia dal riepilogo di sola lettura sia dall'applicazione vera.
+// Aumenti del ciclo, per il riepilogo di fine Chapter 4. Non calcola nulla di
+// nuovo: elenca quelli gia' applicati dalla regola 2-per-2 durante il ciclo.
 function woComputeProgression() {
-    var out = [];
-    var ans = APP.overloadAnswers || {};
-    // v.168: gli esercizi che soddisfano la regola 2-per-2 entrano comunque,
-    // anche senza risposta soggettiva a fine Chapter 4.
-    var names = Object.keys(ans);
-    (APP.loadHistory || []).forEach(function(e) {
-        if (!e || !e.ex) return;
-        if (APP.mtrAdjusted && APP.mtrAdjusted[e.ex]) return;
-        var dup = false;
-        names.forEach(function(n) { if (exSameExercise(n, e.ex)) dup = true; });
-        if (!dup && woTwoForTwo(e.ex)) names.push(e.ex);
-    });
-    names.forEach(function(name) {
-        var cur = parseFloat(mtrGet(name));
-        if (!cur || cur <= 0) return;
-        // Il dato oggettivo ha la precedenza sulla risposta soggettiva: due
-        // sedute consecutive oltre il target valgono "avevo margine" anche se
-        // a fine Chapter 4 l'atleta ha dichiarato di aver faticato.
-        // Se il riferimento è già stato alzato durante il ciclo, la regola
-        // 2-per-2 non lo alza una seconda volta: l'aumento c'è già stato.
-        // Resta valida la risposta soggettiva di fine Chapter 4.
-        var adjusted = !!(APP.mtrAdjusted && APP.mtrAdjusted[name]);
-        var beat = !adjusted && woTwoForTwo(name);
-        var answer = beat ? 'margine' : ans[name];
-        var step = OVL_STEP[answer];
-        if (!step) return;
-        var lower = woIsLowerBody(name);
-        var pct = lower ? step.low : step.up;
-        out.push({
-            name: name,
-            answer: answer,
-            fromData: beat,
-            lower: lower,
-            pct: pct,
-            oldMtr: cur,
-            newMtr: Math.round(cur * (1 + pct) * 2) / 2
-        });
-    });
+    var log = APP.mtrCycleLog || {};
+    var out = Object.keys(log).map(function(name) {
+        var r = log[name] || {};
+        var from = parseFloat(r.from) || 0, to = parseFloat(r.to) || 0;
+        return { name: name, lower: !!r.lower, oldMtr: from, newMtr: to,
+                 pct: from > 0 ? (to / from - 1) : 0 };
+    }).filter(function(r) { return r.newMtr > r.oldMtr; });
     out.sort(function(a, b) { return b.pct - a.pct; });
     return out;
 }
 
-// Scrive i nuovi MTR e ricalcola i loads. Chiamata SOLO al rientro nel
-// Chapter 1: durante il Deload i carichi devono restare sul vecchio MTR.
+// Al rientro nel Chapter 1: gli aumenti sono gia' in vigore dal capitolo in
+// cui sono scattati, ma i capitoli precedenti di quel ciclo erano rimasti al
+// carico di prima. Qui si riallinea tutta la scala al riferimento attuale,
+// letto dal Chapter 4 (sempre successivo a ogni aumento), cosi' il nuovo
+// ciclo parte dal carico raggiunto. Nessun aumento in piu'.
 function woApplyProgression() {
-    var rows = woComputeProgression();
+    var log = APP.mtrCycleLog || {};
+    var names = Object.keys(log);
     var applied = 0;
-    rows.forEach(function(r) {
-        if (r.pct <= 0) return;
-        mtrSet(r.name, r.newMtr);
-        applied++;
-        (APP.savedProtocols || []).forEach(function(proto) {
-            if (!proto || !proto.exercises) return;
-            var slot = (proto._splitSlot || '').toLowerCase();
-            var isMassa = slot === 'push' || slot === 'pull' || slot === 'legs';
-            proto.exercises.forEach(function(ex) {
-                // exSameExercise e non !==: i nomi possono differire fra
-                // protocolli (italiano/inglese, maiuscole, spaziature)
-                if (!ex || !ex.name || !exSameExercise(ex.name, r.name)) return;
-                ex.mtrValue = r.newMtr;
-                var ref = mtrForReps(r.name, srReps(ex.sr)) || r.newMtr;
-                ex.loads = WEEK_LOADS.map(function(p) {
-                    return Math.round(ref * p * 2) / 2;
-                });
-                ex.baseWeight = ex.loads[0];
+    names.forEach(function(name) {
+        function realign(ex) {
+            if (!ex || !ex.name || !exSameExercise(ex.name, name)) return;
+            if (!Array.isArray(ex.loads) || ex.loads.length !== WEEK_LOADS.length) return;
+            var top = parseFloat(ex.loads[OVERLOAD_WEEK]) || 0;
+            if (!(top > 0)) return;
+            var ref = top / WEEK_LOADS[OVERLOAD_WEEK];
+            ex.loads = WEEK_LOADS.map(function(q, i) {
+                return i === OVERLOAD_WEEK ? top : awRoundKg(ref * q);
             });
-        });
+            ex.baseWeight = ex.loads[0];
+        }
+        (APP.savedProtocols || []).forEach(function(p) { (p.exercises || []).forEach(realign); });
+        (APP.exerciseData || []).forEach(realign);
+        applied++;
     });
-    APP.overloadAnswers = {};   // consumate: non riapplicarle al ciclo dopo
+    APP.mtrCycleLog = {};
+    APP.overloadAnswers = {};   // risposte delle versioni precedenti: non servono piu'
     saveState();
     return applied;
 }
@@ -20223,7 +20174,7 @@ function woShowProgressionSummary() {
     h += '</div>';
     h += '<div style="font-size:0.6rem;color:#94a3b8;line-height:1.6;margin-top:14px;padding:11px 12px;background:rgba(255,255,255,0.03);border-radius:9px;">' +
         (anyUp
-            ? 'Questi carichi entreranno in vigore <b style="color:#cbd5e1;">al termine del Deload</b>. Durante la settimana di scarico continui con i valori attuali.'
+            ? 'Aumenti scattati durante il ciclo con la <b style="color:#cbd5e1;">regola 2-per-2</b> (NSCA 2008): due sedute di fila con almeno due ripetizioni oltre il target. Sono gi\u00e0 in vigore e il nuovo ciclo riparte da qui.'
             : 'Nessun aumento questo ciclo: ripeti gli stessi carichi. Consolidare un peso \u00e8 progresso, non una battuta d\u2019arresto.') +
         '</div>';
     box.innerHTML = h;
@@ -20288,15 +20239,11 @@ function woCompleteSet() {
             _usedKg = (ex.loads ? (ex.loads[w] || ex.baseWeight || 0) : (ex.baseWeight || 0));
         }
         ex._sessionKg = _usedKg;
-        var _askOvl = function() {
-            if (w === OVERLOAD_WEEK) woAskOverloadFeedback(ex.name, _tgtReps);
-        };
-        // Le due domande non devono sovrapporsi: nel Chapter 4 la prestazione
-        // viene chiesta per prima, il feedback soggettivo subito dopo.
+        // v.296: nel Chapter 4 non si chiede piu' "com'e' andata" per
+        // decidere l'aumento: lo decide solo la regola 2-per-2, sulle
+        // ripetizioni eseguite (NSCA 2008). Una domanda in meno per esercizio.
         if (woShouldAskReps(ex, w, _tgtReps, _usedKg)) {
-            woAskExtraReps(ex.name, _tgtReps, _usedKg, _askOvl);
-        } else {
-            _askOvl();
+            woAskExtraReps(ex.name, _tgtReps, _usedKg, null);
         }
     }
 
@@ -24967,7 +24914,7 @@ function closeWeekComplete() {
     }
 
     // Momento 3a: riepilogo di sola lettura, subito dopo l'animazione di Ch.4.
-    // Non scrive nulla: i nuovi MTR entrano in vigore solo al nuovo ciclo.
+    // Non scrive nulla: elenca gli aumenti 2-per-2 gia' applicati nel ciclo.
     // Arriva dopo lo spostamento, cosi' si apre sopra il capitolo nuovo.
     if (wasOverload) setTimeout(woShowProgressionSummary, 350);
 }
