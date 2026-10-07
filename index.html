@@ -533,6 +533,52 @@
             box-sizing:border-box; -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
             animation:awdFade 0.22s ease backwards; }
         .awd-ov.closing { animation:awdFade 0.22s ease forwards reverse; }
+        /* ── Stretching finale (v.298) ── */
+        .st-ov { position:fixed; inset:0; z-index:9340; background:rgba(6,13,26,0.95);
+            display:flex; align-items:center; justify-content:center;
+            padding:max(env(safe-area-inset-top),44px) 18px calc(24px + env(safe-area-inset-bottom,0px));
+            box-sizing:border-box; -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+            animation:awdFade 0.22s ease backwards; }
+        .st-ov.closing { animation:awdFade 0.22s ease forwards reverse; }
+        .st-box { background:#0f172a; border:1px solid rgba(255,255,255,0.09); border-radius:18px;
+            max-width:420px; width:100%; max-height:100%; overflow-y:auto; -webkit-overflow-scrolling:touch;
+            padding:20px 18px; box-sizing:border-box; animation:awdIn 0.26s cubic-bezier(0.34,1.3,0.64,1) backwards; }
+        .st-eyebrow { font-size:0.52rem; color:var(--primary); text-transform:uppercase; letter-spacing:0.1em; font-weight:700; }
+        .st-title { font-size:1rem; font-weight:800; color:#e2e8f0; margin:4px 0 2px; }
+        .st-meta { font-size:0.6rem; color:#64748b; }
+        .st-p { font-size:0.64rem; color:#94a3b8; line-height:1.55; margin:12px 0; }
+        .st-p b { color:#e2e8f0; }
+        .st-now { text-align:center; padding:14px 0 6px; border-top:1px solid rgba(255,255,255,0.07); margin-top:14px; }
+        .st-now .n { font-size:0.9rem; font-weight:800; color:#e2e8f0; }
+        .st-now .d { font-size:0.6rem; color:#94a3b8; line-height:1.45; margin-top:4px; }
+        .st-now .side { display:inline-block; margin-top:8px; font-size:0.55rem; font-weight:800; letter-spacing:0.08em;
+            text-transform:uppercase; color:#22d3ee; }
+        .st-now .side.gap { color:#fbbf24; }
+        .st-clock { font-size:2.6rem; font-weight:900; color:#22d3ee; font-variant-numeric:tabular-nums; margin:4px 0 2px; }
+        .st-clock.gap { color:#fbbf24; }
+        .st-clock.idle { color:var(--primary); }
+        .st-bar { height:5px; border-radius:3px; background:rgba(255,255,255,0.07); overflow:hidden; margin:6px 0 12px; }
+        .st-bar i { display:block; height:100%; background:var(--primary); }
+        .st-btns { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+        .st-b1 { width:auto; margin:0; border:none; border-radius:12px; background:var(--btn-grad); color:#fff; font-weight:800;
+            font-size:0.68rem; padding:13px 6px; font-family:inherit; cursor:pointer; text-transform:none; letter-spacing:0; }
+        .st-b2 { width:auto; margin:0; border:1px solid rgba(255,255,255,0.1); border-radius:12px; background:rgba(255,255,255,0.03);
+            color:#94a3b8; font-weight:800; font-size:0.68rem; padding:13px 6px; font-family:inherit; cursor:pointer;
+            text-transform:none; letter-spacing:0; }
+        .st-list { margin-top:14px; border-top:1px solid rgba(255,255,255,0.07); }
+        .st-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
+        .st-row:last-child { border-bottom:none; }
+        .st-row .n { flex:1; min-width:0; font-size:0.62rem; font-weight:700; color:#cbd5e1; }
+        .st-row .r { font-size:0.54rem; font-weight:800; color:#64748b; white-space:nowrap; }
+        .st-row.cur .n { color:#22d3ee; }
+        .st-row.done .n { color:#64748b; }
+        .st-dot { width:22px; height:22px; border-radius:50%; border:1.5px solid rgba(255,255,255,0.15); flex-shrink:0;
+            display:flex; align-items:center; justify-content:center; font-size:0.55rem; font-weight:900; color:var(--primary); }
+        .st-row.done .st-dot { border-color:var(--primary); background:rgba(var(--pr),0.15); }
+        .st-row.cur .st-dot { border-color:#22d3ee; color:#22d3ee; }
+        .st-skip { display:block; width:100%; margin:10px 0 0; background:none; border:none; color:#64748b; font-weight:700;
+            font-size:0.6rem; padding:8px 0 0; font-family:inherit; cursor:pointer; text-transform:none; letter-spacing:0; }
+
         @keyframes awdFade { from { opacity:0; } }
         .awd-box { background:#0f172a; border:1px solid rgba(255,255,255,0.09); border-radius:18px;
             max-width:420px; width:100%; max-height:100%; overflow-y:auto; -webkit-overflow-scrolling:touch;
@@ -4612,7 +4658,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '297';
+const APP_VERSION = '298';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -20480,6 +20526,7 @@ function woCompleteSet() {
         // celebrazione del capitolo e il riepilogo della progressione possono
         // aprirsi subito dopo questa animazione, e sovrapporsi le sarebbe
         // addosso; awdAskAfterWorkout aspetta che non ci sia altro.
+        try { stOfferAfterWorkout(exData); } catch (e) { awLog.warn('stretching:', e); }
         try { awdAskAfterWorkout(wIdx, di); } catch (e) { awLog.warn('diario:', e); }
         return;
     }
@@ -20649,6 +20696,192 @@ function awdAdd(w, di, stato, tags, nota) {
     saveState();
 }
 
+// ════════════════════════════════════════════════════════════
+// STRETCHING FINALE (v.298)
+//
+// Facoltativo, offerto a fine seduta prima del diario. Solo allungamenti
+// statici: prima dei pesi riducono la forza (Behm et al. 2016; Simic et al.
+// 2013, meta-analisi), dopo no. Servono alla flessibilita', non al
+// recupero: sui dolori dei giorni seguenti l'effetto e' praticamente nullo
+// (Herbert, de Noronha & Kamper 2011, Cochrane), e la schermata lo dice.
+// Dose ACSM (Garber et al. 2011, Position Stand): tenuta di 10-30 s,
+// ripetuta fino a circa 60 s per muscolo. Qui 2 tenute da 30 s per muscolo
+// (per lato dove serve), lati alternati. I 5 s fra una tenuta e l'altra sono
+// il tempo pratico per cambiare posizione, non un numero di letteratura.
+// I muscoli seguono la seduta (parte alta, bassa o tutto il corpo), come la
+// mobilita' del riscaldamento.
+// ════════════════════════════════════════════════════════════
+var ST_HOLD = 30, ST_REPS = 2, ST_GAP = 5;
+var ST_LIST = {
+    bassa: [
+        { n: 'Flessori dell\'anca', d: 'Affondo con il ginocchio dietro a terra, bacino in avanti, busto dritto.', lati: true },
+        { n: 'Femorali', d: 'Seduto, gambe tese: scendi con il busto dritto verso i piedi.' },
+        { n: 'Quadricipiti', d: 'In piedi, afferra la caviglia e porta il tallone al gluteo, ginocchia vicine.', lati: true },
+        { n: 'Glutei', d: 'Supino, caviglia sul ginocchio opposto (figura 4), tira la coscia verso il petto.', lati: true },
+        { n: 'Polpacci', d: 'Mani al muro, gamba dietro tesa e tallone a terra.', lati: true }
+    ],
+    alta: [
+        { n: 'Pettorali', d: 'Avambraccio al muro a 90°, ruota il busto verso l\'esterno.', lati: true },
+        { n: 'Dorsali', d: 'Braccio sopra la testa, inclina il busto dalla parte opposta.', lati: true },
+        { n: 'Spalle', d: 'Braccio teso davanti al petto, l\'altra mano lo avvicina.', lati: true },
+        { n: 'Tricipiti', d: 'Mano dietro la nuca, l\'altra spinge piano il gomito in basso.', lati: true },
+        { n: 'Bicipiti e avambracci', d: 'Mani incrociate dietro la schiena, braccia tese, petto aperto.' }
+    ],
+    mista: [
+        { n: 'Flessori dell\'anca', d: 'Affondo con il ginocchio dietro a terra, bacino in avanti, busto dritto.', lati: true },
+        { n: 'Femorali', d: 'Seduto, gambe tese: scendi con il busto dritto verso i piedi.' },
+        { n: 'Quadricipiti', d: 'In piedi, afferra la caviglia e porta il tallone al gluteo, ginocchia vicine.', lati: true },
+        { n: 'Pettorali', d: 'Avambraccio al muro a 90°, ruota il busto verso l\'esterno.', lati: true },
+        { n: 'Dorsali', d: 'Braccio sopra la testa, inclina il busto dalla parte opposta.', lati: true }
+    ]
+};
+var stS = null, _stTimer = null;
+
+// La sequenza completa: per ogni muscolo 2 tenute per lato, lati alternati,
+// con 5 s fra una tenuta e la successiva.
+function stPlan(zone) {
+    var out = [];
+    ST_LIST[zone].forEach(function(m, mi) {
+        var sides = m.lati ? 2 : 1;
+        for (var r = 0; r < ST_REPS; r++) for (var sd = 0; sd < sides; sd++) {
+            out.push({ k: 'hold', mi: mi, rep: r, side: m.lati ? sd : -1, t: ST_HOLD });
+            out.push({ k: 'gap', mi: mi, t: ST_GAP });
+        }
+    });
+    out.pop();   // nessuna pausa dopo l'ultima tenuta
+    return out;
+}
+function stTotal(plan) { return plan.reduce(function(a, x) { return a + x.t; }, 0); }
+function stLeft() { return Math.max(0, Math.ceil((stS.endsAt - Date.now() - 50) / 1000)); }
+function stStop() { if (_stTimer) { clearInterval(_stTimer); _stTimer = null; } if (stS) stS.run = false; }
+
+// Offerta a fine seduta. Il diario aspetta finche' questa schermata e' aperta.
+function stOfferAfterWorkout(exercises) {
+    var proto = null;
+    try { proto = woSessionProto(); } catch (e) {}
+    var zone = 'mista';
+    try { zone = wpZone(proto, exercises); } catch (e) {}
+    window._stPending = true;
+    var tries = 0;
+    (function attempt() {
+        // Solo gli overlay che arrivano prima: celebrazione, domande, riepiloghi.
+        var busy = false;
+        try { window._stPending = false; busy = awdBusy(); window._stPending = true; } catch (e) {}
+        if (busy && tries++ < 140) { setTimeout(attempt, 850); return; }
+        stOpen(zone);
+    })();
+}
+
+function stOpen(zone) {
+    stStop();
+    var plan = stPlan(zone);
+    stS = { zone: zone, plan: plan, i: -1, left: 0, endsAt: 0, run: false, lastBeep: null };
+    var old = document.getElementById('st-overlay'); if (old) old.remove();
+    var ov = document.createElement('div');
+    ov.id = 'st-overlay'; ov.className = 'st-ov';
+    ov.innerHTML = '<div class="st-box" id="st-box"></div>';
+    document.body.appendChild(ov);
+    stRender();
+}
+
+function stClose() {
+    stStop();
+    var ov = document.getElementById('st-overlay');
+    window._stPending = false;
+    if (ov) { ov.classList.add('closing'); setTimeout(function() { ov.remove(); }, 220); }
+}
+
+function stZoneLabel(z) { return z === 'alta' ? 'parte alta' : z === 'bassa' ? 'parte bassa' : 'tutto il corpo'; }
+
+function stRender() {
+    var box = document.getElementById('st-box'); if (!box || !stS) return;
+    var p = stS, list = ST_LIST[p.zone], tot = stTotal(p.plan), h = '';
+    var mins = Math.round(tot / 60);
+    h += '<div class="st-eyebrow">🧘 Stretching finale · facoltativo</div>' +
+         '<div class="st-title">Allungamento · ' + stZoneLabel(p.zone) + '</div>' +
+         '<div class="st-meta">' + list.length + ' muscoli · circa ' + mins + ' min</div>';
+    if (p.i < 0) {
+        h += '<div class="st-p">Serve a <b>migliorare la flessibilità</b> nel tempo. Non riduce i dolori dei giorni dopo: se oggi non ti va, saltalo senza pensieri.</div>' +
+             '<div class="st-p">Ogni muscolo: <b>2 tenute da 30 secondi</b> per lato, lati alternati. Allunga fino a sentire tensione, mai dolore, e respira con calma. Il timer ti dice quando cambiare.</div>' +
+             '<div class="st-btns"><button type="button" class="st-b1" id="st-go">▶ Inizia</button><button type="button" class="st-b2" id="st-no">No, grazie</button></div>';
+    } else if (p.i >= p.plan.length) {
+        h += '<div class="st-now"><div class="n">✓ Stretching fatto</div><div class="d">Buon recupero.</div></div>' +
+             '<div class="st-btns" style="grid-template-columns:1fr;"><button type="button" class="st-b1" id="st-end">Chiudi</button></div>';
+    } else {
+        var step = p.plan[p.i], m = list[step.mi];
+        var nxt = step.k === 'gap' ? p.plan[p.i + 1] : null;
+        var show = nxt ? list[nxt.mi] : m;
+        var sideTxt;
+        if (step.k === 'gap') sideTxt = (nxt && nxt.mi !== step.mi) ? 'Prossima posizione' : (nxt && nxt.side >= 0 ? 'Cambia lato' : 'Ancora una volta');
+        else sideTxt = (step.side === 0 ? 'Lato destro · ' : step.side === 1 ? 'Lato sinistro · ' : '') + 'tenuta ' + (step.rep + 1) + ' di ' + ST_REPS;
+        var done = p.plan.slice(0, p.i).reduce(function(a, x) { return a + x.t; }, 0) + (step.t - p.left);
+        h += '<div class="st-now"><div class="n">' + show.n + '</div><div class="d">' + show.d + '</div>' +
+             '<div class="side' + (step.k === 'gap' ? ' gap' : '') + '">' + sideTxt + '</div>' +
+             '<div class="st-clock' + (step.k === 'gap' ? ' gap' : '') + (p.run ? '' : ' idle') + '" id="st-clock">' + wpFmt(p.left) + '</div></div>' +
+             '<div class="st-bar"><i id="st-bar" style="width:' + Math.round(done / tot * 100) + '%"></i></div>' +
+             '<div class="st-btns"><button type="button" class="st-b1" id="st-pp">' + (p.run ? '⏸ Pausa' : '▶ Riprendi') + '</button>' +
+             '<button type="button" class="st-b2" id="st-next">Salta posizione</button></div>';
+        h += '<div class="st-list">';
+        var curMi = (step.k === 'gap' && nxt) ? nxt.mi : step.mi;
+        list.forEach(function(x, k) {
+            var cls = k < curMi ? 'done' : (k === curMi ? 'cur' : '');
+            h += '<div class="st-row ' + cls + '"><div class="st-dot">' + (k < curMi ? '✓' : '') + '</div><div class="n">' + x.n + '</div>' +
+                 '<div class="r">' + (x.lati ? '2 × 30s per lato' : '2 × 30s') + '</div></div>';
+        });
+        h += '</div><button type="button" class="st-skip" id="st-quit">Termina lo stretching</button>';
+    }
+    box.innerHTML = h;
+    stWire();
+}
+
+function stWire() {
+    var b;
+    if ((b = document.getElementById('st-go'))) b.onclick = function() { stGoto(0); };
+    if ((b = document.getElementById('st-no'))) b.onclick = stClose;
+    if ((b = document.getElementById('st-end'))) b.onclick = stClose;
+    if ((b = document.getElementById('st-quit'))) b.onclick = stClose;
+    if ((b = document.getElementById('st-pp'))) b.onclick = function() {
+        if (stS.run) { stS.left = stLeft(); stStop(); stRender(); return; }
+        stStart();
+    };
+    if ((b = document.getElementById('st-next'))) b.onclick = function() {
+        // Al primo esercizio del muscolo successivo
+        var cur = stS.plan[stS.i], mi = cur.k === 'gap' && stS.plan[stS.i + 1] ? stS.plan[stS.i + 1].mi : cur.mi;
+        var j = stS.i + 1;
+        while (j < stS.plan.length && !(stS.plan[j].k === 'hold' && stS.plan[j].mi > mi)) j++;
+        stGoto(j);
+    };
+}
+
+function stGoto(i) {
+    stStop();
+    stS.i = i;
+    if (i >= stS.plan.length) { _woBeep(660, 0.12, 'sine'); setTimeout(function(){ _woBeep(880, 0.25, 'sine'); }, 140); stRender(); return; }
+    stS.left = stS.plan[i].t;
+    stStart();
+}
+function stStart() {
+    stS.run = true; stS.endsAt = Date.now() + stS.left * 1000; stS.lastBeep = null;
+    var k = stS.plan[stS.i].k;
+    if (k === 'hold') _woBeep(660, 0.15, 'sine');
+    _stTimer = setInterval(stTick, 250);
+    stRender();
+}
+function stTick() {
+    if (!stS || !document.getElementById('st-overlay')) { stStop(); return; }
+    var left = stLeft(); stS.left = left;
+    var step = stS.plan[stS.i];
+    var ck = document.getElementById('st-clock'); if (ck) ck.textContent = wpFmt(left);
+    var tot = stTotal(stS.plan);
+    var done = stS.plan.slice(0, stS.i).reduce(function(a, x) { return a + x.t; }, 0) + (step.t - left);
+    var br = document.getElementById('st-bar'); if (br) br.style.width = Math.round(done / tot * 100) + '%';
+    if (step.k === 'hold' && left > 0 && left <= 3 && stS.lastBeep !== left) { stS.lastBeep = left; _woBeep(440, 0.12, 'square'); }
+    if (left === 0) {
+        if (step.k === 'hold') _woBeep(880, 0.3, 'sine');
+        stGoto(stS.i + 1);
+    }
+}
+
 // Sullo schermo c'e' gia' qualcos'altro? La celebrazione del capitolo, il
 // riepilogo della progressione e le domande sull'ultima serie hanno la
 // precedenza: il diario aspetta che lo schermo sia libero.
@@ -20668,6 +20901,9 @@ function awdBusy() {
     if (pc && pc.style.display && pc.style.display !== 'none') return true;
     if (document.querySelector('.pmodal.open')) return true;
     if (document.getElementById('awd-overlay')) return true;
+    // Lo stretching finale viene prima del diario: finche' e' offerto o in
+    // corso, la domanda aspetta.
+    if (window._stPending || document.getElementById('st-overlay')) return true;
     return false;
 }
 
@@ -20676,7 +20912,10 @@ function awdBusy() {
 function awdAskAfterWorkout(w, di) {
     var tries = 0;
     (function attempt() {
-        if (tries++ > 140) return;
+        // Lo stretching puo' durare dieci minuti: quel tempo non conta nel
+        // limite di attesa del diario.
+        var inStretch = !!(window._stPending || document.getElementById('st-overlay'));
+        if (!inStretch && tries++ > 140) return;
         if (awdBusy()) { setTimeout(attempt, 850); return; }
         awdShowSheet(w, di);
     })();
