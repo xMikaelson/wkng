@@ -4658,7 +4658,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '298';
+const APP_VERSION = '299';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -6006,20 +6006,13 @@ function renderWarmupBlock(exName, exercises, container) {
                             // conversioni fra schemi diversi e i record non
                             // saprebbero su quante ripetizioni e' misurato.
                             if (_schemeReps) mtrRepsSet(capturedEx.name, _schemeReps);
-                            APP.savedProtocols && APP.savedProtocols.forEach(function(p) {
-                                if (!p.exercises) return;
-                                var pSlot = (protoResolveSlot(p)||'').toLowerCase();
-                                var pMassa = pSlot==='push'||pSlot==='pull'||pSlot==='legs';
-                                var touched = false;
-                                p.exercises.forEach(function(ex) {
-                                    if (exSameExercise(ex.name, capturedEx.name)) {
-                                        ex.mtrValue = val;
-                                        ex.loads = (pMassa ? MTR_MASSA_LOADS : WEEK_LOADS).map(function(p2){ return Math.round(val*p2*2)/2; });
-                                        touched = true;
-                                    }
-                                });
+                            // Carichi di tutte le schede, e della seduta di
+                            // oggi, con la regola dell'apertura dell'app
+                            // (v.299: prima la seduta in corso restava ai
+                            // carichi vecchi fino alla riapertura).
+                            mtrApplyToPlans(capturedEx.name, val).forEach(function(p) {
                                 // Persisti su Supabase così l'MTR sopravvive ai login
-                                if (touched) { try { saveProtocolToSupabase(p); } catch(e) {} }
+                                try { saveProtocolToSupabase(p); } catch(e) {}
                             });
                             saveState();
                             renderWarmupBlock(exName, exercises, container);
@@ -8042,32 +8035,17 @@ function renderPlanPage(w) {
     if (w === DELOAD_WEEK && isUnlocked) {
         const deloadBanner = document.createElement('div');
         deloadBanner.style.cssText = 'background:rgba(99,102,241,0.09);border:1px solid rgba(99,102,241,0.25);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:0.62rem;line-height:1.5;color:#cbd5e1;';
-        var hasDeload = APP.savedProtocols.some(function(p){ return p.name && p.name.toLowerCase().includes('deload'); });
-        var hasSource = APP.savedProtocols.some(function(p){ var n=(p.name||'').toLowerCase(); return n.includes('upper')||n.includes('lower'); });
+        // v.299 — Tolti "Genera Manuale" e "Genera con AI": usavano un
+        // elenco di esercizi (DELOAD_EXERCISES_DB) mai definito e al tocco
+        // andavano in errore senza fare nulla. Non servono: il Deload e'
+        // gia' applicato a ogni scheda (srForChapter: serie dimezzate,
+        // carico al 90% dell'MTR, Bosquet et al. 2007; Mujika & Padilla
+        // 2003). Il generatore AI chiedeva inoltre 3 soli esercizi per
+        // seduta, una seconda regola di scarico senza fonte.
         deloadBanner.innerHTML = '<div style="font-weight:800;color:#818cf8;margin-bottom:4px;">🔄 Settimana Deload</div>' +
-            'Carico all\'<strong>' + Math.round(WEEK_LOADS[DELOAD_WEEK] * 100) + '%</strong> dell\'MTR · ' +
+            'Carico al <strong>' + Math.round(WEEK_LOADS[DELOAD_WEEK] * 100) + '%</strong> dell\'MTR · ' +
             'Serie <strong>dimezzate</strong> · Ripetizioni invariate.<br>' +
             'Questa settimana serve al corpo per recuperare e supercompensare: non saltarla!';
-        if (!hasDeload && hasSource) {
-            var btnRow = document.createElement('div');
-            btnRow.style.cssText = 'display:flex;gap:8px;margin-top:10px;';
-            var btnManual = document.createElement('button');
-            btnManual.textContent = '⚙️ Genera Manuale';
-            btnManual.style.cssText = 'flex:1;padding:8px 6px;background:rgba(99,102,241,0.2);color:#818cf8;border:1px solid rgba(99,102,241,0.4);border-radius:8px;font-size:0.68rem;font-weight:700;cursor:pointer;';
-            btnManual.onclick = function(){ openDeloadManualForm(); };
-            var btnAI = document.createElement('button');
-            btnAI.textContent = '✨ Genera con AI';
-            btnAI.style.cssText = 'flex:1;padding:8px 6px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border:none;border-radius:8px;font-size:0.68rem;font-weight:700;cursor:pointer;';
-            btnAI.onclick = function(){ generateDeloadProtocol('ai'); };
-            btnRow.appendChild(btnManual);
-            btnRow.appendChild(btnAI);
-            deloadBanner.appendChild(btnRow);
-        } else if (hasDeload) {
-            var doneNote = document.createElement('div');
-            doneNote.style.cssText = 'margin-top:8px;color:#4f46e5;font-weight:700;font-size:0.65rem;';
-            doneNote.textContent = '✓ Protocollo deload già creato';
-            deloadBanner.appendChild(doneNote);
-        }
         block.appendChild(deloadBanner);
     }
 
@@ -8880,24 +8858,14 @@ function buildProtoEditorBox(proto, weekIdx) {
                     draft[idx].mtrValue = mtrValue;
                     kgInput.value = loads[weekIdx] != null ? loads[weekIdx] : baseWeight;
                     onManualEdit();
-                    // 3. Aggiorna TUTTI i protocolli che contengono questo esercizio
-                    APP.savedProtocols.forEach(function(p) {
-                        if (!p.exercises) return;
-                        p.exercises.forEach(function(pEx) {
-                            if (!exSameExercise(pEx.name, ex.name)) return;
-                            // Lo stesso esercizio può comparire con schemi diversi
-                            // (es. 5x5 in Upper e 4x10 in Push): l'MTR è uno solo,
-                            // quindi lo riportiamo alle ripetizioni di QUESTO schema.
-                            // Schema del capitolo di quella scheda, non quello
-                            // salvato: e' li' che vive la progressione.
-                            var pSr = (typeof srForChapter === 'function') ? srForChapter(pEx, weekIdx, p) : pEx.sr;
-                            var pRef = mtrForReps(ex.name, srReps(pSr)) || mtrValue;
-                            var pLoads = WEEK_LOADS.map(function(q){ return Math.round(pRef*q*2)/2; });
-                            pEx.mtrValue = mtrValue;
-                            pEx.loads = pLoads;
-                            pEx.baseWeight = pLoads[weekIdx] || pLoads[0];
-                        });
-                    });
+                    // 3. Aggiorna TUTTI i protocolli che contengono questo esercizio.
+                    // Lo stesso esercizio puo' comparire con schemi diversi
+                    // (es. 5x5 in Upper e 4x10 in Push): l'MTR e' uno solo e
+                    // mtrApplyToPlans lo riporta allo schema SALVATO di ognuno,
+                    // con la stessa regola dell'apertura dell'app (v.299:
+                    // prima qui si usava lo schema del capitolo in corso, e
+                    // riaprendo l'app i carichi salivano fino al 10%).
+                    mtrApplyToPlans(ex.name, mtrValue);
                     // 4. Salva
                     saveState();
                     APP.savedProtocols.forEach(function(p) { saveProtocolToSupabase(p); });
@@ -8907,7 +8875,7 @@ function buildProtoEditorBox(proto, weekIdx) {
                     if (typeof renderPlanPage === 'function') renderPlanPage(APP.selectedViewWeek || 0);
                     if (typeof updateStats === 'function') updateStats();
                     showToast('🎯 MTR salvato su tutti i protocolli!', 'success');
-                }, _repsCh, proto.name);
+                }, _repsCh, proto.name, draft[idx] && draft[idx].sr);
             };
             // Bottone sostituzione: propone alternative per gli stessi muscoli,
             // limitate all'attrezzatura dichiarata nel wizard.
@@ -11179,16 +11147,92 @@ function awkRepK(name) {
 function mtrForReps(name, targetReps) {
     var kg = parseFloat(mtrGet(name));
     if (!kg || kg <= 0) return null;
-    var base = mtrRepsGet(name);
-    if (!base || !targetReps || base === targetReps) return kg;
+    return mtrConvert(name, kg, mtrRepsGet(name), targetReps);
+}
+
+// Stessa conversione, su un valore qualsiasi invece che su quello salvato.
+function mtrConvert(name, kg, fromReps, toReps) {
+    kg = parseFloat(kg) || 0;
+    if (!(kg > 0)) return 0;
+    if (!fromReps || !toReps || fromReps === toReps) return kg;
     var k = awkRepK(name);
-    var e1rm = kg * (1 + base / k);
-    return Math.round((e1rm / (1 + targetReps / k)) * 2) / 2;
+    return Math.round((kg * (1 + fromReps / k) / (1 + toReps / k)) * 2) / 2;
+}
+
+/* ── UNA SOLA REGOLA PER I CARICHI DEL CICLO (v.299) ──────────────────
+   I carichi dei cinque capitoli sono la scala MTR_LADDER applicata al
+   massimo tecnico riportato alle ripetizioni dello schema SALVATO
+   dell'esercizio (Epley, test xRM in Baechle & Earle, NSCA 2008). E' la
+   regola con cui migrateMtrLoads li ricalcola a ogni apertura dell'app,
+   ed e' quella su cui sono verificate le zone ACSM 2009 scritte sopra
+   MTR_LADDER.
+   Fino alla v.298 la correzione dalla seduta, il 🎯 dell'editor, il
+   riscaldamento e l'elenco MTR del profilo usavano ognuno una base
+   diversa (le ripetizioni del capitolo in corso, o nessuna conversione):
+   la finestra confermava un carico e alla riapertura l'app ne usava un
+   altro, fino al 10% piu' alto nei capitoli 1-3. Ora tutte le strade
+   passano da qui e il numero confermato e' quello che resta. */
+function mtrPlanLoads(name, mtr, baseReps, sr) {
+    var ref = mtrConvert(name, mtr, baseReps, srReps(sr));
+    if (!(ref > 0)) return null;
+    return WEEK_LOADS.map(function(p) { return Math.round(ref * p * 2) / 2; });
+}
+
+// L'MTR (sulla sua base di ripetizioni) che con mtrPlanLoads da' esattamente
+// kg nel capitolo wIdx dello schema sr. La scala e la conversione arrotondano
+// al mezzo chilo: si prova anche il mezzo chilo accanto, per non cambiare
+// il numero che l'atleta ha confermato.
+function mtrForPlannedKg(name, kg, wIdx, sr, baseReps) {
+    var pct = WEEK_LOADS[wIdx];
+    kg = awRoundKg(kg);
+    if (!(kg > 0) || !(pct > 0)) return 0;
+    var s = srReps(sr);
+    var k = awkRepK(name);
+    var ref = kg / pct;
+    var guess = awRoundKg((s && baseReps && s !== baseReps)
+        ? ref * (1 + s / k) / (1 + baseReps / k)
+        : ref);
+    var steps = [0, 0.5, -0.5, 1, -1];
+    for (var i = 0; i < steps.length; i++) {
+        var c = guess + steps[i];
+        if (!(c > 0)) continue;
+        var l = mtrPlanLoads(name, c, baseReps, sr);
+        if (l && l[wIdx] === kg) return c;
+    }
+    return guess;
+}
+
+// Scrive i carichi che derivano dall'MTR su ogni scheda che contiene
+// l'esercizio, e sulla seduta di oggi. Ogni esercizio riceve un elenco
+// nuovo: la seduta e la scheda possono condividere lo stesso, e scalarlo
+// sul posto lo alzava due volte (vedi woApplyTwoForTwo).
+function mtrApplyToPlans(name, mtr) {
+    var base = mtrRepsGet(name);
+    var wi = APP.selectedViewWeek || 0;
+    function fix(e) {
+        if (!e || !e.name || !exSameExercise(e.name, name)) return false;
+        if (typeof srIsTime === 'function' && srIsTime(e.sr)) return false;
+        var l = mtrPlanLoads(e.name, mtr, base, e.sr);
+        if (!l) return false;
+        e.loads = l;
+        e.mtrValue = mtr;
+        e.baseWeight = l[wi] || l[0];
+        return true;
+    }
+    (APP.exerciseData || []).forEach(fix);
+    var touched = [];
+    (APP.savedProtocols || []).forEach(function(p) {
+        var hit = false;
+        (p.exercises || []).forEach(function(e) { if (fix(e)) hit = true; });
+        if (hit) touched.push(p);
+    });
+    return touched;
 }
 var _mtrWeekIdx  = 0;
 var _mtrSlot     = 'forza'; // 'forza' o 'massa'
 var _mtrExName   = '';
 var _mtrSchemeReps = null; // ripetizioni previste dallo schema dell'esercizio
+var _mtrRefSr = null;      // schema salvato della scheda: base dei carichi (v.299)
 
 /* ── Sostituzione esercizio ─────────────────────────────────────────────
    Mostra solo alternative che allenano lo stesso gruppo muscolare e che si
@@ -11408,8 +11452,12 @@ function swapConfirm() {
 }
 
 var _mtrProtoName = '';
-function mtrOpen(exName, weekIdx, slot, callback, defaultReps, protoName) {
+function mtrOpen(exName, weekIdx, slot, callback, defaultReps, protoName, refSr) {
     _mtrProtoName = protoName || '';
+    // Le ripetizioni proposte sono quelle del capitolo (piu' facili da
+    // misurare oggi); i carichi pero' si calcolano dallo schema salvato, come
+    // all'apertura dell'app (mtrPlanLoads).
+    _mtrRefSr = (refSr && srReps(refSr)) ? refSr : null;
     _mtrCallback = callback;
     _mtrWeekIdx  = weekIdx || 0;
     _mtrSlot     = slot || 'forza';
@@ -11500,24 +11548,35 @@ function mtrOpen(exName, weekIdx, slot, callback, defaultReps, protoName) {
 // Carico di riferimento per questo esercizio. Se l'MTR è stato misurato su un
 // numero di ripetizioni diverso da quello dello schema, lo converte con Epley:
 // dichiarare "80 kg su 8 rip" su una scheda 5x5 non equivale a 80 kg su 5.
+// v.299: stesso coefficiente di mtrForReps (prima qui c'era il 30 fisso).
 function mtrRefLoad() {
     var val = parseFloat(document.getElementById('mtr-input').value);
     if (!val || val <= 0) return null;
     var repsEl = document.getElementById('mtr-reps');
     var reps = repsEl ? parseInt(repsEl.value) : 0;
     if (!reps || !_mtrSchemeReps || reps === _mtrSchemeReps) return val;
-    var e1rm = val * (1 + reps / 30);
-    return Math.round((e1rm / (1 + _mtrSchemeReps / 30)) * 2) / 2;
+    return mtrConvert(_mtrExName, val, reps, _mtrSchemeReps);
+}
+
+// I carichi del ciclo che deriveranno dal valore digitato: gli stessi che
+// l'app ricalcolera' a ogni apertura (mtrPlanLoads sullo schema salvato).
+function mtrPreviewLoads() {
+    var val = parseFloat(document.getElementById('mtr-input').value);
+    if (!val || val <= 0) return null;
+    var repsEl = document.getElementById('mtr-reps');
+    var reps = repsEl ? parseInt(repsEl.value) : 0;
+    if (_mtrRefSr && reps > 0) return mtrPlanLoads(_mtrExName, val, reps, _mtrRefSr);
+    var ref = mtrRefLoad();
+    return ref == null ? null : WEEK_LOADS.map(function(p){ return Math.round(ref * p * 2) / 2; });
 }
 
 function mtrUpdatePreview() {
     var ref = mtrRefLoad();
+    var pl = mtrPreviewLoads();
     for (var i = 0; i < 5; i++) {
         var ef = document.getElementById('mf' + i);
         if (!ef) continue;
-        ef.textContent = (ref == null)
-            ? '—'
-            : (Math.round(ref * WEEK_LOADS[i] * 2) / 2) + ' kg';
+        ef.textContent = (pl == null) ? '—' : pl[i] + ' kg';
     }
     // Avvisa quando i carichi non derivano direttamente dal valore digitato
     var note = document.getElementById('mtr-conv-note');
@@ -11541,12 +11600,10 @@ function mtrApply() {
     var repsEl = document.getElementById('mtr-reps');
     var reps = repsEl ? parseInt(repsEl.value) : 0;
     if (!reps || reps <= 0) { showToast('Indica su quante ripetizioni', 'error'); if (repsEl) repsEl.focus(); return; }
+    var loads = mtrPreviewLoads();   // gli stessi numeri mostrati nell'anteprima
+    if (!loads) { showToast('Inserisci il massimo tecnico', 'error'); return; }
     if (_mtrExName) mtrRepsSet(_mtrExName, reps);
-    var ref = mtrRefLoad() || val;   // convertito se la base differisce dallo schema
-    var forzaLoads = WEEK_LOADS.map(function(p){ return Math.round(ref * p * 2) / 2; });
-    var massaLoads = MTR_MASSA_LOADS.map(function(p){ return Math.round(ref * p * 2) / 2; });
-    var isForza = _mtrSlot === 'forza' || _mtrSlot === 'upper' || _mtrSlot === 'lower';
-    var loads = isForza ? forzaLoads : massaLoads;
+    var forzaLoads = loads, massaLoads = loads;
     var baseWeight = loads[_mtrWeekIdx] != null ? loads[_mtrWeekIdx] : loads[0];
     // IMPORTANTE: salva callback PRIMA di mtrClose (che lo azzera)
     var cb = _mtrCallback;
@@ -11559,176 +11616,6 @@ function mtrClose() {
     if (overlay) overlay.classList.remove('active');
     _mtrCallback = null;
 }
-
-function generateDeloadProtocol(mode) {
-    var upperProto = null, lowerProto = null;
-    APP.savedProtocols.forEach(function(p) {
-        var n = (p.name || '').toLowerCase();
-        if (!upperProto && n.includes('upper')) upperProto = p;
-        if (!lowerProto && n.includes('lower')) lowerProto = p;
-    });
-
-    if (!upperProto && !lowerProto) {
-        showToast('Nessun protocollo Upper o Lower trovato', 'error');
-        return;
-    }
-
-    // v.182 — allineato alla regola del Deload automatico: si dimezzano le
-    // SERIE e si mantengono ripetizioni e carico. Prima toglieva una serie
-    // sola, e in piu' il carico veniva dimezzato (vedi addCompound): due
-    // regole diverse per la stessa settimana, ed entrambe in contrasto con la
-    // logica del taper su cui il Chapter 5 e' costruito.
-    function deloadSr(sr) {
-        return woDeloadSr(sr);
-    }
-
-    function buildDeloadName() {
-        var parts = [upperProto ? upperProto.name : '', lowerProto ? lowerProto.name : ''].filter(Boolean);
-        var base = parts.join(' + ').replace(/upper|lower/gi, '').replace(/\s{2,}/g, ' ').trim().replace(/[-–—]+$/, '').trim();
-        return (base ? base + ' — ' : '') + 'Full Body Deload';
-    }
-
-    if (mode === 'manual') {
-        // Logica manuale: prende i compound (primi 3-4 per protocollo), mantiene
-        // il carico del ciclo e dimezza le serie, come il Deload automatico.
-        var exercises = [];
-        function addCompound(proto) {
-            if (!proto || !proto.exercises) return;
-            // Prende i primi 4 esercizi (solitamente i compound sono all'inizio)
-            proto.exercises.slice(0, 4).forEach(function(ex) {
-                // Il carico NON si dimezza: nel deload cala il volume, non
-                // l'intensita' (Bosquet et al. 2007; Mujika & Padilla 2003).
-                // Dimezzando il baseWeight e applicandoci sopra la scala si
-                // finiva al ~30% dell'MTR — detraining, non scarico — mentre
-                // il messaggio a schermo prometteva l'85%.
-                var base = awRoundKg(ex.baseWeight || 0);
-                var srcLoads = (Array.isArray(ex.loads) && ex.loads.length === WEEK_LOADS.length)
-                    ? ex.loads.slice()
-                    : WEEK_LOADS.map(function(p){ return awRoundKg(base * p); });
-                exercises.push({
-                    name: ex.name,
-                    sr: deloadSr(ex.sr),
-                    baseWeight: base,
-                    mtrValue: ex.mtrValue,
-                    loads: srcLoads
-                });
-            });
-        }
-        addCompound(upperProto);
-        addCompound(lowerProto);
-        // Deduplica per nome
-        var seen = {};
-        exercises = exercises.filter(function(ex) {
-            if (seen[ex.name]) return false;
-            seen[ex.name] = true;
-            return true;
-        });
-        var newProto = { id: 'proto_deload_' + Date.now(), name: buildDeloadName(), exercises: exercises };
-        APP.savedProtocols.push(newProto);
-        saveState();
-        if (typeof saveProtocolToSupabase === 'function') saveProtocolToSupabase(newProto);
-        renderProtocolList();
-        renderPlanPage(DELOAD_WEEK);
-        showToast('⚙️ Deload creato: ' + exercises.length + ' esercizi, serie dimezzate al ' +
-                  Math.round(WEEK_LOADS[DELOAD_WEEK] * 100) + '% del training max', 'success');
-        return;
-    }
-
-    // Modalità AI
-    var btn = document.querySelector('[onclick*="generateDeloadProtocol"]');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ AI in elaborazione...'; }
-
-    // Filtra: manda all'AI solo gli esercizi compound (quelli presenti in DELOAD_EXERCISES_DB)
-    // Gli isolati (curl, lateral raise, leg curl, ecc.) vengono esclusi prima del prompt
-    var compoundNames = DELOAD_EXERCISES_DB.map(function(e){ return e.nome.toLowerCase(); });
-    function isCompound(exName) {
-        var n = (exName || '').toLowerCase();
-        // Match diretto con il DB
-        if (compoundNames.some(function(c){ return n.includes(c) || c.includes(n); })) return true;
-        // Keyword compound aggiuntivi
-        var compoundKeywords = ['squat','stacco','panca','rematore','press','trazioni','lat machine','dip','lunge','affondo','hip thrust','leg press','hack','clean','thruster'];
-        // Keyword isolati — escludere
-        var isoKeywords = ['curl','lateral','alzata','scrollate','shrug','fly','croci','pullover','kickback','extension','leg curl','calf','polpaccio','addominali','crunch','plank','twist','raise'];
-        if (isoKeywords.some(function(k){ return n.includes(k); })) return false;
-        if (compoundKeywords.some(function(k){ return n.includes(k); })) return true;
-        return false;
-    }
-
-    function fmtExercises(proto) {
-        if (!proto || !proto.exercises || !proto.exercises.length) return 'Nessuno';
-        var filtered = proto.exercises.filter(function(ex){ return isCompound(ex.name); });
-        if (filtered.length === 0) return 'Nessuno';
-        return filtered.map(function(ex) {
-            return '- ' + exDisplay(ex.name) + ' | ' + ex.sr + ' | ' + (ex.baseWeight || 0) + 'kg';
-        }).join('\n');
-    }
-
-    var upperList = upperProto ? '**' + upperProto.name + '** (solo compound):\n' + fmtExercises(upperProto) : '';
-    var lowerList = lowerProto ? '**' + lowerProto.name + '** (solo compound):\n' + fmtExercises(lowerProto) : '';
-
-    if (!upperList.includes('- ') && !lowerList.includes('- ')) {
-        showToast('Nessun esercizio compound trovato nei protocolli', 'error');
-        if (btn) { btn.disabled = false; btn.textContent = '✨ Genera con AI'; }
-        return;
-    }
-
-    var compoundPermessi = DELOAD_EXERCISES_DB.map(function(e){ return e.nome; }).join(', ');
-
-    var prompt = 'Sei un coach di forza esperto. Crea un protocollo Full Body Deload basato sulla letteratura scientifica (Israetel, Krieger, Helms).\n\n' +
-        'REGOLA FONDAMENTALE: 3 esercizi TOTALI, uno per pattern. Non di più, non di meno.\n\n' +
-        'SELEZIONE:\n' +
-        '- 1 PUSH: scegli il movimento di spinta principale (preferisci Panca Piana o Military Press)\n' +
-        '- 1 PULL: scegli il movimento di tirata principale (preferisci Trazioni o Rematore con Bilanciere)\n' +
-        '- 1 LOWER: scegli il movimento di gambe principale (preferisci Squat o Stacco da Terra)\n' +
-        'Se un pattern non è presente negli esercizi disponibili, scegli il più compound tra quelli esistenti.\n\n' +
-        'PARAMETRI DELOAD (nel deload cala il VOLUME, non l\'intensità):\n' +
-        '- Carico: lascia invariato il baseWeight originale. NON ridurlo: ci pensa la scala del ciclo.\n' +
-        '- Serie: dimezza il formato originale, minimo 2 (es. 4×8 → 2×8, 5×5 → 3×5)\n' +
-        '- Ripetizioni: invariate rispetto allo schema originale\n' +
-        '- VIETATO: curl, lateral raise, alzate, leg curl, leg extension, calf raise, croci, fly, face pull, crunch, plank, qualsiasi isolamento\n' +
-        '- Usa SOLO esercizi presenti nella lista ESERCIZI DISPONIBILI\n\n' +
-        'ESERCIZI DISPONIBILI (già filtrati, solo compound):\n' + [upperList, lowerList].filter(function(s){ return s.includes('- '); }).join('\n\n') + '\n\n' +
-        'Rispondi SOLO con array JSON puro, esattamente 3 elementi, nessun testo, nessun markdown:\n' +
-        '[{"name":"Nome","sr":"2×8","baseWeight":40},{"name":"Nome","sr":"2×8","baseWeight":60},{"name":"Nome","sr":"3×5","baseWeight":80}]';
-
-    var AI_COACH_URL = 'https://trojbppshlfhrsimyxjl.supabase.co/functions/v1/ai-coach';
-    var ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyb2picHBzaGxmaHJzaW15eGpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0MzgzNTgsImV4cCI6MjA4NzAxNDM1OH0.rKKyXa7N5XoBnN2kmVZGS4Lr2kax1NuodbyHD_wGjK8';
-
-    fetch(AI_COACH_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ANON_KEY, 'apikey': ANON_KEY },
-        body: JSON.stringify({ messages: [{ role: 'user', content: prompt }], max_tokens: 800 })
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        var text = '';
-        if (data && data.content && Array.isArray(data.content)) {
-            data.content.forEach(function(block) { if (block.type === 'text') text += block.text; });
-        }
-        var match = text.match(/\[[\s\S]*\]/);
-        if (!match) throw new Error('Risposta AI non valida');
-        var exercises = JSON.parse(match[0]);
-        if (!Array.isArray(exercises) || !exercises.length) throw new Error('Lista vuota');
-        // Tronca a 4 max per sicurezza (scientificamente 3 è il target)
-        exercises = exercises.slice(0, 4);
-        exercises = exercises.map(function(ex) {
-            var base = parseFloat(ex.baseWeight) || 0;
-            return { name: ex.name || '', sr: ex.sr || '3\u00d78', baseWeight: base, loads: WEEK_LOADS.map(function(p){ return Math.round(base*p*2)/2; }) };
-        });
-        var newProto = { id: 'proto_deload_' + Date.now(), name: buildDeloadName(), exercises: exercises };
-        APP.savedProtocols.push(newProto);
-        saveState();
-        if (typeof saveProtocolToSupabase === 'function') saveProtocolToSupabase(newProto);
-        renderProtocolList();
-        renderPlanPage(DELOAD_WEEK);
-        showToast('✨ Deload AI creato con ' + exercises.length + ' esercizi!', 'success');
-    })
-    .catch(function(err) {
-        if (btn) { btn.disabled = false; btn.textContent = '✨ Genera con AI'; }
-        showToast('Errore AI: ' + err.message, 'error');
-    });
-}
-
 
 function planSetupDrag(el, protoId, protoName, sigla) {
     // Prevent iOS context menu / text selection on long press
@@ -12391,20 +12278,12 @@ function renderMtrManager() {
                 var val = parseFloat(capturedInput.value);
                 if (!val || val <= 0) { capturedInput.value = mtrGet(capturedName); return; }
                 mtrSet(capturedName, val);
-                // Propaga a tutti i protocolli con questo esercizio
-                APP.savedProtocols && APP.savedProtocols.forEach(function(p) {
-                    if (!p.exercises) return;
-                    var pSlot = (protoResolveSlot(p)||'').toLowerCase();
-                    var pMassa = pSlot==='push'||pSlot==='pull'||pSlot==='legs';
-                    var touched = false;
-                    p.exercises.forEach(function(ex) {
-                        if (exSameExercise(ex.name, capturedName)) {
-                            ex.mtrValue = val;
-                            ex.loads = (pMassa ? MTR_MASSA_LOADS : WEEK_LOADS).map(function(p2){ return Math.round(val*p2*2)/2; });
-                            touched = true;
-                        }
-                    });
-                    if (touched) { try { saveProtocolToSupabase(p); } catch(e) {} }
+                // Propaga a tutti i protocolli con questo esercizio, con la
+                // stessa regola dell'apertura dell'app (v.299: prima il valore
+                // veniva moltiplicato per la scala senza riportarlo allo
+                // schema di ciascuna scheda, e riaprendo i carichi cambiavano).
+                mtrApplyToPlans(capturedName, val).forEach(function(p) {
+                    try { saveProtocolToSupabase(p); } catch(e) {}
                 });
                 saveState();
                 showToast('🎯 MTR aggiornato: ' + capturedName + ' → ' + val + ' kg', 'success');
@@ -12561,225 +12440,6 @@ function pmDeleteProtocols(protos) {
     if (typeof renderPlanPage === 'function') renderPlanPage(APP.selectedViewWeek || 0);
     showToast(protos.length > 1 ? protos.length + ' protocolli eliminati' : 'Protocollo eliminato', 'success');
 }
-
-function openDeloadManualForm() {
-    var overlay = document.getElementById('deload-manual-overlay');
-    if (overlay) { overlay.remove(); return; }
-    overlay = document.createElement('div');
-    overlay.id = 'deload-manual-overlay';
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(10,14,26,0.97);z-index:9000;display:flex;flex-direction:column;';
-
-    // ── Scrollable content ──
-    var content = document.createElement('div');
-    content.style.cssText = 'flex:1;overflow-y:auto;padding:max(env(safe-area-inset-top),60px) 20px 16px;';
-
-    // Header
-    var header = document.createElement('div');
-    header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;';
-    var title = document.createElement('div');
-    title.style.cssText = 'font-size:1.05rem;font-weight:800;color:#e2e8f0;';
-    title.textContent = '\u2699\ufe0f Crea Deload Manuale';
-    var btnClose = document.createElement('button');
-    btnClose.textContent = '\u2715';
-    btnClose.style.cssText = 'background:rgba(255,255,255,0.08);border:none;border-radius:50%;width:32px;height:32px;color:#cbd5e1;font-size:0.85rem;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1;';
-    btnClose.onclick = function(){ overlay.remove(); };
-    header.appendChild(title);
-    header.appendChild(btnClose);
-    content.appendChild(header);
-
-    // Info box
-    var info = document.createElement('div');
-    info.style.cssText = 'background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);border-radius:12px;padding:11px 14px;font-size:0.67rem;color:#cbd5e1;line-height:1.7;margin-bottom:20px;';
-    // v.182 — il carico dichiarato qui non corrispondeva a quello applicato:
-    // il codice prendeva il 50% dell'MTR e ci applicava sopra la scala del
-    // ciclo, arrivando al ~42%. Ora il valore mostrato e quello usato coincidono.
-    info.innerHTML = '<div style="font-weight:700;color:#818cf8;margin-bottom:5px;">Regole scientifiche del Deload</div>' +
-        '<div style="display:grid;grid-template-columns:56px 1fr;gap:1px 10px;">' +
-        '<span style="color:#94a3b8;">Esercizi</span><span><strong style="color:#e2e8f0;">3 totali</strong> — 1 Push · 1 Pull · 1 Lower</span>' +
-        '<span style="color:#94a3b8;">Serie</span><span>3 (fisse) — volume ridotto</span>' +
-        '<span style="color:#94a3b8;">Reps</span><span>8-10 per set</span>' +
-        '<span style="color:#94a3b8;">Carico</span><span>' + Math.round(WEEK_LOADS[DELOAD_WEEK] * 100) + '% dell’MTR — intensità mantenuta</span>' +
-        '</div>' +
-        '<div style="margin-top:8px;font-size:0.62rem;color:#94a3b8;">Nello scarico si riduce il volume e si mantiene l\'intensità: è così che si smaltisce la fatica senza perdere gli adattamenti.</div>';
-    content.appendChild(info);
-
-    // Lista esercizi selezionati
-    var selectedLabel = document.createElement('div');
-    selectedLabel.style.cssText = 'font-size:0.65rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;';
-    selectedLabel.textContent = 'Esercizi selezionati';
-    content.appendChild(selectedLabel);
-
-    var exList = document.createElement('div');
-    exList.style.cssText = 'display:flex;flex-direction:column;gap:7px;min-height:40px;';
-    content.appendChild(exList);
-
-    var exercises = []; // {name, max, baseWeight, sr, loads}
-
-    function refreshExList() {
-        exList.innerHTML = '';
-        if (exercises.length === 0) {
-            var empty = document.createElement('div');
-            empty.style.cssText = 'color:#64748b;font-size:0.7rem;text-align:center;padding:12px 0;';
-            empty.textContent = 'Nessun esercizio aggiunto';
-            exList.appendChild(empty);
-            return;
-        }
-        exercises.forEach(function(ex, i) {
-            var row = document.createElement('div');
-            row.style.cssText = 'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:9px 12px;display:flex;align-items:center;gap:10px;';
-            var info2 = document.createElement('div');
-            info2.style.cssText = 'flex:1;min-width:0;';
-            info2.innerHTML = '<div style="font-size:0.75rem;font-weight:700;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHTML(exDisplay(ex.name)) + '</div>' +
-                '<div style="font-size:0.62rem;color:#94a3b8;margin-top:1px;">3\u00d78-10 \u00b7 <strong style="color:#cbd5e1;">' +
-                _fmtKg((ex.loads && ex.loads[DELOAD_WEEK]) || ex.baseWeight) + ' kg</strong> nel Deload \u00b7 MTR ' + _fmtKg(ex.max) + ' kg</div>';
-            var btnDel = document.createElement('button');
-            btnDel.textContent = '\u2715';
-            btnDel.style.cssText = 'background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.2);border-radius:6px;width:28px;height:28px;color:#f87171;cursor:pointer;font-size:0.72rem;flex-shrink:0;display:flex;align-items:center;justify-content:center;';
-            btnDel.onclick = function(){ exercises.splice(i, 1); refreshExList(); };
-            row.appendChild(info2);
-            row.appendChild(btnDel);
-            exList.appendChild(row);
-        });
-    }
-    refreshExList();
-
-    // Separatore
-    var sep = document.createElement('div');
-    sep.style.cssText = 'height:1px;background:rgba(255,255,255,0.06);margin:16px 0;';
-    content.appendChild(sep);
-
-    // Selezione per pattern
-    var patterns = [
-        { key: 'Push',  label: '🔼 Push',  color: '#f59e0b' },
-        { key: 'Pull',  label: '🔽 Pull',  color: '#06b6d4' },
-        { key: 'Lower', label: '🦵 Lower Body', color: '#10b981' }
-    ];
-
-    patterns.forEach(function(pat) {
-        var patLabel = document.createElement('div');
-        patLabel.style.cssText = 'font-size:0.65rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:' + pat.color + ';margin-bottom:7px;margin-top:14px;';
-        patLabel.textContent = pat.label;
-        content.appendChild(patLabel);
-
-        var grid = document.createElement('div');
-        grid.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
-
-        DELOAD_EXERCISES_DB.filter(function(e){ return e.pattern === pat.key; }).forEach(function(ex) {
-            var card = document.createElement('div');
-            var alreadyAdded = exercises.some(function(e){ return e.name === ex.nome; });
-            card.style.cssText = 'background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,' + (alreadyAdded ? '0.15' : '0.06') + ');border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;cursor:pointer;';
-
-            var cardInfo = document.createElement('div');
-            cardInfo.style.cssText = 'flex:1;min-width:0;';
-            cardInfo.innerHTML = '<div style="font-size:0.75rem;font-weight:700;color:' + (alreadyAdded ? '#64748b' : '#e2e8f0') + ';">' + ex.nome + '</div>' +
-                '<div style="font-size:0.62rem;color:#94a3b8;margin-top:1px;">' + ex.desc + '</div>';
-
-            var inputMax = document.createElement('input');
-            inputMax.type = 'number';
-            inputMax.placeholder = 'MTR kg';
-            inputMax.style.cssText = 'width:68px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:7px;padding:5px 8px;color:#e2e8f0;font-size:0.72rem;text-align:center;outline:none;flex-shrink:0;';
-
-            var btnAdd = document.createElement('button');
-            btnAdd.textContent = alreadyAdded ? '\u2713' : '+';
-            btnAdd.style.cssText = 'width:28px;height:28px;border-radius:7px;border:none;font-size:0.8rem;font-weight:700;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:' +
-                (alreadyAdded ? 'rgba(16,185,129,0.2)' : 'rgba(99,102,241,0.25)') + ';color:' + (alreadyAdded ? '#10b981' : '#818cf8') + ';';
-
-            btnAdd.onclick = function() {
-                if (alreadyAdded) return;
-                var max = parseFloat(inputMax.value);
-                if (!max || max <= 0) { showToast('Inserisci l\'MTR per ' + ex.nome, 'error'); inputMax.focus(); return; }
-                // Il valore inserito e' l'MTR dell'esercizio: la scala del
-                // ciclo si applica direttamente a quello, come ovunque nell'app.
-                // Prima veniva prima dimezzato e poi scalato, per cui nel
-                // Deload si finiva al ~42% invece dell'85% dichiarato.
-                var loadsA = WEEK_LOADS.map(function(p){ return awRoundKg(max * p); });
-                exercises.push({ name: ex.nome, max: max, mtrValue: max, baseWeight: loadsA[0], sr: '3\u00d78-10', loads: loadsA });
-                refreshExList();
-                // Ricostruisce la griglia aggiornando lo stato
-                renderPatternGrid();
-                content.scrollTop = 0;
-            };
-
-            card.appendChild(cardInfo);
-            card.appendChild(inputMax);
-            card.appendChild(btnAdd);
-            grid.appendChild(card);
-        });
-        content.appendChild(grid);
-    });
-
-    function renderPatternGrid() {
-        // Ricostruisce tutto il content dopo la lista selezionati
-        // più semplice: rimuove e ricrea da sep in poi
-        while (content.lastChild !== sep) content.removeChild(content.lastChild);
-        patterns.forEach(function(pat) {
-            var patLabel = document.createElement('div');
-            patLabel.style.cssText = 'font-size:0.65rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:' + pat.color + ';margin-bottom:7px;margin-top:14px;';
-            patLabel.textContent = pat.label;
-            content.appendChild(patLabel);
-            var grid2 = document.createElement('div');
-            grid2.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
-            DELOAD_EXERCISES_DB.filter(function(e){ return e.pattern === pat.key; }).forEach(function(ex) {
-                var alreadyAdded = exercises.some(function(e){ return e.name === ex.nome; });
-                var card2 = document.createElement('div');
-                card2.style.cssText = 'background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,' + (alreadyAdded ? '0.15' : '0.06') + ');border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;';
-                var ci2 = document.createElement('div');
-                ci2.style.cssText = 'flex:1;min-width:0;';
-                ci2.innerHTML = '<div style="font-size:0.75rem;font-weight:700;color:' + (alreadyAdded ? '#64748b' : '#e2e8f0') + ';">' + ex.nome + '</div>' +
-                    '<div style="font-size:0.62rem;color:#94a3b8;margin-top:1px;">' + ex.desc + '</div>';
-                var inp2 = document.createElement('input');
-                inp2.type = 'number'; inp2.placeholder = 'MTR kg';
-                inp2.style.cssText = 'width:68px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:7px;padding:5px 8px;color:#e2e8f0;font-size:0.72rem;text-align:center;outline:none;flex-shrink:0;';
-                var patternAlreadyCovered = exercises.some(function(e){
-                    return DELOAD_EXERCISES_DB.some(function(db){ return db.nome === e.name && db.pattern === pat.key; });
-                });
-                var btn2 = document.createElement('button');
-                btn2.textContent = alreadyAdded ? '\u2713' : (patternAlreadyCovered ? '\u2022' : '+');
-                btn2.title = patternAlreadyCovered && !alreadyAdded ? 'Hai già selezionato un esercizio ' + pat.key : '';
-                btn2.style.cssText = 'width:28px;height:28px;border-radius:7px;border:none;font-size:0.8rem;font-weight:700;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:' +
-                    (alreadyAdded ? 'rgba(16,185,129,0.2)' : patternAlreadyCovered ? 'rgba(255,255,255,0.05)' : 'rgba(99,102,241,0.25)') + ';color:' + (alreadyAdded ? '#10b981' : patternAlreadyCovered ? '#334155' : '#818cf8') + ';';
-                if (!alreadyAdded && !patternAlreadyCovered) {
-                    btn2.onclick = function() {
-                        var max2 = parseFloat(inp2.value);
-                        if (!max2 || max2 <= 0) { showToast('Inserisci l\'MTR per ' + ex.nome, 'error'); inp2.focus(); return; }
-                        var loadsB = WEEK_LOADS.map(function(p){ return awRoundKg(max2 * p); });
-                        exercises.push({ name: ex.nome, max: max2, mtrValue: max2, baseWeight: loadsB[0], sr: '3\u00d78-10', loads: loadsB });
-                        refreshExList();
-                        renderPatternGrid();
-                        content.scrollTop = 0;
-                    };
-                }
-                card2.appendChild(ci2); card2.appendChild(inp2); card2.appendChild(btn2);
-                grid2.appendChild(card2);
-            });
-            content.appendChild(grid2);
-        });
-    }
-
-    overlay.appendChild(content);
-
-    // ── Footer: bottone salva ──
-    var footer = document.createElement('div');
-    footer.style.cssText = 'padding:12px 20px max(env(safe-area-inset-bottom),20px);background:rgba(10,14,26,0.98);border-top:1px solid rgba(255,255,255,0.07);';
-    var btnSave = document.createElement('button');
-    btnSave.textContent = '\ud83d\udcbe Salva protocollo Deload';
-    btnSave.style.cssText = 'width:100%;padding:13px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border:none;border-radius:12px;font-size:0.8rem;font-weight:800;cursor:pointer;';
-    btnSave.onclick = function() {
-        if (exercises.length === 0) { showToast('Seleziona almeno un esercizio', 'error'); return; }
-        var newProto = { id: 'proto_deload_' + Date.now(), name: 'Full Body Deload', exercises: exercises };
-        APP.savedProtocols.push(newProto);
-        saveState();
-        if (typeof saveProtocolToSupabase === 'function') saveProtocolToSupabase(newProto);
-        renderProtocolList();
-        renderPlanPage(DELOAD_WEEK);
-        overlay.remove();
-        showToast('\u2728 Deload salvato con ' + exercises.length + ' esercizi!', 'success');
-    };
-    footer.appendChild(btnSave);
-    overlay.appendChild(footer);
-    document.body.appendChild(overlay);
-}
-
 
 function toggleNotifTimes() {
     var panel = document.getElementById('notif-times-panel');
@@ -19885,33 +19545,40 @@ function woApplyTwoForTwo(exName, wIdx) {
     var toKg = tftNextKg(fromKg, pct);
     if (!(toKg > fromKg)) { saveState(); return 0; }
 
-    // Il riferimento (MTR) sale della stessa percentuale, cosi' i carichi che
-    // l'app ricalcola da li' restano allineati a quelli scritti qui.
-    var curMtr = parseFloat(mtrGet(exName)) || 0;
-    var newMtr = curMtr > 0 ? tftNextKg(curMtr, pct) : 0;
-    if (newMtr > 0) mtrSet(exName, newMtr);
-
-    // Dalla seduta successiva: capitolo in corso compreso. I capitoli gia'
-    // chiusi non si toccano adesso; al nuovo ciclo li riallinea
-    // woApplyProgression.
-    var changed = 0;
-    function applyTo(e) {
-        if (!e || !e.name || !exSameExercise(e.name, exName)) return false;
-        if (!Array.isArray(e.loads) || e.loads.length !== WEEK_LOADS.length) {
-            e.loads = WEEK_LOADS.map(function(q) { return awRoundKg((e.baseWeight || 0) * q); });
-        }
-        for (var i = wIdx; i < WEEK_LOADS.length; i++) e.loads[i] = tftNextKg(e.loads[i], pct);
-        if (newMtr > 0) e.mtrValue = newMtr;
-        changed++;
-        return true;
+    // v.299 — L'aumento passa dal riferimento (MTR) e i carichi si
+    // ricalcolano da li' con mtrPlanLoads, la stessa regola dell'apertura
+    // dell'app. Fino alla v.298:
+    //  - l'MTR si alzava a partire dal valore salvato, che l'app ricava dal
+    //    carico del Chapter 1 e che non conteneva gli aumenti scattati nei
+    //    capitoli successivi: alla riapertura i carichi venivano ricalcolati
+    //    da quel valore vecchio e l'aumento precedente spariva (squat:
+    //    "71,5 -> 75 kg dalla prossima seduta", poi di nuovo 71,5);
+    //  - la seduta e la scheda condividevano lo stesso elenco di carichi, che
+    //    veniva scalato due volte (75 diventava 79 fino alla riapertura).
+    // Ora il riferimento di partenza e' quello che produce il carico di oggi,
+    // l'aumento resta quello della regola (TFT_STEP sul carico, tftNextKg) e
+    // l'MTR nuovo e' quello che da' esattamente il carico annunciato.
+    var sr0 = ex0 && ex0.sr;
+    var s0 = srReps(sr0);
+    if (!(s0 > 0)) { saveState(); return 0; }
+    var base = mtrRepsGet(exName) || s0;
+    var refFrom = mtrForPlannedKg(exName, fromKg, wIdx, sr0, base);
+    var newMtr = mtrForPlannedKg(exName, toKg, wIdx, sr0, base);
+    var check = mtrPlanLoads(exName, newMtr, base, sr0);
+    // Se l'arrotondamento al mezzo chilo mangia l'aumento, si sale di mezzo
+    // chilo alla volta finche' il carico si muove, sempre entro TFT_MAX.
+    for (var g = 0; g < 4 && check && !(check[wIdx] > fromKg); g++) {
+        newMtr += 0.5;
+        check = mtrPlanLoads(exName, newMtr, base, sr0);
     }
-    (APP.exerciseData || []).forEach(applyTo);
-    var touched = [];
-    (APP.savedProtocols || []).forEach(function(p) {
-        var hit = false;
-        (p.exercises || []).forEach(function(e) { if (applyTo(e)) hit = true; });
-        if (hit) touched.push(p);
-    });
+    if (!check || !(check[wIdx] > fromKg) || (check[wIdx] - fromKg) / fromKg > TFT_MAX + 1e-9) {
+        saveState(); return 0;
+    }
+    toKg = check[wIdx];
+    mtrSet(exName, newMtr);
+    if (!mtrRepsGet(exName)) mtrRepsSet(exName, base);
+    var touched = mtrApplyToPlans(exName, newMtr);
+    var changed = touched.length;
 
     // Il conteggio riparte al nuovo carico.
     if (!APP.twoForTwoAt) APP.twoForTwoAt = {};
@@ -19921,12 +19588,9 @@ function woApplyTwoForTwo(exName, wIdx) {
     // Registro del ciclo per il riepilogo di fine Chapter 4.
     if (!APP.mtrCycleLog) APP.mtrCycleLog = {};
     var log = APP.mtrCycleLog[exName];
-    // Senza MTR si registra il riferimento implicito (carico / percentuale
-    // del capitolo): confrontare direttamente i carichi di capitoli diversi
-    // mescolerebbe l'aumento con la normale salita dall'85 al 97%.
-    var pctCh = WEEK_LOADS[wIdx] || 1;
-    var refFrom = curMtr > 0 ? curMtr : awRoundKg(fromKg / pctCh);
-    var refTo   = newMtr > 0 ? newMtr : awRoundKg(toKg / pctCh);
+    // Il riferimento, non il carico: confrontare direttamente i carichi di
+    // capitoli diversi mescolerebbe l'aumento con la salita dall'85 al 97%.
+    var refTo = newMtr;
     if (!log) APP.mtrCycleLog[exName] = { from: refFrom, to: refTo, lower: lower };
     else { log.to = refTo; log.lower = lower; }
 
@@ -19960,10 +19624,14 @@ function _lhRowToday(exName, wIdx) {
 // 🎯. Ora si scrive il carico giusto nella box e si conferma: da quel numero
 // viene ricalcolato il riferimento e con esso il capitolo in corso e tutti
 // quelli che seguono.
-// I capitoli gia' svolti non si toccano: la scala 85/89/93/97% non si spezza,
-// cambia il riferimento da cui i capitoli derivano. E' la stessa regola di
-// woApplyTwoForTwo, applicata pero' anche al capitolo presente, perche' qui
-// non si registra una prestazione passata: si dichiara il carico di oggi.
+// La scala 85/89/93/97% non si spezza: cambia il riferimento da cui i
+// capitoli derivano. Qui non si registra una prestazione passata: si
+// dichiara il carico di oggi.
+// v.299 — Il riferimento si ricava con la stessa regola dell'apertura
+// dell'app (mtrPlanLoads): carico / percentuale del capitolo e' l'MTR alle
+// ripetizioni dello schema SALVATO, non a quelle del capitolo. Prima veniva
+// letto come MTR alle ripetizioni del capitolo (12 nel Chapter 1 invece di
+// 8), e riaprendo l'app 52,5 kg confermati diventavano 58.
 function woPlannedKg(ex, wIdx) {
     if (!ex) return 0;
     var v = ex.loads ? (ex.loads[wIdx] || ex.baseWeight || 0) : (ex.baseWeight || 0);
@@ -19982,31 +19650,28 @@ function woComputePlanLoad(exName, newKg, wIdx) {
     // ricalcolare, il numero digitato resta la zavorra di oggi.
     if (!(prevKg > 0)) return null;
     if (Math.abs(newKg - prevKg) < 0.5) return null;
-    var targetReps = srReps(srForChapter(ex, wIdx, woSessionProto())) || srReps(ex.sr);
-    if (!(targetReps > 0)) return null;   // isometrico: si misura in secondi
+    var schemaReps = srReps(ex.sr);
+    if (!(schemaReps > 0)) return null;   // isometrico: si misura in secondi
 
-    var ref = newKg / pct;                // riferimento dichiarato dall'atleta
-    var baseReps = mtrRepsGet(exName) || targetReps;
-    // Stessa conversione di mtrForReps (Epley col coefficiente del gruppo
-    // muscolare): e' da li' che gli altri protocolli rileggeranno questo MTR,
-    // quindi le due strade devono usare la stessa formula.
-    var k = awkRepK(exName);
-    var newMtr = awRoundKg(ref * (1 + targetReps / k) / (1 + baseReps / k));
-    if (!(newMtr > 0)) return null;
+    // Base dell'MTR: quella gia' dichiarata, o in mancanza lo schema.
+    var baseReps = mtrRepsGet(exName) || schemaReps;
+    var newMtr = mtrForPlannedKg(exName, newKg, wIdx, ex.sr, baseReps);
+    var loads = newMtr > 0 ? mtrPlanLoads(exName, newMtr, baseReps, ex.sr) : null;
+    if (!loads) return null;
 
     var rows = [];
     for (var i = wIdx; i < WEEK_LOADS.length; i++) {
-        rows.push({ i: i, from: woPlannedKg(ex, i), to: awRoundKg(ref * WEEK_LOADS[i]) });
+        rows.push({ i: i, from: woPlannedKg(ex, i), to: loads[i] });
     }
     return {
-        ex: ex, ref: ref, targetReps: targetReps, baseReps: baseReps,
+        ex: ex, baseReps: baseReps,
         oldMtr: parseFloat(mtrGet(exName)) || 0, newMtr: newMtr,
-        prevKg: prevKg, newKg: awRoundKg(newKg), rows: rows
+        prevKg: prevKg, newKg: loads[wIdx], rows: rows
     };
 }
 
-// Scrive il nuovo riferimento e riallinea i carichi dal capitolo in corso in
-// avanti, su tutti i protocolli che contengono l'esercizio.
+// Scrive il nuovo riferimento e riallinea i carichi su tutti i protocolli
+// che contengono l'esercizio.
 function woApplyPlanLoad(exName, newKg, wIdx) {
     var plan = woComputePlanLoad(exName, newKg, wIdx);
     if (!plan) return false;
@@ -20022,31 +19687,9 @@ function woApplyPlanLoad(exName, newKg, wIdx) {
     if (!APP.twoForTwoAt) APP.twoForTwoAt = {};
     APP.twoForTwoAt[exName] = _lhIsoToday();
 
-    function applyTo(e, proto) {
-        if (!e || !e.name || !exSameExercise(e.name, exName)) return false;
-        if (!Array.isArray(e.loads) || e.loads.length !== WEEK_LOADS.length) {
-            e.loads = WEEK_LOADS.map(function(p) { return awRoundKg((e.baseWeight || 0) * p); });
-        }
-        // Lo stesso esercizio puo' comparire con schemi diversi (5x5 in Upper,
-        // 4x10 in Push): il riferimento va riportato alle ripetizioni di quello.
-        var eReps = srReps(srForChapter(e, wIdx, proto || null)) || srReps(e.sr);
-        var ref = (eReps && eReps !== plan.targetReps)
-            ? (mtrForReps(exName, eReps) || plan.newMtr)
-            : plan.ref;
-        for (var i = wIdx; i < WEEK_LOADS.length; i++) e.loads[i] = awRoundKg(ref * WEEK_LOADS[i]);
-        e.mtrValue = plan.newMtr;
-        e.baseWeight = e.loads[wIdx] || e.loads[0];
-        return true;
-    }
-
-    var activeProto = woSessionProto();
-    (APP.exerciseData || []).forEach(function(e) { applyTo(e, activeProto); });
-    var touched = [];
-    (APP.savedProtocols || []).forEach(function(p) {
-        var hit = false;
-        (p.exercises || []).forEach(function(e) { if (applyTo(e, p)) hit = true; });
-        if (hit) touched.push(p);
-    });
+    // Lo stesso esercizio puo' comparire con schemi diversi (5x5 in Upper,
+    // 4x10 in Push): mtrApplyToPlans riporta l'MTR allo schema di ognuno.
+    var touched = mtrApplyToPlans(exName, plan.newMtr);
 
     // Il carico di oggi e' quello confermato: lo storico della seduta deve
     // registrare lo stesso numero che l'atleta ha davanti.
@@ -20065,9 +19708,9 @@ function woApplyPlanLoad(exName, newKg, wIdx) {
     if (typeof updateChart === 'function') updateChart();
 
     var nextIdx = wIdx + 1;
-    var msg = 'Carico aggiornato: ' + _fmtKg(plan.prevKg) + ' \u2192 ' + _fmtKg(plan.newKg) + ' kg';
+    var msg = 'Carico aggiornato: ' + _fmtKg(plan.prevKg) + ' → ' + _fmtKg(plan.newKg) + ' kg';
     if (nextIdx < WEEK_LOADS.length && plan.rows.length > 1) {
-        msg += ' \u00b7 ' + (CH_LABELS[nextIdx] || ('Ch' + (nextIdx + 1))) + ': ' + _fmtKg(plan.rows[1].to) + ' kg';
+        msg += ' · ' + (CH_LABELS[nextIdx] || ('Ch' + (nextIdx + 1))) + ': ' + _fmtKg(plan.rows[1].to) + ' kg';
     }
     showToast(msg, 'success');
     return true;
@@ -20092,7 +19735,10 @@ function woAskPlanLoad() {
     var msg = exDisplay(ex.name) + '\n\n' + lines.join('\n') +
         '\n\nRiferimento (MTR): ' +
         (plan.oldMtr > 0 ? _fmtKg(plan.oldMtr) + ' \u2192 ' + _fmtKg(plan.newMtr) : _fmtKg(plan.newMtr)) + ' kg' +
-        '\n\nI capitoli gi\u00e0 svolti restano come sono. La correzione vale su tutti i protocolli che contengono questo esercizio.';
+        (plan.baseReps ? ' \u00d7 ' + plan.baseReps + ' rip' : '') +
+        // v.299: i capitoli gia' svolti seguono il riferimento come gli altri
+        // (lo fa anche l'apertura dell'app); le sedute fatte non cambiano.
+        '\n\nLe sedute gi\u00e0 fatte restano nello storico con il carico usato. La correzione vale su tutti i protocolli che contengono questo esercizio.';
 
     awConfirm(msg, function(ok) {
         if (ok) woApplyPlanLoad(ex.name, plan.newKg, wIdx);
@@ -20265,6 +19911,15 @@ function woApplyProgression() {
     names.forEach(function(name) {
         function realign(ex) {
             if (!ex || !ex.name || !exSameExercise(ex.name, name)) return;
+            // v.299: dalla regola 2-per-2 i carichi derivano gia' dal
+            // riferimento (mtrPlanLoads). Riallinearli dal Chapter 4 con un
+            // altro calcolo li spostava di mezzo chilo, e l'apertura
+            // successiva li riportava indietro: si usa la stessa regola.
+            var m = parseFloat(mtrGet(ex.name)) || parseFloat(ex.mtrValue) || 0;
+            if (ex.mtrValue && m > 0) {
+                var ml = mtrPlanLoads(ex.name, m, mtrRepsGet(ex.name), ex.sr);
+                if (ml) { ex.loads = ml; ex.baseWeight = ml[0]; return; }
+            }
             if (!Array.isArray(ex.loads) || ex.loads.length !== WEEK_LOADS.length) return;
             var top = parseFloat(ex.loads[OVERLOAD_WEEK]) || 0;
             if (!(top > 0)) return;
