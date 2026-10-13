@@ -4658,7 +4658,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '299';
+const APP_VERSION = '300';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -4723,6 +4723,7 @@ const APP = {
     prMeta: {},          // dettaglio del record: carico usato, ripetizioni, data
     mtrAdjusted: {},     // esercizi con riferimento gia' alzato in questo ciclo
     twoForTwoAt: {},     // data dell'ultimo aumento per esercizio: il 2-per-2 riparte da li'
+    proposteVariante: {},// v.300: variante o zavorra gia' proposte in questo ciclo
     mtrCycleLog: {},     // aumenti 2-per-2 del ciclo: { nome: {from, to, lower} }
     legalAccepted: null, // { v: versione dei testi, d: data ISO }
     prLegacy: null,      // archivio pre-v.168 (carichi prescritti), non compete
@@ -4935,6 +4936,7 @@ function saveState() {
             prMeta: APP.prMeta || {},
             mtrAdjusted: APP.mtrAdjusted || {},
             twoForTwoAt: APP.twoForTwoAt || {},
+            proposteVariante: APP.proposteVariante || {},
             mtrCycleLog: APP.mtrCycleLog || {},
             legalAccepted: APP.legalAccepted || null,
             _weekCelebrated: APP._weekCelebrated || [],
@@ -5171,6 +5173,7 @@ function loadState() {
         APP.prMeta      = saved.prMeta || {};
         APP.mtrAdjusted = saved.mtrAdjusted || {};
         APP.twoForTwoAt = saved.twoForTwoAt || {};
+        APP.proposteVariante = saved.proposteVariante || {};
         APP.mtrCycleLog = saved.mtrCycleLog || {};
         APP.legalAccepted = saved.legalAccepted || null;
         // Senza questo, l'animazione di settimana completata ripartiva a ogni riavvio.
@@ -5515,6 +5518,40 @@ function buildOverloadNotice() {
                 '(regola 2-per-2, NSCA 2008).</div>' +
             '<button type="button" class="wo-ovl-btn" onclick="woOverloadNoticeDismiss()">Ho capito</button>' +
         '</div>';
+    return box;
+}
+
+/* Seduta di recupero (v.300): il giorno di oggi aveva gia' la sua seduta,
+   fatta la settimana prima, e il capitolo e' rimasto aperto. Si dice quale
+   seduta si fa e perche'; se il capitolo si puo' gia' chiudere, si offre
+   anche quella strada (woProponiSblocco), senza imporla. */
+var AW_GIORNI = ['luned\u00ec', 'marted\u00ec', 'mercoled\u00ec', 'gioved\u00ec', 'venerd\u00ec', 'sabato', 'domenica'];
+function buildRecuperoNotice(w, todayMon, recDi) {
+    var asg = APP.dayAssignments[w] || [];
+    var oggiNome = asg[todayMon] ? (asg[todayMon].protoName || '') : '';
+    var recNome = asg[recDi] ? (asg[recDi].protoName || '') : '';
+    var mancanti = woSeduteMancanti(w);
+    var box = document.createElement('div');
+    box.id = 'wo-recupero-notice';
+    box.className = 'wo-ovl-card';
+    var h = '<div class="wo-ovl-head">' +
+            '<div class="wo-ovl-eyebrow">\uD83D\uDD01 Chapter ' + (w + 1) + ' \u00b7 ' + (CHAPTER_NAMES[w] || '') + '</div>' +
+            '<div class="wo-ovl-title">Oggi recuperi una seduta</div>' +
+        '</div>' +
+        '<div class="wo-ovl-body">' +
+            '<div class="wo-ovl-p">' + escapeHTML(oggiNome) + ' l\u2019hai gi\u00e0 fatta la settimana scorsa. ' +
+                'Al capitolo ' + (mancanti === 1 ? 'manca una seduta' : 'mancano ' + mancanti + ' sedute') +
+                ': oggi fai <b>' + escapeHTML(recNome) + '</b>, quella di ' + AW_GIORNI[recDi] + '.</div>';
+    if (woPuoSbloccare(w) && w + 1 < CHAPTER_NAMES.length) {
+        // Strada secondaria: stile sobrio, l'azione principale resta la seduta.
+        h += '<button type="button" class="wo-ovl-btn" id="wo-recupero-sblocca" style="background:transparent;border:1px solid rgba(255,255,255,0.14);color:#cbd5e1;box-shadow:none;">Oppure passa al Chapter ' + (w + 2) + '</button>';
+    }
+    h += '</div>';
+    box.innerHTML = h;
+    var b = box.querySelector('#wo-recupero-sblocca');
+    if (b) b.onclick = function() {
+        woProponiSblocco(w, function() { if (typeof initWorkoutPage === 'function') initWorkoutPage(); });
+    };
     return box;
 }
 
@@ -7300,6 +7337,7 @@ async function onLoginSuccess(user, usernameOverride = null) {
         if (s.prMeta)   APP.prMeta   = Object.assign({}, s.prMeta, APP.prMeta || {});
         if (s.mtrAdjusted) APP.mtrAdjusted = Object.assign({}, s.mtrAdjusted, APP.mtrAdjusted || {});
         if (s.twoForTwoAt) APP.twoForTwoAt = Object.assign({}, s.twoForTwoAt, APP.twoForTwoAt || {});
+        if (s.proposteVariante) APP.proposteVariante = Object.assign({}, s.proposteVariante, APP.proposteVariante || {});
         if (s.mtrCycleLog) APP.mtrCycleLog = Object.assign({}, s.mtrCycleLog, APP.mtrCycleLog || {});
         if (s.legalAccepted && !APP.legalAccepted) APP.legalAccepted = s.legalAccepted;
         if (Array.isArray(s._weekCelebrated)) APP._weekCelebrated = s._weekCelebrated;
@@ -7682,7 +7720,16 @@ function planPruneStates(){
    quelle del piano in uso piu' quelle messe via con gli altri piani. Cosi'
    "Allenamenti" non cala cambiando piano e non raddoppia tornando indietro.
    workoutsCarry e' il riporto dei salvataggi fatti con la v274, che azzerava
-   le spunte invece di metterle via. */
+   le spunte invece di metterle via, e dalla v.300 anche delle spunte dei
+   cicli chiusi (restartCycle).
+   v.300 — Fino alla v.299 il conteggio ripartiva da zero a ogni ciclo,
+   perche' restartCycle azzerava le spunte senza riportarle: dopo il primo
+   ciclo Progressi diceva "5 allenamenti" e il Profilo 25. Lo stesso numero
+   decide quale copia dei dati vince nella sincronizzazione (vince quella
+   con piu' allenamenti): calando a ogni ciclo, un telefono fermo al ciclo
+   precedente poteva sovrascrivere quello nuovo. Ora il conteggio non cala
+   mai: e' il piu' alto fra le spunte (con il riporto) e le sedute del
+   diario, che e' anche quello che mostra il Profilo (awTotalSessions). */
 function awCalcTotalWorkouts(){
   const cur = planCurrentKey();
   let n = (APP.workoutsCarry || 0);
@@ -7694,6 +7741,7 @@ function awCalcTotalWorkouts(){
       (riga || []).forEach(function(st){ if (st === 'done') n++; });
     });
   });
+  try { n = Math.max(n, Object.keys(awSessionKeys()).length); } catch (e) {}
   return n;
 }
 
@@ -10075,6 +10123,14 @@ function awkRoleGuess(name) {
   return found;
 }
 
+/* Vero quando l'esercizio, in quel capitolo, non ha un carico in kg: corpo
+   libero o elastico senza zavorra. Vedi srForChapter (v.300). */
+function srSenzaCarico(ex, chIdx) {
+  if (!ex) return false;
+  var kg = parseFloat(ex.loads ? (ex.loads[chIdx] || ex.baseWeight || 0) : (ex.baseWeight || 0)) || 0;
+  return !(kg > 0);
+}
+
 function srForChapter(ex, chIdx, proto) {
   var base = ex && ex.sr;
   if (!base) return base;
@@ -10105,6 +10161,22 @@ function srForChapter(ex, chIdx, proto) {
     }
   }
   var p = (role && proto) ? awkParamsFor(proto, role, chIdx) : null;
+  // v.300 — Esercizio senza carico (corpo libero o elastico, 0 kg) in una
+  // scheda con i pesi. Le ripetizioni delle tabelle di forza e ipertrofia
+  // scendono capitolo dopo capitolo perche' intanto il carico sale (85 ->
+  // 97% dell'MTR): a 0 kg il carico non sale, e le trazioni passavano da 12
+  // a 8 ripetizioni allo stesso peso, cioe' diventavano piu' facili.
+  // A corpo libero si progredisce aumentando le ripetizioni o la difficolta'
+  // della variante (ACSM 2009, modelli di progressione; Kotarsky et al.
+  // 2018, J Strength Cond Res 32(3):651-659): si usano le ripetizioni della
+  // tabella calisthenic dello stesso livello e ruolo, che salgono capitolo
+  // dopo capitolo, e le serie della scheda. Con una zavorra (carico > 0)
+  // resta la tabella della scheda. Nessun numero nuovo: le tabelle sono
+  // quelle gia' in uso per GRAVITY.
+  if (p && p.s && role !== 'core' && awkGoalOfProto(proto) !== 'calisthenic' && srSenzaCarico(ex, chIdx)) {
+    var pCali = awkParamsFor({ _awkGoal: 'calisthenic', _awkLevel: proto._awkLevel || 'intermedio' }, role, chIdx);
+    if (pCali && pCali.r) return p.s + ' x ' + pCali.r;
+  }
   if (p && p.s && p.r) return p.s + ' x ' + p.r;
   // Senza ruolo noto si conserva il comportamento precedente.
   return (chIdx === DELOAD_WEEK) ? woDeloadSr(base) : base;
@@ -10586,7 +10658,74 @@ function woPuoSbloccare(w) {
     if (assegnate < 2) return false;
     const mancanti = woSeduteMancanti(w);
     const fatte = assegnate - mancanti;
-    return mancanti >= 1 && mancanti <= 2 && fatte >= 1;
+    // v.300: si propone di passare avanti solo quando le sedute che mancano
+    // sono davvero saltate, cioe' il loro giorno e' passato. Prima bastava
+    // che mancassero: con lunedi' e martedi' fatti, la linguetta lampeggiava
+    // gia' il mercoledi', con giovedi' e venerdi' ancora da fare.
+    return mancanti >= 1 && mancanti <= 2 && fatte >= 1 && woSeduteSaltate(w) === mancanti;
+}
+
+/* Data (aaaa-mm-gg) in cui una seduta del capitolo w e' stata registrata
+   l'ultima volta, dal diario delle sedute. */
+function woSedutaData(w, di) {
+    var log = APP.sessionLog || [], last = null;
+    for (var i = 0; i < log.length; i++) {
+        var e = log[i];
+        if (e && e.w === w && e.di === di && e.d && (!last || e.d > last)) last = e.d;
+    }
+    return last;
+}
+
+/* Inizio del capitolo w in questo ciclo: la data piu' vecchia fra le sedute
+   che risultano fatte. Le spunte ripartono a ogni ciclo, quindi le sedute
+   fatte sono tutte del ciclo in corso. */
+function woCapitoloInizio(w) {
+    var chips = APP.chipStates[w] || [], first = null;
+    for (var di = 0; di < 7; di++) {
+        if (chips[di] !== 'done') continue;
+        var d = woSedutaData(w, di);
+        if (d && (!first || d < first)) first = d;
+    }
+    return first;
+}
+
+/* Sedute del capitolo w ancora da fare il cui giorno e' gia' passato: per
+   ognuna si guarda il primo giorno della settimana giusto a partire
+   dall'inizio del capitolo (un capitolo cominciato di giovedi' ha lunedi' e
+   martedi' nella settimana dopo). Senza nessuna data registrata (spunte
+   messe a mano) si conta come prima, tutte quelle che mancano. */
+function woSeduteSaltate(w) {
+    var asg = APP.dayAssignments[w] || [], chips = APP.chipStates[w] || [];
+    var start = woCapitoloInizio(w);
+    if (!start) return woSeduteMancanti(w);
+    var oggi = awIsoDay(new Date());
+    var s = new Date(start + 'T12:00:00');
+    var sDi = (s.getDay() + 6) % 7;            // 0 = lunedi'
+    var n = 0;
+    for (var di = 0; di < 7; di++) {
+        if (!asg[di] || chips[di] === 'done') continue;
+        var g = new Date(s.getTime());
+        g.setDate(g.getDate() + ((di - sDi + 7) % 7));
+        if (awIsoDay(g) < oggi) n++;
+    }
+    return n;
+}
+
+/* Seduta da recuperare oggi. Se il giorno di oggi ha la sua seduta gia'
+   segnata come fatta, ma in un altro giorno (la settimana prima), il
+   capitolo e' rimasto aperto: oggi si fa la prima seduta che manca, invece
+   di dire "Allenamento completato!" a chi non si e' allenato. Solo nei
+   giorni di allenamento: i giorni di riposo restano di riposo. Restituisce
+   il giorno (0 = lunedi') della seduta da fare, o null. */
+function woRecuperoDi(w, todayMon) {
+    var asg = APP.dayAssignments[w] || [], chips = APP.chipStates[w] || [];
+    if (!asg[todayMon] || chips[todayMon] !== 'done') return null;
+    var fatta = woSedutaData(w, todayMon);
+    if (!fatta || fatta === awIsoDay(new Date())) return null;
+    for (var di = 0; di < 7; di++) {
+        if (asg[di] && chips[di] !== 'done') return di;
+    }
+    return null;
 }
 
 /* Quante sedute mancano al capitolo w, per i testi. */
@@ -10597,7 +10736,7 @@ function woMancanti(w) { return woSeduteMancanti(w); }
    Gli studi stanno dietro "Perche' si puo'" e dietro la "i" sotto i giorni
    (awPercheSaltare): infilarli qui allungava la finestra di tre paragrafi
    proprio nel momento in cui si deve solo scegliere. */
-function woProponiSblocco(w) {
+function woProponiSblocco(w, onDone) {
     if (!woPuoSbloccare(w)) return;
     const prossimo = 'Chapter ' + (w + 2) + (CHAPTER_NAMES[w + 1] ? ' \u2014 ' + CHAPTER_NAMES[w + 1] : '');
     const assegnate = (APP.dayAssignments[w] || []).filter(a => a !== null).length;
@@ -10618,6 +10757,7 @@ function woProponiSblocco(w) {
             if (!ok) return;  // si resta sul capitolo in corso
             woChiudiCapitolo(w);
             renderPlanPage(w);
+            if (typeof onDone === 'function') { try { onDone(); } catch (e) {} }
         },
         { title: 'Vuoi sbloccare il ' + prossimo + '?', okLabel: 'Sblocca', cancelLabel: 'Non ancora',
           linkLabel: 'Perch\u00e9 si pu\u00f2 \u2192', onLink: awPercheSaltare });
@@ -14872,13 +15012,19 @@ function updateProgressPage() {
     if (volEl) volEl.textContent = totalVol >= 1000 ? (totalVol/1000).toFixed(1)+'t'
                                  : totalVol > 0     ? Math.round(totalVol)+'kg' : '—';
 
+    // v.300: il volume si calcola sulle sedute del ciclo in corso (le spunte
+    // dei capitoli), quindi si divide per quelle e si dice. Prima si divideva
+    // per "allenamenti completati", che dalla v.300 conta tutta la storia.
+    const cycleSessions = (APP.chipStates || []).flat().filter(function(st){ return st === 'done'; }).length;
     const volSub = document.getElementById('prog-vol-sub');
-    if (volSub) volSub.textContent = APP.totalWorkouts > 0 ? APP.totalWorkouts + ' allenamenti completati' : 'nessun allenamento';
+    if (volSub) volSub.textContent = cycleSessions > 0
+        ? cycleSessions + (cycleSessions === 1 ? ' seduta' : ' sedute') + ' nel ciclo in corso'
+        : (APP.totalWorkouts > 0 ? 'ciclo appena iniziato' : 'nessun allenamento');
 
     // Volume medio per sessione: dice se la singola seduta si sta facendo piu'
     // densa, indipendentemente da quante sedute hai fatto. I PR stavano qui
     // fuori posto: appartengono a "Progressi nei Pesi".
-    const avgVol = APP.totalWorkouts > 0 ? totalVol / APP.totalWorkouts : 0;
+    const avgVol = cycleSessions > 0 ? totalVol / cycleSessions : 0;
     const avgEl = document.getElementById('prog-vol-avg');
     if (avgEl) avgEl.textContent = avgVol >= 1000 ? (avgVol/1000).toFixed(1)+'t'
                                  : avgVol > 0     ? Math.round(avgVol)+'kg' : '—';
@@ -14997,7 +15143,26 @@ function initWorkoutPage() {
     const rawDay = new Date().getDay(); // 0=dom
     const todayMon = rawDay === 0 ? 6 : rawDay - 1; // 0=lun..6=dom
     const w = APP.selectedViewWeek || 0;
-    const assignment = APP.dayAssignments[w] ? APP.dayAssignments[w][todayMon] : null;
+    // v.300 — Quale seduta mostrare oggi.
+    //  - Una seduta gia' registrata oggi (diario delle sedute): oggi e' fatta,
+    //    anche se nel frattempo il capitolo e' cambiato. Prima, chiudendo
+    //    l'ultima seduta di un capitolo, la pagina proponeva subito quella
+    //    dello stesso giorno nel capitolo dopo.
+    //  - Il giorno di oggi ha la seduta segnata come fatta ma in un'altra
+    //    data: il capitolo e' rimasto aperto con sedute saltate, e oggi si
+    //    recupera la prima che manca (woRecuperoDi). Prima la pagina diceva
+    //    "Allenamento completato!" a chi non si era allenato.
+    //  - "Rifai allenamento" toglie per oggi il primo controllo.
+    const _oggiIso = awIsoDay(new Date());
+    const _redo = woState._redoDay === _oggiIso;
+    let _fattaOggi = null;
+    if (!_redo) (APP.sessionLog || []).forEach(function(e) {
+        if (e && e.d === _oggiIso && APP.dayAssignments[e.w] && APP.dayAssignments[e.w][e.di]) _fattaOggi = e;
+    });
+    const recDi = (_fattaOggi || _redo) ? null : woRecuperoDi(w, todayMon);
+    const sessW  = _fattaOggi ? _fattaOggi.w : w;
+    const sessDi = _fattaOggi ? _fattaOggi.di : (recDi != null ? recDi : todayMon);
+    const assignment = APP.dayAssignments[sessW] ? APP.dayAssignments[sessW][sessDi] : null;
 
     // Load exercises from today's assigned protocol and sync to APP.exerciseData
     let exData = [];
@@ -15012,7 +15177,7 @@ function initWorkoutPage() {
         // Prima di disegnare: gli schemi qui sotto passano da woSessionProto,
         // che deve gia' sapere quale scheda si allena oggi.
         woState._todayProtoId = (proto && proto.id) || assignment.protoId || null;
-        woState._todayDayIdx  = todayMon;
+        woState._todayDayIdx  = sessDi;
     }
 
     const bannerEl  = document.getElementById('wo-today-banner');
@@ -15048,8 +15213,9 @@ function initWorkoutPage() {
     const chapterNames = CHAPTER_NAMES;
     if (protoNameEl) protoNameEl.textContent = protoName;
 
-    // Controlla se oggi è già stato completato
-    const todayIsDone = APP.chipStates[w] && APP.chipStates[w][todayMon] === 'done';
+    // Controlla se oggi è già stato completato (vedi sopra, v.300)
+    const todayIsDone = _fattaOggi ? true
+        : (recDi != null ? false : !!(APP.chipStates[w] && APP.chipStates[w][sessDi] === 'done'));
     const doneBanner = document.getElementById('wo-done-banner');
 
     // PAGINA 1 = solo warmup: nascondi banner, stat, startBtn originali
@@ -15219,6 +15385,11 @@ function initWorkoutPage() {
             if (showOvlNotice && !document.getElementById('wo-overload-notice')) {
                 prevList.insertBefore(buildOverloadNotice(), prevList.firstChild);
             }
+            // Seduta di recupero: si dice perche' oggi c'e' questa e non
+            // quella del giorno (v.300).
+            var _oldRec = document.getElementById('wo-recupero-notice');
+            if (_oldRec) _oldRec.remove();
+            if (recDi != null) prevList.insertBefore(buildRecuperoNotice(w, todayMon, recDi), prevList.firstChild);
         }
         // Salva lista esercizi per pagina 2
         woState._exListHtml = `<div style="font-size:0.55rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;font-weight:700;">Programma · ${protoName}</div>
@@ -15240,7 +15411,7 @@ function initWorkoutPage() {
 
     // Store today's assignment for woStartWorkout
     woState._todayProtoId = assignment.protoId || null;
-    woState._todayDayIdx  = todayMon;
+    woState._todayDayIdx  = sessDi;
 }
 
 // ═══ NUTRIZIONE ═══
@@ -19453,10 +19624,15 @@ function woAskTechnique(exName, eq, usedKg, reps, targetReps, wIdx) {
         if (!clean) { saveState(); return; }
         // Il record passa dal carico equivalente di Epley, attendibile solo
         // entro le ~10 ripetizioni: oltre si registra la seduta ma non il record.
-        if (targetReps <= REPS_ASK_MAX) _woRegisterRecord(exName, eq, usedKg, reps, targetReps, wIdx);
+        if (targetReps <= REPS_ASK_MAX && usedKg > 0) _woRegisterRecord(exName, eq, usedKg, reps, targetReps, wIdx);
         // Il carico non sale per una seduta sola: sale se questa e la
         // precedente soddisfano la regola 2-per-2 (NSCA 2008; ACSM 2009).
-        if (reps >= targetReps + 2) woApplyTwoForTwo(exName, wIdx);
+        // Senza carico (v.300) la stessa regola propone la variante successiva.
+        if (reps >= targetReps + 2) {
+            var exP = (APP.exerciseData || []).find(function(x) { return exSameExercise(x.name, exName); });
+            if (woPlannedKg(exP, wIdx) > 0) woApplyTwoForTwo(exName, wIdx);
+            else woProponiVariante(exName, wIdx);
+        }
         else saveState();
     }
 
@@ -19475,7 +19651,10 @@ function woAskTechnique(exName, eq, usedKg, reps, targetReps, wIdx) {
         '<div style="font-size:0.52rem;color:#fbbf24;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">Oltre il programma</div>' +
         '<div style="font-size:0.95rem;font-weight:800;color:#e2e8f0;margin:4px 0 3px;">' + escapeHTML(exDisplay(exName)) + '</div>' +
         '<div style="font-size:0.7rem;color:#cbd5e1;line-height:1.6;margin-bottom:14px;">' +
-        (targetReps <= REPS_ASK_MAX
+        (!(usedKg > 0)
+            ? 'A corpo libero: <b style="color:#fbbf24;">' + (reps - targetReps) +
+              (reps - targetReps === 1 ? ' ripetizione' : ' ripetizioni') + '</b> oltre le ' + targetReps + ' previste.'
+            : targetReps <= REPS_ASK_MAX
             ? _fmtKg(usedKg) + ' kg \u00d7 ' + reps + ' vale <b style="color:#fbbf24;">' + _fmtKg(eq) +
               ' kg</b> sulle ' + targetReps + ' previste.'
             : _fmtKg(usedKg) + ' kg \u00d7 ' + reps + ': <b style="color:#fbbf24;">' + (reps - targetReps) +
@@ -19604,6 +19783,103 @@ function woApplyTwoForTwo(exName, wIdx) {
     if (typeof renderPlanPage === 'function') { try { renderPlanPage(APP.selectedViewWeek || 0); } catch (e) {} }
     if (typeof updateChart === 'function') updateChart();
     return changed;
+}
+
+/* ── VARIANTE PIU' DIFFICILE A CORPO LIBERO (v.300) ───────────────────
+   Senza carico la progressione passa dalla difficolta' della variante
+   (Kotarsky et al. 2018, J Strength Cond Res 32(3):651-659: varianti di
+   piegamento via via piu' difficili, con le stesse variabili di
+   programmazione, aumentano la forza come la panca). QUANDO cambiare lo
+   decide la stessa regola dei pesi, 2-per-2 (Baechle & Earle, NSCA 2008):
+   due sedute di fila con almeno due ripetizioni pulite oltre il target.
+   La soglia di passaggio usata da Kotarsky non e' stata verificata sul
+   testo dello studio: per questo non la si cita e si usa la regola che
+   l'app applica gia' ai pesi.
+   A CHE COSA si passa: solo dove l'ordine di difficolta' e' documentato o
+   evidente, senza inventarne uno:
+   - piegamenti: con i piedi rialzati il carico sulle braccia sale dal 64%
+     al 70-74% del peso del corpo (Ebben et al. 2011, J Strength Cond Res
+     25(10):2891-2894);
+   - trazioni con l'elastico -> senza: si toglie l'assistenza;
+   - per il resto, la variante che il catalogo dell'app segna gia' come
+     avanzata (adv) della stessa progressione (vedi awkPick).
+   Se la variante richiede un attrezzo che la scheda non dichiara, non si
+   propone. Per trazioni e dip senza variante successiva si suggerisce la
+   zavorra, che e' la loro progressione (vedi BODYWEIGHT_LOADABLE). Nessuna
+   variante nota: si continua con le ripetizioni della scheda. */
+var AW_VARIANTE_SUCC = {
+    'Push-up':                ['Push-up Declinato', 'Archer Push-up'],
+    'Push-up Declinato':      ['Archer Push-up', 'Pseudo Planche Push-up'],
+    'Pike Push-up':           ['Handstand Push-up al Muro'],
+    'Pike Push-up Rialzato':  ['Handstand Push-up al Muro'],
+    'Split Squat':            ['Pistol Squat Assistito'],
+    'Bulgarian Split Squat':  ['Pistol Squat Assistito'],
+    'Trazioni con Elastico':  ['Trazioni alla Sbarra']
+};
+
+function awVarianteSuccessiva(name, equip) {
+    var keys = Object.keys(AW_VARIANTE_SUCC);
+    var k = null;
+    for (var i = 0; i < keys.length; i++) if (exSameExercise(keys[i], name)) { k = keys[i]; break; }
+    if (!k) return null;
+    var list = AW_VARIANTE_SUCC[k];
+    for (var j = 0; j < list.length; j++) {
+        var c = awkCatalogLookup(list[j]);
+        var eq = (c && c.eq) || [];
+        if (eq.every(function(q) { return equip.indexOf(q) >= 0; })) return list[j];
+    }
+    return null;
+}
+
+function woProponiVariante(exName, wIdx) {
+    if (wIdx === DELOAD_WEEK || !woTwoForTwo(exName)) { saveState(); return; }
+    // Il conteggio riparte comunque: la proposta non torna a ogni seduta.
+    if (!APP.twoForTwoAt) APP.twoForTwoAt = {};
+    APP.twoForTwoAt[exName] = _lhIsoToday();
+    saveState();
+    // Una proposta per esercizio per ciclo: chi ha risposto "resto con
+    // questo" non la ritrova ogni settimana (restartCycle azzera l'elenco).
+    if (!APP.proposteVariante) APP.proposteVariante = {};
+    if (APP.proposteVariante[exName]) return;
+    var proto = (typeof woSessionProto === 'function') ? woSessionProto() : null;
+    var equip = awkExpandEquip((proto && proto._awkEquip) || []);
+    var next = awVarianteSuccessiva(exName, equip);
+    if (next || exIsLoadableBodyweight(exName)) { APP.proposteVariante[exName] = _lhIsoToday(); saveState(); }
+    var intro = 'Per due sedute di fila hai chiuso almeno due ripetizioni pulite oltre il previsto. ' +
+                'Senza pesi, il passo successivo \u00e8 una variante pi\u00f9 difficile.';
+    if (next) {
+        awConfirm(intro + '\n\nProssima variante: ' + exDisplay(next) + '.\n\n' +
+                  'Cambia in tutte le schede che contengono ' + exDisplay(exName) + ', con le stesse serie e ripetizioni.',
+            function(ok) { if (ok) awSostituisciEsercizio(exName, next); },
+            { title: exDisplay(exName) + ': passare avanti?', okLabel: 'Cambia', cancelLabel: 'Resto con questo' });
+    } else if (exIsLoadableBodyweight(exName)) {
+        awConfirm(intro + '\n\nPer ' + exDisplay(exName) + ' \u00e8 la zavorra: un disco alla cintura o uno zaino. ' +
+                  'In Piani tocca \uD83C\uDFAF accanto all\u2019esercizio e scrivi il peso aggiunto: da l\u00ec la scheda lo fa salire con la stessa regola dei pesi.',
+            null, { title: exDisplay(exName) + ': aggiungi una zavorra', okLabel: 'Ho capito', cancelLabel: 'Chiudi' });
+    }
+}
+
+/* Sostituisce un esercizio con un altro in tutte le schede, tenendo serie,
+   ripetizioni, ruolo e recupero. La seduta in corso non si tocca: lo storico
+   di oggi resta all'esercizio eseguito. */
+function awSostituisciEsercizio(oldName, newName) {
+    var touched = [];
+    (APP.savedProtocols || []).forEach(function(p) {
+        var hit = false;
+        (p.exercises || []).forEach(function(e) {
+            if (e && e.name && exSameExercise(e.name, oldName)) { e.name = newName; hit = true; }
+        });
+        if (hit) touched.push(p);
+    });
+    if (!APP.twoForTwoAt) APP.twoForTwoAt = {};
+    APP.twoForTwoAt[newName] = _lhIsoToday();
+    saveState();
+    touched.forEach(function(p) {
+        if (typeof saveProtocolToSupabase !== 'function') return;
+        try { saveProtocolToSupabase(p); } catch (err) { awLog.warn('saveProtocolToSupabase:', err); }
+    });
+    if (typeof renderPlanPage === 'function') { try { renderPlanPage(APP.selectedViewWeek || 0); } catch (e) {} }
+    showToast('Dalla prossima seduta: ' + exDisplay(newName) + ' al posto di ' + exDisplay(oldName), 'success');
 }
 
 /* Riga di storico di oggi per un esercizio, se c'e'. */
@@ -19772,22 +20048,25 @@ function woAskExtraReps(exName, targetReps, usedKg, onDone) {
         'max-width:420px;width:100%;max-height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;' +
         'padding:20px 18px;box-sizing:border-box;';
 
+    // v.300 — La domanda e' neutra e ammette anche MENO ripetizioni del
+    // previsto. Prima le scelte erano solo "previste, +1, +2, +3": una serie
+    // non finita veniva registrata come completa, e lo storico (su cui lavora
+    // la regola 2-per-2, Baechle & Earle, NSCA 2008) diceva il falso. Le
+    // ripetizioni mancate si registrano e basta: nessuno studio indica di
+    // quanto abbassare il carico dopo una serie incompleta, quindi l'app non
+    // lo fa da sola; il carico si corregge dalla casella del peso.
+    var conCosa = (parseFloat(usedKg) > 0) ? ('con ' + _fmtKg(usedKg) + ' kg') : 'a corpo libero';
     var h = '<div style="font-size:0.52rem;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">Ultima serie</div>' +
         '<div style="font-size:0.95rem;font-weight:800;color:#e2e8f0;margin:4px 0 3px;">' + escapeHTML(exDisplay(exName)) + '</div>' +
-        '<div style="font-size:0.7rem;color:#cbd5e1;line-height:1.6;margin-bottom:14px;">Hai chiuso piu\u0027 delle <b style="color:#e2e8f0;">' +
-        targetReps + ' ripetizioni</b> previste con ' + _fmtKg(usedKg) + ' kg?</div>' +
-        '<div id="wo-reps-chips" style="display:flex;gap:6px;margin-bottom:10px;"></div>' +
+        '<div style="font-size:0.7rem;color:#cbd5e1;line-height:1.6;margin-bottom:14px;">Quante ripetizioni hai chiuso ' + conCosa +
+        '? Ne erano previste <b style="color:#e2e8f0;">' + targetReps + '</b>.</div>' +
+        '<div id="wo-reps-chips" style="display:flex;gap:6px;margin-bottom:8px;"></div>' +
+        '<div id="wo-reps-less" style="display:none;gap:6px;margin-bottom:8px;"></div>' +
+        '<button type="button" class="wo-ovl-opt skip" id="wo-reps-less-btn" style="margin-bottom:8px;">Meno di ' + targetReps + '</button>' +
         '<button type="button" class="wo-ovl-opt skip" id="wo-reps-skip">Preferisco non rispondere<small>Conto le ripetizioni previste</small></button>';
     box.innerHTML = h;
 
-    var chips = box.querySelector('#wo-reps-chips');
-    var opts = [
-        { r: targetReps, lab: 'No, ' + targetReps },
-        { r: targetReps + 1, lab: '+1' },
-        { r: targetReps + 2, lab: '+2' },
-        { r: targetReps + 3, lab: '+3 o piu\u0027' }
-    ];
-    opts.forEach(function(o) {
+    function chip(o) {
         var b = document.createElement('button');
         b.type = 'button';
         // La regola globale button{width:100%} sfonderebbe la riga flex.
@@ -19796,8 +20075,29 @@ function woAskExtraReps(exName, targetReps, usedKg, onDone) {
             'color:#cbd5e1;font-size:0.68rem;font-weight:800;font-family:inherit;cursor:pointer;';
         b.textContent = o.lab;
         b.onclick = function() { finish(o.r); };
-        chips.appendChild(b);
-    });
+        return b;
+    }
+    var chips = box.querySelector('#wo-reps-chips');
+    [
+        { r: targetReps, lab: String(targetReps) },
+        { r: targetReps + 1, lab: '+1' },
+        { r: targetReps + 2, lab: '+2' },
+        { r: targetReps + 3, lab: '+3 o pi\u00f9' }
+    ].forEach(function(o) { chips.appendChild(chip(o)); });
+
+    // Sotto il target: le quattro ripetizioni sotto, l'ultima "o meno".
+    var less = box.querySelector('#wo-reps-less');
+    for (var k = 1; k <= 4; k++) {
+        var v = targetReps - k;
+        if (v < 1) break;
+        less.appendChild(chip({ r: v, lab: (k === 4 && v > 1) ? (v + ' o meno') : String(v) }));
+    }
+    var lessBtn = box.querySelector('#wo-reps-less-btn');
+    if (!less.children.length) lessBtn.style.display = 'none';
+    lessBtn.onclick = function() {
+        less.style.display = 'flex';
+        lessBtn.style.display = 'none';
+    };
     box.querySelector('#wo-reps-skip').onclick = function() { finish(0); };
 
     ov.appendChild(box);
@@ -19825,8 +20125,13 @@ function woRecordSessionReps(exName, reps, targetReps, usedKg) {
     var wIdx = APP.selectedViewWeek || 0;
     var prevKg = ex && ex.loads ? (ex.loads[wIdx] || ex.baseWeight || 0) : (ex ? (ex.baseWeight || 0) : 0);
     var eq = woEquivalentLoad(usedKg, reps, targetReps);
-    if (!(prevKg > 0) || wIdx === DELOAD_WEEK) { saveState(); return; }
+    if (wIdx === DELOAD_WEEK) { saveState(); return; }
     if (!(reps > targetReps)) { saveState(); return; }
+    // v.300 — Anche a corpo libero le ripetizioni in piu' passano dalla
+    // conferma della tecnica: con la regola 2-per-2 decidono il passaggio a
+    // una variante piu' difficile (woProponiVariante). Senza carico non c'e'
+    // nessun carico equivalente ne' record in chili.
+    if (!(prevKg > 0)) { woAskTechnique(exName, 0, 0, reps, targetReps, wIdx); return; }
 
     // v.175 — la registrazione passa dalla conferma della tecnica: solo una
     // prestazione pulita diventa record e conta per la regola 2-per-2.
@@ -20695,6 +21000,9 @@ function awdCoverage() {
 function woRedoWorkout() {
     const wIdx = APP.selectedViewWeek;
     const di = woState._todayDayIdx;
+    // v.300: la pagina riconosce la seduta gia' fatta oggi dal diario; "Rifai"
+    // vale come eccezione per la giornata.
+    woState._redoDay = awIsoDay(new Date());
     if (di !== undefined && di !== null && APP.chipStates[wIdx]) {
         // "Rifai" mantiene il protocollo assegnato: da 'done' si torna ad 'assigned'
         // (per liberare del tutto il giorno si ripiga la chip completata)
@@ -21968,9 +22276,17 @@ const AWK_POOL = {
     {n:'Rematore al Tavolo', eq:['appoggio'], fam:'row_bw'},
     {n:'Alzate Prone Y-T-W', eq:[], fam:'prone_raise'}
   ],
+  /* v.300 — Le trazioni sono segnate come variante avanzata: al principiante
+     awkPick propone prima lat machine, cavi o elastico, e le trazioni solo
+     se non c'e' altro. Il carico di una trazione e' il peso del corpo e non
+     si puo' regolare, mentre ai principianti l'ACSM (Position Stand 2009)
+     indica carichi moderati, 60-70% del massimale per 8-12 ripetizioni, e la
+     NSCA (Baechle & Earle 2008) l'esperienza come criterio di scelta degli
+     esercizi. Prima un principiante in palestra riceveva 3 x 13 trazioni a
+     corpo libero pur avendo la lat machine. */
   VPULL: [
-    {n:'Trazioni alla Sbarra', eq:['sbarra']},
-    {n:'Trazioni agli Anelli', eq:['anelli']},
+    {n:'Trazioni alla Sbarra', eq:['sbarra'], adv:true},
+    {n:'Trazioni agli Anelli', eq:['anelli'], adv:true},
     {n:'Lat Machine', eq:['macchine']},
     {n:'Lat Machine ai Cavi', eq:['cavi']},
     {n:'Lat Pulldown con Elastico', eq:['elastici']},
@@ -22341,7 +22657,11 @@ function awkPick(key, equip, used, usedFam, allowSkip, level){
   // l'esperienza tecnica come criterio nella scelta degli esercizi.
   // Senza una variante base con l'attrezzatura data si resta all'avanzata.
   if (level === 'principiante') {
-    const base = ok.filter(ex => !ex.adv);
+    // v.300: un isometrico non conta come versione base di un esercizio a
+    // ripetizioni (il rematore allo stipite non sostituisce le trazioni per
+    // chi ha la sbarra): se e' l'unica alternativa, si resta all'avanzata.
+    const dinAdv = ok.some(ex => ex.adv && !ex.hold);
+    const base = ok.filter(ex => !ex.adv && !(ex.hold && dinAdv));
     if (base.length) ok = base;
   }
   let c = ok.find(ex => !used.has(ex.n) && (!ex.fam || !usedFam.has(ex.fam)));
@@ -24879,6 +25199,12 @@ function restartCycle() {
         var _si = awSessionStreakInfo();
         APP.streakCarry = (_si.any && !_si.gap && !_si.tail) ? _si.run : 0;
     } catch (e) { APP.streakCarry = 0; }
+    // v.300: le sedute del ciclo che si chiude restano nel conteggio
+    // (vedi awCalcTotalWorkouts), prima che le spunte tornino da svolgere.
+    try {
+        var _fatte = (APP.chipStates || []).flat().filter(function(st){ return st === 'done'; }).length;
+        APP.workoutsCarry = (APP.workoutsCarry || 0) + _fatte;
+    } catch (e) {}
     APP.completedWeeks = [false, false, false, false, false];
     APP.availableWeeks = [0];
     APP._weekCelebrated = [false, false, false, false, false];
@@ -24899,6 +25225,7 @@ function restartCycle() {
     }
     APP.overloadNoticeSeen = false;
     APP.mtrAdjusted = {};   // il nuovo ciclo riparte senza aumenti pregressi
+    APP.proposteVariante = {};   // v.300: varianti e zavorra si ripropongono
     APP.selectedViewWeek = 0;
     saveState();
     if (typeof restoreChipStates === 'function') restoreChipStates();
@@ -25318,14 +25645,11 @@ function awSessionKeys() {
 // Allenamenti effettuati in tutta la storia dell'atleta, non solo nel ciclo in
 // corso: il ciclo che riparte azzera le chip, il lavoro fatto no.
 function awTotalSessions() {
-    var n = Object.keys(awSessionKeys()).length;
     // Le chip segnate a mano senza aprire l'allenamento non lasciano riga nel
-    // diario: il ciclo in corso vale comunque come minimo.
-    var chips = 0;
-    (APP.chipStates || []).forEach(function(week) {
-        (week || []).forEach(function(st) { if (st === 'done') chips++; });
-    });
-    return Math.max(n, chips);
+    // diario: per questo si prende il piu' alto fra diario e spunte. v.300:
+    // e' lo stesso calcolo di "Allenamenti" (awCalcTotalWorkouts), cosi'
+    // Profilo e Progressi dicono lo stesso numero.
+    return awCalcTotalWorkouts();
 }
 
 // Data del primo allenamento. Null solo se non risulta NESSUNA seduta: in quel
