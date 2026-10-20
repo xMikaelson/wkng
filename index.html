@@ -4658,7 +4658,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '300';
+const APP_VERSION = '301';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -5063,6 +5063,7 @@ async function saveProtocolToSupabase(proto) {
             _awkGoal: proto._awkGoal || null,
             _awkLevel: proto._awkLevel || null,
             _awkEquip: proto._awkEquip || null,
+            _refRepsV301: !!proto._refRepsV301,
             _planDay: (typeof proto._planDay === 'number') ? proto._planDay : null,
             createdAt: proto.createdAt || null
         };
@@ -5181,6 +5182,7 @@ function loadState() {
         APP.prLegacy    = saved.prLegacy || null;
         APP._prMigrated = !!saved._prMigrated;
         migrateLegacyPR();
+        try { prMigrateTipo(); } catch (e) {}   // v.301: record per tipo di programma
         APP.mtrValues = saved.mtrValues || {};
         APP.nutTemplates = saved.nutTemplates || [];
         APP.nutFavorites = saved.nutFavorites || [];
@@ -5258,6 +5260,7 @@ function migrateMtrLoads() {
     // v.151: converte i range di ripetizioni ereditati in numeri secchi
     try { awkMigrateSr(); } catch (e) { awLog.warn('migrazione sr:', e && e.message); }
     try { if (awkMigrateHolds()) saveState(); } catch (e) { awLog.warn('migrazione isometrici:', e && e.message); }
+    try { if (awkMigrateRefReps()) saveState(); } catch (e) { awLog.warn('migrazione ripetizioni di riferimento:', e && e.message); }
     if (!APP.mtrValues) APP.mtrValues = {};
     var changed = mtrCanonicalizeDict();
     if (mtrSyncFromProtocols()) changed = true;
@@ -5587,7 +5590,7 @@ var WP_MOB = {
     alta: [
         { n: 'Circonduzioni delle braccia', d: 'Braccia tese, cerchi ampi: metà avanti, metà indietro.', t: 30 },
         { n: 'Aperture con elastico', d: 'Elastico davanti al petto, apri fino alle spalle.', t: 30, elastico: true },
-        { n: 'Rotazioni del busto', d: 'Braccia al petto, ruota senza muovere il bacino.', t: 30 },
+        { n: 'Rotazioni del busto', d: 'Braccia al petto, ruota a destra e a sinistra alternando, senza muovere il bacino.', t: 30 },
         { n: 'Gatto-cammello', d: 'A quattro zampe, inarca e arrotonda la schiena.', t: 30 },
         { n: 'Piegamenti al muro', d: 'Mani al muro all\'altezza delle spalle, lenti.', t: 30 }
     ],
@@ -5596,14 +5599,14 @@ var WP_MOB = {
         { n: 'Slanci della gamba avanti-dietro', d: 'Mano al muro, oscillazione controllata.', t: 30, lati: true },
         { n: 'Slanci laterali', d: 'Di fronte al muro, la gamba oscilla da un lato all\'altro.', t: 30, lati: true },
         { n: 'Squat a corpo libero', d: 'Lento, fin dove la schiena resta neutra.', t: 30 },
-        { n: 'Affondi alternati senza peso', d: 'Passo lungo, ginocchio dietro vicino a terra.', t: 30 },
+        { n: 'Affondi alternati senza peso', d: 'Passo lungo, ginocchio dietro vicino a terra, una gamba e poi l\'altra.', t: 30 },
         { n: 'Ponte glutei', d: 'Schiena a terra, spingi con i talloni.', t: 30 }
     ],
     mista: [
         { n: 'Circonduzioni delle braccia', d: 'Braccia tese, cerchi ampi: metà avanti, metà indietro.', t: 30 },
         { n: 'Circonduzioni delle anche', d: 'In appoggio su una gamba, cerchi ampi con il ginocchio.', t: 30, lati: true },
         { n: 'Gatto-cammello', d: 'A quattro zampe, inarca e arrotonda la schiena.', t: 30 },
-        { n: 'Rotazioni del busto', d: 'Braccia al petto, ruota senza muovere il bacino.', t: 30 },
+        { n: 'Rotazioni del busto', d: 'Braccia al petto, ruota a destra e a sinistra alternando, senza muovere il bacino.', t: 30 },
         { n: 'Squat a corpo libero', d: 'Lento, fin dove la schiena resta neutra.', t: 30 }
     ]
 };
@@ -5664,8 +5667,22 @@ function wpMobList(p) {
         return m;
     });
 }
-// Per i movimenti a due lati il timer mostra quanto manca al lato in corso.
-function wpSideLeft(mv, left) { return (mv && mv.lati && left > mv.t) ? left - mv.t : left; }
+// v.301 — Movimenti a due lati: lato destro, pausa per girarsi, lato
+// sinistro. Prima il secondo lato partiva nello stesso istante in cui finiva
+// il primo, e il cambio di posizione (piede d'appoggio, mano al muro) si
+// mangiava i primi secondi; la descrizione spariva sostituita da "Primo
+// lato". La pausa e' la stessa degli isometrici e dello stretching
+// (WO_SIDE_SWITCH_SECS, 5 s): tempo pratico per cambiare posizione, non un
+// numero di letteratura. I 30 s per lato restano quelli di prima.
+function wpMobDur(mv) { return mv ? (mv.lati ? mv.t * 2 + WO_SIDE_SWITCH_SECS : mv.t) : 0; }
+function wpFase(mv, left) {
+    if (!mv || !mv.lati) return { fase: 'unico', resto: left };
+    var t = mv.t, sw = WO_SIDE_SWITCH_SECS;
+    if (left > t + sw) return { fase: 'dx', resto: left - t - sw };
+    if (left > t) return { fase: 'cambio', resto: left - t };
+    return { fase: 'sx', resto: left };
+}
+function wpSideLeft(mv, left) { return wpFase(mv, left).resto; }
 function wpStop() { if (_wpTimer) { clearInterval(_wpTimer); _wpTimer = null; } if (woPrep) woPrep.run = null; }
 function wpFmt(s) { s = Math.max(0, s); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 function wpLeft() { return Math.max(0, Math.ceil((woPrep.endsAt - Date.now() - 50) / 1000)); }
@@ -5692,7 +5709,7 @@ function wpRender() {
     var p = woPrep, h = '';
     var tot = p.min * 60;
     var list = wpMobList(p);
-    var secs = list.reduce(function(a, m) { return a + m.t * (m.lati ? 2 : 1); }, 0);
+    var secs = list.reduce(function(a, m) { return a + wpMobDur(m); }, 0);
     // ── Barra dei passi: uno alla volta, toccandoli si torna indietro ──
     var steps = [['Generale', p.min + ' min'], ['Mobilità', wpFmt(secs)]];
     if (p.ramp) steps.push(['Avvicinamento', 'con i pesi']);
@@ -5757,8 +5774,12 @@ function wpRender() {
         list.forEach(function(mv, i) {
             var run = p.mobRun === i, done = !!p.mob[i];
             var lab = run ? wpFmt(wpSideLeft(mv, p.left)) : (done ? '✓' : '▶');
+            var fz = run ? wpFase(mv, p.left).fase : '';
+            var latoTxt = fz === 'dx' ? '<b style="color:#e2e8f0;">Lato destro</b> · '
+                        : fz === 'cambio' ? '<b style="color:#fbbf24;">Cambia lato</b> · '
+                        : fz === 'sx' ? '<b style="color:#e2e8f0;">Lato sinistro</b> · ' : '';
             h += '<div class="wp-row' + (run ? ' cur' : '') + '"><div style="flex:1;min-width:0;"><div class="n">' + mv.n + '</div><div class="d">' +
-                 (run && mv.lati ? (p.left > mv.t ? 'Primo lato' : '<b style="color:#fbbf24;">Secondo lato</b>') : mv.d) + '</div></div>' +
+                 latoTxt + mv.d + '</div></div>' +
                  '<div class="r">' + mv.t + 's' + (mv.lati ? ' per lato' : '') + '</div>' +
                  '<button type="button" class="wp-go' + (done ? ' done' : (run ? ' run' : '')) + '" data-mob="' + i + '" aria-label="' + mv.n + '">' + lab + '</button></div>';
         });
@@ -5807,8 +5828,8 @@ function wpWire() {
         if (p.mob[i]) { p.mob[i] = false; wpRender(); return; }                // togli la spunta
         var mv = wpMobList(p)[i];
         wpStop();
-        p.mobRun = i; p.run = 'mob'; p.left = mv.t * (mv.lati ? 2 : 1);
-        p.endsAt = Date.now() + p.left * 1000; p.lastBeep = null; p.side2 = false;
+        p.mobRun = i; p.run = 'mob'; p.left = wpMobDur(mv);
+        p.endsAt = Date.now() + p.left * 1000; p.lastBeep = null; p.fase = mv.lati ? 'dx' : 'unico';
         _woBeep(660, 0.15, 'sine');
         _wpTimer = setInterval(wpTick, 250);
         wpRender();
@@ -5841,10 +5862,18 @@ function wpTick() {
     } else if (p.run === 'mob') {
         var mv = wpMobList(p)[p.mobRun];
         p.left = left;
-        if (mv && mv.lati && !p.side2 && left <= mv.t) { p.side2 = true; _woBeep(880, 0.25, 'sine'); wpRender(); return; }
+        var ph = wpFase(mv, left);
+        if (ph.fase !== p.fase) {
+            p.fase = ph.fase;
+            // Fine del primo lato: segnale di cambio. Inizio del secondo: via.
+            if (ph.fase === 'cambio') _woBeep(880, 0.25, 'sine');
+            else if (ph.fase === 'sx') _woBeep(660, 0.15, 'sine');
+            if (left > 0) { wpRender(); return; }
+        }
         var btn = document.querySelector('#wo-prep [data-mob="' + p.mobRun + '"]');
-        if (btn) btn.textContent = wpFmt(wpSideLeft(mv, left));
-        if (left > 0 && left <= 3 && p.lastBeep !== left) { p.lastBeep = left; woCountdownBeepFree(); }
+        if (btn) btn.textContent = wpFmt(ph.resto);
+        // Conto alla rovescia sugli ultimi 3 secondi di ogni lato.
+        if (ph.fase !== 'cambio' && ph.resto > 0 && ph.resto <= 3 && p.lastBeep !== left) { p.lastBeep = left; woCountdownBeepFree(); }
         if (left === 0) {
             p.mob[p.mobRun] = true; p.mobRun = -1; wpStop();
             _woBeep(660, 0.12, 'sine'); setTimeout(function(){ _woBeep(880, 0.25, 'sine'); }, 140);
@@ -6074,7 +6103,7 @@ function renderWarmupBlock(exName, exercises, container) {
                 var info = document.createElement('div');
                 info.className = 'wc-set-info';
                 info.innerHTML = '<div><span class="wc-set-kg">' + s.kg + ' kg</span><span class="wc-set-pct">' + s.pct + '% MTR</span></div>' +
-                    '<div class="wc-set-detail">' + s.reps + ' rip<span class="wc-set-rec">rec. ' + s.rec + '</span></div>';
+                    '<div class="wc-set-detail">' + s.reps + ' rip' + (exIsUnilateral(warmEx.name) ? ' per lato' : '') + '<span class="wc-set-rec">rec. ' + s.rec + '</span></div>';
 
                 // Timer rest — creato PRIMA dell'onclick per poterlo referenziare nel closure
                 var restTimerEl = document.createElement('div');
@@ -6093,7 +6122,7 @@ function renderWarmupBlock(exName, exercises, container) {
                 lbl.className = 'wc-set-lbl';
                 lbl.textContent = '0/1';
 
-                var capturedRef = {next: null, allNext: []};
+                var capturedRef = {next: null, allNext: [], label: exDisplay(warmEx.name) + ' \u00b7 W' + (i + 1) + ' \u00b7 ' + _fmtKg(s.kg) + ' kg'};
 
                 (function(capturedTimer, capturedRec, capturedBtn) {
                     btn.onclick = function() {
@@ -6103,7 +6132,12 @@ function renderWarmupBlock(exName, exercises, container) {
                             lbl.className = 'wc-set-lbl active'; lbl.textContent = '1/1';
                             completedSets++;
                             var restSecs = capturedRec.indexOf('2 min') !== -1 ? 120 : 60;
-                            startWarmupRestTimer(capturedTimer, restSecs, capturedBtn.next, capturedBtn.allNext);
+                            // v.301: anche qui la notifica di fine recupero,
+                            // con la serie che tocca adesso.
+                            var notif = capturedBtn.nextLabel
+                                ? 'Riparti: ' + capturedBtn.nextLabel
+                                : 'Riscaldamento finito: inizia l\u2019allenamento';
+                            startWarmupRestTimer(capturedTimer, restSecs, capturedBtn.next, capturedBtn.allNext, notif);
                         } else {
                             btn.classList.remove('done'); btn.textContent = '\u25cb';
                             btn.classList.add('pulse');
@@ -6142,6 +6176,7 @@ function renderWarmupBlock(exName, exercises, container) {
             // next = solo il diretto successivo nell'intera sequenza (sblocca dopo rest)
             if (idx + 1 < setRefs.length) {
                 item.ref.next = setRefs[idx + 1].btn;
+                item.ref.nextLabel = setRefs[idx + 1].ref.label;
             }
             // allNext = tutti i successivi nell'intera sequenza (bloccati durante rest)
             item.ref.allNext = setRefs.slice(idx + 1).map(function(r){ return r.btn; });
@@ -6235,9 +6270,12 @@ function woRefreshScroll() {
 // ── Timer di recupero post-set warmup ──
 var _warmupRestTimerIntervals = new WeakMap();
 
-function startWarmupRestTimer(el, totalSecs, nextBtn, allNextBtns) {
+function startWarmupRestTimer(el, totalSecs, nextBtn, allNextBtns, notifText) {
     if (!el) return;
     stopWarmupRestTimer(el);
+    // Notifica di fine recupero come per gli esercizi (v.301): push dal
+    // server se armato, altrimenti locale; vedi woRestDoneNotify.
+    try { woRestPushSchedule(totalSecs, notifText || 'Riparti con la serie successiva'); } catch (e) {}
     el.classList.add('active');
     var fill = el.querySelector('.wc-rest-bar-fill');
     var lbl  = el.querySelector('.wc-rest-bar-lbl');
@@ -6264,7 +6302,7 @@ function startWarmupRestTimer(el, totalSecs, nextBtn, allNextBtns) {
         // un beep per ogni secondo, piu' uno piu' alto quando si riparte.
         if (remaining !== prevRemaining) {
             if (remaining > 0 && remaining <= REST_BEEP_SECS) _woBeep(440, 0.12, 'square');
-            else if (remaining <= 0) _woBeepGo();
+            else if (remaining <= 0) { _woBeepGo(); try { woRestDoneNotify(notifText); } catch (e) {} }
         }
         if (remaining <= 0) {
             fill.style.transition = 'width 0.5s linear';
@@ -6299,6 +6337,8 @@ function stopWarmupRestTimer(el) {
     if (_warmupRestTimerIntervals.has(el)) {
         clearInterval(_warmupRestTimerIntervals.get(el));
         _warmupRestTimerIntervals.delete(el);
+        // Recupero interrotto (serie tolta): niente notifica in arrivo.
+        try { woRestPushCancel(); } catch (e) {}
     }
     el.classList.remove('active');
     var fill = el.querySelector('.wc-rest-bar-fill');
@@ -7345,6 +7385,8 @@ async function onLoginSuccess(user, usernameOverride = null) {
         if (s._prMigrated) APP._prMigrated = true;
         if (s.personalRecords) {
             APP.personalRecords = Object.assign({}, s.personalRecords, APP.personalRecords || {});
+            // Da un salvataggio di prima della v.301 i record arrivano senza tipo.
+            try { prMigrateTipo(); } catch (e) {}
         }
         // Storico carichi: unione per chiave, cosi' due dispositivi diversi
         // non si cancellano le sedute a vicenda.
@@ -7449,6 +7491,7 @@ async function onLoginSuccess(user, usernameOverride = null) {
                 _awkGoal: meta._awkGoal || null,
                 _awkLevel: meta._awkLevel || null,
                 _awkEquip: meta._awkEquip || null,
+                _refRepsV301: !!meta._refRepsV301,
                 _planDay: (typeof meta._planDay === 'number') ? meta._planDay : undefined
             };
         });
@@ -10177,6 +10220,23 @@ function srForChapter(ex, chIdx, proto) {
     var pCali = awkParamsFor({ _awkGoal: 'calisthenic', _awkLevel: proto._awkLevel || 'intermedio' }, role, chIdx);
     if (pCali && pCali.r) return p.s + ' x ' + pCali.r;
   }
+  // v.301 — Il caso opposto: una scheda GRAVITY con la zavorra (carico > 0).
+  // La tabella calisthenic fa salire le ripetizioni capitolo dopo capitolo
+  // perche' il carico resta il peso del corpo; con la zavorra sale anche il
+  // carico (85 -> 97% dell'MTR) e le due cose insieme portavano il Chapter 4
+  // oltre il massimo stimato per quelle ripetizioni (fino al 108%, Epley).
+  // Con la zavorra la stessa scala di ripetizioni si percorre al contrario:
+  // si parte dalle ripetizioni piu' alte e si scende mentre il carico sale,
+  // come nelle schede con i pesi. Stessi numeri della tabella, nessuno nuovo.
+  if (p && p.s && role !== 'core' && awkGoalOfProto(proto) === 'calisthenic' && !srSenzaCarico(ex, chIdx)) {
+    var tC = AWK_PARAMS.calisthenic[proto._awkLevel || 'intermedio'];
+    var rcC = tC && tC[role] && tC[role].rc;
+    if (rcC && rcC.length) {
+      var rev = rcC.slice().reverse();
+      var srcC = (chIdx === DELOAD_WEEK) ? DELOAD_WEEK - 1 : chIdx;
+      return p.s + ' x ' + rev[Math.min(Math.max(srcC, 0), rev.length - 1)];
+    }
+  }
   if (p && p.s && p.r) return p.s + ' x ' + p.r;
   // Senza ruolo noto si conserva il comportamento precedente.
   return (chIdx === DELOAD_WEEK) ? woDeloadSr(base) : base;
@@ -11191,6 +11251,32 @@ function exIsPerSide(exOrName) {
     if (WO_PER_SIDE_HOLDS.indexOf(n) !== -1) return true;
     return /laterale|monopodalic|unilateral|singol[oa]|un braccio|una gamba|per lato|alternat/.test(n);
 }
+// v.301 — Esercizi a ripetizioni eseguiti un lato alla volta (un braccio o
+// una gamba). Le ripetizioni prescritte valgono per ciascun lato: le tabelle
+// contano le serie e le ripetizioni per gruppo muscolare, e in un esercizio
+// monolaterale ogni lato fa la sua serie. Prima la scheda scriveva "3 x 10"
+// senza dirlo, e il riscaldamento "5 rip": si poteva leggere 5 in tutto.
+// Elenco del catalogo dell'app, piu' le parole che indicano un solo lato per
+// gli esercizi aggiunti a mano.
+var WO_UNILATERALI = ['rematore con manubrio', 'rematore al tavolo monobraccio',
+    'bulgarian split squat', 'split squat', 'pistol squat assistito',
+    'glute bridge monopodalico', 'calf raise monopodalico', 'archer push-up',
+    'archer pull-up alla sbarra', 'step-up sulla panca',
+    'affondi camminati con manubri', 'affondi a corpo libero'];
+function exIsUnilateral(exOrName) {
+    var nm = (exOrName && typeof exOrName === 'object') ? exOrName.name : exOrName;
+    var n = String(nm || '').toLowerCase();
+    if (WO_UNILATERALI.indexOf(n) !== -1) return true;
+    try { if (typeof exCanonical === 'function' && WO_UNILATERALI.indexOf(String(exCanonical(nm) || '').toLowerCase()) !== -1) return true; } catch (e) {}
+    return /monopodalic|monobraccio|un braccio|una gamba|unilateral|single arm|single leg/.test(n);
+}
+// "per lato" accanto allo schema: isometrici a un lato e ripetizioni
+// monolaterali.
+function srPerLato(ex, sr) {
+    if (srIsTime(sr)) return exIsPerSide(ex);
+    return exIsUnilateral(ex);
+}
+
 // Pausa fra un lato e l'altro, il tempo di girarsi. Non e' un recupero e
 // non viene da uno studio: e' il tempo pratico di cambio posizione, fissato
 // dall'utente (5 s).
@@ -12913,10 +12999,11 @@ function cheatLeveling() {
                     reps = tr + 1 + Math.floor(Math.random() * 3); // +1..+3
                     eq = woEquivalentLoad(usedKg, reps, tr);
                     // Aggiorna PR se supera il record precedente
-                    var prevPr = APP.personalRecords[ex.name] || 0;
+                    var tipoD = (tr && tr <= 6) ? 'forza' : 'massa';
+                    var prevPr = prGet(ex.name, tipoD, tr);
                     if (eq > prevPr + 0.05) {
-                        APP.personalRecords[ex.name] = eq;
-                        APP.prMeta[ex.name] = { kg: usedKg, r: reps, tr: tr, w: wIdx, d: dayIso };
+                        APP.personalRecords[prKey(ex.name, tipoD)] = eq;
+                        APP.prMeta[prKey(ex.name, tipoD)] = { kg: usedKg, r: reps, tr: tr, w: wIdx, d: dayIso };
                         prCount++;
                     }
                 }
@@ -13332,8 +13419,7 @@ var PROG_MENU_ITEMS = [
             // leggeva d.isPR su exerciseData, un campo calcolato al volo nella
             // schermata di allenamento e mai salvato: il valore era quasi
             // sempre zero. La fonte giusta è APP.personalRecords.
-            var recs = APP.personalRecords || {};
-            var prs = Object.keys(recs).filter(function(k) { return parseFloat(recs[k]) > 0; }).length;
+            var prs = prNames().length;   // v.301: un esercizio conta una volta anche con due record
             return {
                 value: prs + ' PR',
                 sub: prs === 1 ? 'esercizio con record' : 'esercizi con record',
@@ -13972,7 +14058,7 @@ function _pmPesiHtml() {
     var mtr = APP.mtrValues || {};
     var prs = APP.personalRecords || {};
     var names = Object.keys(mtr);
-    Object.keys(prs).forEach(function(n) {
+    prNames().forEach(function(n) {
         var dup = false;
         names.forEach(function(x) { if (exSameExercise(x, n)) dup = true; });
         if (!dup) names.push(n);
@@ -13999,12 +14085,7 @@ function _pmPesiHtml() {
         // v.173 — sintesi dei record direttamente nell'elenco: il trofeo
         // precede la percentuale sugli esercizi in cui hai superato il
         // programma, così si vedono a colpo d'occhio senza aprirli uno a uno.
-        var prVal = parseFloat(prs[n]);
-        if (!isFinite(prVal) || prVal <= 0) {
-            Object.keys(prs).forEach(function(k) {
-                if (exSameExercise(k, n)) { var pv = parseFloat(prs[k]); if (isFinite(pv) && pv > 0) prVal = pv; }
-            });
-        }
+        var prVal = Math.max(prGet(n, 'forza'), prGet(n, 'massa'));
         var prIcon = (isFinite(prVal) && prVal > 0)
             ? '<span class="m-list-pr" title="Record: ' + _fmtKg(prVal) + ' kg">\uD83C\uDFC6</span>' : '';
         h += '<div class="m-list-row" onclick="openExChart(' + JSON.stringify(n).replace(/"/g, '&quot;') + ')">' +
@@ -15278,7 +15359,7 @@ function initWorkoutPage() {
             const reps = _isHold ? 0 : (srM ? parseInt(srM[2]) : 10);
             const isForza = !_isHold && reps <= 6;
             let setTime  = _isHold ? (srDuration(ex.sr) || 40) : (isForza ? 45 : 35);
-            if (_isHold && exIsPerSide(ex)) setTime = setTime * 2 + WO_SIDE_SWITCH_SECS;
+            if ((_isHold && exIsPerSide(ex)) || (!_isHold && exIsUnilateral(ex))) setTime = setTime * 2 + WO_SIDE_SWITCH_SECS;
             const restTime = isForza ? 180 : 120;
             totalWorkSecs += sets * setTime;
             totalRestSecs += (sets - 1) * restTime;
@@ -15360,7 +15441,7 @@ function initWorkoutPage() {
                         </div>
                         <div style="text-align:right;">
                             <div style="font-size:0.65rem;color:var(--primary);font-weight:700;">${kg} kg</div>
-                            <div style="font-size:0.55rem;color:#94a3b8;">${escapeHTML(srForChapter(ex, DELOAD_WEEK, woSessionProto()))}</div>
+                            <div style="font-size:0.55rem;color:#94a3b8;">${escapeHTML(srForChapter(ex, DELOAD_WEEK, woSessionProto()))}${srPerLato(ex, srForChapter(ex, DELOAD_WEEK, woSessionProto())) ? ' per lato' : ''}</div>
                         </div>
                     </div>`;
                 }).join('')}`;
@@ -15395,7 +15476,7 @@ function initWorkoutPage() {
         woState._exListHtml = `<div style="font-size:0.55rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;font-weight:700;">Programma · ${protoName}</div>
         ${exData.map((ex,i) => {
             const kg = ex.loads ? ex.loads[kgW].toFixed(1) : (ex.baseWeight||0);
-            const srDisplay = srForChapter(ex, kgW, woSessionProto());
+            const srDisplay = srForChapter(ex, kgW, woSessionProto()) + (srPerLato(ex, srForChapter(ex, kgW, woSessionProto())) ? ' per lato' : '');
             return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
                 <div style="display:flex;gap:8px;align-items:center;">
                     <div style="width:20px;height:20px;border-radius:6px;background:rgba(var(--pr,52,211,153),0.12);border:1px solid rgba(var(--pr,52,211,153),0.25);display:flex;align-items:center;justify-content:center;font-size:0.55rem;font-weight:800;color:var(--primary);">${i+1}</div>
@@ -18993,6 +19074,15 @@ function woKeepAliveStop() {
 // Serve essere registrati e aver attivato le notifiche; senza, resta il
 // segnale al rientro nell'app.
 var _woRestPushOn = false;
+// v.301 — Una notifica sola a fine recupero. Prima potevano arrivarne due
+// uguali: con l'app in secondo piano ma ancora attiva (o risvegliata in
+// ritardo) la pagina mostrava la sua notifica locale e cancellava la riga
+// sul server troppo tardi, quando il job aveva gia' spedito il push. Ora,
+// se il push del server e' armato (la riga e' stata scritta), a recupero
+// finito fuori dall'app manda solo il server; la notifica locale resta per
+// quando il server non c'e' (non registrati, offline, permesso negato).
+// _woRestPushOk e' la scadenza (ms) del recupero per cui il server e' armato.
+var _woRestPushOk = 0;
 // ── APP NATIVA iOS: TIMER SULLA SCHERMATA DI BLOCCO (v.297) ──
 // Nell'app installata (Capacitor, cartella native/) il recupero compare sulla
 // schermata di blocco e nell'isola dinamica come Live Activity, con la stessa
@@ -19129,22 +19219,27 @@ if (AW_NATIVE) {
 
 function woRestPushSchedule(secs, body) {
     try { awLiveRest(secs); } catch (e) { awLog.warn('[live]', e && e.message); }
+    _woRestPushOk = 0;
     try {
         if (!APP || !APP.userName || !sbClient || sbClient._offline) return;
         if (typeof getNotifPermission === 'function' && getNotifPermission() !== 'granted') return;
         _woRestPushOn = true;
         // 1,5 s di margine: se l'app e' aperta il recupero finisce qui e la
         // riga viene tolta prima che il job la veda.
-        var fire = new Date(Date.now() + secs * 1000 + 1500).toISOString();
+        var endsAt = Date.now() + secs * 1000;
+        var fire = new Date(endsAt + 1500).toISOString();
         sbClient.from('rest_push').upsert({
             user_id: APP.userName, fire_at: fire,
             title: '\u23f1\ufe0f Recupero finito', body: body || 'Riparti con la serie successiva'
         }, { onConflict: 'user_id' }).then(function(r) {
-            if (r && r.error) awLog.warn('[rest_push]', r.error.message);
+            if (r && r.error) { awLog.warn('[rest_push]', r.error.message); return; }
+            // Armato solo se nel frattempo non e' partito un altro recupero.
+            if (_woRestPushOn) _woRestPushOk = endsAt;
         });
     } catch (e) { awLog.warn('[rest_push]', e && e.message); }
 }
 function woRestPushCancel() {
+    _woRestPushOk = 0;
     try { awLiveNotifCancel(); } catch (e) {}
     try {
         if (!_woRestPushOn || !APP || !APP.userName || !sbClient || sbClient._offline) return;
@@ -19156,6 +19251,23 @@ function woRestPushCancel() {
 function woRestPushText() {
     var ex = (APP.exerciseData || [])[woState.exIndex];
     return ex ? ('Riparti: ' + exDisplay(ex.name) + ' \u00b7 serie ' + ((woState.setIndex || 0) + 1)) : '';
+}
+
+// Fine di un recupero, per tutti i timer (esercizi, riscaldamento, timer
+// libero): decide chi manda la notifica, cosi' che ne arrivi una sola.
+//  - app aperta: nessuna notifica (basta il beep) e la riga sul server si
+//    cancella, come prima;
+//  - app in secondo piano e push del server armato: manda il server, la
+//    riga resta e la pagina non mostra la sua;
+//  - app in secondo piano senza server: notifica locale.
+function woRestDoneNotify(testo) {
+    if (document.hidden && _woRestPushOk) {
+        _woRestPushOk = 0;
+        _woRestPushOn = false;   // la riga la cancella il job dopo l'invio
+        return;
+    }
+    woRestPushCancel();
+    woNotifyRestDone(testo);
 }
 
 // Notifica di fine recupero. Solo fuori dall'app: se sei sulla schermata il
@@ -19176,6 +19288,15 @@ function woNotifyRestDone(testo) {
     }).catch(function() {});
 }
 
+// Si parte con l'allenamento: i recuperi del riscaldamento ancora in corso
+// si fermano, altrimenti la loro notifica arriverebbe durante la prima
+// serie di lavoro (v.301).
+function woStopWarmupRests() {
+    document.querySelectorAll('.wc-rest-timer.active').forEach(function(el) {
+        try { stopWarmupRestTimer(el); } catch (e) {}
+    });
+}
+
 function woStartWorkout() {
     const exData = APP.exerciseData || [];
     if (exData.length === 0) return;
@@ -19185,6 +19306,7 @@ function woStartWorkout() {
     if (!legalRequire(['salute'], 'Prima di allenarti',
         'Devi ancora accettare l\u2019avvertenza su salute e sicurezza.',
         function() { woStartWorkout(); })) return;
+    woStopWarmupRests();
 
 
     // Le prestazioni sono per-sessione: senza azzeramento le ripetizioni di
@@ -19276,7 +19398,7 @@ function _woBeginWorkout() {
         const reps = _isHold ? 0 : (srM ? parseInt(srM[2]) : 10);
         const isForza = !_isHold && reps <= 6;
         let _setT = _isHold ? (srDuration(ex.sr) || 40) : (isForza ? 45 : 35);
-        if (_isHold && exIsPerSide(ex)) _setT = _setT * 2 + WO_SIDE_SWITCH_SECS;
+        if ((_isHold && exIsPerSide(ex)) || (!_isHold && exIsUnilateral(ex))) _setT = _setT * 2 + WO_SIDE_SWITCH_SECS;
         estSecs += sets * _setT;
         estSecs += (sets - 1) * (isForza ? 180 : 120);
     });
@@ -19346,14 +19468,14 @@ function woRenderEx() {
     document.getElementById('wo-ex-num').textContent = `Esercizio ${woState.exIndex+1} di ${totalEx}`;
     document.getElementById('wo-ex-name').textContent = exDisplay(ex.name);
     document.getElementById('wo-ex-scheme').textContent = displaySr +
-        (srIsTime(displaySr) && exIsPerSide(ex) ? ' per lato' : '') + (w === DELOAD_WEEK ? ' 🔄' : '');
+        (srPerLato(ex, displaySr) ? ' per lato' : '') + (w === DELOAD_WEEK ? ' 🔄' : '');
     // Isometrico: nessun carico, nessun MTR, si tiene la posizione a tempo
     const isHold = srIsTime(displaySr);
     const holdDur = isHold ? srDuration(displaySr) : null;
     const perSide = isHold && exIsPerSide(ex);
     // Carico editabile (solo esercizi a ripetizioni)
-    const prEl = APP.personalRecords[ex.name];
-    const isPR = prEl && parseFloat(kg) >= prEl;
+    const prEl = prGet(ex.name, prTipoSeduta(), srReps(displaySr));
+    const isPR = prEl > 0 && parseFloat(kg) >= prEl;
     document.getElementById('wo-weight-val').innerHTML = isHold
         ? `<div style="text-align:center;">` +
           `<div class="wo-hold-info">${perSide ? 'Isometrico · un lato alla volta' : 'Isometrico · corpo libero'}</div>` +
@@ -19503,7 +19625,7 @@ function woRenderExList() {
         <div class="wo-ex-row ${i < woState.exIndex ? 'completed' : i===woState.exIndex ? 'active' : ''}" onclick="exVideoOpen('${escapeHTML(e.name).replace(/'/g,'\\&apos;')}')">
             <div class="wo-dot"></div>
             <span class="wo-ex-rname">${escapeHTML(exDisplay(e.name))}</span>
-            <span class="wo-ex-rsr">${escapeHTML(rowSr)}${srIsTime(rowSr) && exIsPerSide(e) ? ' per lato' : ''}</span>
+            <span class="wo-ex-rsr">${escapeHTML(rowSr)}${srPerLato(e, rowSr) ? ' per lato' : ''}</span>
             ${kgCol}
         </div>`;
     }).join('');
@@ -19565,7 +19687,10 @@ function woUpdatePrBadge(kg) {
     if (!ex) { badge.textContent = ''; return; }
     var w = APP.selectedViewWeek || 0;
     var prev = ex.loads ? (ex.loads[w] || ex.baseWeight || 0) : (ex.baseWeight || 0);
-    var rec  = parseFloat(APP.personalRecords[ex.name]) || 0;
+    // v.301: il record dello stesso tipo di programma, riportato alle
+    // ripetizioni previste oggi (vedi prGet).
+    var trOggi = srReps(srForChapter(ex, w, woSessionProto())) || null;
+    var rec  = prGet(ex.name, prTipoSeduta(), trOggi);
     kg = parseFloat(kg);
     if (isNaN(kg)) kg = prev;
 
@@ -20059,7 +20184,7 @@ function woAskExtraReps(exName, targetReps, usedKg, onDone) {
     var h = '<div style="font-size:0.52rem;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">Ultima serie</div>' +
         '<div style="font-size:0.95rem;font-weight:800;color:#e2e8f0;margin:4px 0 3px;">' + escapeHTML(exDisplay(exName)) + '</div>' +
         '<div style="font-size:0.7rem;color:#cbd5e1;line-height:1.6;margin-bottom:14px;">Quante ripetizioni hai chiuso ' + conCosa +
-        '? Ne erano previste <b style="color:#e2e8f0;">' + targetReps + '</b>.</div>' +
+        '? Ne erano previste <b style="color:#e2e8f0;">' + targetReps + '</b>' + (exIsUnilateral(exName) ? ' per lato' : '') + '.</div>' +
         '<div id="wo-reps-chips" style="display:flex;gap:6px;margin-bottom:8px;"></div>' +
         '<div id="wo-reps-less" style="display:none;gap:6px;margin-bottom:8px;"></div>' +
         '<button type="button" class="wo-ovl-opt skip" id="wo-reps-less-btn" style="margin-bottom:8px;">Meno di ' + targetReps + '</button>' +
@@ -20141,14 +20266,90 @@ function woRecordSessionReps(exName, reps, targetReps, usedKg) {
 // Registra il record solo se il carico equivalente supera il precedente.
 // I record archiviati prima della v.168 sono carichi prescritti: vivono in
 // APP.prLegacy e non competono mai con questi.
+/* ── RECORD PER TIPO DI PROGRAMMA (v.301) ──────────────────────────────
+   Il record e' il carico equivalente (Epley) alle ripetizioni previste della
+   seduta. Forza e massa sullo stesso esercizio danno numeri diversi per
+   natura: un 5 x 5 equivale a un carico piu' alto di un 4 x 10, e in un piano
+   FORGE (forza e ipertrofia nella stessa settimana) il record fatto in forza
+   compariva anche nelle sedute di massa, irraggiungibile. Ora i record sono
+   due per esercizio, forza e massa, con chiave "nome|tipo" in
+   APP.personalRecords e APP.prMeta. Il tipo e' quello della scheda della
+   seduta (tabella forza, oppure ipertrofia/dimagrimento/calisthenic = massa).
+   Anche dentro lo stesso tipo le ripetizioni previste cambiano da un
+   capitolo all'altro: il record si confronta e si mostra riportato alle
+   ripetizioni di oggi, con la stessa conversione (woEquivalentLoad).
+   I record di prima, senza tipo, si assegnano dalle ripetizioni previste:
+   fino a 6 forza, oltre massa (zona della forza della NSCA, Baechle & Earle
+   2008: 6 ripetizioni o meno). */
+var AW_PR_TIPI = ['forza', 'massa'];
+function prTipoSeduta(proto) {
+    var p = proto || (typeof woSessionProto === 'function' ? woSessionProto() : null);
+    var t = 'ipertrofia';
+    try { t = awkGoalToTable(awkGoalOfProto(p || {})); } catch (e) {}
+    return t === 'forza' ? 'forza' : 'massa';
+}
+function prKey(name, tipo) { return name + '|' + tipo; }
+function prParse(key) {
+    key = String(key || '');
+    var i = key.lastIndexOf('|');
+    if (i > 0 && AW_PR_TIPI.indexOf(key.slice(i + 1)) !== -1) return { name: key.slice(0, i), tipo: key.slice(i + 1) };
+    return { name: key, tipo: null };
+}
+// Record dell'esercizio per tipo; con reps, riportato a quelle ripetizioni.
+function prGet(name, tipo, reps) {
+    var recs = APP.personalRecords || {}, meta = APP.prMeta || {}, best = 0;
+    Object.keys(recs).forEach(function(k) {
+        var pk = prParse(k);
+        if (pk.tipo !== tipo || !exSameExercise(pk.name, name)) return;
+        var v = parseFloat(recs[k]) || 0;
+        var m = meta[k] || {};
+        if (reps && m.tr && m.tr !== reps) v = woEquivalentLoad(v, m.tr, reps);
+        if (v > best) best = v;
+    });
+    return best;
+}
+// Nomi degli esercizi con almeno un record, senza doppioni.
+function prNames() {
+    var out = [], recs = APP.personalRecords || {};
+    Object.keys(recs).forEach(function(k) {
+        if (!(parseFloat(recs[k]) > 0)) return;
+        var n = prParse(k).name;
+        if (!out.some(function(x) { return exSameExercise(x, n); })) out.push(n);
+    });
+    return out;
+}
+// Il piano ha sedute di entrambi i tipi? Solo allora l'etichetta serve.
+function prDueTipi() {
+    var f = false, m = false;
+    (APP.savedProtocols || []).forEach(function(p) { if (prTipoSeduta(p) === 'forza') f = true; else m = true; });
+    return f && m;
+}
+// I record senza tipo (fino alla v.300) prendono il tipo dalle ripetizioni.
+function prMigrateTipo() {
+    var recs = APP.personalRecords || {}, meta = APP.prMeta || {}, n = 0;
+    Object.keys(recs).forEach(function(k) {
+        if (prParse(k).tipo) return;
+        var m = meta[k] || {};
+        var tipo = (m.tr && m.tr <= 6) ? 'forza' : 'massa';
+        var nk = prKey(k, tipo);
+        if (!(parseFloat(recs[nk]) >= parseFloat(recs[k]))) { recs[nk] = recs[k]; if (meta[k]) meta[nk] = meta[k]; }
+        delete recs[k]; delete meta[k];
+        n++;
+    });
+    APP.personalRecords = recs; APP.prMeta = meta;
+    return n;
+}
+
 function _woRegisterRecord(exName, eq, usedKg, reps, targetReps, wIdx) {
-    var prev = APP.personalRecords[exName] || 0;
+    var tipo = prTipoSeduta();
+    var prev = prGet(exName, tipo, targetReps);
     var isNew = eq > prev + 0.05;
     if (isNew) {
-        APP.personalRecords[exName] = eq;
+        var key = prKey(exName, tipo);
+        APP.personalRecords[key] = eq;
         if (!APP.prMeta) APP.prMeta = {};
         var dt = new Date();
-        APP.prMeta[exName] = {
+        APP.prMeta[key] = {
             kg: parseFloat(usedKg) || 0, r: reps, tr: targetReps, w: wIdx,
             d: dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0')
         };
@@ -20166,7 +20367,7 @@ function _woRegisterRecord(exName, eq, usedKg, reps, targetReps, wIdx) {
     }
     if (isNew) {
         var viaReps = (reps > targetReps);
-        var msg = '\uD83C\uDFC6 Record \u00b7 ' + exDisplay(exName) + ' \u2014 ' + _fmtKg(usedKg) + ' kg \u00d7 ' + reps +
+        var msg = '\uD83C\uDFC6 Record' + (prDueTipi() ? ' ' + tipo : '') + ' \u00b7 ' + exDisplay(exName) + ' \u2014 ' + _fmtKg(usedKg) + ' kg \u00d7 ' + reps +
                   (viaReps ? ' equivale a ' + _fmtKg(eq) + ' kg sulle ' + targetReps + ' previste' : '');
         showToast(msg, 'success');
         if (typeof woRenderExList === 'function') woRenderExList();
@@ -21130,13 +21331,12 @@ function woTick() {
         }
         if (woState.restSecs === 0) {
             woState.restRunning=false;
-            woRestPushCancel();   // finito con l'app aperta: il push non serve
             const rw=document.getElementById('wo-rest-wrap'); if (rw) rw.style.display='none';
             if (wt) { wt.textContent='VAI!'; wt.style.color='var(--primary)'; }
             document.getElementById('wo-timer-lbl').textContent='Al lavoro 💪';
             // Segnale di ripartenza
             _woBeepGo();
-            woNotifyRestDone();
+            woRestDoneNotify();   // una sola notifica fra app e server (v.301)
             // Auto-avanza all'esercizio successivo dopo 800ms
             setTimeout(() => {
                 if (!woState.restRunning) woNextExAuto();
@@ -22463,14 +22663,25 @@ const AWK_ZONES = {
   iso_time:   {z:'20\u201360s per serie', s:'Oranchuk et al. 2019 \u2014 negli isometrici conta il tempo sotto tensione totale'}
 };
 
+/* v.301 — r e' il numero di ripetizioni su cui si legge l'MTR, e quindi la
+   base della scala MTR_LADDER (85 -> 97%). In due ruoli r era piu' basso
+   delle ripetizioni del Chapter 4 (8 contro 10): con la conversione di Epley
+   gia' usata dall'app (test xRM, Baechle & Earle, NSCA 2008) il 97% dell'MTR
+   a 8 ripetizioni supera il massimo stimato per 10 ripetizioni, quindi il
+   carico del Chapter 4 non era completabile (102%, e gia' il 100% nel
+   Chapter 3 del principiante in ipertrofia). Ora in quei due ruoli r e'
+   uguale alle ripetizioni del Chapter 4: il picco del ciclo e' il 97% del
+   massimo per quelle ripetizioni, come negli altri ruoli. Nessun numero
+   nuovo: si allinea r alla scala delle ripetizioni gia' in tabella.
+   Le schede gia' create si aggiornano una volta (awkMigrateRefReps). */
 const AWK_PARAMS = {
   forza: {
-    principiante: { main:{s:3,r:8,rc:[12,10,9,8],z:'forza_novi',rest:180,rir:'RIR 2\u20133'}, sec:{s:3,r:10,rc:[12,10,9,8],z:'forza_novi',rest:150,rir:'RIR 2'}, iso:{s:3,r:8,rc:[12,11,10,10],z:'forza_acc',rest:90,rir:'RIR 1\u20132'}, core:{s:3,r:30,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
+    principiante: { main:{s:3,r:8,rc:[12,10,9,8],z:'forza_novi',rest:180,rir:'RIR 2\u20133'}, sec:{s:3,r:10,rc:[12,10,9,8],z:'forza_novi',rest:150,rir:'RIR 2'}, iso:{s:3,r:10,rc:[12,11,10,10],z:'forza_acc',rest:90,rir:'RIR 1\u20132'}, core:{s:3,r:30,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
     intermedio:   { main:{s:4,r:4,rc:[8,6,5,4],z:'forza_main',rest:240,rir:'RIR 1\u20132'}, sec:{s:3,r:5,rc:[8,7,6,5],z:'forza_main',rest:180,rir:'RIR 2'}, iso:{s:3,r:8,rc:[10,9,8,8],z:'forza_acc',rest:90,rir:'RIR 1'}, core:{s:3,r:40,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
     avanzato:     { main:{s:5,r:3,rc:[6,5,4,3],z:'forza_main',rest:300,rir:'RIR 0\u20131'}, sec:{s:4,r:5,rc:[6,6,5,5],z:'forza_main',rest:240,rir:'RIR 1'}, iso:{s:3,r:10,rc:[10,10,9,8],z:'forza_acc',rest:90,rir:'RIR 1'}, core:{s:4,r:45,rDyn:15,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} }
   },
   ipertrofia: {
-    principiante: { main:{s:3,r:8,rc:[13,12,11,10],z:'iper_main',rest:150,rir:'RIR 2\u20133'}, sec:{s:3,r:10,rc:[13,12,11,10],z:'iper_main',rest:120,rir:'RIR 2'}, iso:{s:2,r:12,rc:[13,12,12,11],z:'iper_wide',rest:75,rir:'RIR 1\u20132'}, core:{s:3,r:30,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
+    principiante: { main:{s:3,r:10,rc:[13,12,11,10],z:'iper_main',rest:150,rir:'RIR 2\u20133'}, sec:{s:3,r:10,rc:[13,12,11,10],z:'iper_main',rest:120,rir:'RIR 2'}, iso:{s:2,r:12,rc:[13,12,12,11],z:'iper_wide',rest:75,rir:'RIR 1\u20132'}, core:{s:3,r:30,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
     intermedio:   { main:{s:4,r:8,rc:[12,10,9,8],z:'iper_main',rest:180,rir:'RIR 1\u20132'}, sec:{s:3,r:12,rc:[12,11,10,9],z:'iper_main',rest:120,rir:'RIR 1\u20132'}, iso:{s:3,r:12,rc:[12,12,11,10],z:'iper_wide',rest:75,rir:'RIR 1'}, core:{s:3,r:40,rDyn:12,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} },
     avanzato:     { main:{s:4,r:8,rc:[12,10,8,6],z:'iper_main',rest:180,rir:'RIR 1'}, sec:{s:4,r:12,rc:[12,10,9,8],z:'iper_main',rest:120,rir:'RIR 1'}, iso:{s:4,r:15,rc:[12,12,11,10],z:'iper_wide',rest:75,rir:'RIR 0\u20131'}, core:{s:4,r:45,rDyn:15,zDyn:'iper_wide',z:'iso_time',rest:60,rir:'',t:'time'} }
   },
@@ -22721,6 +22932,41 @@ function awkMigrateHolds() {
   });
   APP._holdMigratedV287 = true;
   return changed;
+}
+
+/* v.301 — Le schede create prima con r = 8 in quei due ruoli (vedi sopra
+   AWK_PARAMS) hanno lo schema salvato "3 x 8": si porta a "3 x 10" solo se e'
+   ancora quello generato, cosi' uno schema scritto a mano non si tocca. Da
+   li' migrateMtrLoads ricalcola i carichi con la base giusta. */
+var AWK_REFREPS_V301 = [
+    { table: 'forza',      level: 'principiante', role: 'iso',  from: '3 x 8', to: '3 x 10' },
+    { table: 'ipertrofia', level: 'principiante', role: 'main', from: '3 x 8', to: '3 x 10' }
+];
+function awkMigrateRefReps() {
+    // Il segno sta sulla scheda (_refRepsV301), che viaggia con lei su
+    // Supabase: una scheda gia' aggiornata non si ritocca, e uno schema
+    // rimesso a mano a "3 x 8" dopo resta com'e'.
+    var changed = 0;
+    (APP.savedProtocols || []).forEach(function(p) {
+        if (!p || !p._awkGoal || !p._awkLevel || p._refRepsV301) return;
+        var table;
+        try { table = awkGoalToTable(awkGoalOfProto(p)); } catch (e) { return; }
+        var hit = false;
+        (p.exercises || []).forEach(function(e) {
+            if (!e || !e.sr) return;
+            AWK_REFREPS_V301.forEach(function(m) {
+                if (m.table === table && m.level === p._awkLevel && m.role === e._role &&
+                    String(e.sr).replace(/\s+/g, ' ').trim() === m.from) {
+                    e.sr = m.to; changed++; hit = true;
+                }
+            });
+        });
+        p._refRepsV301 = true;
+        if (hit && typeof saveProtocolToSupabase === 'function') {
+            try { saveProtocolToSupabase(p); } catch (e) {}
+        }
+    });
+    return changed;
 }
 
 function awkFmtRest(s){ return s>=60 ? (s%60===0 ? (s/60)+' min' : Math.floor(s/60)+':'+String(s%60).padStart(2,'0')+' min') : s+'s'; }
@@ -23202,7 +23448,8 @@ function awkGenerateProtocols(){
       _env: onboarding.place || 'palestra',
       _awkGoal: P.goal,
       _awkLevel: P.level,
-      _awkEquip: (onboarding.equip || []).slice()
+      _awkEquip: (onboarding.equip || []).slice(),
+      _refRepsV301: true
     };
     APP.savedProtocols.push(proto);
     if (!firstProtoId) firstProtoId = proto.id;
@@ -24387,11 +24634,10 @@ function tickRest() {
         clearInterval(restInterval);
         restInterval = null;
         restEndsAt = 0;
-        woRestPushCancel();
         document.getElementById('rest-timer').textContent = '✓ Fatto!';
         completeSet();
         _woBeepGo();
-        woNotifyRestDone('Recupero finito: riparti con la serie successiva');
+        woRestDoneNotify('Recupero finito: riparti con la serie successiva');
         if (!workoutInterval) woKeepAliveStop();
 
         setTimeout(() => {
@@ -25579,6 +25825,9 @@ function _lhUpsert(ex, wIdx, onlyIfExists) {
     row.kg = used; row.p = prev; row.eq = eq;
     if (tr) row.tr = tr;
     if (r)  row.r  = r;
+    // v.301: tipo di programma della seduta, per tenere separate forza e
+    // massa nei record e nei grafici (vedi prTipoSeduta).
+    try { row.t = prTipoSeduta(); } catch (e) {}
 }
 
 function logLoadHistory(wIdx) {
