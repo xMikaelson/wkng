@@ -725,6 +725,14 @@
         .exf { flex:0 0 auto; width:auto; padding:5px 10px; border-radius:20px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); color:#94a3b8; font-size:0.55rem; font-weight:700; font-family:inherit; cursor:pointer; text-transform:none; letter-spacing:0.03em; }
         .exf.on { background:rgba(var(--pr,52,211,153),0.15); border-color:rgba(var(--pr,52,211,153),0.4); color:var(--primary); }
         .exf.off { opacity:0.35; }
+        /* v.302 — grafico a due linee (forza / massa) */
+        .exlines { display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap; }
+        .exline { flex:0 1 auto; width:auto; min-width:0; display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:20px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); color:#64748b; font-size:0.55rem; font-weight:700; font-family:inherit; cursor:pointer; text-transform:none; letter-spacing:0.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+        .exline i { width:8px; height:8px; border-radius:50%; flex-shrink:0; opacity:0.35; }
+        .exline.on { color:#e2e8f0; border-color:rgba(255,255,255,0.18); background:rgba(255,255,255,0.06); }
+        .exline.on i { opacity:1; }
+        .extip { font-size:0.52rem; color:#94a3b8; margin-top:7px; min-height:1.4em; line-height:1.45; text-align:center; }
+        .hist-t { display:block; font-size:0.4rem; font-weight:800; letter-spacing:0.04em; margin-top:2px; }
                 .m-list-pr { font-size:0.72rem; line-height:1; margin-right:1px; }
         .exchart { position:relative; width:100%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:12px 8px 6px; }
         /* v.173 — grafico in orizzontale. iOS Safari non permette di forzare
@@ -1094,6 +1102,37 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .nut-date-pill.ndp-active .ndp-dot { background: rgba(0,0,0,0.35); }
         #manual-food-overlay.active { display: flex !important; }
         #grams-overlay.active { display: flex !important; }
+        #cmp-overlay.active { display: flex !important; }
+        /* v.302 — confronto fra due prodotti scansionati */
+        .cmp-ask { margin-top:14px; background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.3); border-radius:14px; padding:14px; }
+        .cmp-ask-q { font-size:0.8rem; font-weight:700; color:#e2e8f0; }
+        .cmp-ask-d { font-size:0.62rem; color:#94a3b8; margin:4px 0 10px; line-height:1.5; }
+        .cmp-btn { display:block; width:100%; padding:12px; border-radius:12px; font-size:0.78rem; font-weight:700; font-family:inherit; cursor:pointer; text-transform:none; letter-spacing:0.02em; margin-top:8px; }
+        .cmp-btn.pri { background:linear-gradient(135deg,var(--primary),var(--accent)); color:#000; border:none; }
+        .cmp-btn.sec { background:rgba(99,102,241,0.18); color:#c7d2fe; border:1px solid rgba(99,102,241,0.45); }
+        .cmp-btn.ghost { background:none; color:#94a3b8; border:1px solid rgba(255,255,255,0.1); }
+        .cmp-prods { display:flex; flex-direction:column; gap:8px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:10px; margin-bottom:10px; }
+        .cmp-prod { display:flex; align-items:center; gap:10px; min-width:0; }
+        .cmp-num { width:22px; height:22px; border-radius:50%; background:rgba(255,255,255,0.08); color:#e2e8f0; font-size:0.62rem; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+        .cmp-prod-n { font-size:0.72rem; font-weight:700; color:#e2e8f0; line-height:1.3; overflow-wrap:anywhere; }
+        .cmp-prod-b { font-size:0.55rem; color:#94a3b8; margin-top:1px; }
+        .cmp-ns { margin-left:auto; flex-shrink:0; width:24px; height:24px; border-radius:6px; color:#fff; font-size:0.7rem; font-weight:800; display:flex; align-items:center; justify-content:center; }
+        .cmp-tog { display:flex; gap:4px; background:rgba(255,255,255,0.04); border-radius:10px; padding:3px; margin-bottom:10px; }
+        .cmp-tog button { flex:1; width:auto; padding:8px 6px; border-radius:8px; background:none; border:none; color:#94a3b8; font-size:0.62rem; font-weight:700; font-family:inherit; cursor:pointer; text-transform:none; letter-spacing:0.02em; }
+        .cmp-tog button.on { background:rgba(255,255,255,0.1); color:#e2e8f0; }
+        .cmp-verdict { background:rgba(52,211,153,0.06); border:1px solid rgba(52,211,153,0.22); border-radius:12px; padding:12px 14px; }
+        .cmp-verdict-h { font-size:0.52rem; color:#34d399; text-transform:uppercase; letter-spacing:0.1em; font-weight:700; margin-bottom:6px; }
+        .cmp-verdict ul { margin:0; padding-left:16px; }
+        .cmp-verdict li { font-size:0.66rem; color:#e2e8f0; line-height:1.55; margin-bottom:4px; }
+        .cmp-goal { font-size:0.64rem; color:#cbd5e1; line-height:1.55; margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.07); }
+        .cmp-more { margin-top:10px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:10px 12px; }
+        .cmp-more summary { font-size:0.66rem; font-weight:700; color:#cbd5e1; cursor:pointer; }
+        .cmp-tab { width:100%; border-collapse:collapse; margin-top:8px; font-size:0.62rem; font-variant-numeric:tabular-nums; background:none; table-layout:auto; }
+        .cmp-tab th { font-size:0.52rem; color:#94a3b8; font-weight:700; text-align:right; padding:4px 2px; border:none; }
+        .cmp-tab td { padding:6px 2px; border:none; border-top:1px solid rgba(255,255,255,0.06); color:#e2e8f0; text-align:right; white-space:nowrap; font-size:0.62rem; }
+        .cmp-tab td:first-child { text-align:left; color:#94a3b8; white-space:normal; }
+        .cmp-dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:#a5b4fc; margin-left:5px; vertical-align:middle; }
+        .cmp-foot { font-size:0.52rem; color:#64748b; line-height:1.55; margin-top:12px; }
         body.nav-mode .top-bar { display: none; }
         /* container stays visible — contains #results */
         
@@ -4405,6 +4444,24 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       style="width:100%;padding:16px;background:linear-gradient(135deg,var(--primary),var(--accent));border:none;border-radius:14px;color:#000;font-size:1rem;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0.05em;">
       AGGIUNGI AL PASTO
     </button>
+    <!-- v.302: confronto con un secondo prodotto, solo dopo una scansione -->
+    <div id="grams-cmp-ask" class="cmp-ask" style="display:none;">
+      <div class="cmp-ask-q">⚖️ Vuoi confrontarlo con un altro prodotto?</div>
+      <div class="cmp-ask-d">Scansiona il secondo e ti mostro le differenze, per 100 g e a porzione.</div>
+      <button type="button" class="cmp-btn sec" onclick="nutCmpScansiona()">Scansiona il secondo</button>
+      <button type="button" class="cmp-btn ghost" onclick="nutCmpNo()">No, grazie</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ CONFRONTO FRA DUE PRODOTTI (v.302) ══ -->
+<div id="cmp-overlay" role="dialog" aria-modal="true" aria-labelledby="cmp-title" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.92);z-index:5100;align-items:flex-end;justify-content:center;flex-direction:column;">
+  <div style="background:#1e293b;border-radius:20px 20px 0 0;padding:20px 18px calc(30px + env(safe-area-inset-bottom,0px));width:100%;max-width:480px;box-sizing:border-box;position:relative;max-height:calc(100vh - max(env(safe-area-inset-top),44px));overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <span id="cmp-title" style="font-size:0.52rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.1em;white-space:nowrap;">Confronto fra due prodotti</span>
+      <button type="button" onclick="nutCmpClose()" aria-label="Chiudi" style="width:auto;background:none;border:none;color:#cbd5e1;font-size:1.3rem;cursor:pointer;padding:0 4px;line-height:1;flex-shrink:0;">✕</button>
+    </div>
+    <div id="cmp-body"></div>
   </div>
 </div>
 
@@ -4658,7 +4715,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '301';
+const APP_VERSION = '302';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -14129,7 +14186,8 @@ function _exSeries(name) {
             p:  (typeof e.p  === 'number') ? e.p  : e.kg,   // righe pre-v.168: previsto = usato
             eq: (typeof e.eq === 'number') ? e.eq : e.kg,
             r:  (typeof e.r  === 'number') ? e.r  : null,
-            tr: (typeof e.tr === 'number') ? e.tr : null
+            tr: (typeof e.tr === 'number') ? e.tr : null,
+            t:  _exTipoRiga(e)
         });
     });
     out.sort(function(a, b) { return a.d < b.d ? -1 : (a.d > b.d ? 1 : 0); });
@@ -14180,6 +14238,177 @@ function _exTagCycles(pts) {
         prev = p.w;
     });
     return pts;
+}
+
+// v.302 — tipo di programma (forza o massa) di una riga dello storico.
+// Dalla v.301 la riga lo porta scritto (row.t). Per le righe di prima si
+// ricava dal programma assegnato a quel giorno: il diario delle sedute dice
+// quale giorno della settimana era (di), le assegnazioni quale scheda.
+// Se il diario non c'e', e solo in un piano che ha davvero schede dei due
+// tipi, decidono le ripetizioni previste: fino a 6 forza, oltre massa (zona
+// della forza della NSCA, Baechle & Earle 2008, la stessa regola con cui
+// prMigrateTipo assegna i record senza tipo). In un piano di un tipo solo
+// la riga resta senza tipo e il grafico resta quello a una linea.
+function _exTipoRiga(e) {
+    if (!e) return null;
+    if (e.t === 'forza' || e.t === 'massa') return e.t;
+    var tipo = null;
+    try {
+        (APP.sessionLog || []).forEach(function(s) {
+            if (tipo || !s || s.d !== e.d || s.w !== e.w) return;
+            var a = (APP.dayAssignments && APP.dayAssignments[s.w]) ? APP.dayAssignments[s.w][s.di] : null;
+            if (!a || !a.protoId) return;
+            var pr = (APP.savedProtocols || []).find(function(x) { return x && x.id === a.protoId; });
+            if (pr) tipo = prTipoSeduta(pr);
+        });
+    } catch (err) {}
+    if (tipo) return tipo;
+    if (typeof e.tr === 'number' && e.tr > 0 && prDueTipi()) return e.tr <= 6 ? 'forza' : 'massa';
+    return null;
+}
+
+// Il grafico a due linee serve solo se nella selezione ci sono sedute di
+// entrambi i tipi.
+function _exDueTipi(pts) {
+    var f = false, m = false;
+    pts.forEach(function(p) { if (p.t === 'forza') f = true; else if (p.t === 'massa') m = true; });
+    return f && m;
+}
+
+var EX_TIPO_COL  = { forza: '#f59e0b', massa: '#34d399' };
+var EX_TIPO_NOME = { forza: 'Forza', massa: 'Massa' };
+var _exChartLinee = { forza: true, massa: true };
+var _exTipPts = [];
+
+// Schede assegnate nel piano, di quel tipo, che contengono l'esercizio:
+// danno il nome alla pastiglia della legenda ("Forza · Upper Forza").
+function _exSchedeTipo(name, tipo) {
+    var out = [], ids = {};
+    (APP.dayAssignments || []).forEach(function(riga) {
+        (riga || []).forEach(function(a) { if (a && a.protoId) ids[a.protoId] = 1; });
+    });
+    (APP.savedProtocols || []).forEach(function(pr) {
+        if (!pr || !ids[pr.id] || prTipoSeduta(pr) !== tipo) return;
+        var dentro = (pr.exercises || []).some(function(x) { return x && exSameExercise(x.name, name); });
+        if (dentro && out.indexOf(pr.name) === -1) out.push(pr.name);
+    });
+    return out;
+}
+
+// v.302 — grafico con due linee, forza e massa, sulla stessa scala.
+// Nei piani ibridi (FORGE: forza e ipertrofia nella stessa settimana) lo
+// stesso esercizio si fa con 5 ripetizioni pesanti e con 10 piu' leggere:
+// in una linea sola il carico saliva e scendeva a ogni seduta come se
+// peggiorasse. Ogni linea unisce solo le sedute del suo tipo; il valore e'
+// il carico equivalente, come nel grafico a una linea. Le pastiglie in alto
+// accendono e spengono una linea (almeno una resta accesa).
+function _exSvg2(pts, big) {
+    var W = big ? 600 : 300,
+        H = big ? 200 : 150,
+        L = big ? 34  : 26,
+        R = big ? 16  : 8,
+        T = big ? 24  : 20,
+        B = big ? 28  : 24;
+    var FS = big ? 8 : 6.5, FST = big ? 11 : 9;
+    _exTipPts = pts;
+    var val = function(p) { return (typeof p.eq === 'number' && p.eq > 0) ? p.eq : p.kg; };
+    var vals = pts.map(val);
+    var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
+    var pad = (mx - mn) * 0.2 || 2;
+    mn = Math.max(0, mn - pad); mx = mx + pad;
+    var X = function(i) { return L + i * ((W - L - R) / Math.max(pts.length - 1, 1)); };
+    var Y = function(v) { return T + (1 - (v - mn) / (mx - mn)) * (H - T - B); };
+
+    var g = '';
+    [0, 0.5, 1].forEach(function(f) {
+        var v = mn + (mx - mn) * f, yy = Y(v);
+        g += '<line x1="' + L + '" y1="' + yy.toFixed(1) + '" x2="' + (W - R) + '" y2="' + yy.toFixed(1) + '" stroke="rgba(255,255,255,0.06)" stroke-width="0.7"/>';
+        g += '<text x="' + (L - 4) + '" y="' + (yy + FS / 3).toFixed(1) + '" fill="#64748b" font-size="' + FS + '" text-anchor="end">' + Math.round(v) + '</text>';
+    });
+    // Separatore fra un ciclo e il successivo, a meta' fra le due sedute.
+    var multi = pts.some(function(p) { return p.c !== pts[0].c; });
+    if (multi) {
+        g += '<text x="' + (L + 3) + '" y="' + (T - 8) + '" fill="#64748b" font-size="' + FS + '">Ciclo ' + pts[0].c + '</text>';
+        for (var i = 1; i < pts.length; i++) {
+            if (pts[i].c === pts[i - 1].c) continue;
+            var xm = ((X(i) + X(i - 1)) / 2).toFixed(1);
+            g += '<line x1="' + xm + '" y1="' + (T - 14) + '" x2="' + xm + '" y2="' + (H - B) + '" stroke="rgba(255,255,255,0.14)" stroke-width="0.8" stroke-dasharray="3 3"/>';
+            g += '<text x="' + (+xm + 3) + '" y="' + (T - 8) + '" fill="#64748b" font-size="' + FS + '">Ciclo ' + pts[i].c + '</text>';
+        }
+    }
+    var step = Math.ceil(pts.length / (big ? 14 : 6)), labs = '';
+    pts.forEach(function(p, i) {
+        if (i % step === 0 || i === pts.length - 1) {
+            labs += '<text x="' + X(i).toFixed(1) + '" y="' + (H - B + FS + 4) + '" fill="#64748b" font-size="' + FS + '" text-anchor="middle">' + _fmtDay(p.d) + '</text>';
+        }
+    });
+
+    var lines = '', dots = '', hits = '';
+    AW_PR_TIPI.forEach(function(t) {
+        if (!_exChartLinee[t]) return;
+        var d = '';
+        pts.forEach(function(p, i) {
+            if (p.t !== t) return;
+            d += (d ? ' L' : 'M') + X(i).toFixed(1) + ' ' + Y(val(p)).toFixed(1);
+            var dl = (p.w === DELOAD_WEEK), beat = woRowBeat(p);
+            var cx = X(i).toFixed(1), cy = Y(val(p)).toFixed(1);
+            dots += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (beat ? (big ? 4.4 : 3.6) : (big ? 3.6 : 2.8)) + '" fill="' +
+                    (beat ? '#fbbf24' : (dl ? '#64748b' : EX_TIPO_COL[t])) + '" stroke="#0f172a" stroke-width="1.1"/>';
+            if (beat) dots += '<text x="' + cx + '" y="' + (Y(val(p)) - 7).toFixed(1) + '" font-size="' + FST + '" text-anchor="middle">\uD83C\uDFC6</text>';
+            // Area di tocco piu' grande del pallino, invisibile.
+            hits += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (big ? 10 : 8) + '" fill="transparent" style="cursor:pointer" onclick="exTip(this,' + i + ')"/>';
+        });
+        if (d) lines += '<path d="' + d + '" fill="none" stroke="' + EX_TIPO_COL[t] + '" stroke-width="' + (big ? 2.4 : 1.9) + '" stroke-linejoin="round" stroke-linecap="round"/>';
+    });
+
+    var pills = '<div class="exlines">' + AW_PR_TIPI.map(function(t) {
+        var sc = _exSchedeTipo(_exChartName, t);
+        return '<button type="button" class="exline' + (_exChartLinee[t] ? ' on' : '') + '" aria-pressed="' + (_exChartLinee[t] ? 'true' : 'false') +
+               '" onclick="setExLinea(\'' + t + '\')"><i style="background:' + EX_TIPO_COL[t] + '"></i>' + EX_TIPO_NOME[t] +
+               (sc.length ? ' \u00b7 ' + escapeHTML(sc[0]) + (sc.length > 1 ? ' +' + (sc.length - 1) : '') : '') + '</button>';
+    }).join('') + '</div>';
+
+    var fsBtn = big ? '' :
+        '<button type="button" class="exfs-btn" onclick="openExFullscreen()" aria-label="Schermo intero">\u26F6</button>';
+    var lg = '<div class="exlg' + (big ? ' big' : '') + '"><span><i class="dot gold"></i>record</span><span><i class="dot grey"></i>deload</span></div>';
+    return '<div class="exwrap">' + pills + '<div class="exchart">' + fsBtn +
+        '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block" role="img" aria-label="Andamento del carico, forza e massa">' +
+        g + lines + dots + labs + hits + '</svg></div>' +
+        '<div class="extip">Tocca un punto per i dettagli.</div>' + lg + '</div>';
+}
+
+function exTip(el, i) {
+    var p = _exTipPts[i];
+    var box = el && el.closest ? el.closest('.exwrap') : null;
+    var tip = box ? box.querySelector('.extip') : null;
+    if (!p || !tip) return;
+    var eq = (typeof p.eq === 'number' && p.eq > 0) ? p.eq : p.kg;
+    var beat = woRowBeat(p);
+    tip.innerHTML = '<b style="color:' + EX_TIPO_COL[p.t] + '">' + EX_TIPO_NOME[p.t] + '</b> \u00b7 ' +
+        (p.d ? _fmtDay(p.d) : '\u2014') + ' \u00b7 ' + (CH_LABELS[p.w] || ('Ch' + (p.w + 1))) + ' \u00b7 ' +
+        _fmtKg(p.kg) + ' kg \u00d7 ' + (p.r || p.tr || '\u2014') +
+        (beat && p.tr ? ' \u2192 <b style="color:#fbbf24">' + _fmtKg(eq) + ' kg equivalenti</b> sulle ' + p.tr : '');
+}
+
+function setExLinea(t) {
+    var altro = t === 'forza' ? 'massa' : 'forza';
+    if (_exChartLinee[t] && !_exChartLinee[altro]) return;
+    _exChartLinee[t] = !_exChartLinee[t];
+    renderExChartBody();
+    var fs = document.getElementById('ex-fs');
+    if (fs && fs.classList.contains('open')) openExFullscreen();
+}
+
+// Record di un tipo con i dati della seduta in cui e' stato fatto.
+function _exRecTipo(name, tipo) {
+    var recs = APP.personalRecords || {}, meta = APP.prMeta || {}, best = null;
+    Object.keys(recs).forEach(function(k) {
+        var pk = prParse(k);
+        if (pk.tipo !== tipo || !exSameExercise(pk.name, name)) return;
+        var v = parseFloat(recs[k]) || 0;
+        if (v > 0 && (!best || v > best.v)) best = { v: v, m: meta[k] || {} };
+    });
+    return best;
 }
 
 // big = true: versione orizzontale a schermo intero. Stessa logica, ma
@@ -14339,8 +14568,33 @@ function renderExChartBody() {
         return;
     }
 
-    h += _exSvg(pts);
+    var due = _exDueTipi(pts);
+    h += due ? _exSvg2(pts) : _exSvg(pts);
 
+    if (due) {
+        // Un record e una variazione per tipo: confrontare un 5 x 5 con un
+        // 3 x 10 darebbe un numero senza significato.
+        h += '<div class="m-row2" style="margin-top:14px">' + AW_PR_TIPI.map(function(t) {
+            var rc = _exRecTipo(name, t), m = rc ? rc.m : {};
+            return '<div class="m-stat"><div class="m-stat-lab" style="color:' + EX_TIPO_COL[t] + '">Record ' + t + '</div>' +
+                   '<div class="m-stat-val">' + (rc ? _fmtKg(rc.v) + '<span style="font-size:0.5rem">kg</span>' : '\u2014') + '</div>' +
+                   '<div class="m-stat-sub">' + (rc ? (m.kg && m.r ? _fmtKg(m.kg) + ' kg \u00d7 ' + m.r + (m.tr ? ' \u00b7 sulle ' + m.tr + ' previste' : '') : 'carico equivalente')
+                                                    : 'nessun record') + '</div></div>';
+        }).join('') + '</div>';
+        // La variazione lascia fuori il Deload: e' uno scarico voluto
+        // (Bosquet et al. 2007), non un calo.
+        h += '<div class="m-row2">' + AW_PR_TIPI.map(function(t) {
+            var s = pts.filter(function(p) { return p.t === t && p.w !== DELOAD_WEEK; });
+            if (s.length < 2) {
+                return '<div class="m-stat"><div class="m-stat-lab">' + EX_TIPO_NOME[t] + ' \u00b7 variazione</div>' +
+                       '<div class="m-stat-val">\u2014</div><div class="m-stat-sub">servono due sedute</div></div>';
+            }
+            var a = s[0].kg, b = s[s.length - 1].kg, dv = a > 0 ? ((b - a) / a * 100) : 0;
+            return '<div class="m-stat"><div class="m-stat-lab">' + EX_TIPO_NOME[t] + ' \u00b7 variazione</div>' +
+                   '<div class="m-stat-val" style="color:' + (dv < 0 ? '#f87171' : 'var(--primary)') + '">' + (dv >= 0 ? '+' : '') + dv.toFixed(1).replace('.', ',') + '%</div>' +
+                   '<div class="m-stat-sub">dal primo all\'ultimo, senza Deload</div></div>';
+        }).join('') + '</div>';
+    } else {
     var first = pts[0].kg, last = pts[pts.length - 1].kg;
     var delta = first > 0 ? ((last - first) / first * 100) : 0;
     h += '<div class="m-row2" style="margin-top:14px">' +
@@ -14348,8 +14602,9 @@ function renderExChartBody() {
          '<span style="font-size:0.5rem">kg</span></div><div class="m-stat-sub">' +
          (pts[0].d ? _fmtDay(pts[0].d) : CH_LABELS[pts[0].w]) + '</div></div>' +
          '<div class="m-stat"><div class="m-stat-lab">Variazione</div><div class="m-stat-val" style="color:' +
-         (delta < 0 ? '#f87171' : 'var(--primary)') + '">' + (delta >= 0 ? '+' : '') + delta.toFixed(1) + '%</div>' +
+         (delta < 0 ? '#f87171' : 'var(--primary)') + '">' + (delta >= 0 ? '+' : '') + delta.toFixed(1).replace('.', ',') + '%</div>' +
          '<div class="m-stat-sub">dal primo all\'ultimo</div></div></div>';
+    }
 
     // ── storico: data, ciclo, capitolo, carico ──
     h += '<div class="m-sec-title">Storico</div>';
@@ -14369,7 +14624,8 @@ function renderExChartBody() {
         var sub = _fmtKg(p.kg) + ' \u00d7 ' + (p.r || p.tr || '\u2014');
         h += '<div class="hist-row' + (p.w === DELOAD_WEEK ? ' dl' : '') + '">' +
              '<div class="hist-date">' + (p.d ? _fmtDay(p.d) : '\u2014') +
-                (nCycles > 1 ? '<span class="hist-cy">C' + p.c + '</span>' : '') + '</div>' +
+                (nCycles > 1 ? '<span class="hist-cy">C' + p.c + '</span>' : '') +
+                (due && p.t ? '<span class="hist-t" style="color:' + EX_TIPO_COL[p.t] + '">' + EX_TIPO_NOME[p.t] + '</span>' : '') + '</div>' +
              '<div class="hist-ch' + (p.w === DELOAD_WEEK ? ' dl' : '') + '">' + (CH_LABELS[p.w] || ('Ch' + (p.w + 1))) + '</div>' +
              '<div class="hist-bar"><i class="' + (beat ? 'g' : 'base') + '"></i>' +
                 (beat ? '<i class="y"></i>' : '') + '<span class="cut"></span></div>' +
@@ -14389,6 +14645,12 @@ function renderExChartBody() {
         h += '<div class="ex-advice">\uD83C\uDFC6 <b>Regola 2-per-2 soddisfatta in questo ciclo.</b><br>' +
              'Riferimento salito da ' + _fmtKg(_lg.from) + ' a ' + _fmtKg(_lg.to) + ' kg: due sedute di fila con ' +
              'almeno due ripetizioni oltre il target (Baechle &amp; Earle, NSCA 2008).</div>';
+    }
+    if (due) {
+        h += '<div class="m-note">Questo esercizio è sia in una scheda di <b>forza</b> sia in una di <b>massa</b>. ' +
+             'In forza si fanno meno ripetizioni con più carico, in massa più ripetizioni con meno carico: ' +
+             'per questo le linee sono due e la forza sta più in alto. Passare da una seduta all\'altra non è un calo. ' +
+             'Ogni linea mostra il carico equivalente alle ripetizioni previste di quella seduta.</div>';
     }
     h += '<div class="m-note">La barra è sempre lunga uguale: si ferma alla soglia quando hai seguito il programma, ' +
          'e si riempie oltre quando l\'hai superato — con più carico, con più ripetizioni o entrambi. ' +
@@ -14414,6 +14676,7 @@ function openExChart(name) {
     _exChartName = name;
     _exChartFilter = 'all';
     _exChartCycle  = 'all';
+    _exChartLinee  = { forza: true, massa: true };
     var mtr = mtrGet(name);
     var lower = (typeof woIsLowerBody === 'function') ? woIsLowerBody(name) : false;
     document.getElementById('ex-modal-title').textContent = exDisplay(name);
@@ -14985,7 +15248,7 @@ function openExFullscreen() {
         s.textContent = pts.length + ' rilevamenti \u00b7 ' + scopeCh + (mtr ? ' \u00b7 MTR ' + mtr + ' kg' : '');
     }
     var b = document.getElementById('ex-fs-body');
-    if (b) b.innerHTML = _exSvg(pts, true);
+    if (b) b.innerHTML = _exDueTipi(pts) ? _exSvg2(pts, true) : _exSvg(pts, true);
     fs.classList.add('open');
     fs.setAttribute('aria-hidden', 'false');
     // Suggerimento una tantum: senza, chi apre la vista con il telefono in
@@ -16854,6 +17117,8 @@ function mealScan(meal) {
     cameraCurrentMeal = meal;
     const overlay  = document.getElementById('camera-overlay');
     const hint     = document.getElementById('camera-hint');
+    const ttl      = overlay ? overlay.querySelector('.camera-title') : null;
+    if (ttl) ttl.textContent = window._nutCmpA ? '⚖️ Scansiona il secondo prodotto' : '📷 Scansiona codice a barre';
     overlay.classList.add('active');
     if (hint) hint.textContent = 'Avvio fotocamera...';
 
@@ -17363,15 +17628,33 @@ async function cameraFetchProduct(barcode, meal) {
 
     } // end if(!food) OFF block
 
+    // v.302: se si stava scansionando il secondo prodotto di un confronto,
+    // con dati completi si apre il confronto; altrimenti il confronto cade e
+    // il prodotto segue la strada di sempre.
+    const cmpA = window._nutCmpA || null;
+    window._nutCmpA = null;
+    if (cmpA && food && !food.incomplete) {
+        if (cmpA.food && cmpA.food.barcode && cmpA.food.barcode === food.barcode) {
+            showToast('È lo stesso prodotto di prima', 'error');
+        } else {
+            nutCmpOpen(cmpA.food, food, cmpA.meal || meal);
+            if (anim) anim.classList.remove('active');
+            btns.forEach(b => b.disabled = false);
+            return;
+        }
+    } else if (cmpA && food) {
+        showToast('Mancano i valori del secondo prodotto: confronto non possibile', 'error');
+    }
+
     if (food) {
-        openGramsSelector(food, meal);
+        openGramsSelector(food, meal, { scan: true });
     } else {
         showToast('Prodotto non trovato — inserisci manualmente', 'error');
         setTimeout(() => mealManual(meal, barcode, barcode), 500);
     }
 }
 
-function openGramsSelector(food, meal) {
+function openGramsSelector(food, meal, opts) {
     // If no macro data, open manual entry pre-filled with product name + barcode
     if (food.incomplete) {
         showToast('Macro non disponibili per questo prodotto — inserisci manualmente', 'error');
@@ -17429,6 +17712,9 @@ function openGramsSelector(food, meal) {
         gi.value = '100';
         if (servingHint) servingHint.style.display = 'none';
     }
+    // v.302: la domanda sul confronto compare solo dopo una scansione.
+    const cmpAsk = document.getElementById('grams-cmp-ask');
+    if (cmpAsk) cmpAsk.style.display = (opts && opts.scan && !isEditMode) ? 'block' : 'none';
     overlay.classList.add('active');
     gramsUpdatePreview();
     setTimeout(() => { gi.focus(); gi.select(); }, 150);
@@ -18500,6 +18786,219 @@ function gramsApplyServing() {
 function gramsClose() {
     window._nutEditMode = null;
     document.getElementById('grams-overlay')?.classList.remove('active');
+}
+
+// ── CONFRONTO FRA DUE PRODOTTI (v.302) ────────────────────
+// Dopo una scansione l'app chiede se confrontare il prodotto con un altro.
+// Il confronto mette prima un resoconto in poche righe e sotto la tabella
+// completa, con un pallino accanto al valore piu' alto di ogni riga.
+// Nessun vincitore assoluto: solo i fatti, e cosa conta per l'obiettivo
+// impostato nel calcolo del fabbisogno.
+// Fonti:
+// - Livelli basso/medio/alto: soglie per 100 g (bevande per 100 ml) del
+//   Department of Health / Food Standards Agency, "Guide to creating a front
+//   of pack (FoP) nutrition label for pre-packed products", 2016.
+//   Cibi: grassi <=3 / >17,5 g; saturi <=1,5 / >5 g; zuccheri <=5 / >22,5 g;
+//   sale <=0,3 / >1,5 g. Bevande: grassi <=1,5 / >8,75; saturi <=0,75 / >2,5;
+//   zuccheri <=2,5 / >11,25; sale <=0,3 / >0,75.
+// - Proteine per caloria in deficit: Helms, Aragon & Fitschen 2014 (J Int
+//   Soc Sports Nutr 11:20), la stessa fonte dei 2,2 g/kg del calcolo TDEE.
+// - Massa: circa 1,6 g/kg di proteine (Morton et al. 2018, Br J Sports Med),
+//   come nel calcolo TDEE.
+// - Nutri-Score e NOVA: quelli gia' mostrati dall'app (Open Food Facts o
+//   calcolati dai valori).
+const NUT_FSA = {
+    cibo:    { f100: [3, 17.5],  saturated100: [1.5, 5],   sugars100: [5, 22.5],   salt100: [0.3, 1.5] },
+    bevanda: { f100: [1.5, 8.75], saturated100: [0.75, 2.5], sugars100: [2.5, 11.25], salt100: [0.3, 0.75] }
+};
+const NUT_NS_COL = { A: '#038141', B: '#85bb2f', C: '#fecb02', D: '#ee8100', E: '#e63e11' };
+
+function _cmpNum(f, k) {
+    const v = f ? f[k] : null;
+    if (v === null || v === undefined || v === '') return null;
+    const n = parseFloat(v);
+    return isNaN(n) ? null : n;
+}
+function _cmpFmt(n, dec) {
+    if (n === null) return '\u2014';
+    const m = Math.pow(10, dec);
+    return String(Math.round(n * m) / m).replace('.', ',');
+}
+function _cmpPor(f) { return (f && f.servingG > 0) ? f.servingG : 100; }
+function _cmpLivello(f, k) {
+    const v = _cmpNum(f, k);
+    if (v === null) return null;
+    const t = NUT_FSA[f.offCategory === 'beverage' ? 'bevanda' : 'cibo'][k];
+    return v <= t[0] ? 'basso' : (v > t[1] ? 'alto' : 'medio');
+}
+function _cmpProtDens(f) {
+    const k = _cmpNum(f, 'kcal100'), p = _cmpNum(f, 'p100');
+    return (k > 0 && p !== null) ? p / k * 100 : null;
+}
+function _cmpNs(f) {
+    const ns = String((f && f.nutriScore) || '').toUpperCase();
+    return NUT_NS_COL[ns] ? ns : null;
+}
+
+function nutCmpScansiona() {
+    const ov = document.getElementById('grams-overlay');
+    if (!ov) return;
+    let f = {};
+    try { f = JSON.parse(ov.dataset.food || '{}'); } catch (e) {}
+    // Valori corretti a mano con "Modifica": valgono anche per il confronto.
+    const map = { kcal100: 'grams-ref-kcal', p100: 'grams-ref-p', c100: 'grams-ref-c', f100: 'grams-ref-f',
+                  sugars100: 'grams-ref-sugars', saturated100: 'grams-ref-sat', fiber100: 'grams-ref-fiber', salt100: 'grams-ref-salt' };
+    Object.keys(map).forEach(k => {
+        const el = document.getElementById(map[k]);
+        if (el && el.value !== '' && !isNaN(parseFloat(el.value))) f[k] = parseFloat(el.value);
+    });
+    const nm = document.getElementById('grams-food-name');
+    if (nm && nm.textContent.trim()) f.name = nm.textContent.trim();
+    const meal = ov.dataset.meal;
+    window._nutCmpA = { food: f, meal: meal };
+    gramsClose();
+    mealScan(meal);
+}
+function nutCmpNo() {
+    const a = document.getElementById('grams-cmp-ask');
+    if (a) a.style.display = 'none';
+}
+function nutCmpAnnulla() { window._nutCmpA = null; }
+
+function nutCmpOpen(A, B, meal) {
+    window._nutCmp = { A: A, B: B, meal: meal, base: '100', open: false };
+    nutCmpRender();
+    const ov = document.getElementById('cmp-overlay');
+    if (ov) { ov.classList.add('active'); const sc = ov.firstElementChild; if (sc) sc.scrollTop = 0; }
+}
+function nutCmpClose() {
+    window._nutCmp = null;
+    document.getElementById('cmp-overlay')?.classList.remove('active');
+}
+function nutCmpBase(b) {
+    const c = window._nutCmp; if (!c) return;
+    const det = document.querySelector('#cmp-body details');
+    if (det) c.open = det.open;
+    c.base = b;
+    nutCmpRender();
+}
+function nutCmpAggiungi(i) {
+    const c = window._nutCmp; if (!c) return;
+    const f = i === 1 ? c.A : c.B, meal = c.meal;
+    nutCmpClose();
+    openGramsSelector(f, meal);
+}
+
+function _cmpRighe(A, B) {
+    const out = [];
+    const dA = _cmpProtDens(A), dB = _cmpProtDens(B);
+    if (dA !== null && dB !== null) {
+        if (_cmpFmt(dA, 1) === _cmpFmt(dB, 1)) {
+            out.push('Stesse proteine per caloria: ' + _cmpFmt(dA, 1) + ' g ogni 100 kcal.');
+        } else {
+            const primo = dA > dB;
+            out.push('<b>' + (primo ? 'Il primo' : 'Il secondo') + '</b> d\u00e0 ' + _cmpFmt(Math.max(dA, dB), 1) +
+                     ' g di proteine ogni 100 kcal, contro ' + _cmpFmt(Math.min(dA, dB), 1) + ' g.');
+        }
+    }
+    const kA = _cmpNum(A, 'kcal100'), kB = _cmpNum(B, 'kcal100');
+    if (kA !== null && kB !== null) {
+        if (A.servingG > 0 || B.servingG > 0) {
+            out.push('A porzione (' + _cmpPor(A) + ' g e ' + _cmpPor(B) + ' g): ' + Math.round(kA * _cmpPor(A) / 100) +
+                     ' kcal contro ' + Math.round(kB * _cmpPor(B) / 100) + ' kcal.');
+        } else {
+            out.push('Per 100 g: ' + Math.round(kA) + ' kcal contro ' + Math.round(kB) + ' kcal.');
+        }
+    }
+    const bev = A.offCategory === 'beverage' || B.offCategory === 'beverage';
+    [['sugars100', 'Zuccheri'], ['saturated100', 'Grassi saturi'], ['salt100', 'Sale']].forEach(function(x) {
+        const lA = _cmpLivello(A, x[0]), lB = _cmpLivello(B, x[0]);
+        if (lA && lB && lA !== lB) {
+            out.push(x[1] + ': ' + lA + ' nel primo, ' + lB + ' nel secondo (soglie per 100 ' + (bev ? 'g o 100 ml' : 'g') + ').');
+        }
+    });
+    const nA = _cmpNs(A), nB = _cmpNs(B);
+    if (nA && nB && nA !== nB) out.push('Nutri-Score ' + nA + ' contro ' + nB + '.');
+    return out;
+}
+
+function _cmpObiettivo(A, B) {
+    let goal = null;
+    try { goal = localStorage.getItem('nut_goal'); } catch (e) {}
+    if (!goal) return '';
+    const dA = _cmpProtDens(A), dB = _cmpProtDens(B);
+    if (goal === 'cut' || goal === 'cut_aggressive') {
+        if (dA === null || dB === null) return '';
+        const chi = _cmpFmt(dA, 1) === _cmpFmt(dB, 1) ? null : (dA > dB ? 'il primo' : 'il secondo');
+        return 'Il tuo obiettivo \u00e8 il <b>dimagrimento</b>: in deficit servono pi\u00f9 proteine per non perdere muscolo (Helms et al. 2014), quindi conta quante ne d\u00e0 ogni caloria' +
+               (chi ? ', e qui ne d\u00e0 di pi\u00f9 <b>' + chi + '</b>.' : '; qui sono uguali.');
+    }
+    if (goal === 'bulk') {
+        const pA = _cmpNum(A, 'p100'), pB = _cmpNum(B, 'p100'), kA = _cmpNum(A, 'kcal100'), kB = _cmpNum(B, 'kcal100');
+        if (kA === null || kB === null || pA === null || pB === null) return '';
+        return 'Il tuo obiettivo \u00e8 la <b>massa</b>: servono calorie oltre il fabbisogno e circa 1,6 g di proteine per kg di peso (Morton et al. 2018). ' +
+               'A porzione il primo d\u00e0 ' + Math.round(kA * _cmpPor(A) / 100) + ' kcal e ' + _cmpFmt(pA * _cmpPor(A) / 100, 1) + ' g di proteine, il secondo ' +
+               Math.round(kB * _cmpPor(B) / 100) + ' kcal e ' + _cmpFmt(pB * _cmpPor(B) / 100, 1) + ' g.';
+    }
+    return 'Il tuo obiettivo \u00e8 il <b>mantenimento</b>: nessun numero decide da solo; zuccheri, saturi e sale sono quelli da tenere bassi.';
+}
+
+function nutCmpRender() {
+    const c = window._nutCmp, body = document.getElementById('cmp-body');
+    if (!c || !body) return;
+    const A = c.A, B = c.B, por = c.base === 'por' && (A.servingG > 0 || B.servingG > 0);
+    const mealLab = (MEAL_CONFIG[c.meal] && MEAL_CONFIG[c.meal].label) || c.meal;
+    const prod = function(f, n) {
+        const ns = _cmpNs(f);
+        const sub = [f.brand || '', f.servingG > 0 ? 'porzione ' + f.servingG + ' g' : '', f.novaGroup ? 'NOVA ' + f.novaGroup : '']
+            .filter(Boolean).join(' \u00b7 ');
+        return '<div class="cmp-prod"><span class="cmp-num">' + n + '</span><div style="min-width:0;flex:1">' +
+               '<div class="cmp-prod-n">' + escapeHTML(f.name || 'Prodotto ' + n) + '</div>' +
+               (sub ? '<div class="cmp-prod-b">' + escapeHTML(sub) + '</div>' : '') + '</div>' +
+               (ns ? '<span class="cmp-ns" style="background:' + NUT_NS_COL[ns] + '" title="Nutri-Score ' + ns + '">' + ns + '</span>' : '') + '</div>';
+    };
+    let h = '<div class="cmp-prods">' + prod(A, 1) + prod(B, 2) + '</div>';
+    // "A porzione" ha senso solo se almeno una confezione indica la porzione.
+    const haPor = A.servingG > 0 || B.servingG > 0;
+    const tog = !haPor ? '' :
+        '<div class="cmp-tog" role="group" aria-label="Base del confronto" style="margin:8px 0 0">' +
+        '<button type="button" class="' + (por ? '' : 'on') + '" aria-pressed="' + (!por) + '" onclick="nutCmpBase(\'100\')">Per 100 g</button>' +
+        '<button type="button" class="' + (por ? 'on' : '') + '" aria-pressed="' + por + '" onclick="nutCmpBase(\'por\')">A porzione</button></div>';
+
+    const righe = _cmpRighe(A, B), ob = _cmpObiettivo(A, B);
+    h += '<div class="cmp-verdict"><div class="cmp-verdict-h">In breve</div>' +
+         (righe.length ? '<ul>' + righe.map(function(l) { return '<li>' + l + '</li>'; }).join('') + '</ul>' : '') +
+         (ob ? '<div class="cmp-goal">' + ob + '</div>' : '') + '</div>';
+
+    // Tabella: il pallino sta accanto al valore piu' alto della riga (nessun
+    // pallino se i due valori, come mostrati, sono uguali o ne manca uno).
+    const ROWS = [['kcal100', 'Energia', 'kcal', 0], ['p100', 'Proteine', 'g', 1], ['c100', 'Carboidrati', 'g', 1],
+                  ['sugars100', '\u00b7 zuccheri', 'g', 1], ['f100', 'Grassi', 'g', 1], ['saturated100', '\u00b7 saturi', 'g', 1],
+                  ['fiber100', 'Fibre', 'g', 1], ['salt100', 'Sale', 'g', 2]];
+    const cella = function(a, b, dec, u) {
+        const sa = _cmpFmt(a, dec), sb = _cmpFmt(b, dec);
+        const piu = (a !== null && b !== null && sa !== sb) ? (a > b ? 1 : 2) : 0;
+        return '<td>' + sa + (a !== null ? ' ' + u : '') + (piu === 1 ? '<i class="cmp-dot" title="pi\u00f9 alto"></i>' : '') + '</td>' +
+               '<td>' + sb + (b !== null ? ' ' + u : '') + (piu === 2 ? '<i class="cmp-dot" title="pi\u00f9 alto"></i>' : '') + '</td>';
+    };
+    let tab = '';
+    ROWS.forEach(function(r) {
+        let a = _cmpNum(A, r[0]), b = _cmpNum(B, r[0]);
+        if (por) { if (a !== null) a = a * _cmpPor(A) / 100; if (b !== null) b = b * _cmpPor(B) / 100; }
+        tab += '<tr><td>' + r[1] + '</td>' + cella(a, b, r[3], r[2]) + '</tr>';
+    });
+    tab += '<tr><td>Proteine ogni 100 kcal</td>' + cella(_cmpProtDens(A), _cmpProtDens(B), 1, 'g') + '</tr>';
+    h += '<details class="cmp-more"' + (c.open ? ' open' : '') + '><summary>Tutti i valori</summary>' + tog +
+         '<table class="cmp-tab"><thead><tr><th></th><th>1' + (por ? ' \u00b7 ' + _cmpPor(A) + ' g' : '') + '</th><th>2' +
+         (por ? ' \u00b7 ' + _cmpPor(B) + ' g' : '') + '</th></tr></thead><tbody>' + tab + '</tbody></table>' +
+         '<div class="cmp-foot" style="margin-top:6px"><i class="cmp-dot" style="margin:0 5px 0 0"></i>il valore pi\u00f9 alto della riga' +
+         (por && (!(A.servingG > 0) || !(B.servingG > 0)) ? '. Dove la confezione non indica la porzione si usano 100 g.' : '') + '</div></details>';
+
+    h += '<button type="button" class="cmp-btn pri" onclick="nutCmpAggiungi(1)">Aggiungi il primo a ' + escapeHTML(mealLab) + '</button>' +
+         '<button type="button" class="cmp-btn sec" onclick="nutCmpAggiungi(2)">Aggiungi il secondo</button>' +
+         '<div class="cmp-foot">Basso / medio / alto: soglie per 100 g (bevande per 100 ml) del Department of Health britannico (2016). ' +
+         'Proteine in deficit: Helms et al. 2014. Nutri-Score e NOVA da Open Food Facts o calcolati dai valori.</div>';
+    body.innerHTML = h;
 }
 
 
@@ -27063,7 +27562,7 @@ function homeRefreshData() {
 <!-- ══ BARCODE CAMERA MODAL ══ -->
 <div class="camera-overlay" id="camera-overlay">
   <div class="camera-header">
-    <button class="camera-back" onclick="cameraClose()">←</button>
+    <button class="camera-back" onclick="nutCmpAnnulla(); cameraClose()">←</button>
     <div class="camera-title">📷 Scansiona codice a barre</div>
   </div>
   <div id="camera-viewport">
@@ -27083,7 +27582,7 @@ function homeRefreshData() {
       </div>
     </div>
     <div class="camera-hint" id="camera-hint" style="position:absolute;top:20px;left:0;right:0;text-align:center;">Inquadra il codice a barre</div>
-    <button class="camera-manual-btn" style="bottom:24px;width:auto;padding:10px 20px;" onclick="cameraClose(); mealManual(cameraCurrentMeal)">✏️ Inserisci manualmente</button>
+    <button class="camera-manual-btn" style="bottom:24px;width:auto;padding:10px 20px;" onclick="nutCmpAnnulla(); cameraClose(); mealManual(cameraCurrentMeal)">✏️ Inserisci manualmente</button>
   </div>
   <div class="camera-no-support" id="camera-no-support">
     <div class="camera-no-support-icon">📷</div>
