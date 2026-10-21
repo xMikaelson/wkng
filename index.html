@@ -3770,8 +3770,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       </div>
       <!-- No protocol state -->
       <div id="wo-no-proto" class="wo-no-proto" style="display:none;">
-        <div class="wo-no-proto-icon">📋</div>
-        <div>Nessun allenamento per oggi.<br>Vai su <strong>Piani</strong> e assegna un protocollo ai giorni.</div>
+        <div class="wo-no-proto-icon" id="wo-no-proto-icon">📋</div>
+        <div id="wo-no-proto-txt">Nessun allenamento per oggi.<br>Vai su <strong>Piani</strong> e assegna un protocollo ai giorni.</div>
       </div>
       <div class="wo-stat-boxes" id="wo-stat-boxes" style="display:none;">
         <div class="wo-stat-box">
@@ -4727,7 +4727,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '307';
+const APP_VERSION = '308';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -10961,6 +10961,14 @@ function woMancanti(w) { return woSeduteMancanti(w); }
    Gli studi stanno dietro "Perche' si puo'" e dietro la "i" sotto i giorni
    (awPercheSaltare): infilarli qui allungava la finestra di tre paragrafi
    proprio nel momento in cui si deve solo scegliere. */
+// "dal 93%" ma "dall'85%": articolo con l'elisione davanti ai numeri che
+// si leggono con una vocale (uno, otto, undici, ottanta...).
+function awPrepPct(prep, n) {
+    var t = String(n);
+    var voc = /^8/.test(t) || t === '1' || t === '11';
+    return (voc ? prep + 'll\u2019' : prep + 'l ') + t + '%';
+}
+
 function woProponiSblocco(w, onDone) {
     if (!woPuoSbloccare(w)) return;
     const prossimo = 'Chapter ' + (w + 2) + (CHAPTER_NAMES[w + 1] ? ' \u2014 ' + CHAPTER_NAMES[w + 1] : '');
@@ -10973,9 +10981,14 @@ function woProponiSblocco(w, onDone) {
     const riga2 = mancanti === 1
         ? 'Puoi passare avanti lo stesso: una seduta saltata non disfa il lavoro gi\u00e0 fatto.'
         : 'Puoi passare avanti lo stesso, ma con ' + mancanti + ' sedute in meno questa settimana vale come mantenimento, non come progresso.';
-    const riga3 = 'I carichi non salgono per il fatto di cambiare capitolo, e ' +
-        (mancanti === 1 ? 'la seduta che manca resta non fatta' : 'le sedute che mancano restano non fatte') +
-        ' nello storico.';
+    // v.308 — Prima diceva che i carichi non salgono cambiando capitolo: e'
+    // vero per il riferimento (MTR), che sale solo con la regola 2-per-2, ma
+    // i chili della seduta seguono la scala del programma (WEEK_LOADS) e nel
+    // capitolo dopo sono gia' piu' alti (o piu' bassi, nel Deload).
+    const pDa = Math.round(WEEK_LOADS[w] * 100), pA = Math.round((WEEK_LOADS[w + 1] || WEEK_LOADS[w]) * 100);
+    const riga3 = 'Nel nuovo capitolo i carichi passano ' + awPrepPct('da', pDa) + ' ' + awPrepPct('a', pA) + ' del tuo riferimento, come previsto dal programma; ' +
+        'il riferimento invece sale solo con la regola 2-per-2. ' +
+        (mancanti === 1 ? 'La seduta che manca resta non fatta' : 'Le sedute che mancano restano non fatte') + ' nello storico.';
 
     awConfirm(riga1 + '\n\n' + riga2 + '\n\n' + riga3,
         function(ok) {
@@ -11006,8 +11019,10 @@ function awPercheSaltare() {
         { t: 'Quello che perdi \u00e8 volume, non progresso',
           p: 'A volume settimanale pari la frequenza conta poco: \u00e8 il totale delle serie a fare la differenza, in proporzione alla dose. Le sedute saltate sono serie in meno, non un capitolo da rifare.',
           f: 'Schoenfeld, Ogborn & Krieger, 2016 e 2017' },
-        { t: 'I carichi non salgono per il calendario',
-          p: 'Cambiare capitolo non alza niente da solo: i chili salgono solo dove le ripetizioni che hai davvero eseguito lo giustificano.',
+        { t: 'Il riferimento non sale per il calendario',
+          p: 'Cambiando capitolo i chili seguono la scala del programma, ' + awPrepPct('da', Math.round(WEEK_LOADS[0] * 100)) + ' ' +
+             awPrepPct('a', Math.round(WEEK_LOADS[OVERLOAD_WEEK] * 100)) + ' del tuo riferimento e poi il Deload: \u00e8 la progressione prevista. ' +
+             'Il riferimento invece sale solo dove le ripetizioni che hai davvero eseguito lo giustificano.',
           f: 'Regola 2-per-2 \u2014 Baechle & Earle, 2008, NSCA Essentials' },
         { t: 'Lo storico resta vero',
           p: 'Le sedute che mancano restano non fatte: non vengono segnate come svolte e non entrano nel conteggio.',
@@ -15564,6 +15579,47 @@ function woSessionProto() {
     return awkActiveProto();
 }
 
+// v.308 — Pagina Allenamento senza seduta oggi. Se il piano ha sedute in
+// questo capitolo, oggi e' un giorno di riposo previsto: prima l'app diceva
+// "Vai su Piani e assegna un protocollo", come se il piano mancasse. Il
+// riposo fa parte del programma (ACSM Position Stand 2009: 48-72 ore fra
+// due sedute sugli stessi muscoli); si indica la prossima seduta.
+// Il messaggio di prima resta per chi non ha nessuna seduta assegnata, e
+// uno nuovo per la scheda assegnata che non esiste piu'.
+function woRiposoTesto(w, oggi, schedaPersa) {
+    var ic = document.getElementById('wo-no-proto-icon'), tx = document.getElementById('wo-no-proto-txt');
+    if (!ic || !tx) return '';
+    var NOMI = ['luned\u00ec', 'marted\u00ec', 'mercoled\u00ec', 'gioved\u00ec', 'venerd\u00ec', 'sabato', 'domenica'];
+    var riga = (APP.dayAssignments && APP.dayAssignments[w]) || [];
+    var chips = (APP.chipStates && APP.chipStates[w]) || [];
+    if (schedaPersa) {
+        ic.textContent = '\uD83D\uDCCB';
+        tx.innerHTML = 'La scheda assegnata a oggi non c\u2019\u00e8 pi\u00f9.<br>Vai su <strong>Piani</strong> e assegnane un\u2019altra.';
+        return 'persa';
+    }
+    if (!riga.some(function(a) { return !!a; })) {
+        ic.textContent = '\uD83D\uDCCB';
+        tx.innerHTML = 'Nessun allenamento per oggi.<br>Vai su <strong>Piani</strong> e assegna un protocollo ai giorni.';
+        return 'vuoto';
+    }
+    // Prossima seduta: un giorno dopo oggi in questo capitolo non ancora
+    // fatto, altrimenti il primo giorno assegnato del capitolo successivo.
+    var prossima = '';
+    for (var d = oggi + 1; d < 7 && !prossima; d++) {
+        if (riga[d] && chips[d] !== 'done') prossima = NOMI[d] + (riga[d].protoName ? ' \u00b7 ' + escapeHTML(String(riga[d].protoName)) : '');
+    }
+    if (!prossima && w + 1 < N_WEEKS) {
+        var r2 = (APP.dayAssignments && APP.dayAssignments[w + 1]) || [];
+        for (var e = 0; e < 7 && !prossima; e++) {
+            if (r2[e]) prossima = NOMI[e] + ' della prossima settimana' + (r2[e].protoName ? ' \u00b7 ' + escapeHTML(String(r2[e].protoName)) : '');
+        }
+    }
+    ic.textContent = '\uD83D\uDE34';
+    tx.innerHTML = '<strong>Oggi \u00e8 riposo.</strong><br>Il recupero fa parte del programma: i muscoli crescono fra una seduta e l\u2019altra.' +
+        (prossima ? '<br><br>Prossima seduta: <strong>' + prossima + '</strong>' : '');
+    return 'riposo';
+}
+
 function initWorkoutPage() {
     const page = document.getElementById('page-workout');
 
@@ -15649,8 +15705,9 @@ function initWorkoutPage() {
         // No workout assigned for today
         if (bannerEl)  bannerEl.style.display  = 'none';
         if (noProtoEl) noProtoEl.style.display = 'block';
+        const _tipoVuoto = woRiposoTesto(w, todayMon, !!assignment);
         if (startBtn)  startBtn.style.display  = 'none';
-        if (protoNameEl) protoNameEl.textContent = 'Nessun piano per oggi';
+        if (protoNameEl) protoNameEl.textContent = _tipoVuoto === 'riposo' ? 'Giorno di riposo' : 'Nessun piano per oggi';
         if (prevList) prevList.innerHTML = '';
         const sb = document.getElementById('wo-stat-boxes');
         if (sb) sb.style.display = 'none';
@@ -20703,8 +20760,14 @@ function woApplyTwoForTwo(exName, wIdx) {
         if (typeof saveProtocolToSupabase !== 'function') return;
         try { saveProtocolToSupabase(p); } catch (err) { awLog.warn('saveProtocolToSupabase:', err); }
     });
-    showToast('Regola 2-per-2 · ' + exDisplay(exName) + ': ' + _fmtKg(fromKg) + ' → ' +
-              _fmtKg(toKg) + ' kg dalla prossima seduta', 'success');
+    // v.308 — Il carico nuovo vale per questo capitolo; se il prossimo non e'
+    // il Deload si dice anche quello, perche' la seduta successiva puo'
+    // cadere li', con la sua percentuale. Prima il messaggio dava solo il
+    // carico del capitolo in corso come "dalla prossima seduta".
+    var nextW = wIdx + 1, nextTxt = '';
+    if (nextW < DELOAD_WEEK && check[nextW] > 0) nextTxt = ', ' + _fmtKg(check[nextW]) + ' kg nel ' + CH_LABELS[nextW];
+    showToast('Regola 2-per-2 \u00b7 ' + exDisplay(exName) + ': ' + _fmtKg(fromKg) + ' \u2192 ' +
+              _fmtKg(toKg) + ' kg nel ' + CH_LABELS[wIdx] + nextTxt, 'success');
     if (typeof renderPlanPage === 'function') { try { renderPlanPage(APP.selectedViewWeek || 0); } catch (e) {} }
     if (typeof updateChart === 'function') updateChart();
     return changed;
@@ -23409,9 +23472,16 @@ const AWK_POOL = {
     {n:'Hanging Leg Raise', eq:['sbarra']},
     {n:'Hollow Hold', eq:[], hold:true}
   ],
+  /* v.308 — Dragon Flag negativo solo dai livelli successivi (adv): e' una
+     anti-estensione a leva lunga, troppo per chi comincia (NSCA, Baechle &
+     Earle 2008: l'esperienza tecnica guida la scelta degli esercizi). La
+     base per il principiante e' il plank laterale: le tenute sono la base
+     della progressione del core (McGill 2010, Strength Cond J 32(3):33-46,
+     side bridge fra gli esercizi di base). baseHold dice ad awkPick che qui
+     l'isometrico e' una versione base valida. */
   C_CORE2: [
-    {n:'Dragon Flag Negativo', eq:['panca']},
-    {n:'Plank Laterale', eq:[], hold:true}
+    {n:'Dragon Flag Negativo', eq:['panca'], adv:true},
+    {n:'Plank Laterale', eq:[], hold:true, baseHold:true}
   ],
   /* Le progressioni che fanno del calisthenics una disciplina invece che
      "ginnastica a corpo libero": tenute in cui si guadagna allungando la
@@ -23672,7 +23742,7 @@ function awkPick(key, equip, used, usedFam, allowSkip, level){
     // ripetizioni (il rematore allo stipite non sostituisce le trazioni per
     // chi ha la sbarra): se e' l'unica alternativa, si resta all'avanzata.
     const dinAdv = ok.some(ex => ex.adv && !ex.hold);
-    const base = ok.filter(ex => !ex.adv && !(ex.hold && dinAdv));
+    const base = ok.filter(ex => !ex.adv && !(ex.hold && dinAdv && !ex.baseHold));
     if (base.length) ok = base;
   }
   let c = ok.find(ex => !used.has(ex.n) && (!ex.fam || !usedFam.has(ex.fam)));
@@ -24083,22 +24153,38 @@ function awkRenderResult(){
        'Tocca la <span class="ob-zi ob-zi-inline">i</span> accanto a un esercizio per vedere la sua zona e la fonte.' +
        '</div></div>';
 
+  // v.308 — Schemi e carichi del Chapter 1, quelli che si trovano davvero
+  // alla prima seduta. Prima l'anteprima mostrava lo schema di riferimento
+  // della scheda (quello del Chapter 4) e il carico di riferimento: 4 x 8 a
+  // 55 kg, mentre il Chapter 1 parte da 4 x 12 a 47 kg. Gli stessi conti
+  // della seduta: srForChapter per lo schema, exFromProto per il carico
+  // (riferimento x WEEK_LOADS[0]).
+  h += '<div class="ob-hint" style="margin:0 0 10px;">Schemi e carichi del Chapter 1. Capitolo dopo capitolo le ripetizioni scendono e il carico sale, fino ' +
+       awPrepPct('a', Math.round(WEEK_LOADS[OVERLOAD_WEEK] * 100)) + ' del riferimento nel Chapter 4.</div>';
   P.sessions.forEach(function(sess, i){
+    const _legacy = sess.tag === 'FORZA' ? 'forza' : sess.tag === 'IPERTROFIA' ? 'ipertrofia' : (P.goal === 'full_forza' ? 'forza' : 'ipertrofia');
+    const _protoLike = { goal: _legacy, _awkGoal: P.goal, _awkLevel: P.level, _splitSlot: awkSlotFromSession(sess.name) || '' };
     h += '<div class="ob-sess"><div class="ob-sess-hd"><div class="idx">' + (i + 1) + '</div>' +
       '<div class="n">' + sess.name + '</div>' +
       (sess.tag ? '<div class="ob-sess-tag ' + (sess.tag === 'FORZA' ? 'F' : 'I') + '">' + sess.tag + '</div>' : '') +
       '</div><div class="ob-exl">';
     sess.exercises.forEach(function(e){
       const isTime = (e.type === 'time');
-      const kg = isTime ? 0 : awkDefaultKg(e.name, P.level);
+      const kgRef = isTime ? 0 : awkDefaultKg(e.name, P.level);
+      const exCh1 = exFromProto({ name: e.name, sr: e.sets + ' x ' + e.reps + (isTime ? 's' : ''), baseWeight: kgRef, _role: e.role });
+      const kg = isTime ? 0 : (exCh1.loads[0] || 0);
+      let sr1 = '';
+      try { sr1 = srForChapter(exCh1, 0, _protoLike) || ''; } catch (err) { sr1 = ''; }
+      const m1 = String(sr1).match(/(\d+)\s*[xX\u00d7]\s*(\d+)/);
+      const setsCh1 = m1 ? m1[1] : e.sets, repsCh1 = m1 ? m1[2] : e.reps;
       const zn = AWK_ZONES[e.zone];
       h += '<div class="ob-ex"><div class="dot" style="background:' + awkRoleColor(e.role) + '"></div>' +
         '<div class="en">' + escapeHTML(exDisplay(e.name)) + '<div class="em">' + awkRoleLabel(e.role) +
         (e.rir ? ' \u00B7 ' + e.rir : '') + ' \u00B7 rec ' + awkFmtRest(e.rest) +
-        (isTime ? ' \u00B7 nessun carico' : (kg ? ' \u00B7 ' + kg + ' kg' : ' \u00B7 corpo libero')) +
+        (isTime ? ' \u00B7 nessun carico' : (kg ? ' \u00B7 ' + _fmtKg(kg) + ' kg' : ' \u00B7 corpo libero')) +
         '</div></div>' +
         '<div class="ob-ex-right">' +
-        '<div class="esr' + (isTime ? ' time' : '') + '">' + e.sets + '\u00D7' + e.reps + (isTime ? 's' : '') + '</div>' +
+        '<div class="esr' + (isTime ? ' time' : '') + '">' + (isTime ? e.sets + '\u00D7' + e.reps + 's' : setsCh1 + '\u00D7' + repsCh1) + '</div>' +
         (zn ? '<span class="ob-zi" onclick="event.stopPropagation();zoneSheetOpen(\'' + e.zone + '\')">i</span>' : '') +
         '</div></div>';
     });
