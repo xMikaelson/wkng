@@ -1131,7 +1131,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .cmp-tab th { font-size:0.52rem; color:#94a3b8; font-weight:700; text-align:right; padding:4px 2px; border:none; }
         .cmp-tab td { padding:6px 2px; border:none; border-top:1px solid rgba(255,255,255,0.06); color:#e2e8f0; text-align:right; white-space:nowrap; font-size:0.62rem; }
         .cmp-tab td:first-child { text-align:left; color:#94a3b8; white-space:normal; }
-        .cmp-dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:#a5b4fc; margin-left:5px; vertical-align:middle; }
+        .cmp-dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:#94a3b8; margin-left:5px; vertical-align:middle; }
+        .cmp-dot.v { background:#34d399; }
+        .cmp-dot.r { background:#f87171; }
+        .cmp-dot.n { background:#94a3b8; }
+        .cmp-legend { display:flex; flex-wrap:wrap; gap:4px 12px; font-size:0.52rem; color:#94a3b8; line-height:1.5; margin-top:8px; }
+        .cmp-legend span { display:inline-flex; align-items:center; white-space:nowrap; }
+        .cmp-legend .cmp-dot { margin:0 5px 0 0; }
         .cmp-foot { font-size:0.52rem; color:#64748b; line-height:1.55; margin-top:12px; }
         body.nav-mode .top-bar { display: none; }
         /* container stays visible — contains #results */
@@ -4715,7 +4721,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '302';
+const APP_VERSION = '303';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -5740,7 +5746,86 @@ function wpFase(mv, left) {
     return { fase: 'sx', resto: left };
 }
 function wpSideLeft(mv, left) { return wpFase(mv, left).resto; }
-function wpStop() { if (_wpTimer) { clearInterval(_wpTimer); _wpTimer = null; } if (woPrep) woPrep.run = null; }
+function wpStop() {
+    if (_wpTimer) { clearInterval(_wpTimer); _wpTimer = null; }
+    if (woPrep) { woPrep.run = null; clearTimeout(woPrep.rearm); }
+    // Timer fermato a meta' (pausa, secondo tocco, Salta): la notifica
+    // programmata non deve piu' arrivare.
+    if (_wpPushOwn) { _wpPushOwn = false; try { woRestPushCancel(); } catch (e) {} }
+}
+
+// v.303 — Notifica fuori dall'app anche per il riscaldamento generale e per
+// la mobilita', come per i recuperi fra le serie. Prima questi due timer
+// suonavano solo con l'app aperta: a schermo spento la pagina si ferma e
+// nessun segnale arrivava. Si usa lo stesso meccanismo dei recuperi (v.285):
+// all'avvio l'app lascia sul server l'ora dell'avviso, il server manda il
+// push; con l'app aperta basta il beep e la riga si cancella (v.301,
+// woRestDoneNotify: una notifica sola fra app e server).
+// La riga sul server e' una per utente, quindi si programma un avviso alla
+// volta, il prossimo:
+//   - generale: la fine del timer;
+//   - mobilita' a un lato: la fine del movimento;
+//   - mobilita' a due lati: prima il cambio lato, poi (appena la pagina
+//     gira di nuovo, o rientrando nell'app) la fine del movimento.
+// Limite: con l'app chiusa per tutto il movimento a due lati arriva solo il
+// cambio lato; il testo dice gia' quanti secondi fare sul secondo lato.
+var _wpPushOwn = false;   // la riga sul server e' della preparazione
+function wpPushProssimo(p) {
+    var left = wpLeft();
+    if (p.run === 'gen') {
+        return { secs: left, titolo: '\uD83D\uDD25 Riscaldamento generale finito',
+                 testo: 'Passa alla mobilit\u00e0: movimenti ampi e controllati.' };
+    }
+    if (p.run !== 'mob') return null;
+    var list = wpMobList(p), mv = list[p.mobRun];
+    if (!mv) return null;
+    var ph = wpFase(mv, left);
+    if (ph.fase === 'dx') {
+        return { secs: ph.resto, titolo: '\uD83D\uDD04 Cambia lato',
+                 testo: mv.n + ': ora il lato sinistro, ' + mv.t + ' s.' };
+    }
+    // Fine del movimento: il prossimo da fare, se ce n'e' uno.
+    var next = null;
+    list.forEach(function(m, i) { if (!next && i !== p.mobRun && !p.mob[i]) next = m; });
+    return { secs: left, titolo: '\u2705 ' + mv.n + ' fatto',
+             testo: next ? ('Prossimo movimento: ' + next.n + '.')
+                         : (p.ramp ? 'Mobilit\u00e0 finita: passa alle serie di avvicinamento con i pesi.'
+                                   : 'Riscaldamento finito: puoi iniziare l\'allenamento.') };
+}
+function wpPushArm() {
+    var p = woPrep;
+    if (!p || !p.run) return;
+    var x = wpPushProssimo(p);
+    if (!x || !(x.secs > 0)) return;
+    p.push = x;
+    try { woRestPushSchedule(x.secs, x.testo, x.titolo); } catch (e) {}
+    _wpPushOwn = true;
+}
+// Avviso intermedio (cambio lato): fuori dall'app arriva la notifica, poi si
+// programma la fine. Se l'avviso parte dal server si aspetta che l'abbia
+// spedito (il job passa ogni 5 s, la riga scade 1,5 s dopo l'ora): una riga
+// riscritta prima verrebbe presa o cancellata al suo posto.
+function wpPushEvento() {
+    var p = woPrep;
+    if (!p) return;
+    var attesa = 0;
+    if (_wpPushOwn && document.hidden) {
+        // Senza server la riga si cancella: la nuova va scritta dopo.
+        attesa = _woRestPushOk ? 8000 : 1500;
+        _wpPushOwn = false;
+        try { woRestDoneNotify(p.push && p.push.testo, p.push && p.push.titolo); } catch (e) {}
+    }
+    clearTimeout(p.rearm);
+    p.rearm = setTimeout(function() { if (woPrep === p && p.run) wpPushArm(); }, attesa);
+}
+// Fine del timer: la notifica, se si e' fuori dall'app, poi niente altro.
+function wpPushFine() {
+    var p = woPrep;
+    if (p) clearTimeout(p.rearm);
+    if (!_wpPushOwn) return;
+    _wpPushOwn = false;
+    try { woRestDoneNotify(p && p.push && p.push.testo, p && p.push && p.push.titolo); } catch (e) {}
+}
 function wpFmt(s) { s = Math.max(0, s); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 function wpLeft() { return Math.max(0, Math.ceil((woPrep.endsAt - Date.now() - 50) / 1000)); }
 
@@ -5868,11 +5953,14 @@ function wpWire() {
     if (g) g.onclick = function() {
         if (p.run === 'gen') { p.left = wpLeft(); wpStop(); wpRender(); return; }
         if (p.left <= 0) return;
-        wpStop();
+        // La riga sul server non si cancella: la riscrive wpPushArm qui sotto
+        // (una cancellazione in volo potrebbe arrivare dopo e toglierla).
+        _wpPushOwn = false; wpStop();
         p.run = 'gen'; p.endsAt = Date.now() + p.left * 1000; p.lastBeep = null;
         p.block = Math.min(4, Math.floor((p.min * 60 - p.left) / Math.round(p.min * 12)));
         _woBeep(660, 0.15, 'sine');
         _wpTimer = setInterval(wpTick, 250);
+        wpPushArm();
         wpRender();
     };
     var gn = document.getElementById('wp-gen-next');
@@ -5884,11 +5972,12 @@ function wpWire() {
         if (p.mobRun === i) { wpStop(); p.mobRun = -1; wpRender(); return; }   // secondo tocco: ferma
         if (p.mob[i]) { p.mob[i] = false; wpRender(); return; }                // togli la spunta
         var mv = wpMobList(p)[i];
-        wpStop();
+        _wpPushOwn = false; wpStop();   // vedi sopra: la riga la riscrive wpPushArm
         p.mobRun = i; p.run = 'mob'; p.left = wpMobDur(mv);
         p.endsAt = Date.now() + p.left * 1000; p.lastBeep = null; p.fase = mv.lati ? 'dx' : 'unico';
         _woBeep(660, 0.15, 'sine');
         _wpTimer = setInterval(wpTick, 250);
+        wpPushArm();
         wpRender();
     }; });
     var mn = document.getElementById('wp-mob-next'); if (mn) mn.onclick = function() { wpStop(); p.skipped = p.skipped || {}; p.skipped[2] = false; p.step = 3; wpRender(); };
@@ -5911,6 +6000,7 @@ function wpTick() {
             if (bi !== p.block) { p.block = bi; if (left > 0) { _woBeep(880, 0.25, 'sine'); wpRender(); } }
         }
         if (left === 0) {
+            wpPushFine();
             wpStop(); p.left = 0;
             _woBeep(660, 0.12, 'sine'); setTimeout(function(){ _woBeep(880, 0.25, 'sine'); }, 140);
             p.skipped = p.skipped || {}; p.skipped[1] = false;
@@ -5921,10 +6011,14 @@ function wpTick() {
         p.left = left;
         var ph = wpFase(mv, left);
         if (ph.fase !== p.fase) {
+            var daDx = p.fase === 'dx';
             p.fase = ph.fase;
             // Fine del primo lato: segnale di cambio. Inizio del secondo: via.
             if (ph.fase === 'cambio') _woBeep(880, 0.25, 'sine');
             else if (ph.fase === 'sx') _woBeep(660, 0.15, 'sine');
+            // Finito il primo lato (anche rientrando dopo il cambio): avviso
+            // e prossima notifica, quella di fine movimento.
+            if (daDx && left > 0) wpPushEvento();
             if (left > 0) { wpRender(); return; }
         }
         var btn = document.querySelector('#wo-prep [data-mob="' + p.mobRun + '"]');
@@ -5932,6 +6026,7 @@ function wpTick() {
         // Conto alla rovescia sugli ultimi 3 secondi di ogni lato.
         if (ph.fase !== 'cambio' && ph.resto > 0 && ph.resto <= 3 && p.lastBeep !== left) { p.lastBeep = left; woCountdownBeepFree(); }
         if (left === 0) {
+            wpPushFine();
             p.mob[p.mobRun] = true; p.mobRun = -1; wpStop();
             _woBeep(660, 0.12, 'sine'); setTimeout(function(){ _woBeep(880, 0.25, 'sine'); }, 140);
             wpRender();
@@ -18835,6 +18930,50 @@ function _cmpProtDens(f) {
     const k = _cmpNum(f, 'kcal100'), p = _cmpNum(f, 'p100');
     return (k > 0 && p !== null) ? p / k * 100 : null;
 }
+// v.303 — Colore del pallino sul valore piu' alto della riga. Prima era
+// sempre lo stesso; ora dice se avere di piu' e' un vantaggio per il tuo
+// obiettivo (verde), qualcosa da limitare (rosso) o ne' l'uno ne' l'altro
+// (grigio). L'obiettivo e' quello del calcolo del fabbisogno (nut_goal);
+// senza obiettivo valgono le regole del mantenimento.
+//   Proteine e proteine per 100 kcal: verde sempre. Morton et al. 2018
+//     (Br J Sports Med 52:376) per la massa muscolare; in deficit ne servono
+//     di piu' (Helms, Aragon & Fitschen 2014, JISSN 11:20).
+//   Fibre: verde sempre. Reynolds et al. 2019 (Lancet 393:434): piu' fibra,
+//     meno mortalita' e malattie croniche.
+//   Zuccheri, saturi, sale: rosso sempre. Sono i nutrienti da limitare del
+//     semaforo DH/FSA 2016; OMS: zuccheri liberi sotto il 10% dell'energia
+//     (2015), saturi sotto il 10% (2023), sale sotto 5 g al giorno (2012).
+//   Grassi totali: rosso in dimagrimento e mantenimento (nutriente da
+//     limitare nel semaforo FSA 2016; OMS 2023: al massimo il 30%
+//     dell'energia); grigio in massa, dove l'energia in piu' e' il fine.
+//   Energia: verde in massa (serve un surplus, Iraki et al. 2019, Sports
+//     7(7):154), rosso in dimagrimento (serve un deficit, Helms et al. 2014),
+//     grigio nel mantenimento.
+//   Carboidrati: verde in massa (sostengono l'allenamento, Iraki et al.
+//     2019: 3-5 g/kg e oltre nel periodo di massa); grigio altrove: a parita'
+//     di calorie e proteine, meno carboidrati non fanno perdere piu' grasso
+//     (Hall & Guo 2017, Gastroenterology 152:1718).
+function _cmpGoal() {
+    var g = null;
+    try { g = localStorage.getItem('nut_goal'); } catch (e) {}
+    return (g === 'cut' || g === 'cut_aggressive') ? 'cut' : (g === 'bulk' ? 'bulk' : 'maintain');
+}
+function _cmpGoalSet() {
+    try { return !!localStorage.getItem('nut_goal'); } catch (e) { return false; }
+}
+const CMP_TONO = {
+    kcal100:      { cut: 'r', maintain: 'n', bulk: 'v' },
+    p100:         { cut: 'v', maintain: 'v', bulk: 'v' },
+    c100:         { cut: 'n', maintain: 'n', bulk: 'v' },
+    sugars100:    { cut: 'r', maintain: 'r', bulk: 'r' },
+    f100:         { cut: 'r', maintain: 'r', bulk: 'n' },
+    saturated100: { cut: 'r', maintain: 'r', bulk: 'r' },
+    fiber100:     { cut: 'v', maintain: 'v', bulk: 'v' },
+    salt100:      { cut: 'r', maintain: 'r', bulk: 'r' },
+    pdens:        { cut: 'v', maintain: 'v', bulk: 'v' }
+};
+const CMP_TONO_TXT = { v: 'pi\u00f9 alto: un vantaggio per il tuo obiettivo', r: 'pi\u00f9 alto: da limitare', n: 'pi\u00f9 alto: n\u00e9 pro n\u00e9 contro' };
+
 function _cmpNs(f) {
     const ns = String((f && f.nutriScore) || '').toUpperCase();
     return NUT_NS_COL[ns] ? ns : null;
@@ -18975,29 +19114,36 @@ function nutCmpRender() {
     const ROWS = [['kcal100', 'Energia', 'kcal', 0], ['p100', 'Proteine', 'g', 1], ['c100', 'Carboidrati', 'g', 1],
                   ['sugars100', '\u00b7 zuccheri', 'g', 1], ['f100', 'Grassi', 'g', 1], ['saturated100', '\u00b7 saturi', 'g', 1],
                   ['fiber100', 'Fibre', 'g', 1], ['salt100', 'Sale', 'g', 2]];
-    const cella = function(a, b, dec, u) {
+    const goal = _cmpGoal();
+    const cella = function(a, b, dec, u, k) {
         const sa = _cmpFmt(a, dec), sb = _cmpFmt(b, dec);
         const piu = (a !== null && b !== null && sa !== sb) ? (a > b ? 1 : 2) : 0;
-        return '<td>' + sa + (a !== null ? ' ' + u : '') + (piu === 1 ? '<i class="cmp-dot" title="pi\u00f9 alto"></i>' : '') + '</td>' +
-               '<td>' + sb + (b !== null ? ' ' + u : '') + (piu === 2 ? '<i class="cmp-dot" title="pi\u00f9 alto"></i>' : '') + '</td>';
+        const tono = (CMP_TONO[k] && CMP_TONO[k][goal]) || 'n';
+        const dot = '<i class="cmp-dot ' + tono + '" title="' + CMP_TONO_TXT[tono] + '"></i>';
+        return '<td>' + sa + (a !== null ? ' ' + u : '') + (piu === 1 ? dot : '') + '</td>' +
+               '<td>' + sb + (b !== null ? ' ' + u : '') + (piu === 2 ? dot : '') + '</td>';
     };
     let tab = '';
     ROWS.forEach(function(r) {
         let a = _cmpNum(A, r[0]), b = _cmpNum(B, r[0]);
         if (por) { if (a !== null) a = a * _cmpPor(A) / 100; if (b !== null) b = b * _cmpPor(B) / 100; }
-        tab += '<tr><td>' + r[1] + '</td>' + cella(a, b, r[3], r[2]) + '</tr>';
+        tab += '<tr><td>' + r[1] + '</td>' + cella(a, b, r[3], r[2], r[0]) + '</tr>';
     });
-    tab += '<tr><td>Proteine ogni 100 kcal</td>' + cella(_cmpProtDens(A), _cmpProtDens(B), 1, 'g') + '</tr>';
+    tab += '<tr><td>Proteine ogni 100 kcal</td>' + cella(_cmpProtDens(A), _cmpProtDens(B), 1, 'g', 'pdens') + '</tr>';
     h += '<details class="cmp-more"' + (c.open ? ' open' : '') + '><summary>Tutti i valori</summary>' + tog +
          '<table class="cmp-tab"><thead><tr><th></th><th>1' + (por ? ' \u00b7 ' + _cmpPor(A) + ' g' : '') + '</th><th>2' +
          (por ? ' \u00b7 ' + _cmpPor(B) + ' g' : '') + '</th></tr></thead><tbody>' + tab + '</tbody></table>' +
-         '<div class="cmp-foot" style="margin-top:6px"><i class="cmp-dot" style="margin:0 5px 0 0"></i>il valore pi\u00f9 alto della riga' +
-         (por && (!(A.servingG > 0) || !(B.servingG > 0)) ? '. Dove la confezione non indica la porzione si usano 100 g.' : '') + '</div></details>';
+         '<div class="cmp-legend">Il pallino sta sul valore pi\u00f9 alto della riga:' +
+         '<span><i class="cmp-dot v"></i>un vantaggio per ' + ({ cut: 'il dimagrimento', bulk: 'la massa', maintain: 'il mantenimento' })[goal] + '</span>' +
+         '<span><i class="cmp-dot r"></i>da limitare</span><span><i class="cmp-dot n"></i>n\u00e9 pro n\u00e9 contro</span></div>' +
+         (_cmpGoalSet() ? '' : '<div class="cmp-foot" style="margin-top:4px">Obiettivo non impostato: colori per il mantenimento. Lo scegli nel calcolo del fabbisogno.</div>') +
+         (por && (!(A.servingG > 0) || !(B.servingG > 0)) ? '<div class="cmp-foot" style="margin-top:4px">Dove la confezione non indica la porzione si usano 100 g.</div>' : '') + '</details>';
 
     h += '<button type="button" class="cmp-btn pri" onclick="nutCmpAggiungi(1)">Aggiungi il primo a ' + escapeHTML(mealLab) + '</button>' +
          '<button type="button" class="cmp-btn sec" onclick="nutCmpAggiungi(2)">Aggiungi il secondo</button>' +
          '<div class="cmp-foot">Basso / medio / alto: soglie per 100 g (bevande per 100 ml) del Department of Health britannico (2016). ' +
-         'Proteine in deficit: Helms et al. 2014. Nutri-Score e NOVA da Open Food Facts o calcolati dai valori.</div>';
+         'Proteine: Helms et al. 2014, Morton et al. 2018. Zuccheri, saturi e sale da limitare: OMS. Fibre: Reynolds et al. 2019. ' +
+         'Massa: Iraki et al. 2019. Nutri-Score e NOVA da Open Food Facts o calcolati dai valori.</div>';
     body.innerHTML = h;
 }
 
@@ -19716,9 +19862,12 @@ if (AW_NATIVE) {
     });
 }
 
-function woRestPushSchedule(secs, body) {
+function woRestPushSchedule(secs, body, title) {
     try { awLiveRest(secs); } catch (e) { awLog.warn('[live]', e && e.message); }
     _woRestPushOk = 0;
+    // La riga sul server e' una sola: chi la riscrive ne diventa il padrone
+    // (la preparazione la riprende subito dopo, in wpPushArm).
+    _wpPushOwn = false;
     try {
         if (!APP || !APP.userName || !sbClient || sbClient._offline) return;
         if (typeof getNotifPermission === 'function' && getNotifPermission() !== 'granted') return;
@@ -19729,7 +19878,7 @@ function woRestPushSchedule(secs, body) {
         var fire = new Date(endsAt + 1500).toISOString();
         sbClient.from('rest_push').upsert({
             user_id: APP.userName, fire_at: fire,
-            title: '\u23f1\ufe0f Recupero finito', body: body || 'Riparti con la serie successiva'
+            title: title || '\u23f1\ufe0f Recupero finito', body: body || 'Riparti con la serie successiva'
         }, { onConflict: 'user_id' }).then(function(r) {
             if (r && r.error) { awLog.warn('[rest_push]', r.error.message); return; }
             // Armato solo se nel frattempo non e' partito un altro recupero.
@@ -19759,19 +19908,19 @@ function woRestPushText() {
 //  - app in secondo piano e push del server armato: manda il server, la
 //    riga resta e la pagina non mostra la sua;
 //  - app in secondo piano senza server: notifica locale.
-function woRestDoneNotify(testo) {
+function woRestDoneNotify(testo, titolo) {
     if (document.hidden && _woRestPushOk) {
         _woRestPushOk = 0;
         _woRestPushOn = false;   // la riga la cancella il job dopo l'invio
         return;
     }
     woRestPushCancel();
-    woNotifyRestDone(testo);
+    woNotifyRestDone(testo, titolo);
 }
 
 // Notifica di fine recupero. Solo fuori dall'app: se sei sulla schermata il
 // beep basta, e una notifica sopra il timer sarebbe solo rumore.
-function woNotifyRestDone(testo) {
+function woNotifyRestDone(testo, titolo) {
     if (!document.hidden) return;
     if (typeof getNotifPermission === 'function' && getNotifPermission() !== 'granted') return;
     if (!('serviceWorker' in navigator)) return;
@@ -19779,7 +19928,7 @@ function woNotifyRestDone(testo) {
     var nome = (!testo && ex) ? exDisplay(ex.name) : '';
     var serie = (woState.setIndex || 0) + 1;
     navigator.serviceWorker.ready.then(function(reg) {
-        reg.showNotification('\u23f1\ufe0f Recupero finito', {
+        reg.showNotification(titolo || '\u23f1\ufe0f Recupero finito', {
             body: testo || (nome ? ('Riparti: ' + nome + ' \u00b7 serie ' + serie) : 'Riparti con la serie successiva'),
             icon: './icon-192.png', badge: './icon-192.png',
             tag: 'wo-rest', renotify: true, data: { url: './' }
