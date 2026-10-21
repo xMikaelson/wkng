@@ -4727,7 +4727,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '306';
+const APP_VERSION = '307';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -19078,23 +19078,32 @@ function _cmpRighe(A, B) {
 }
 
 // v.306 — Verdetto: quale dei due scegliere per il tuo obiettivo.
-// Si contano le voci della tabella (per 100 g) in cui ciascun prodotto
-// conviene, con la stessa direzione dei pallini (CMP_TONO, v.303, con le
-// sue fonti). Tutte le voci pesano uguale: nessuno studio da' pesi per
-// combinarle, e un peso inventato deciderebbe il verdetto al posto dei
-// dati. Restano fuori le voci neutre per l'obiettivo, quelle con un valore
-// mancante o uguale come mostrato, e "Proteine ogni 100 kcal", che deriva da
-// proteine ed energia gia' contate.
-// A parita' decide il Nutri-Score: e' l'indice nato per confrontare la
-// qualita' nutrizionale di prodotti simili (Sante' publique France 2017),
-// associato agli esiti di salute (Deschasaux et al. 2018, PLoS Med
-// 15(9):e1002651). Se anche quello e' uguale, i due si equivalgono.
+// v.307 — Decide per primo il criterio chiave dell'obiettivo; solo se non
+// decide si passa al conteggio delle voci, poi al Nutri-Score.
+//  1. Criterio chiave (valori per 100 g, confrontati come mostrati):
+//     - dimagrimento: proteine ogni 100 kcal. In deficit servono piu'
+//       proteine per conservare la massa magra (Helms, Aragon & Fitschen
+//       2014, JISSN 11:20), quindi conta quante ne da' ogni caloria;
+//     - massa: piu' calorie e piu' proteine insieme. Servono un surplus
+//       (Iraki et al. 2019, Sports 7(7):154) e circa 1,6 g/kg di proteine
+//       (Morton et al. 2018, Br J Sports Med 52:376). Decide solo se un
+//       prodotto non e' peggiore in nessuna delle due e migliore in almeno
+//       una; se uno ha piu' calorie e l'altro piu' proteine, non decide;
+//     - mantenimento: il Nutri-Score, l'indice nato per confrontare la
+//       qualita' nutrizionale di prodotti simili (Sante' publique France
+//       2017), associato agli esiti di salute (Deschasaux et al. 2018, PLoS
+//       Med 15(9):e1002651).
+//  2. Voci della tabella in cui ciascuno conviene, con la direzione dei
+//     pallini (CMP_TONO), tutte con lo stesso peso: nessuno studio da' pesi
+//     per combinarle. Fuori le voci neutre per l'obiettivo, quelle mancanti
+//     o uguali come mostrate, e "Proteine ogni 100 kcal", che deriva da
+//     proteine ed energia gia' contate.
+//  3. Nutri-Score, se non era gia' il criterio chiave.
 // Il verdetto avvisa se il prodotto scelto ha zuccheri, saturi o sale
 // "alti" per le soglie DH/FSA 2016.
 const CMP_VOCI = ['kcal100', 'p100', 'c100', 'sugars100', 'f100', 'saturated100', 'fiber100', 'salt100'];
 const CMP_VOCI_DEC = { kcal100: 0, salt100: 2 };
-function _cmpVerdetto(A, B) {
-    const goal = _cmpGoal();
+function _cmpConta(A, B, goal) {
     let a = 0, b = 0;
     CMP_VOCI.forEach(function(k) {
         const tono = CMP_TONO[k][goal];
@@ -19105,33 +19114,85 @@ function _cmpVerdetto(A, B) {
         if (_cmpFmt(va, dec) === _cmpFmt(vb, dec)) return;
         if ((tono === 'v') === (va > vb)) a++; else b++;
     });
-    let chi = a > b ? 1 : (b > a ? 2 : 0), ns = false;
-    if (!chi) {
-        const nA = _cmpNs(A), nB = _cmpNs(B);
-        if (nA && nB && nA !== nB) { chi = nA < nB ? 1 : 2; ns = true; }   // A e' il migliore
+    return { a: a, b: b };
+}
+// Confronto di due valori come mostrati: 1 se vince A, 2 se vince B, 0 pari o mancante.
+function _cmpPiuAlto(va, vb, dec) {
+    if (va === null || vb === null || _cmpFmt(va, dec) === _cmpFmt(vb, dec)) return 0;
+    return va > vb ? 1 : 2;
+}
+function _cmpChiave(A, B, goal) {
+    if (goal === 'cut') {
+        const dA = _cmpProtDens(A), dB = _cmpProtDens(B), w = _cmpPiuAlto(dA, dB, 1);
+        if (w) return { chi: w, perche: 'Dà più proteine per caloria: ' + _cmpFmt(w === 1 ? dA : dB, 1) + ' g ogni 100 kcal contro ' +
+                        _cmpFmt(w === 1 ? dB : dA, 1) + ' g. In deficit è il criterio che conta di più (Helms et al. 2014).' };
+        return { chi: 0, no: (dA === null || dB === null) ? 'proteine per caloria non disponibili' : 'stesse proteine per caloria' };
     }
-    return { goal: goal, chi: chi, a: a, b: b, ns: ns };
+    if (goal === 'bulk') {
+        const k = _cmpPiuAlto(_cmpNum(A, 'kcal100'), _cmpNum(B, 'kcal100'), 0);
+        const pr = _cmpPiuAlto(_cmpNum(A, 'p100'), _cmpNum(B, 'p100'), 1);
+        const mancano = [_cmpNum(A, 'kcal100'), _cmpNum(B, 'kcal100'), _cmpNum(A, 'p100'), _cmpNum(B, 'p100')].indexOf(null) !== -1;
+        const w = mancano ? 0 : ((k && pr && k !== pr) ? 0 : (k || pr));
+        if (w) {
+            const W = w === 1 ? A : B, L = w === 1 ? B : A;
+            return { chi: w, perche: (k && pr ? 'Più calorie e più proteine' : (k ? 'Più calorie, stesse proteine' : 'Più proteine, stesse calorie')) +
+                     ' per 100 g: ' + Math.round(_cmpNum(W, 'kcal100')) + ' kcal e ' + _cmpFmt(_cmpNum(W, 'p100'), 1) + ' g contro ' +
+                     Math.round(_cmpNum(L, 'kcal100')) + ' kcal e ' + _cmpFmt(_cmpNum(L, 'p100'), 1) + ' g. In massa servono entrambe (Iraki et al. 2019; Morton et al. 2018).' };
+        }
+        return { chi: 0, no: mancano ? 'calorie o proteine non disponibili'
+                              : (k && pr ? 'uno ha più calorie, l’altro più proteine' : 'stesse calorie e proteine') };
+    }
+    const nA = _cmpNs(A), nB = _cmpNs(B);
+    if (nA && nB && nA !== nB) {
+        const w = nA < nB ? 1 : 2;   // A e' il migliore
+        return { chi: w, perche: 'Nutri-Score migliore: ' + (w === 1 ? nA : nB) + ' contro ' + (w === 1 ? nB : nA) +
+                 '. È l’indice che riassume la qualità nutrizionale di prodotti simili (Santé publique France).' };
+    }
+    return { chi: 0, no: (nA && nB) ? 'stesso Nutri-Score' : 'Nutri-Score non disponibile' };
+}
+function _cmpVerdetto(A, B) {
+    const goal = _cmpGoal();
+    const key = _cmpChiave(A, B, goal), cnt = _cmpConta(A, B, goal);
+    const out = { goal: goal, a: cnt.a, b: cnt.b, chi: 0, via: '', key: key };
+    if (key.chi) { out.chi = key.chi; out.via = 'chiave'; return out; }
+    if (cnt.a !== cnt.b) { out.chi = cnt.a > cnt.b ? 1 : 2; out.via = 'voci'; return out; }
+    if (goal !== 'maintain') {
+        const nA = _cmpNs(A), nB = _cmpNs(B);
+        if (nA && nB && nA !== nB) { out.chi = nA < nB ? 1 : 2; out.via = 'ns'; }
+    }
+    return out;
 }
 function _cmpVerdettoHtml(A, B) {
     const v = _cmpVerdetto(A, B);
     const obi = ({ cut: 'il dimagrimento', bulk: 'la massa', maintain: 'il mantenimento' })[v.goal];
-    let h = '<div class="cmp-verd"><div class="cmp-verd-h">\uD83C\uDFC6 Verdetto per ' + obi + '</div>';
+    const voci = function(n) { return n + ' ' + (n === 1 ? 'voce' : 'voci'); };
+    let h = '<div class="cmp-verd"><div class="cmp-verd-h">🏆 Verdetto per ' + obi + '</div>';
     if (v.chi) {
         const W = v.chi === 1 ? A : B, L = v.chi === 1 ? B : A;
-        h += '<div class="cmp-verd-t">Scegli <b>il ' + (v.chi === 1 ? 'primo' : 'secondo') + '</b>: ' + escapeHTML(W.name || '') + '</div>';
         const vw = v.chi === 1 ? v.a : v.b, vl = v.chi === 1 ? v.b : v.a;
-        h += '<div class="cmp-verd-d">' + (v.ns
-            ? 'Pari nelle voci della tabella (' + v.a + ' a ' + v.b + '): decide il Nutri-Score, ' + _cmpNs(W) + ' contro ' + _cmpNs(L) + '.'
-            : 'Conviene in ' + vw + ' ' + (vw === 1 ? 'voce' : 'voci') + ' della tabella, l\'altro in ' + vl + ' (valori per 100 g).') + '</div>';
+        h += '<div class="cmp-verd-t">Scegli <b>il ' + (v.chi === 1 ? 'primo' : 'secondo') + '</b>: ' + escapeHTML(W.name || '') + '</div>';
+        if (v.via === 'chiave') {
+            h += '<div class="cmp-verd-d">' + v.key.perche + '</div>';
+            if (vw + vl) h += '<div class="cmp-verd-d">Nelle voci della tabella: questo conviene in ' + voci(vw) + ', l’altro in ' + vl + '.</div>';
+        } else if (v.via === 'voci') {
+            h += '<div class="cmp-verd-d">Il criterio chiave non decide (' + v.key.no + '): questo conviene in ' + voci(vw) +
+                 ' della tabella, l’altro in ' + vl + ' (valori per 100 g).</div>';
+        } else {
+            h += '<div class="cmp-verd-d">Il criterio chiave non decide (' + v.key.no + ') e le voci della tabella sono pari (' + v.a + ' a ' + v.b +
+                 '): decide il Nutri-Score, ' + _cmpNs(W) + ' contro ' + _cmpNs(L) + '.</div>';
+        }
         // Avviso se il prodotto scelto resta "alto" in qualcosa da limitare.
         const alti = [['sugars100', 'zuccheri'], ['saturated100', 'grassi saturi'], ['salt100', 'sale']]
             .filter(function(x) { return _cmpLivello(W, x[0]) === 'alto'; }).map(function(x) { return x[1]; });
         if (alti.length) h += '<div class="cmp-verd-d" style="color:#fca5a5">Attenzione: ' + alti.join(', ') + ' comunque alt' + (alti.length > 1 || alti[0] !== 'sale' ? 'i' : 'o') + ' (soglie per 100 g).</div>';
     } else {
-        h += '<div class="cmp-verd-t">Si equivalgono</div><div class="cmp-verd-d">Stesse voci a favore (' + v.a + ' a ' + v.b + ')' +
-             (_cmpNs(A) && _cmpNs(B) ? ' e stesso Nutri-Score' : '') + ': scegli quello che preferisci.</div>';
+        h += '<div class="cmp-verd-t">Si equivalgono</div><div class="cmp-verd-d">Il criterio chiave non decide (' + v.key.no +
+             '), le voci della tabella sono pari (' + v.a + ' a ' + v.b + ')' +
+             (v.goal !== 'maintain' && _cmpNs(A) && _cmpNs(B) ? ' e il Nutri-Score è lo stesso' : '') + ': scegli quello che preferisci.</div>';
     }
-    h += '<div class="cmp-verd-n">Conta le voci in cui ciascuno conviene per il tuo obiettivo, tutte con lo stesso peso; a parit\u00e0 decide il Nutri-Score.' +
+    const chiave = ({ cut: 'le proteine per caloria', bulk: 'calorie e proteine insieme', maintain: 'il Nutri-Score' })[v.goal];
+    h += '<div class="cmp-verd-n">Prima decide il criterio chiave per ' + obi + ' (' + chiave + '), poi le voci della tabella, tutte con lo stesso peso' +
+         (v.goal !== 'maintain' ? ', poi il Nutri-Score' : '') + '.' +
          (_cmpGoalSet() ? '' : ' Obiettivo non impostato: verdetto per il mantenimento.') + '</div></div>';
     return { html: h, chi: v.chi };
 }
@@ -19154,7 +19215,7 @@ function _cmpObiettivo(A, B) {
                'A porzione il primo d\u00e0 ' + Math.round(kA * _cmpPor(A) / 100) + ' kcal e ' + _cmpFmt(pA * _cmpPor(A) / 100, 1) + ' g di proteine, il secondo ' +
                Math.round(kB * _cmpPor(B) / 100) + ' kcal e ' + _cmpFmt(pB * _cmpPor(B) / 100, 1) + ' g.';
     }
-    return 'Il tuo obiettivo \u00e8 il <b>mantenimento</b>: nessun numero decide da solo; zuccheri, saturi e sale sono quelli da tenere bassi.';
+    return 'Il tuo obiettivo \u00e8 il <b>mantenimento</b>: conta la qualit\u00e0 complessiva, che il Nutri-Score riassume; zuccheri, saturi e sale sono quelli da tenere bassi.';
 }
 
 function nutCmpRender() {
