@@ -4721,7 +4721,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '304';
+const APP_VERSION = '305';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -18937,11 +18937,14 @@ function _cmpProtDens(f) {
     const k = _cmpNum(f, 'kcal100'), p = _cmpNum(f, 'p100');
     return (k > 0 && p !== null) ? p / k * 100 : null;
 }
-// v.303 — Colore del pallino sul valore piu' alto della riga. Prima era
-// sempre lo stesso; ora dice se avere di piu' e' un vantaggio per il tuo
-// obiettivo (verde), qualcosa da limitare (rosso) o ne' l'uno ne' l'altro
-// (grigio). L'obiettivo e' quello del calcolo del fabbisogno (nut_goal);
-// senza obiettivo valgono le regole del mantenimento.
+// v.303 — Per ogni riga, in che direzione conviene il valore secondo
+// l'obiettivo del calcolo del fabbisogno (nut_goal; senza obiettivo valgono
+// le regole del mantenimento): 'v' = di piu' e' un vantaggio, 'r' = di piu'
+// e' uno svantaggio (da limitare), 'n' = ne' l'uno ne' l'altro.
+// v.305 — I pallini seguono il vantaggio, non il valore piu' alto: verde
+// sul prodotto che conviene in quella riga, rosso su quello che conviene
+// meno (con 'r' il verde va al valore piu' basso). Nelle righe 'n' resta un
+// pallino grigio sul valore piu' alto, solo come informazione.
 //   Proteine e proteine per 100 kcal: verde sempre. Morton et al. 2018
 //     (Br J Sports Med 52:376) per la massa muscolare; in deficit ne servono
 //     di piu' (Helms, Aragon & Fitschen 2014, JISSN 11:20).
@@ -18979,7 +18982,7 @@ const CMP_TONO = {
     salt100:      { cut: 'r', maintain: 'r', bulk: 'r' },
     pdens:        { cut: 'v', maintain: 'v', bulk: 'v' }
 };
-const CMP_TONO_TXT = { v: 'pi\u00f9 alto: un vantaggio per il tuo obiettivo', r: 'pi\u00f9 alto: da limitare', n: 'pi\u00f9 alto: n\u00e9 pro n\u00e9 contro' };
+const CMP_TONO_TXT = { v: 'conviene per il tuo obiettivo', r: 'conviene meno per il tuo obiettivo', n: 'pi\u00f9 alto: n\u00e9 meglio n\u00e9 peggio' };
 
 function _cmpNs(f) {
     const ns = String((f && f.nutriScore) || '').toUpperCase();
@@ -19126,9 +19129,20 @@ function nutCmpRender() {
         const sa = _cmpFmt(a, dec), sb = _cmpFmt(b, dec);
         const piu = (a !== null && b !== null && sa !== sb) ? (a > b ? 1 : 2) : 0;
         const tono = (CMP_TONO[k] && CMP_TONO[k][goal]) || 'n';
-        const dot = '<i class="cmp-dot ' + tono + '" title="' + CMP_TONO_TXT[tono] + '"></i>';
-        return '<td>' + sa + (a !== null ? ' ' + u : '') + (piu === 1 ? dot : '') + '</td>' +
-               '<td>' + sb + (b !== null ? ' ' + u : '') + (piu === 2 ? dot : '') + '</td>';
+        const dot = function(c) { return '<i class="cmp-dot ' + c + '" title="' + CMP_TONO_TXT[c] + '"></i>'; };
+        // Pallino di ciascuna colonna: chi vince la riga verde, chi perde rosso.
+        let da = '', db = '';
+        if (piu) {
+            if (tono === 'n') {
+                if (piu === 1) da = dot('n'); else db = dot('n');
+            } else {
+                const vinceA = (tono === 'v') === (piu === 1);
+                da = dot(vinceA ? 'v' : 'r');
+                db = dot(vinceA ? 'r' : 'v');
+            }
+        }
+        return '<td>' + sa + (a !== null ? ' ' + u : '') + da + '</td>' +
+               '<td>' + sb + (b !== null ? ' ' + u : '') + db + '</td>';
     };
     let tab = '';
     ROWS.forEach(function(r) {
@@ -19140,9 +19154,9 @@ function nutCmpRender() {
     h += '<details class="cmp-more"' + (c.open ? ' open' : '') + '><summary>Tutti i valori</summary>' + tog +
          '<table class="cmp-tab"><thead><tr><th></th><th>1' + (por ? ' \u00b7 ' + _cmpPor(A) + ' g' : '') + '</th><th>2' +
          (por ? ' \u00b7 ' + _cmpPor(B) + ' g' : '') + '</th></tr></thead><tbody>' + tab + '</tbody></table>' +
-         '<div class="cmp-legend">Il pallino sta sul valore pi\u00f9 alto della riga:' +
-         '<span><i class="cmp-dot v"></i>un vantaggio per ' + ({ cut: 'il dimagrimento', bulk: 'la massa', maintain: 'il mantenimento' })[goal] + '</span>' +
-         '<span><i class="cmp-dot r"></i>da limitare</span><span><i class="cmp-dot n"></i>n\u00e9 pro n\u00e9 contro</span></div>' +
+         '<div class="cmp-legend">Per ' + ({ cut: 'il dimagrimento', bulk: 'la massa', maintain: 'il mantenimento' })[goal] + ':' +
+         '<span><i class="cmp-dot v"></i>conviene</span><span><i class="cmp-dot r"></i>conviene meno</span>' +
+         '<span><i class="cmp-dot n"></i>pi\u00f9 alto, n\u00e9 meglio n\u00e9 peggio</span></div>' +
          (_cmpGoalSet() ? '' : '<div class="cmp-foot" style="margin-top:4px">Obiettivo non impostato: colori per il mantenimento. Lo scegli nel calcolo del fabbisogno.</div>') +
          (por && (!(A.servingG > 0) || !(B.servingG > 0)) ? '<div class="cmp-foot" style="margin-top:4px">Dove la confezione non indica la porzione si usano 100 g.</div>' : '') + '</details>';
 
