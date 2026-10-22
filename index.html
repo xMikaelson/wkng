@@ -1139,6 +1139,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .cmp-legend span { display:inline-flex; align-items:center; white-space:nowrap; }
         .cmp-legend .cmp-dot { margin:0 5px 0 0; }
         .cmp-foot { font-size:0.52rem; color:#64748b; line-height:1.55; margin-top:12px; }
+        /* v.309 — consiglio per l'obiettivo sul singolo prodotto */
+        .nut-goal { border-radius:13px; padding:12px 13px; }
+        .nut-goal-k { font-size:0.5rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.1em; font-weight:700; margin-bottom:4px; }
+        .nut-goal-t { font-size:0.74rem; font-weight:800; margin-bottom:5px; }
+        .nut-goal-r { font-size:0.62rem; line-height:1.55; color:#cbd5e1; margin-top:3px; }
+        .nut-goal-n { font-size:0.54rem; line-height:1.5; color:#94a3b8; margin-top:6px; }
         .cmp-verd { margin-top:12px; background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.35); border-radius:12px; padding:12px 14px; }
         .cmp-verd-h { font-size:0.52rem; color:#fbbf24; text-transform:uppercase; letter-spacing:0.1em; font-weight:700; margin-bottom:6px; }
         .cmp-verd-t { font-size:0.82rem; color:#f8fafc; line-height:1.4; overflow-wrap:anywhere; }
@@ -4358,6 +4364,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <!-- Nutri-Score: full width row, centered -->
     <div id="grams-nutriscore" style="display:none;position:relative;height:34px;margin-bottom:14px;"></div>
     <div id="grams-nova" style="display:none;margin-bottom:14px;"></div>
+    <div id="grams-goal" style="display:none;margin-bottom:14px;"></div>
 
     <!-- Per 100g reference — visualizzazione / modifica -->
     <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 14px;margin-bottom:16px;">
@@ -4727,7 +4734,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '308';
+const APP_VERSION = '309';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -17999,6 +18006,19 @@ function gramsRefUpdate() {
             novaEl.innerHTML = '';
         }
     }
+    // v.309 — Consiglio per l'obiettivo, sotto quello sul profilo
+    // nutrizionale. I campi vuoti restano vuoti (gramsGetRef li fa 0, e uno
+    // zero passerebbe per "pochi zuccheri").
+    const goalEl = document.getElementById('grams-goal');
+    if (goalEl) {
+        const raw = function(id) { const el = document.getElementById(id); const v = el ? parseFloat(el.value) : NaN; return isNaN(v) ? null : v; };
+        const fg = { kcal100: raw('grams-ref-kcal'), p100: raw('grams-ref-p'), c100: raw('grams-ref-c'), f100: raw('grams-ref-f'),
+                     sugars100: raw('grams-ref-sugars'), saturated100: raw('grams-ref-sat'), fiber100: raw('grams-ref-fiber'),
+                     salt100: raw('grams-ref-salt'), offCategory: cat, nutriScore: score, servingG: food.servingG || null };
+        const gh = nutGoalHTML(fg);
+        goalEl.style.display = gh ? 'block' : 'none';
+        goalEl.innerHTML = gh;
+    }
     gramsUpdatePreview();
 }
 
@@ -19252,6 +19272,123 @@ function _cmpVerdettoHtml(A, B) {
          (v.goal !== 'maintain' ? ', poi il Nutri-Score' : '') + '.' +
          (_cmpGoalSet() ? '' : ' Obiettivo non impostato: verdetto per il mantenimento.') + '</div></div>';
     return { html: h, chi: v.chi };
+}
+
+// ── CONSIGLIO PER L'OBIETTIVO SUL SINGOLO PRODOTTO (v.309) ──
+// Dopo una scansione, oltre al consiglio sul profilo nutrizionale (Nutri-
+// Score e NOVA), l'app dice se il prodotto va bene per l'obiettivo del
+// calcolo del fabbisogno e in cosa pecca. Solo soglie pubblicate, nessun
+// punteggio inventato:
+//  - Pecche, per tutti gli obiettivi: zuccheri, saturi e sale "alti" per il
+//    semaforo DH/FSA 2016 (per 100 g, bevande per 100 ml; e per porzione
+//    oltre 100 g o 150 ml: alto se supera il 30% dell'assunzione di
+//    riferimento, cioe' 27 g di zuccheri, 6 g di saturi, 1,8 g di sale,
+//    21 g di grassi). Grassi totali alti solo in dimagrimento e
+//    mantenimento: in massa l'energia in piu' e' il fine (come CMP_TONO).
+//  - Criterio chiave dell'obiettivo (lo stesso del verdetto del confronto):
+//    · dimagrimento: proteine per caloria. Le soglie sono quelle del Reg.
+//      (CE) 1924/2006 sulle indicazioni nutrizionali: "fonte di proteine"
+//      se danno almeno il 12% delle calorie, "ad alto contenuto" dal 20%.
+//      Sotto il 12% il prodotto pecca in proteine: in deficit ne servono di
+//      piu' (Helms, Aragon & Fitschen 2014). Non vale per oli, burro e
+//      frutta secca (categoria 'fat'): sono condimenti, non fonti di
+//      proteine, e per loro contano le quantita';
+//    · massa: nessuna pecca propria; calorie e proteine sono punti a favore
+//      (Iraki et al. 2019; Morton et al. 2018);
+//    · mantenimento: il Nutri-Score (Sante' publique France): D ed E
+//      peccano, A e B sono a favore.
+//  - Punti a favore: proteine e fibre secondo lo stesso regolamento ("fonte
+//    di fibre" da 3 g per 100 g, "ricco" da 6 g), "basso contenuto
+//    calorico" (fino a 40 kcal per 100 g, 20 per 100 ml) in dimagrimento,
+//    zuccheri, saturi e sale "bassi" per il semaforo.
+//  - Verdetto: adatto se non pecca in nulla; con moderazione se pecca in
+//    qualcosa ma il criterio chiave regge, o al contrario; poco adatto se
+//    mancano entrambi.
+// Niente densita' energetica (WCRF 2007): i valori in etichetta di pasta,
+// riso o legumi secchi sono a crudo e la farebbero sembrare altissima.
+const NUT_RI30 = { f100: 21, saturated100: 6, sugars100: 27, salt100: 1.8 };
+function nutAltoDove(f, k) {
+    if (_cmpLivello(f, k) === 'alto') return 'per 100 ' + (f.offCategory === 'beverage' ? 'ml' : 'g');
+    var v = _cmpNum(f, k), por = f.servingG;
+    if (v !== null && por > (f.offCategory === 'beverage' ? 150 : 100) && v * por / 100 > NUT_RI30[k]) return 'a porzione';
+    return null;
+}
+function nutGoalEval(f) {
+    var goal = _cmpGoal();
+    var obi = ({ cut: 'il dimagrimento', bulk: 'la massa', maintain: 'il mantenimento' })[goal];
+    var pecche = [], forti = [], chiave = 0, chiaveTxt = '';
+    var kcal = _cmpNum(f, 'kcal100'), pr = _cmpNum(f, 'p100'), fib = _cmpNum(f, 'fiber100');
+    var bev = f.offCategory === 'beverage', u = bev ? 'ml' : 'g';
+    // Pecche del semaforo
+    var NOMI = { sugars100: 'zuccheri', saturated100: 'grassi saturi', salt100: 'sale', f100: 'grassi' };
+    var voci = goal !== 'bulk' ? ['sugars100', 'f100', 'saturated100', 'salt100'] : ['sugars100', 'saturated100', 'salt100'];
+    voci.forEach(function(k) {
+        var dove = nutAltoDove(f, k);
+        if (dove) pecche.push(NOMI[k] + ' alt' + (k === 'salt100' ? 'o' : 'i') + ' (' + _cmpFmt(_cmpNum(f, k), k === 'salt100' ? 2 : 1) + ' g per 100 ' + u +
+                              (dove === 'a porzione' ? ', troppi nella porzione da ' + f.servingG + ' ' + u : '') + ')');
+    });
+    // Proteine per caloria (quota dell'energia, 4 kcal per grammo)
+    var quota = (kcal > 0 && pr !== null) ? pr * 4 / kcal * 100 : null;
+    if (quota !== null) {
+        if (quota >= 20) forti.push('ricco di proteine (' + _cmpFmt(pr / kcal * 100, 1) + ' g ogni 100 kcal)');
+        else if (quota >= 12) forti.push('fonte di proteine (' + _cmpFmt(pr / kcal * 100, 1) + ' g ogni 100 kcal)');
+    }
+    if (goal === 'cut' && quota !== null && f.offCategory !== 'fat') {
+        if (quota >= 20) chiave = 1;
+        else if (quota < 12) {
+            chiave = -1;
+            var q = Math.round(quota);
+            pecche.unshift(pr > 0
+                ? 'poche proteine per le calorie (' + _cmpFmt(pr / kcal * 100, 1) + ' g ogni 100 kcal, ' + (/^(8|11)/.test(String(q)) || q === 1 ? 'l\u2019' : (q === 0 ? 'lo ' : 'il ')) + q + '% delle calorie)'
+                : 'nessuna proteina: solo calorie');
+        }
+        chiaveTxt = 'In deficit contano le proteine per caloria (Helms et al. 2014): ' +
+            (chiave === 1 ? 'qui sono tante.' : chiave === -1 ? 'qui sono sotto il 12% delle calorie, la soglia per dirsi fonte di proteine.' : 'qui sono nella media.');
+    } else if (goal === 'bulk' && kcal !== null) {
+        chiaveTxt = 'In massa servono calorie oltre il fabbisogno e proteine (Iraki et al. 2019; Morton et al. 2018): qui ' +
+            Math.round(kcal) + ' kcal e ' + _cmpFmt(pr || 0, 1) + ' g di proteine per 100 ' + u + '.';
+    } else if (goal === 'maintain') {
+        var ns = _cmpNs(f);
+        if (ns) {
+            chiave = (ns === 'A' || ns === 'B') ? 1 : ((ns === 'D' || ns === 'E') ? -1 : 0);
+            if (chiave === -1) pecche.unshift('profilo nutrizionale complessivo scarso (Nutri-Score ' + ns + ')');
+            if (chiave === 1) forti.unshift('buon profilo nutrizionale (Nutri-Score ' + ns + ')');
+            chiaveTxt = 'Nel mantenimento conta la qualità complessiva, che il Nutri-Score riassume.';
+        }
+    }
+    if (fib !== null && !bev) {
+        if (fib >= 6) forti.push('ricco di fibre (' + _cmpFmt(fib, 1) + ' g)');
+        else if (fib >= 3) forti.push('fonte di fibre (' + _cmpFmt(fib, 1) + ' g)');
+    }
+    if (goal === 'cut' && kcal !== null && kcal <= (bev ? 20 : 40)) forti.push('poche calorie (' + Math.round(kcal) + ' kcal per 100 ' + u + ')');
+    var bassi = [['sugars100', 'zuccheri'], ['saturated100', 'saturi'], ['salt100', 'sale']]
+        .filter(function(x) { return _cmpLivello(f, x[0]) === 'basso'; }).map(function(x) { return x[1]; });
+    if (bassi.length) forti.push((bassi.length > 1 ? bassi.slice(0, -1).join(', ') + ' e ' + bassi[bassi.length - 1] : bassi[0]) + ' bass' + (bassi.length === 1 && bassi[0] === 'sale' ? 'o' : 'i'));
+    var nPecche = pecche.length - (chiave === -1 ? 1 : 0);
+    var level = (chiave === -1 && nPecche) ? 0 : ((chiave === -1 || nPecche) ? 1 : 2);
+    var titolo = level === 2 ? 'Adatto per ' + obi : (level === 1 ? 'Con moderazione per ' + obi : 'Poco adatto per ' + obi);
+    return { goal: goal, level: level, titolo: titolo, pecche: pecche, forti: forti, chiaveTxt: chiaveTxt };
+}
+function nutGoalHTML(f) {
+    if (_cmpNum(f, 'kcal100') === null) return '';
+    var v = nutGoalEval(f);
+    var tones = [
+        { bg:'rgba(239,68,68,0.06)',  bd:'rgba(239,68,68,0.22)',  c:'#f87171', ic:'⚠️' },
+        { bg:'rgba(239,159,39,0.06)', bd:'rgba(239,159,39,0.25)', c:'#EF9F27', ic:'👌' },
+        { bg:'rgba(52,211,153,0.06)', bd:'rgba(52,211,153,0.25)', c:'#34d399', ic:'✅' }
+    ];
+    var t = tones[v.level];
+    var h = '<div class="nut-goal" style="background:' + t.bg + ';border:1px solid ' + t.bd + ';">' +
+            '<div class="nut-goal-k">🎯 Per il tuo obiettivo</div>' +
+            '<div class="nut-goal-t" style="color:' + t.c + ';">' + t.ic + ' ' + v.titolo + '</div>';
+    if (v.pecche.length) h += '<div class="nut-goal-r"><b style="color:#fca5a5;">Pecca in:</b> ' + v.pecche.join('; ') + '.</div>';
+    if (v.forti.length) h += '<div class="nut-goal-r"><b style="color:#6ee7b7;">A favore:</b> ' + v.forti.join('; ') + '.</div>';
+    if (v.chiaveTxt) h += '<div class="nut-goal-n">' + v.chiaveTxt + '</div>';
+    var manca = [['sugars100', 'zuccheri'], ['saturated100', 'saturi'], ['salt100', 'sale']]
+        .filter(function(x) { return _cmpNum(f, x[0]) === null; }).map(function(x) { return x[1]; });
+    if (manca.length) h += '<div class="nut-goal-n">In etichetta mancano ' + manca.join(', ') + ': il consiglio non ne tiene conto.</div>';
+    if (!_cmpGoalSet()) h += '<div class="nut-goal-n">Obiettivo non impostato: valutato per il mantenimento. Lo scegli nel calcolo del fabbisogno.</div>';
+    return h + '</div>';
 }
 
 function _cmpObiettivo(A, B) {
