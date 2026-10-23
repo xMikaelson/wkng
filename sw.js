@@ -1,4 +1,4 @@
-const CACHE_NAME = 'awakening-v309';
+const CACHE_NAME = 'awakening-v310';
 
 const STATIC_ASSETS = [
     './',
@@ -167,6 +167,15 @@ self.addEventListener('push', event => {
         console.log('[SW] Push ricevuto senza data');
     }
 
+    // v.310 — Fine recupero: etichetta unica per ogni avviso. Il server la
+    // manda sempre uguale ('wo-rest') e su iPhone una notifica con la stessa
+    // etichetta di una ancora nel Centro notifiche la sostituisce in
+    // silenzio, senza banner ne' suono (Safari ignora renotify). Mostrata la
+    // nuova, le vecchie di recupero si chiudono. Vedi awTagRecupero in
+    // index.html.
+    const recupero = (tag === 'wo-rest');
+    if (recupero) tag = 'wo-rest-' + Date.now();
+
     event.waitUntil(
         self.registration.showNotification(title, {
             body,
@@ -176,6 +185,11 @@ self.addEventListener('push', event => {
             renotify:  true,
             silent:    false,
             data:      { url: './' }
+        }).then(() => {
+            if (!recupero || typeof self.registration.getNotifications !== 'function') return;
+            return self.registration.getNotifications().then(list => {
+                (list || []).forEach(n => { if (n && n.tag && n.tag.indexOf('wo-rest') === 0 && n.tag !== tag) n.close(); });
+            }).catch(() => {});
         })
     );
 });

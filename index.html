@@ -4734,7 +4734,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '309';
+const APP_VERSION = '310';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -20264,6 +20264,33 @@ function woRestDoneNotify(testo, titolo) {
     woNotifyRestDone(testo, titolo);
 }
 
+// v.310 — Ogni avviso di recupero ha la sua etichetta (tag). Prima tutti
+// usavano 'wo-rest': su iPhone una notifica con la stessa etichetta di una
+// ancora presente nel Centro notifiche la sostituisce in silenzio, senza
+// banner ne' suono (Safari non supporta renotify, che su Chrome serve
+// proprio a riavvisare). Nel riscaldamento i timer sono brevi e di seguito
+// (mobilita' da 30 s, recuperi da 60 s): chi rientrava dall'icona senza
+// toccare l'avviso precedente non sentiva il successivo. Ora l'etichetta e'
+// unica e, mostrata la nuova, le vecchie si chiudono: nel Centro notifiche
+// resta solo l'ultima. Una sola notifica per recupero resta garantita da
+// woRestDoneNotify (v.301), non dall'etichetta.
+function awTagRecupero() { return 'wo-rest-' + Date.now(); }
+function awChiudiRecuperi(reg, tenere) {
+    try {
+        if (!reg || typeof reg.getNotifications !== 'function') return;
+        reg.getNotifications().then(function(list) {
+            (list || []).forEach(function(n) {
+                if (n && n.tag && n.tag.indexOf('wo-rest') === 0 && n.tag !== tenere) n.close();
+            });
+        }).catch(function() {});
+    } catch (e) {}
+}
+// Rientrando nell'app gli avvisi di recupero ancora aperti sono superati.
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden || !('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.ready.then(function(reg) { awChiudiRecuperi(reg, null); }).catch(function() {});
+});
+
 // Notifica di fine recupero. Solo fuori dall'app: se sei sulla schermata il
 // beep basta, e una notifica sopra il timer sarebbe solo rumore.
 function woNotifyRestDone(testo, titolo) {
@@ -20274,11 +20301,12 @@ function woNotifyRestDone(testo, titolo) {
     var nome = (!testo && ex) ? exDisplay(ex.name) : '';
     var serie = (woState.setIndex || 0) + 1;
     navigator.serviceWorker.ready.then(function(reg) {
-        reg.showNotification(titolo || '\u23f1\ufe0f Recupero finito', {
+        var tag = awTagRecupero();
+        return reg.showNotification(titolo || '\u23f1\ufe0f Recupero finito', {
             body: testo || (nome ? ('Riparti: ' + nome + ' \u00b7 serie ' + serie) : 'Riparti con la serie successiva'),
             icon: './icon-192.png', badge: './icon-192.png',
-            tag: 'wo-rest', renotify: true, data: { url: './' }
-        });
+            tag: tag, renotify: true, data: { url: './' }
+        }).then(function() { awChiudiRecuperi(reg, tag); });
     }).catch(function() {});
 }
 
