@@ -4235,8 +4235,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div class="settings-row" id="settings-row-sex" style="cursor:default">
       <div class="settings-row-left"><span class="settings-row-icon">👤</span><span class="settings-row-label">Uomo o donna</span></div>
       <div class="aw-sex-pick" role="group" aria-label="Uomo o donna">
-        <button type="button" class="aw-sex-chip" data-sex="m" aria-pressed="false" onclick="awSetSex('m')">Uomo</button>
-        <button type="button" class="aw-sex-chip" data-sex="f" aria-pressed="false" onclick="awSetSex('f')">Donna</button>
+        <button type="button" class="aw-sex-chip" data-sex="m" aria-pressed="false" onclick="awCambiaSesso('m')">Uomo</button>
+        <button type="button" class="aw-sex-chip" data-sex="f" aria-pressed="false" onclick="awCambiaSesso('f')">Donna</button>
       </div>
     </div>
     <div class="settings-row" onclick="activatePushNotifications()" id="settings-row-push">
@@ -4763,7 +4763,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '311';
+const APP_VERSION = '312';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -5042,6 +5042,38 @@ function awSetSex(x) {
     try { awSexRowUpdate(); } catch (e) {}
     if (prima !== x) { try { saveState(); } catch (e) {} }
 }
+// v.312 — Cambio dal Profilo: prima avveniva senza dire niente, mentre
+// cambiano fabbisogno, acqua, testi e carichi proposti. Ora una conferma
+// elenca cosa cambia (con i numeri, se il fabbisogno e' gia' calcolato) e
+// cosa no: piani gia' creati, carichi, MTR e record restano come sono,
+// perche' li decidono le serie fatte e il massimo tecnico, non il sesso.
+function awCambiaSesso(x) {
+    if (x !== 'm' && x !== 'f') return;
+    var prima = awSex();
+    if (prima === x) return;
+    if (!prima) { awSetSex(x); showToast(awG('Fatto: ti seguo da uomo', 'Fatto: ti seguo da donna'), 'success'); return; }
+    var nuovo = x === 'f' ? 'donna' : 'uomo';
+    var righe = [];
+    var inp = null;
+    try { inp = JSON.parse(localStorage.getItem('nut_tdee_input') || 'null'); } catch (e) {}
+    if (inp && typeof tdeeCalcola === 'function') {
+        var a = tdeeCalcola(Object.assign({}, inp, { sex: prima })).kcal;
+        var b = tdeeCalcola(Object.assign({}, inp, { sex: x })).kcal;
+        righe.push('• Fabbisogno: da ' + a + ' a ' + b + ' kcal al giorno, ricalcolato con i tuoi dati.');
+    } else {
+        righe.push('• Fabbisogno: quando lo calcoli, con la formula per ' + (x === 'f' ? 'le donne' : 'gli uomini') + '.');
+    }
+    righe.push('• Acqua: ' + (x === 'f' ? '8' : '10') + ' bicchieri al giorno invece di ' + (x === 'f' ? '10' : '8') + ' (EFSA).');
+    righe.push('• Testi al ' + (x === 'f' ? 'femminile' : 'maschile') + '.');
+    righe.push('• Carichi di partenza dei piani nuovi, proposti per ' + (x === 'f' ? 'una donna' : 'un uomo') + '.');
+    awConfirm(righe.join('\n') + '\n\nNon cambiano i piani che hai già: carichi, massimi tecnici, record e progressi restano come sono.',
+        function(ok) {
+            if (!ok) { awSexRowUpdate(); return; }
+            awSetSex(x);
+            showToast(awG('Fatto: ti seguo da uomo', 'Fatto: ti seguo da donna'), 'success');
+        }, { title: 'Passare a “' + nuovo.charAt(0).toUpperCase() + nuovo.slice(1) + '”?', okLabel: 'Cambia' });
+}
+
 function awSexRowUpdate() {
     var x = awSex();
     document.querySelectorAll('.aw-sex-chip').forEach(function(b) {
@@ -5976,9 +6008,13 @@ function wpPushProssimo(p) {
     var ph = wpFase(mv, left);
     if (ph.fase === 'dx') {
         return { secs: ph.resto, titolo: '\uD83D\uDD04 Cambia lato',
-                 testo: mv.n + ': ora il lato sinistro, ' + mv.t + ' s.' };
+                 testo: mv.n + ': ora il lato sinistro, ' + mv.t + ' s.',
+                 poi: wpPushFineMov(p, list, mv, left) };
     }
-    // Fine del movimento: il prossimo da fare, se ce n'e' uno.
+    return wpPushFineMov(p, list, mv, left);
+}
+// Fine del movimento: il prossimo da fare, se ce n'e' uno.
+function wpPushFineMov(p, list, mv, left) {
     var next = null;
     list.forEach(function(m, i) { if (!next && i !== p.mobRun && !p.mob[i]) next = m; });
     return { secs: left, titolo: '\u2705 ' + mv.n + ' fatto',
@@ -5993,6 +6029,9 @@ function wpPushArm() {
     if (!x || !(x.secs > 0)) return;
     p.push = x;
     try { woRestPushSchedule(x.secs, x.testo, x.titolo); } catch (e) {}
+    // App nativa: le notifiche locali possono essere due, quindi la fine del
+    // movimento a due lati si programma subito insieme al cambio lato.
+    try { if (AW_NATIVE && x.poi) awNatAvvisoAggiungi(x.poi.secs, x.poi.testo, x.poi.titolo); } catch (e) {}
     _wpPushOwn = true;
 }
 // Avviso intermedio (cambio lato): fuori dall'app arriva la notifica, poi si
@@ -9963,17 +10002,22 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
         }
     } catch (e) { catalogoTxt = ''; }
 
+    // v.312 — Gli esempi mostrano il formato ma i numeri contano: con carichi
+    // da uomo (panca 60 kg) il Coach tendeva a proporre pesi troppo alti a
+    // una donna. Per lei si scalano come i carichi di partenza (Miller et
+    // al. 1993, parte superiore 52%).
+    var _ek = function(kg) { return awSex() === 'f' ? Math.max(1, Math.round(kg * AWK_KG_DONNA.upper)) : kg; };
     var esempioRiga;
     if (env === 'corpolibero') {
         esempioRiga = 'Trazioni alla Sbarra | 4 x 6 | CL\nPush-up | 3 x 12 | CL';
     } else if (env === 'casa') {
         esempioRiga = tipoAllenamento === 'forza'
-            ? 'Panca Piana con Manubri | 5 x 5 | 30\nAlzate Laterali | 3 x 8 | 8'
-            : 'Panca Piana con Manubri | 4 x 8 | 26\nCurl con Manubri | 3 x 12 | 12';
+            ? 'Panca Piana con Manubri | 5 x 5 | ' + _ek(30) + '\nAlzate Laterali | 3 x 8 | ' + _ek(8)
+            : 'Panca Piana con Manubri | 4 x 8 | ' + _ek(26) + '\nCurl con Manubri | 3 x 12 | ' + _ek(12);
     } else {
         esempioRiga = tipoAllenamento === 'forza'
-            ? 'Panca Piana con Bilanciere | 5 x 5 | 60\nAlzate Laterali | 3 x 8 | 10'
-            : 'Lat Machine | 4 x 8 | 55\nCurl con Manubri | 3 x 12 | 14';
+            ? 'Panca Piana con Bilanciere | 5 x 5 | ' + _ek(60) + '\nAlzate Laterali | 3 x 8 | ' + _ek(10)
+            : 'Lat Machine | 4 x 8 | ' + _ek(55) + '\nCurl con Manubri | 3 x 12 | ' + _ek(14);
     }
 
     var prompt =
@@ -19881,8 +19925,10 @@ function tdeeTestiSesso() {
     document.querySelectorAll('.tdee-activity-list .tdee-option-name').forEach(function(el, i) {
         if (nomi[i]) el.textContent = awG(nomi[i][0], nomi[i][1]);
     });
+    // Avanti solo con sesso, eta', peso e altezza plausibili.
     const nx = document.getElementById('tdee-step0-next');
-    if (nx) nx.disabled = !TDEE_STATE.sex;
+    const num = function(id, lo, hi) { const v = parseFloat((document.getElementById(id) || {}).value); return v >= lo && v <= hi; };
+    if (nx) nx.disabled = !(TDEE_STATE.sex && num('tdee-age', 18, 90) && num('tdee-weight', 30, 250) && num('tdee-height', 120, 230));
 }
 
 // Cambiato il sesso con un fabbisogno gia' salvato: si ricalcola con gli
@@ -19905,14 +19951,29 @@ function tdeeAggiornaPerSesso(x) {
 }
 
 function tdeeOpen() {
-    // Pre-fill from saved data if available
+    // v.312 — Prima i campi partivano da 28 anni, 80 kg e 178 cm, valori da
+    // uomo: chi non li cambiava riceveva un fabbisogno non suo. Ora si
+    // parte dai dati gia' nell'app (ultimo peso registrato, altezza del
+    // profilo); quello che manca resta vuoto e va inserito.
     const saved = localStorage.getItem('nut_tdee_input');
+    if (!saved) {
+        let peso = '', alt = '';
+        try {
+            const log = (typeof weightGetLog === 'function') ? weightGetLog() : [];
+            const ult = log.slice().sort(function(a, b) { return a.date < b.date ? -1 : 1; }).pop();
+            if (ult && ult.kg > 0) peso = ult.kg;
+        } catch (e) {}
+        try { const h = parseInt(localStorage.getItem('aw_height_cm'), 10); if (h > 0) alt = h; } catch (e) {}
+        document.getElementById('tdee-age').value = '';
+        document.getElementById('tdee-weight').value = peso;
+        document.getElementById('tdee-height').value = alt;
+    }
     if (saved) {
         try {
             const d = JSON.parse(saved);
-            document.getElementById('tdee-age').value    = d.age    || 28;
-            document.getElementById('tdee-weight').value = d.weight || 80;
-            document.getElementById('tdee-height').value = d.height || 178;
+            document.getElementById('tdee-age').value    = d.age    || '';
+            document.getElementById('tdee-weight').value = d.weight || '';
+            document.getElementById('tdee-height').value = d.height || '';
         } catch(e) {}
     }
     // v.311: il sesso e' quello scelto nell'app; se manca, nessuno preselezionato.
@@ -20427,13 +20488,60 @@ function awNativePrepare() {
     _awNotif.requestPermissions().catch(function() {});
 }
 
+// ── APP NATIVA: AVVISI DEI TIMER DEL RISCALDAMENTO (v.312) ──
+// Nell'app nativa i push del server non arrivano (niente service worker) e
+// la notifica locale si programmava solo durante l'allenamento (awLiveRest
+// esce se l'allenamento non e' partito): generale, mobilita' e serie di
+// avvicinamento non avvisavano a telefono bloccato. Ora ogni timer fuori
+// dall'allenamento lascia qui i suoi avvisi, che diventano notifiche locali
+// quando l'app va in secondo piano e si tolgono quando torna davanti, come
+// per i recuperi. Le notifiche locali possono essere piu' d'una: nella
+// mobilita' a due lati si programmano insieme cambio lato e fine, mentre il
+// server ne tiene una alla volta.
+// Ogni notifica ha il suo numero: con lo stesso numero iOS sostituirebbe la
+// precedente senza avvisare (vedi v.310).
+var _awNatAvvisi = [];   // [{ at, title, body }]
+var _awNatIds = [];      // notifiche programmate: [{ id, at }]
+var _awNatSeq = 0;
+function awNatAvvisoSet(secs, body, title) {
+    if (!AW_NATIVE) return;
+    awNatAvvisoCancel();
+    _awNatAvvisi = [];
+    awNatAvvisoAggiungi(secs, body, title);
+    awNativePrepare();   // il permesso, se il riscaldamento viene prima del primo allenamento
+}
+function awNatAvvisoAggiungi(secs, body, title) {
+    if (!AW_NATIVE || !(secs > 0)) return;
+    var a = { at: Date.now() + secs * 1000, title: title || '\u23f1\ufe0f Recupero finito', body: body || 'Riparti con la serie successiva' };
+    _awNatAvvisi.push(a);
+    if (document.hidden) awNatAvvisoSchedule([a]);
+}
+function awNatAvvisoSchedule(lista) {
+    if (!awNativePlugins()) return;
+    var ora = Date.now() + 500;
+    var n = (lista || _awNatAvvisi).filter(function(a) { return a.at > ora; }).map(function(a) {
+        var id = 7310 + (_awNatSeq++ % 80);
+        _awNatIds.push({ id: id, at: a.at });
+        return { id: id, title: a.title, body: a.body, schedule: { at: new Date(a.at), allowWhileIdle: true }, sound: 'default' };
+    });
+    if (n.length) _awNotif.schedule({ notifications: n }).catch(function(e) { awLog.warn('[notif]', e && e.message); });
+}
+function awNatAvvisoCancel() {
+    if (!_awNatIds.length || !awNativePlugins()) { _awNatIds = []; return; }
+    var ids = _awNatIds.map(function(i) { return { id: i.id }; });
+    _awNatIds = [];
+    _awNotif.cancel({ notifications: ids }).catch(function() {});
+}
+
 if (AW_NATIVE) {
     document.addEventListener('visibilitychange', function() {
         if (!awNativePlugins()) return;
         if (document.hidden) {
             if (woState && woState.timer !== null && woState.restRunning && !woState.paused) awLiveNotifSchedule();
+            else if (_awNatAvvisi.length) awNatAvvisoSchedule();
         } else {
             awLiveNotifCancel();
+            awNatAvvisoCancel();
         }
     });
     // Tocchi sulla scheda: awakening://seduta apre l'allenamento,
@@ -20458,6 +20566,8 @@ if (AW_NATIVE) {
 
 function woRestPushSchedule(secs, body, title) {
     try { awLiveRest(secs); } catch (e) { awLog.warn('[live]', e && e.message); }
+    // App nativa, fuori dall'allenamento (riscaldamento, timer libero).
+    try { if (AW_NATIVE && !(woState && woState.timer !== null)) awNatAvvisoSet(secs, body, title); } catch (e) {}
     _woRestPushOk = 0;
     // La riga sul server e' una sola: chi la riscrive ne diventa il padrone
     // (la preparazione la riprende subito dopo, in wpPushArm).
@@ -20483,6 +20593,7 @@ function woRestPushSchedule(secs, body, title) {
 function woRestPushCancel() {
     _woRestPushOk = 0;
     try { awLiveNotifCancel(); } catch (e) {}
+    try { _awNatAvvisi = []; awNatAvvisoCancel(); } catch (e) {}
     try {
         if (!_woRestPushOn || !APP || !APP.userName || !sbClient || sbClient._offline) return;
         _woRestPushOn = false;
@@ -20503,6 +20614,17 @@ function woRestPushText() {
 //    riga resta e la pagina non mostra la sua;
 //  - app in secondo piano senza server: notifica locale.
 function woRestDoneNotify(testo, titolo) {
+    // App nativa fuori dall'app: la notifica locale e' gia' programmata per
+    // quest'ora. Cancellarla qui, se la pagina gira ancora un istante in
+    // secondo piano, la toglierebbe proprio mentre deve arrivare.
+    // Si dimenticano solo gli avvisi arrivati ora; quelli dopo (la fine del
+    // movimento, se questo era il cambio lato) restano e si possono togliere.
+    if (AW_NATIVE && document.hidden) {
+        var lim = Date.now() + 1500;
+        _awNatAvvisi = _awNatAvvisi.filter(function(a) { return a.at > lim; });
+        _awNatIds = _awNatIds.filter(function(i) { return i.at > lim; });
+        return;
+    }
     if (document.hidden && _woRestPushOk) {
         _woRestPushOk = 0;
         _woRestPushOn = false;   // la riga la cancella il job dopo l'invio
@@ -21209,6 +21331,10 @@ function woApplyTwoForTwo(exName, wIdx) {
    zavorra, che e' la loro progressione (vedi BODYWEIGHT_LOADABLE). Nessuna
    variante nota: si continua con le ripetizioni della scheda. */
 var AW_VARIANTE_SUCC = {
+    // v.312: le due versioni facili del principiante (Ebben et al. 2011:
+    // 41% -> 49% -> 64% del peso del corpo).
+    'Push-up con Mani Rialzate': ['Push-up sulle Ginocchia', 'Push-up'],
+    'Push-up sulle Ginocchia':   ['Push-up'],
     'Push-up':                ['Push-up Declinato', 'Archer Push-up'],
     'Push-up Declinato':      ['Archer Push-up', 'Pseudo Planche Push-up'],
     'Pike Push-up':           ['Handstand Push-up al Muro'],
@@ -23725,7 +23851,9 @@ const AWK_POOL = {
     {n:'Dip alle Parallele', eq:['parallele']},
     {n:'Floor Press con Manubri', eq:['manubri']},
     {n:'Push-up agli Anelli', eq:['anelli']},
-    {n:'Push-up', eq:[]}
+    {n:'Push-up', eq:[]},
+    {n:'Push-up con Mani Rialzate', eq:['appoggio'], facile:true},
+    {n:'Push-up sulle Ginocchia', eq:[], facile:true}
   ],
   HPUSH2: [
     {n:'Panca Inclinata con Manubri', eq:['manubri','panca_incl']},
@@ -23733,7 +23861,9 @@ const AWK_POOL = {
     {n:'Chest Press Inclinata', eq:['macchine']},
     {n:'Push-up con Elastico', eq:['elastici']},
     {n:'Push-up Declinato', eq:['appoggio']},
-    {n:'Archer Push-up', eq:[], adv:true}
+    {n:'Archer Push-up', eq:[], adv:true},
+    {n:'Push-up con Mani Rialzate', eq:['appoggio'], facile:true},
+    {n:'Push-up sulle Ginocchia', eq:[], facile:true}
   ],
   VPUSH: [
     {n:'Military Press', eq:['bilanciere']},
@@ -23838,26 +23968,40 @@ const AWK_POOL = {
   /* ── Calisthenics: progressioni ── */
   /* adv: variante avanzata della progressione. Al principiante si propone
      la variante base quando c'e' (vedi awkPick). */
+  /* v.312 — Le versioni facili del piegamento (facile:true) le riceve solo
+     il principiante, al posto di piegamento e piegamento declinato (vedi
+     awkPick e AWK_PUSH_FACILI). */
   C_PUSH: [
     {n:'Dip alle Parallele', eq:['parallele']},
     {n:'Dip agli Anelli', eq:['anelli']},
     {n:'Archer Push-up', eq:[], adv:true},
-    {n:'Push-up', eq:[]}
+    {n:'Push-up', eq:[]},
+    {n:'Push-up con Mani Rialzate', eq:['appoggio'], facile:true},
+    {n:'Push-up sulle Ginocchia', eq:[], facile:true}
   ],
   C_PUSH2: [
     {n:'Pseudo Planche Push-up', eq:[], adv:true},
     {n:'Push-up Declinato', eq:['appoggio']},
     {n:'Archer Push-up', eq:[], adv:true},
-    {n:'Push-up', eq:[]}
+    {n:'Push-up', eq:[]},
+    {n:'Push-up con Mani Rialzate', eq:['appoggio'], facile:true},
+    {n:'Push-up sulle Ginocchia', eq:[], facile:true}
   ],
   C_VPUSH: [
     {n:'Handstand Push-up al Muro', eq:[], adv:true},
     {n:'Pike Push-up Rialzato', eq:['appoggio']},
     {n:'Pike Push-up', eq:[]}
   ],
+  /* v.312 — Trazioni libere segnate come avanzate anche nel calisthenics,
+     con la stessa ragione della v.300 per la palestra (VPULL): il carico e'
+     tutto il peso del corpo e non si regola, mentre ai principianti l'ACSM
+     (Position Stand 2009) indica carichi moderati e la NSCA (Baechle &
+     Earle 2008) l'esperienza come criterio di scelta. Il principiante parte
+     dalle trazioni con l'elastico, se c'e', o dal rematore al tavolo; poi
+     AW_VARIANTE_SUCC lo porta alla sbarra togliendo l'assistenza. */
   C_PULL: [
-    {n:'Trazioni alla Sbarra', eq:['sbarra']},
-    {n:'Trazioni agli Anelli', eq:['anelli']},
+    {n:'Trazioni alla Sbarra', eq:['sbarra'], adv:true},
+    {n:'Trazioni agli Anelli', eq:['anelli'], adv:true},
     {n:'Trazioni con Elastico', eq:['sbarra','elastici']},
     {n:'Rematore al Tavolo', eq:['appoggio'], fam:'row_bw'},
     {n:'Rematore Isometrico allo Stipite', eq:[], hold:true}
@@ -24141,10 +24285,22 @@ function awkExpandEquip(list){
   });
   return out;
 }
+/* v.312 — Il piegamento per chi comincia. Con le mani su un rialzo il
+   carico sulle braccia e' circa il 41% del peso del corpo, sulle ginocchia
+   il 49%, nel piegamento normale il 64% e con i piedi rialzati il 70-74%
+   (Ebben et al. 2011, J Strength Cond Res 25(10):2891-2894). Prima il
+   principiante partiva dal piegamento normale o da quello declinato: chi
+   non riusciva a farne nemmeno uno restava senza una versione possibile.
+   Ora parte dalla versione piu' facile che l'attrezzatura permette e sale
+   con la regola 2-per-2 lungo AW_VARIANTE_SUCC (Kotarsky et al. 2018: le
+   varianti via via piu' difficili fanno progredire come la panca). */
+const AWK_PUSH_FACILI_DA = ['Push-up', 'Push-up Declinato'];
 function awkPick(key, equip, used, usedFam, allowSkip, level){
   const list = AWK_POOL[key] || [];
   // SOLO esercizi i cui requisiti sono tutti soddisfatti
   let ok = list.filter(ex => ex.eq.every(e => equip.includes(e)));
+  const facili = ok.filter(ex => ex.facile);
+  ok = ok.filter(ex => !ex.facile);
   // Il principiante parte dalla variante base della progressione, non da
   // quella avanzata: prima si sceglieva il primo esercizio disponibile a
   // prescindere dal livello, e a corpo libero uscivano archer push-up,
@@ -24163,6 +24319,12 @@ function awkPick(key, equip, used, usedFam, allowSkip, level){
   }
   let c = ok.find(ex => !used.has(ex.n) && (!ex.fam || !usedFam.has(ex.fam)));
   if (!c) c = ok.find(ex => !used.has(ex.n));
+  // Anche quando l'unico piegamento possibile e' una variante avanzata
+  // (archer, pseudo planche): al principiante va la versione facile.
+  if (c && level === 'principiante' && (AWK_PUSH_FACILI_DA.indexOf(c.n) !== -1 || (c.adv && /push-up/i.test(c.n)))) {
+    const f = facili.find(ex => !used.has(ex.n));
+    if (f) c = f;
+  }
   // Mai lo stesso esercizio due volte nella stessa seduta: prima, per gli
   // slot principali, si ripiegava sul primo disponibile anche se era gia'
   // stato scelto, e in GRAVITY avanzato a corpo libero la seduta Skill
@@ -28336,9 +28498,9 @@ function homeRefreshData() {
         <button class="tdee-sex-btn" id="tdee-sex-f" onclick="tdeeSetSex('f')">♀ Donna</button>
       </div>
       <div class="tdee-inputs-row">
-        <div class="tdee-input-wrap"><label class="tdee-field-label">Età</label><input class="tdee-input" id="tdee-age" type="number" value="28" min="18" max="90" inputmode="numeric"></div>
-        <div class="tdee-input-wrap"><label class="tdee-field-label">Peso (kg)</label><input class="tdee-input" id="tdee-weight" type="number" value="80" min="40" max="200" inputmode="decimal"></div>
-        <div class="tdee-input-wrap"><label class="tdee-field-label">Altezza (cm)</label><input class="tdee-input" id="tdee-height" type="number" value="178" min="140" max="220" inputmode="numeric"></div>
+        <div class="tdee-input-wrap"><label class="tdee-field-label">Età</label><input class="tdee-input" id="tdee-age" type="number" min="18" max="90" inputmode="numeric" placeholder="anni" oninput="tdeeTestiSesso()"></div>
+        <div class="tdee-input-wrap"><label class="tdee-field-label">Peso (kg)</label><input class="tdee-input" id="tdee-weight" type="number" min="30" max="250" inputmode="decimal" placeholder="kg" oninput="tdeeTestiSesso()"></div>
+        <div class="tdee-input-wrap"><label class="tdee-field-label">Altezza (cm)</label><input class="tdee-input" id="tdee-height" type="number" min="120" max="230" inputmode="numeric" placeholder="cm" oninput="tdeeTestiSesso()"></div>
       </div>
       <div class="tdee-btn-row"><button class="tdee-btn primary" id="tdee-step0-next" onclick="tdeeGoStep(1)">Avanti →</button></div>
     </div>

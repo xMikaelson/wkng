@@ -13,7 +13,9 @@ Cosa aggiunge l'app rispetto al sito:
 - **Isola dinamica**: chiusa mostra anello e secondi; aperta (tenendola
   premuta) mostra la stessa scheda.
 - **Suono e vibrazione a fine recupero** anche a telefono bloccato, con
-  una notifica locale.
+  una notifica locale. Dalla v.312 anche per i timer del riscaldamento:
+  generale, mobilità (cambio lato e fine movimento) e recuperi fra le
+  serie di avvicinamento.
 - **Funziona senza rete**: grafici, Supabase e scanner sono inclusi
   nell'app invece di arrivare da internet.
 
