@@ -764,6 +764,11 @@
             color:#94a3b8; font-family:inherit; font-size:0.62rem; font-weight:700; text-transform:none; cursor:pointer; }
         .aw-sex-chip.on { background:rgba(var(--pr,52,211,153),0.15); border-color:rgba(var(--pr,52,211,153),0.45); color:var(--primary); }
         .aw-prov { display:block; font-size:0.5rem; color:#64748b; font-weight:600; margin-top:2px; text-transform:none; letter-spacing:0.02em; }
+        /* v.313 — il nome nel primo passo della procedura */
+        .ob-name-lab { display:block; color:white; text-align:center; font-size:1.05rem; font-weight:800; margin:0 0 8px; }
+        .ob-name { display:block; width:100%; box-sizing:border-box; margin:0 0 14px; padding:12px 14px; border-radius:12px; background:rgba(255,255,255,0.04);
+            border:1px solid rgba(255,255,255,0.12); color:#e2e8f0; font-family:inherit; font-size:16px; font-weight:700; text-align:center; text-transform:none; }
+        .ob-name:focus { outline:none; border-color:rgba(var(--pr,52,211,153),0.5); background:rgba(var(--pr,52,211,153),0.08); }
         .ob-sex-row { display:flex; gap:8px; margin-bottom:6px; }
         .ob-sex { flex:1; width:auto; padding:12px 8px; border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.12);
             color:#cbd5e1; font-family:inherit; font-size:0.78rem; font-weight:800; text-transform:none; cursor:pointer; }
@@ -3194,6 +3199,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wp-go { width:34px; height:34px; border-radius:50%; border:1.5px solid rgba(255,255,255,0.2); background:none; color:#e2e8f0; font-size:0.62rem; font-weight:900; font-family:inherit; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; }
         .wp-go.done { border-color:var(--primary); background:rgba(var(--pr),0.15); color:var(--primary); }
         .wp-go.run { border-color:#22d3ee; color:#22d3ee; }
+        /* v.313 — durante il cambio lato il cerchio e' giallo come la scritta "Cambia lato" */
+        .wp-go.run.cambio { border-color:#fbbf24; color:#fbbf24; background:rgba(251,191,36,0.14); }
         .wp-clock { text-align:center; font-size:2rem; font-weight:900; color:var(--primary); font-variant-numeric:tabular-nums; margin:6px 0 4px; }
         .wp-clock.run { color:#22d3ee; }
         .wp-bar { height:5px; border-radius:3px; background:rgba(255,255,255,0.07); overflow:hidden; margin-bottom:10px; }
@@ -3451,9 +3458,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
             <!-- SLIDE 1: Livello -->
             <div class="onboarding-step" id="ob-step-1">
+                <div id="ob-namebox"></div>
+                <div id="ob-sexbox"></div>
                 <h2 class="ob-title">Da quanto ti alleni?</h2>
                 <p class="ob-subtitle">Definisce volume, intensit&agrave; e complessit&agrave; degli esercizi.</p>
-                <div id="ob-sexbox"></div>
                 <div id="ob-lvlbox"></div>
             </div>
 
@@ -3668,7 +3676,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <div id="dashboard-overlay">
     <div class="dash-content">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px;">
-            <h2>Agente <span id="dash-username" style="color:var(--primary)"></span></h2>
+            <h2>Agent <span id="dash-username" style="color:var(--primary)"></span></h2>
             <div style="display:flex; gap:10px; align-items:center;">
                 <div class="settings-wrapper" id="settings-wrapper">
                     <button class="settings-btn" id="settings-btn" onclick="toggleSettingsMenu()" title="Impostazioni">⚙️</button>
@@ -4221,7 +4229,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <div id="page-profile" class="page">
   <div class="profile-hero">
     <div class="profile-avatar" id="profile-avatar">💪</div>
-    <div class="profile-name" id="profile-name">Agente</div>
+    <div class="profile-name" id="profile-name">Agent</div>
     <div class="profile-sub" id="profile-sub">In allenamento dal —</div>
     <div class="profile-chapter" id="profile-chapter">Chapter 1 · Activation</div>
   </div>
@@ -4232,6 +4240,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
   <div class="settings-list">
     <div class="settings-group-title" style="margin-bottom:8px">Impostazioni</div>
+    <div class="settings-row" role="button" tabindex="0" aria-label="Come ti chiami" onclick="awCambiaNome()" id="settings-row-nome">
+      <div class="settings-row-left"><span class="settings-row-icon">✍️</span><span class="settings-row-label">Come ti chiami<small class="aw-prov" id="settings-nome-val">non ancora scritto</small></span></div>
+      <span class="settings-row-arrow">›</span>
+    </div>
     <div class="settings-row" id="settings-row-sex" style="cursor:default">
       <div class="settings-row-left"><span class="settings-row-icon">👤</span><span class="settings-row-label">Uomo o donna</span></div>
       <div class="aw-sex-pick" role="group" aria-label="Uomo o donna">
@@ -4763,7 +4775,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '312';
+const APP_VERSION = '313';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -5047,6 +5059,8 @@ function awSetSex(x) {
 // elenca cosa cambia (con i numeri, se il fabbisogno e' gia' calcolato) e
 // cosa no: piani gia' creati, carichi, MTR e record restano come sono,
 // perche' li decidono le serie fatte e il massimo tecnico, non il sesso.
+// v.313 — Tolta la riga "Testi al femminile/maschile": e' una conseguenza
+// ovvia della scelta e allungava l'avviso senza dire niente di utile.
 function awCambiaSesso(x) {
     if (x !== 'm' && x !== 'f') return;
     var prima = awSex();
@@ -5064,7 +5078,6 @@ function awCambiaSesso(x) {
         righe.push('• Fabbisogno: quando lo calcoli, con la formula per ' + (x === 'f' ? 'le donne' : 'gli uomini') + '.');
     }
     righe.push('• Acqua: ' + (x === 'f' ? '8' : '10') + ' bicchieri al giorno invece di ' + (x === 'f' ? '10' : '8') + ' (EFSA).');
-    righe.push('• Testi al ' + (x === 'f' ? 'femminile' : 'maschile') + '.');
     righe.push('• Carichi di partenza dei piani nuovi, proposti per ' + (x === 'f' ? 'una donna' : 'un uomo') + '.');
     awConfirm(righe.join('\n') + '\n\nNon cambiano i piani che hai già: carichi, massimi tecnici, record e progressi restano come sono.',
         function(ok) {
@@ -5072,6 +5085,73 @@ function awCambiaSesso(x) {
             awSetSex(x);
             showToast(awG('Fatto: ti seguo da uomo', 'Fatto: ti seguo da donna'), 'success');
         }, { title: 'Passare a “' + nuovo.charAt(0).toUpperCase() + nuovo.slice(1) + '”?', okLabel: 'Cambia' });
+}
+
+// ── NOME DELL'UTENTE (v.313) ──────────────────────────────
+// Il nome con cui l'app ti chiama: "Agent Marco" nel Profilo e in Home.
+// Prima si usava il nome dell'account, che e' un nickname scelto per il
+// login (o manca del tutto senza login). Si chiede nel primo passo della
+// procedura iniziale; chi ha gia' un piano lo trova chiesto una volta
+// all'avvio e lo cambia dal Profilo. Vive in APP.nome (stato salvato e
+// sincronizzato) e in 'aw_nome': il reset dei progressi non lo tocca,
+// l'uscita dall'account si', e al login torna dal server.
+function awNomePulito(v) {
+    var s = String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, 24).trim();
+    return /\p{L}/u.test(s) ? s : '';
+}
+function awNome() {
+    var n = APP.nome;
+    if (!n) { try { n = localStorage.getItem('aw_nome'); } catch (e) { n = null; } }
+    return awNomePulito(n);
+}
+// Il nome scritto dall'utente, altrimenti quello dell'account come prima.
+function awNomeAgente(fallback) {
+    return awNome() || fallback || APP.userName || '';
+}
+function awSetNome(v) {
+    var n = awNomePulito(v);
+    if (!n) return false;
+    var prima = awNome();
+    APP.nome = n;
+    try { localStorage.setItem('aw_nome', n); } catch (e) {}
+    var d = document.getElementById('dash-username');
+    if (d) d.innerText = n;
+    try { if (document.getElementById('page-profile')?.classList.contains('active')) buildProfiloPage(); } catch (e) {}
+    try { awNomeRowUpdate(); } catch (e) {}
+    if (prima !== n) { try { saveState(); } catch (e) {} }
+    return true;
+}
+function awNomeRowUpdate() {
+    var el = document.getElementById('settings-nome-val');
+    if (el) el.textContent = awNome() || 'non ancora scritto';
+}
+function awCambiaNome() {
+    awPrompt('Il Profilo e la Home ti chiamano così: “Agent …”.', function(v) {
+        if (v == null) return;
+        if (!awSetNome(v)) { showToast('Scrivi un nome con almeno una lettera', 'error'); return; }
+        showToast('Ciao, ' + awNome() + '!', 'success');
+    }, { title: 'Come ti chiami?', value: awNome(), okLabel: 'Salva', autocap: 'words', maxlength: 24 });
+}
+// Chi ha gia' un piano non ripassa dal primo passo della procedura: il nome
+// glielo si chiede all'avvio, al massimo una volta al giorno finche' non lo
+// scrive. Subito dopo, se manca, la domanda su uomo o donna (awSexAskMaybe).
+function awProfiloAskMaybe() {
+    var dopo = function() { setTimeout(function() { try { awSexAskMaybe(); } catch (e) {} }, 400); };
+    if (awNome()) { awSexAskMaybe(); return; }
+    var oggi = new Date().toDateString();
+    try { if (localStorage.getItem('aw_nome_ask') === oggi) { awSexAskMaybe(); return; } } catch (e) {}
+    var wz = document.getElementById('onboarding-wizard');
+    if (wz && wz.style.display === 'block') return;
+    if (!(APP.savedProtocols || []).length) return;
+    if (document.getElementById('aw-dialog')) return;
+    try { localStorage.setItem('aw_nome_ask', oggi); } catch (e) {}
+    awPrompt('Così il Profilo ti chiama per nome. Puoi cambiarlo quando vuoi dal Profilo.', function(v) {
+        if (v != null && String(v).trim()) {
+            if (awSetNome(v)) showToast('Ciao, ' + awNome() + '!', 'success');
+            else showToast('Nome non valido: puoi scriverlo dal Profilo', 'error');
+        }
+        dopo();
+    }, { title: 'Come ti chiami?', okLabel: 'Salva', cancelLabel: 'Più tardi', autocap: 'words', maxlength: 24 });
 }
 
 function awSexRowUpdate() {
@@ -5159,6 +5239,7 @@ function awAwake() {
         try { st = JSON.parse(sv.state); } catch (e) { showToast('Salvataggio illeggibile', 'error'); return; }
         try { st.nutritionLogs = nutGetAllLogs(); } catch (e) {}
         if (awSex()) st.sex = awSex();
+        if (awNome()) st.nome = awNome();
         // Prima il server: se non risponde non si tocca niente, altrimenti al
         // prossimo avvio l'app riprenderebbe le schede di adesso dal server.
         if (APP.userName && sbClient) {
@@ -5190,7 +5271,7 @@ function awAwake() {
     }, { title: '☀️ AWAKE', okLabel: 'Ripristina' });
 }
 document.addEventListener('DOMContentLoaded', function() {
-    try { awSexRowUpdate(); awSleepRowUpdate(); } catch (e) {}
+    try { awSexRowUpdate(); awSleepRowUpdate(); awNomeRowUpdate(); } catch (e) {}
 });
 
 function saveState() {
@@ -5211,6 +5292,7 @@ function saveState() {
             totalWorkouts: APP.totalWorkouts, startDate: APP.startDate ? APP.startDate.toISOString() : null,
             userName: APP.userName, selectedViewWeek: APP.selectedViewWeek,
             sex: awSex(),
+            nome: awNome() || null,
             completedWeeks: APP.completedWeeks, availableWeeks: APP.availableWeeks,
             mtrReps: APP.mtrReps,
             overloadNoticeSeen: APP.overloadNoticeSeen,
@@ -5398,6 +5480,7 @@ function loadState() {
         APP.startDate = saved.startDate ? new Date(saved.startDate) : null;
         APP.userName = saved.userName || null;
         if (saved.sex === 'm' || saved.sex === 'f') APP.sex = saved.sex;
+        if (awNomePulito(saved.nome)) APP.nome = awNomePulito(saved.nome);
         APP.selectedViewWeek = saved.selectedViewWeek || 0;
         APP.completedWeeks = saved.completedWeeks || [false, false, false, false, false];
         APP.mtrReps = saved.mtrReps || {};
@@ -6156,7 +6239,7 @@ function wpRender() {
             h += '<div class="wp-row' + (run ? ' cur' : '') + '"><div style="flex:1;min-width:0;"><div class="n">' + mv.n + '</div><div class="d">' +
                  latoTxt + mv.d + '</div></div>' +
                  '<div class="r">' + mv.t + 's' + (mv.lati ? ' per lato' : '') + '</div>' +
-                 '<button type="button" class="wp-go' + (done ? ' done' : (run ? ' run' : '')) + '" data-mob="' + i + '" aria-label="' + mv.n + '">' + lab + '</button></div>';
+                 '<button type="button" class="wp-go' + (done ? ' done' : (run ? ' run' + (fz === 'cambio' ? ' cambio' : '') : '')) + '" data-mob="' + i + '" aria-label="' + mv.n + '">' + lab + '</button></div>';
         });
         var nDone = list.filter(function(_, i) { return p.mob[i]; }).length;
         h += '</div><div class="wp-btns" style="margin-top:10px;"><button type="button" class="wp-b1" id="wp-mob-next"' + (nDone === list.length ? '' : ' disabled') + '>Avanti → (' + nDone + '/' + list.length + ')</button>' +
@@ -6770,7 +6853,7 @@ function restoreUI() {
             av.innerText = APP.userName[0].toUpperCase();
         }
         const dashName = document.getElementById('dash-username');
-        if (dashName) dashName.innerText = APP.userName;
+        if (dashName) dashName.innerText = awNomeAgente(APP.userName);
         if (APP.startDate) {
             const sd = document.getElementById('start-date-small');
             if (sd) sd.innerText = APP.startDate.toLocaleDateString('it-IT');
@@ -7738,6 +7821,8 @@ async function onLoginSuccess(user, usernameOverride = null) {
         if (!APP.userName && s.userName) APP.userName = s.userName;
         // v.311: il sesso scelto su un altro dispositivo; quello locale vince.
         if (!awSex() && (s.sex === 'm' || s.sex === 'f')) { APP.sex = s.sex; try { localStorage.setItem('aw_sex', s.sex); } catch (e) {} }
+        // v.313: il nome scritto su un altro dispositivo; quello locale vince.
+        if (!awNome() && awNomePulito(s.nome)) { APP.nome = awNomePulito(s.nome); try { localStorage.setItem('aw_nome', APP.nome); } catch (e) {} }
         APP.overloadNoticeSeen = !!s.overloadNoticeSeen;
         APP.overloadAnswers = Object.assign({}, s.overloadAnswers || {}, APP.overloadAnswers || {});
         APP.progressionPending = !!s.progressionPending || !!APP.progressionPending;
@@ -7891,7 +7976,7 @@ async function onLoginSuccess(user, usernameOverride = null) {
         });
     }
     document.getElementById('btn-login-trigger').style.display = 'none';
-    document.getElementById('dash-username').innerText = username;
+    document.getElementById('dash-username').innerText = awNomeAgente(username);
     if (APP.startDate) document.getElementById('start-date-small').innerText = APP.startDate.toLocaleDateString('it-IT');
     if (APP.savedProtocols.length > 0) {
         // Attiva il protocollo assegnato al giorno corrente (se esiste), altrimenti l'ultimo usato
@@ -7920,7 +8005,7 @@ async function onLoginSuccess(user, usernameOverride = null) {
 
     // Aggiorna UI login
     document.getElementById('btn-login-trigger').style.display = 'none';
-    document.getElementById('dash-username').innerText = username;
+    document.getElementById('dash-username').innerText = awNomeAgente(username);
     if (APP.startDate) document.getElementById('start-date-small').innerText = APP.startDate.toLocaleDateString('it-IT');
 
     // Gestione nav: mostra se ha già protocolli
@@ -7976,9 +8061,9 @@ async function onLoginSuccess(user, usernameOverride = null) {
     // Aggiorna UI nutrizione dopo il caricamento dei dati
     setTimeout(() => { nutUpdateUI(); nutTlUpdateUI(); }, 50);
 
-    showToast(awG('Bentornato', 'Bentornata') + ', ' + username + '!', 'success');
-    try { awSexRowUpdate(); awSleepRowUpdate(); } catch (e) {}
-    setTimeout(function() { try { awSexAskMaybe(); } catch (e) {} }, 1800);
+    showToast(awG('Bentornato', 'Bentornata') + ', ' + awNomeAgente(username) + '!', 'success');
+    try { awSexRowUpdate(); awSleepRowUpdate(); awNomeRowUpdate(); } catch (e) {}
+    setTimeout(function() { try { awProfiloAskMaybe(); } catch (e) {} }, 1800);
     // La subscription push viene registrata dall'utente tramite il pulsante in Impostazioni
     refreshNotifPermission();
     // Gli orari stanno sul server, non sul telefono: su un dispositivo nuovo o
@@ -15085,7 +15170,7 @@ function _awDialog(opts) {
 
     var h = '<div class="aw-dlg-title">' + escapeHTML(opts.title || '') + '</div>';
     if (opts.message) h += '<div class="aw-dlg-msg">' + escapeHTML(opts.message).split('\n').join('<br>') + '</div>';
-    if (opts.input) h += '<input type="text" class="aw-dlg-input" id="aw-dlg-input" autocomplete="off" autocapitalize="characters" spellcheck="false" value="' + escapeHTML(opts.value || '') + '">';
+    if (opts.input) h += '<input type="text" class="aw-dlg-input" id="aw-dlg-input" autocomplete="off" autocapitalize="' + (opts.autocap || 'characters') + '" spellcheck="false"' + (opts.maxlength ? ' maxlength="' + opts.maxlength + '"' : '') + ' value="' + escapeHTML(opts.value || '') + '">';
     // Link facoltativo fra testo e pulsanti: serve dove la finestra deve
     // restare corta ma l'approfondimento deve essere a un tocco (lo sblocco
     // del capitolo). Non chiude la finestra: si sovrappone e basta.
@@ -15144,6 +15229,8 @@ function awPrompt(message, onDone, opts) {
         message: message,
         input: true,
         value: opts.value || '',
+        autocap: opts.autocap,
+        maxlength: opts.maxlength,
         okLabel: opts.okLabel || 'Conferma',
         cancelLabel: opts.cancelLabel || 'Annulla',
         danger: !!opts.danger,
@@ -22866,7 +22953,8 @@ function navSwitch(tab) {
 function buildProfiloPage() {
     // Senza login il nome e' vuoto: prima diventava "Agente" e il titolo
     // del profilo si leggeva "Agente Agente".
-    const username = (document.getElementById('dash-username')?.textContent || '').trim();
+    // v.313: "Agent" e il nome scritto dall'utente (awNome), se c'e'.
+    const username = awNomeAgente((document.getElementById('dash-username')?.textContent || '').trim());
     const chapterNames = CHAPTER_NAMES;
     const currentChapter = chapterNames[APP.selectedViewWeek || 0] || 'Activation';
     // I tre riquadri e la riga "Dal" leggono il diario delle sedute, non piu'
@@ -22880,7 +22968,7 @@ function buildProfiloPage() {
 
     const el = id => document.getElementById(id);
     if (el('profile-avatar'))   el('profile-avatar').textContent   = username ? username[0].toUpperCase() : '💪';
-    if (el('profile-name'))     el('profile-name').textContent     = username ? 'Agente ' + username : 'Agente';
+    if (el('profile-name'))     el('profile-name').textContent     = username ? 'Agent ' + username : 'Agent';
     const startDateDisplay = firstTraining
         ? firstTraining.toLocaleDateString('it-IT', {day:'2-digit',month:'short',year:'numeric'})
         : '';
@@ -22956,6 +23044,10 @@ function _performLogoutNow() {
     // Non chiamare closeDashboard() — farebbe navSwitch('home') rimettendo nav-mode
     sbClient.auth.signOut();
     localStorage.removeItem(STORAGE_KEY);
+    // v.313: il nome e' della persona dell'account; su questo telefono puo'
+    // entrare qualcun altro. Al prossimo login torna dallo stato sul server.
+    APP.nome = null;
+    try { localStorage.removeItem('aw_nome'); localStorage.removeItem('aw_nome_ask'); } catch (e) {}
     APP.userName = null; APP.exerciseData = []; APP.totalWorkouts = 0; APP.startDate = null;
     APP.sessionLog = []; APP.diary = []; APP.streakCarry = 0; APP.workoutsCarry = 0; APP.planStates = {};
     APP.progOrder = []; APP.progOrderAt = 0;
@@ -24518,7 +24610,7 @@ const AWK_PLACES = [
   {k:'casa',        l:'Casa',         d:'Scegli cosa hai a disposizione', i:'\uD83C\uDFE0'},
   {k:'corpolibero', l:'Corpo libero', d:'Nessun attrezzo, o quasi', i:'\uD83E\uDD38'}
 ];
-const AWK_SLIDE_LABELS = ['Livello','Obiettivo','Attrezzatura','Protocollo'];
+const AWK_SLIDE_LABELS = ['Chi sei','Obiettivo','Attrezzatura','Protocollo'];
 
 function awkCards(box, items, sel, cb, append){
   if (!box) return;
@@ -24549,7 +24641,20 @@ function awkDrawLevels(){
   awkCards(document.getElementById('ob-lvlbox'),
     AWK_LEVELS.map(function(l){ return {k:l.k, l:l.l, d:l.d, i:icons[l.k]}; }),
     onboarding.level,
-    function(k){ onboarding.level = k; awkDrawLevels(); obUpdate(); if (onboarding.sex) setTimeout(function(){ obGo(2); }, 220); });
+    function(k){ onboarding.level = k; awkDrawLevels(); obUpdate(); if (onboarding.sex && onboarding.nome) setTimeout(function(){ obGo(2); }, 220); });
+}
+/* v.313 — Il nome, in cima al primo passo: il Profilo poi dice "Agent
+   [nome]". Si salva appena il campo perde il fuoco e, comunque, al passaggio
+   allo slide successivo (obGo). Senza nome il passo non va avanti. */
+function awkDrawNome(){
+  const box = document.getElementById('ob-namebox');
+  if (!box) return;
+  box.innerHTML = '<label class="ob-name-lab" for="ob-nome">Come ti chiami?</label>' +
+    '<input type="text" id="ob-nome" class="ob-name" maxlength="24" autocomplete="given-name" autocapitalize="words" spellcheck="false" placeholder="Il tuo nome" value="' + escapeHTML(onboarding.nome || '') + '">';
+  const inp = document.getElementById('ob-nome');
+  inp.oninput = function(){ onboarding.nome = awNomePulito(inp.value); obUpdate(); };
+  inp.onchange = function(){ if (onboarding.nome) awSetNome(onboarding.nome); };
+  inp.onkeydown = function(e){ if (e.key === 'Enter') inp.blur(); };
 }
 /* v.311 — Uomo o donna, nel primo passo. Cambia i carichi di partenza
    proposti (awkDefaultKg), il fabbisogno calorico e il genere dei testi;
@@ -24570,7 +24675,7 @@ function awkSetSexOb(x){
   awSetSex(x);
   awkDrawSex();
   obUpdate();
-  if (onboarding.level) setTimeout(function(){ obGo(2); }, 220);
+  if (onboarding.level && onboarding.nome) setTimeout(function(){ obGo(2); }, 220);
 }
 
 /* Giorni a settimana che un percorso chiede al livello scelto. Letto da
@@ -24832,7 +24937,7 @@ function awkRenderResult(){
 
 function obUpdate(){
   const st = onboarding.step || 1;
-  const ok = st === 1 ? (!!onboarding.level && !!onboarding.sex)
+  const ok = st === 1 ? (!!onboarding.level && !!onboarding.sex && !!onboarding.nome)
            : st === 2 ? !!onboarding.goal
            : st === 3 ? !!onboarding.place
            : true;
@@ -24881,6 +24986,7 @@ function obWatchHeights(){
 }
 
 function obGo(n){
+  if (n > 1 && onboarding.nome && onboarding.nome !== awNome()) awSetNome(onboarding.nome);
   onboarding.step = n;
   const track = document.getElementById('ob-track');
   if (track) track.style.transform = 'translateX(-' + ((n - 1) * 25) + '%)';
@@ -24997,6 +25103,7 @@ function startOnboarding() {
     obSetVisible(true);
     onboarding.level = null;
     onboarding.sex = awSex();      // v.311: gia' scelto resta scelto
+    onboarding.nome = awNome();    // v.313: idem per il nome
     onboarding.kgCh1 = {};         // carichi del Chapter 1 cambiati nell'anteprima
     onboarding.goal = null;
     onboarding.env = null;
@@ -25010,6 +25117,7 @@ function startOnboarding() {
     APP._awkProto = null;
     const nameInput = document.getElementById('ob-protocol-name');
     if (nameInput) nameInput.value = '';
+    awkDrawNome();
     awkDrawSex();
     awkDrawLevels();
     awkDrawGoals();
