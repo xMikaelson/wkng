@@ -1149,13 +1149,36 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .cmp-tab th { font-size:0.52rem; color:#94a3b8; font-weight:700; text-align:right; padding:4px 2px; border:none; }
         .cmp-tab td { padding:6px 2px; border:none; border-top:1px solid rgba(255,255,255,0.06); color:#e2e8f0; text-align:right; white-space:nowrap; font-size:0.62rem; }
         .cmp-tab td:first-child { text-align:left; color:#94a3b8; white-space:normal; }
-        .cmp-dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:#94a3b8; margin-left:5px; vertical-align:middle; }
-        .cmp-dot.v { background:#34d399; }
-        .cmp-dot.r { background:#f87171; }
-        .cmp-dot.n { background:#94a3b8; }
-        .cmp-legend { display:flex; flex-wrap:wrap; gap:4px 12px; font-size:0.52rem; color:#94a3b8; line-height:1.5; margin-top:8px; }
-        .cmp-legend span { display:inline-flex; align-items:center; white-space:nowrap; }
-        .cmp-legend .cmp-dot { margin:0 5px 0 0; }
+        /* v.314 — pallini: giallo = meglio per l'obiettivo, verde = meglio per la salute */
+        .cmp-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin:0 2px 0 0; vertical-align:middle; }
+        .cmp-dot.y { background:#fbbf24; }
+        .cmp-dot.g { background:#34d399; }
+        .cmp-dots { display:inline-block; width:22px; text-align:left; margin-left:5px; vertical-align:middle; white-space:nowrap; }
+        .cmp-tab tr.cmp-tot td { border-top:1px solid rgba(255,255,255,0.18); font-weight:800; color:#e2e8f0; padding-top:8px; }
+        .cmp-cnt { display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; border-radius:9px; font-size:0.58rem; font-weight:800; color:#0f172a; margin-left:4px; }
+        .cmp-cnt.y { background:#fbbf24; }
+        .cmp-cnt.g { background:#34d399; }
+        #cmp-overlay .cmp-legend { display:flex; flex-wrap:wrap; gap:4px 12px; font-size:0.52rem; color:#94a3b8; line-height:1.5; margin-top:8px; }
+        #cmp-overlay .cmp-legend span { display:inline-flex; align-items:center; white-space:nowrap; }
+        #cmp-overlay .cmp-legend .cmp-dot { margin:0 5px 0 0; }
+        /* v.314 — i due verdetti affiancati */
+        .cmp-duo { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+        .cmp-duo > div { margin-top:0; padding:10px 10px 11px; display:flex; flex-direction:column; min-width:0; }
+        .cmp-hl { background:rgba(45,212,191,0.07); border:1px solid rgba(45,212,191,0.35); border-radius:12px; }
+        .cmp-hl-h { font-size:0.48rem; color:#2dd4bf; text-transform:uppercase; letter-spacing:0.1em; font-weight:700; margin-bottom:6px; }
+        .cmp-duo .cmp-verd-h { font-size:0.48rem; margin-bottom:6px; }
+        .cmp-chi { font-size:0.95rem; font-weight:800; line-height:1.15; display:flex; align-items:center; gap:5px; }
+        .cmp-chi .cmp-num { width:20px; height:20px; font-size:0.6rem; }
+        .cmp-chi-n { font-size:0.6rem; color:#e2e8f0; font-weight:600; line-height:1.3; margin:3px 0 6px; overflow-wrap:anywhere; }
+        .cmp-duo .cmp-verd-d { font-size:0.56rem; line-height:1.45; margin-top:3px; overflow-wrap:anywhere; }
+        .cmp-duo ul { margin:5px 0 0; padding-left:13px; }
+        .cmp-duo li { font-size:0.56rem; color:#cbd5e1; line-height:1.45; margin-bottom:2px; }
+        .cmp-count { display:flex; align-items:center; gap:5px; font-size:0.54rem; color:#cbd5e1; margin-top:auto; padding-top:7px; border-top:1px solid rgba(255,255,255,0.08); }
+        .cmp-count-w { margin-top:8px; }
+        .cmp-count .cmp-cnt { margin:0; }
+        .cmp-split { margin:0 0 10px; padding:8px 10px; border-radius:10px; background:rgba(255,255,255,0.04); font-size:0.6rem; color:#e2e8f0; line-height:1.5; }
+        .cmp-nova { display:inline-block; padding:1px 6px; border-radius:6px; font-size:0.52rem; font-weight:800; }
+        .cmp-sano { display:inline-block; font-size:0.5rem; font-weight:700; padding:2px 6px; border-radius:6px; margin-left:6px; vertical-align:middle; background:rgba(45,212,191,0.2); color:#5eead4; }
         .cmp-foot { font-size:0.52rem; color:#64748b; line-height:1.55; margin-top:12px; }
         /* v.309 — consiglio per l'obiettivo sul singolo prodotto */
         .nut-goal { border-radius:13px; padding:12px 13px; }
@@ -4775,7 +4798,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '313';
+const APP_VERSION = '314';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -19383,7 +19406,6 @@ const CMP_TONO = {
     salt100:      { cut: 'r', maintain: 'r', bulk: 'r' },
     pdens:        { cut: 'v', maintain: 'v', bulk: 'v' }
 };
-const CMP_TONO_TXT = { v: 'conviene per il tuo obiettivo', r: 'conviene meno per il tuo obiettivo', n: 'pi\u00f9 alto: n\u00e9 meglio n\u00e9 peggio' };
 
 function _cmpNs(f) {
     const ns = String((f && f.nutriScore) || '').toUpperCase();
@@ -19416,7 +19438,7 @@ function nutCmpNo() {
 function nutCmpAnnulla() { window._nutCmpA = null; }
 
 function nutCmpOpen(A, B, meal) {
-    window._nutCmp = { A: A, B: B, meal: meal, base: '100', open: false };
+    window._nutCmp = { A: A, B: B, meal: meal, base: '100', open: true };
     nutCmpRender();
     const ov = document.getElementById('cmp-overlay');
     if (ov) { ov.classList.add('active'); const sc = ov.firstElementChild; if (sc) sc.scrollTop = 0; }
@@ -19439,18 +19461,11 @@ function nutCmpAggiungi(i) {
     openGramsSelector(f, meal);
 }
 
+// v.314 — "In breve" tiene solo cio' che i due verdetti non dicono gia':
+// le calorie (a porzione se la confezione la indica) e, fuori dal
+// dimagrimento, le proteine per caloria (in dimagrimento le cita il verdetto).
 function _cmpRighe(A, B) {
     const out = [];
-    const dA = _cmpProtDens(A), dB = _cmpProtDens(B);
-    if (dA !== null && dB !== null) {
-        if (_cmpFmt(dA, 1) === _cmpFmt(dB, 1)) {
-            out.push('Stesse proteine per caloria: ' + _cmpFmt(dA, 1) + ' g ogni 100 kcal.');
-        } else {
-            const primo = dA > dB;
-            out.push('<b>' + (primo ? 'Il primo' : 'Il secondo') + '</b> d\u00e0 ' + _cmpFmt(Math.max(dA, dB), 1) +
-                     ' g di proteine ogni 100 kcal, contro ' + _cmpFmt(Math.min(dA, dB), 1) + ' g.');
-        }
-    }
     const kA = _cmpNum(A, 'kcal100'), kB = _cmpNum(B, 'kcal100');
     if (kA !== null && kB !== null) {
         if (A.servingG > 0 || B.servingG > 0) {
@@ -19460,15 +19475,11 @@ function _cmpRighe(A, B) {
             out.push('Per 100 g: ' + Math.round(kA) + ' kcal contro ' + Math.round(kB) + ' kcal.');
         }
     }
-    const bev = A.offCategory === 'beverage' || B.offCategory === 'beverage';
-    [['sugars100', 'Zuccheri'], ['saturated100', 'Grassi saturi'], ['salt100', 'Sale']].forEach(function(x) {
-        const lA = _cmpLivello(A, x[0]), lB = _cmpLivello(B, x[0]);
-        if (lA && lB && lA !== lB) {
-            out.push(x[1] + ': ' + lA + ' nel primo, ' + lB + ' nel secondo (soglie per 100 ' + (bev ? 'g o 100 ml' : 'g') + ').');
-        }
-    });
-    const nA = _cmpNs(A), nB = _cmpNs(B);
-    if (nA && nB && nA !== nB) out.push('Nutri-Score ' + nA + ' contro ' + nB + '.');
+    const dA = _cmpProtDens(A), dB = _cmpProtDens(B);
+    if (_cmpGoal() !== 'cut' && dA !== null && dB !== null && _cmpFmt(dA, 1) !== _cmpFmt(dB, 1)) {
+        out.push('<b>' + (dA > dB ? 'Il primo' : 'Il secondo') + '</b> d\u00e0 ' + _cmpFmt(Math.max(dA, dB), 1) +
+                 ' g di proteine ogni 100 kcal, contro ' + _cmpFmt(Math.min(dA, dB), 1) + ' g.');
+    }
     return out;
 }
 
@@ -19500,6 +19511,7 @@ const CMP_VOCI = ['kcal100', 'p100', 'c100', 'sugars100', 'f100', 'saturated100'
 const CMP_VOCI_DEC = { kcal100: 0, salt100: 2 };
 function _cmpConta(A, B, goal) {
     let a = 0, b = 0;
+    const rows = {};
     CMP_VOCI.forEach(function(k) {
         const tono = CMP_TONO[k][goal];
         if (tono === 'n') return;
@@ -19507,9 +19519,9 @@ function _cmpConta(A, B, goal) {
         if (va === null || vb === null) return;
         const dec = (k in CMP_VOCI_DEC) ? CMP_VOCI_DEC[k] : 1;
         if (_cmpFmt(va, dec) === _cmpFmt(vb, dec)) return;
-        if ((tono === 'v') === (va > vb)) a++; else b++;
+        if ((tono === 'v') === (va > vb)) { a++; rows[k] = 1; } else { b++; rows[k] = 2; }
     });
-    return { a: a, b: b };
+    return { a: a, b: b, rows: rows };
 }
 // Confronto di due valori come mostrati: 1 se vince A, 2 se vince B, 0 pari o mancante.
 function _cmpPiuAlto(va, vb, dec) {
@@ -19557,39 +19569,125 @@ function _cmpVerdetto(A, B) {
     }
     return out;
 }
+// v.314 — Verdetto per la salute, accanto a quello per l'obiettivo.
+//  1. Criterio chiave: la lavorazione. Decide solo se uno dei due e'
+//     ultra-processato (NOVA 4) e l'altro no: la classificazione e' di
+//     Monteiro et al. 2019 (Public Health Nutr 22:936); in un trial
+//     controllato la dieta ultra-processata ha fatto mangiare circa 500 kcal
+//     in piu' al giorno a parita' di nutrienti offerti (Hall et al. 2019, Cell
+//     Metab 30:67); l'umbrella review di Lane et al. 2024 (BMJ 384:e077310)
+//     lega l'esposizione agli ultra-processati a 32 esiti di salute avversi.
+//     Fra NOVA 1, 2 e 3 le prove non stabiliscono un ordine, quindi lì non decide.
+//  2. Altrimenti il conteggio dei pallini verdi, uno per riga, tutti con lo
+//     stesso peso (nessuno studio da' pesi per combinarli):
+//       meno zuccheri (OMS 2015), meno saturi (OMS 2023), meno sale (OMS
+//       2012), piu' fibre (Reynolds et al. 2019, Lancet 393:434), Nutri-Score
+//       migliore (Deschasaux et al. 2018, PLoS Med 15:e1002651), lavorazione
+//       NOVA minore (Lane et al. 2024).
+//     Fuori: grassi totali (per la salute conta il tipo di grasso, gia'
+//     coperto dai saturi; OMS 2023), energia e carboidrati (dipendono dal
+//     fabbisogno, non dalla salute), additivi (nessuno studio usa il loro
+//     numero come misura: restano solo un'informazione).
+//  3. Pari: si equivalgono.
+// Il conteggio si fa sui valori per 100 g, come quello dell'obiettivo.
+const CMP_SAL = [['sugars100', -1, 1, 'Zuccheri'], ['saturated100', -1, 1, 'Saturi'], ['salt100', -1, 2, 'Sale'], ['fiber100', 1, 1, 'Fibre']];
+function _cmpNova(f) {
+    const n = parseInt(f && f.novaGroup, 10);
+    return (n >= 1 && n <= 4) ? n : null;
+}
+function _cmpSaluteConta(A, B) {
+    let a = 0, b = 0;
+    const rows = {};
+    const segna = function(w, k) { if (w === 1) { a++; rows[k] = 1; } else if (w === 2) { b++; rows[k] = 2; } };
+    CMP_SAL.forEach(function(x) {
+        const w = _cmpPiuAlto(_cmpNum(A, x[0]), _cmpNum(B, x[0]), x[2]);
+        segna(x[1] > 0 ? w : (w ? 3 - w : 0), x[0]);
+    });
+    const nA = _cmpNs(A), nB = _cmpNs(B);
+    if (nA && nB && nA !== nB) segna(nA < nB ? 1 : 2, 'ns');
+    const vA = _cmpNova(A), vB = _cmpNova(B);
+    if (vA && vB && vA !== vB) segna(vA < vB ? 1 : 2, 'nova');
+    return { a: a, b: b, rows: rows };
+}
+function _cmpSalute(A, B) {
+    const cnt = _cmpSaluteConta(A, B), vA = _cmpNova(A), vB = _cmpNova(B);
+    const out = { a: cnt.a, b: cnt.b, rows: cnt.rows, chi: 0, via: '' };
+    if (vA && vB && (vA === 4) !== (vB === 4)) { out.chi = vA === 4 ? 2 : 1; out.via = 'nova'; return out; }
+    if (cnt.a !== cnt.b) { out.chi = cnt.a > cnt.b ? 1 : 2; out.via = 'voci'; }
+    return out;
+}
+
+const CMP_OBI = { cut: 'il dimagrimento', bulk: 'la massa', maintain: 'il mantenimento' };
+function _cmpVantaggi(n, m, cls) {
+    return '<div class="cmp-count"><span class="cmp-cnt ' + cls + '">' + n + '</span>' +
+           (n === 1 ? 'vantaggio' : 'vantaggi') + ' contro ' + m + '</div>';
+}
+function _cmpChiHtml(chi, f, tinta) {
+    return '<div class="cmp-chi" style="color:' + tinta + '"><span class="cmp-num">' + chi + '</span>' +
+           (chi === 1 ? 'Il primo' : 'Il secondo') + '</div><div class="cmp-chi-n">' + escapeHTML(f.name || 'Prodotto ' + chi) + '</div>';
+}
 function _cmpVerdettoHtml(A, B) {
     const v = _cmpVerdetto(A, B);
-    const obi = ({ cut: 'il dimagrimento', bulk: 'la massa', maintain: 'il mantenimento' })[v.goal];
-    const voci = function(n) { return n + ' ' + (n === 1 ? 'voce' : 'voci'); };
-    let h = '<div class="cmp-verd"><div class="cmp-verd-h">🏆 Verdetto per ' + obi + '</div>';
+    const obi = CMP_OBI[v.goal];
+    let h = '<div class="cmp-verd"><div class="cmp-verd-h">🏆 Per ' + obi + '</div>';
     if (v.chi) {
         const W = v.chi === 1 ? A : B, L = v.chi === 1 ? B : A;
         const vw = v.chi === 1 ? v.a : v.b, vl = v.chi === 1 ? v.b : v.a;
-        h += '<div class="cmp-verd-t">Scegli <b>il ' + (v.chi === 1 ? 'primo' : 'secondo') + '</b>: ' + escapeHTML(W.name || '') + '</div>';
+        h += _cmpChiHtml(v.chi, W, '#fde68a');
         if (v.via === 'chiave') {
             h += '<div class="cmp-verd-d">' + v.key.perche + '</div>';
-            if (vw + vl) h += '<div class="cmp-verd-d">Nelle voci della tabella: questo conviene in ' + voci(vw) + ', l’altro in ' + vl + '.</div>';
+            // Il criterio chiave pesa piu' del conteggio: se il conteggio dice
+            // l'opposto, lo si scrive invece di nasconderlo.
+            if (vl > vw) h += '<div class="cmp-verd-d">Nella tabella l’altro ha più vantaggi, ma qui conta di più questo criterio.</div>';
         } else if (v.via === 'voci') {
-            h += '<div class="cmp-verd-d">Il criterio chiave non decide (' + v.key.no + '): questo conviene in ' + voci(vw) +
-                 ' della tabella, l’altro in ' + vl + ' (valori per 100 g).</div>';
+            h += '<div class="cmp-verd-d">Il criterio chiave non decide (' + v.key.no + '): vince per numero di vantaggi.</div>';
         } else {
-            h += '<div class="cmp-verd-d">Il criterio chiave non decide (' + v.key.no + ') e le voci della tabella sono pari (' + v.a + ' a ' + v.b +
-                 '): decide il Nutri-Score, ' + _cmpNs(W) + ' contro ' + _cmpNs(L) + '.</div>';
+            h += '<div class="cmp-verd-d">Criterio chiave e vantaggi pari: decide il Nutri-Score, ' + _cmpNs(W) + ' contro ' + _cmpNs(L) + '.</div>';
         }
-        // Avviso se il prodotto scelto resta "alto" in qualcosa da limitare.
         const alti = [['sugars100', 'zuccheri'], ['saturated100', 'grassi saturi'], ['salt100', 'sale']]
             .filter(function(x) { return _cmpLivello(W, x[0]) === 'alto'; }).map(function(x) { return x[1]; });
-        if (alti.length) h += '<div class="cmp-verd-d" style="color:#fca5a5">Attenzione: ' + alti.join(', ') + ' comunque alt' + (alti.length > 1 || alti[0] !== 'sale' ? 'i' : 'o') + ' (soglie per 100 g).</div>';
+        if (alti.length) h += '<div class="cmp-verd-d" style="color:#fca5a5">Attenzione: ' + alti.join(', ') + ' alt' + (alti.length > 1 || alti[0] !== 'sale' ? 'i' : 'o') + '.</div>';
+        h += '<div class="cmp-count-w"></div>' + _cmpVantaggi(vw, vl, 'y');
     } else {
-        h += '<div class="cmp-verd-t">Si equivalgono</div><div class="cmp-verd-d">Il criterio chiave non decide (' + v.key.no +
-             '), le voci della tabella sono pari (' + v.a + ' a ' + v.b + ')' +
-             (v.goal !== 'maintain' && _cmpNs(A) && _cmpNs(B) ? ' e il Nutri-Score è lo stesso' : '') + ': scegli quello che preferisci.</div>';
+        h += '<div class="cmp-chi" style="color:#fde68a">Si equivalgono</div>' +
+             '<div class="cmp-verd-d">Il criterio chiave non decide (' + v.key.no + ') e i vantaggi sono pari.</div>' +
+             '<div class="cmp-count-w"></div>' + _cmpVantaggi(v.a, v.b, 'y');
     }
-    const chiave = ({ cut: 'le proteine per caloria', bulk: 'calorie e proteine insieme', maintain: 'il Nutri-Score' })[v.goal];
-    h += '<div class="cmp-verd-n">Prima decide il criterio chiave per ' + obi + ' (' + chiave + '), poi le voci della tabella, tutte con lo stesso peso' +
-         (v.goal !== 'maintain' ? ', poi il Nutri-Score' : '') + '.' +
-         (_cmpGoalSet() ? '' : ' Obiettivo non impostato: verdetto per il mantenimento.') + '</div></div>';
-    return { html: h, chi: v.chi };
+    return { html: h + '</div>', chi: v.chi };
+}
+function _cmpSaluteHtml(A, B) {
+    const v = _cmpSalute(A, B);
+    let h = '<div class="cmp-hl"><div class="cmp-hl-h">🌿 Per la salute</div>';
+    if (v.chi) {
+        const W = v.chi === 1 ? A : B, L = v.chi === 1 ? B : A;
+        const vw = v.chi === 1 ? v.a : v.b, vl = v.chi === 1 ? v.b : v.a;
+        h += _cmpChiHtml(v.chi, W, '#99f6e4');
+        if (v.via === 'nova') {
+            h += '<div class="cmp-verd-d">' + NOVA_LABELS[_cmpNova(W)] + ' (NOVA ' + _cmpNova(W) + ') contro ultra-processato (NOVA 4).</div>';
+        } else {
+            h += '<div class="cmp-verd-d">Vince per numero di vantaggi per la salute.</div>';
+        }
+        // Le voci in cui vince il prodotto scelto, con i valori.
+        const li = [];
+        if (v.rows.ns === v.chi) li.push('Nutri-Score ' + _cmpNs(W) + ' contro ' + _cmpNs(L));
+        CMP_SAL.forEach(function(x) {
+            if (v.rows[x[0]] === v.chi) li.push(x[3] + ' ' + _cmpFmt(_cmpNum(W, x[0]), x[2]) + ' g contro ' + _cmpFmt(_cmpNum(L, x[0]), x[2]) + ' g');
+        });
+        if (v.via !== 'nova' && v.rows.nova === v.chi) li.push('Lavorazione NOVA ' + _cmpNova(W) + ' contro ' + _cmpNova(L));
+        if (W.additivesN != null && L.additivesN != null && W.additivesN < L.additivesN) {
+            li.push((W.additivesN === 0 ? 'Nessun additivo' : W.additivesN + ' additiv' + (W.additivesN === 1 ? 'o' : 'i')) + ' contro ' + L.additivesN);
+        }
+        if (li.length) h += '<ul>' + li.map(function(x) { return '<li>' + x + '</li>'; }).join('') + '</ul>';
+        if (v.via === 'nova' && vl > vw) h += '<div class="cmp-verd-d">Nella tabella l’altro ha più vantaggi, ma la lavorazione conta di più.</div>';
+        h += '<div class="cmp-count-w"></div>' + _cmpVantaggi(vw, vl, 'g');
+    } else {
+        const dati = v.a + v.b > 0 || (_cmpNova(A) && _cmpNova(B));
+        h += '<div class="cmp-chi" style="color:#99f6e4">Si equivalgono</div>' +
+             '<div class="cmp-verd-d">' + (dati ? 'Nessuno dei due è ultra-processato più dell’altro e i vantaggi sono pari.'
+                                                : 'Mancano i dati per giudicare: lavorazione, Nutri-Score e valori da limitare.') + '</div>' +
+             '<div class="cmp-count-w"></div>' + _cmpVantaggi(v.a, v.b, 'g');
+    }
+    return { html: h + '</div>', chi: v.chi, rows: v.rows, a: v.a, b: v.b };
 }
 
 // ── CONSIGLIO PER L'OBIETTIVO SUL SINGOLO PRODOTTO (v.309) ──
@@ -19709,105 +19807,95 @@ function nutGoalHTML(f) {
     return h + '</div>';
 }
 
-function _cmpObiettivo(A, B) {
-    let goal = null;
-    try { goal = localStorage.getItem('nut_goal'); } catch (e) {}
-    if (!goal) return '';
-    const dA = _cmpProtDens(A), dB = _cmpProtDens(B);
-    if (goal === 'cut' || goal === 'cut_aggressive') {
-        if (dA === null || dB === null) return '';
-        const chi = _cmpFmt(dA, 1) === _cmpFmt(dB, 1) ? null : (dA > dB ? 'il primo' : 'il secondo');
-        return 'Il tuo obiettivo \u00e8 il <b>dimagrimento</b>: in deficit servono pi\u00f9 proteine per non perdere muscolo (Helms et al. 2014), quindi conta quante ne d\u00e0 ogni caloria' +
-               (chi ? ', e qui ne d\u00e0 di pi\u00f9 <b>' + chi + '</b>.' : '; qui sono uguali.');
-    }
-    if (goal === 'bulk') {
-        const pA = _cmpNum(A, 'p100'), pB = _cmpNum(B, 'p100'), kA = _cmpNum(A, 'kcal100'), kB = _cmpNum(B, 'kcal100');
-        if (kA === null || kB === null || pA === null || pB === null) return '';
-        return 'Il tuo obiettivo \u00e8 la <b>massa</b>: servono calorie oltre il fabbisogno e circa 1,6 g di proteine per kg di peso (Morton et al. 2018). ' +
-               'A porzione il primo d\u00e0 ' + Math.round(kA * _cmpPor(A) / 100) + ' kcal e ' + _cmpFmt(pA * _cmpPor(A) / 100, 1) + ' g di proteine, il secondo ' +
-               Math.round(kB * _cmpPor(B) / 100) + ' kcal e ' + _cmpFmt(pB * _cmpPor(B) / 100, 1) + ' g.';
-    }
-    return 'Il tuo obiettivo \u00e8 il <b>mantenimento</b>: conta la qualit\u00e0 complessiva, che il Nutri-Score riassume; zuccheri, saturi e sale sono quelli da tenere bassi.';
-}
-
+// v.314 — Ordine: i due prodotti, i due verdetti affiancati (obiettivo a
+// sinistra, salute a destra), "In breve" solo se aggiunge qualcosa, la tabella
+// gia' aperta con i pallini, i pulsanti.
 function nutCmpRender() {
     const c = window._nutCmp, body = document.getElementById('cmp-body');
     if (!c || !body) return;
     const A = c.A, B = c.B, por = c.base === 'por' && (A.servingG > 0 || B.servingG > 0);
     const mealLab = (MEAL_CONFIG[c.meal] && MEAL_CONFIG[c.meal].label) || c.meal;
     const prod = function(f, n) {
-        const ns = _cmpNs(f);
-        const sub = [f.brand || '', f.servingG > 0 ? 'porzione ' + f.servingG + ' g' : '', f.novaGroup ? 'NOVA ' + f.novaGroup : '']
-            .filter(Boolean).join(' \u00b7 ');
+        const ns = _cmpNs(f), nova = _cmpNova(f);
+        const sub = [f.brand || '', f.servingG > 0 ? 'porzione ' + f.servingG + ' g' : ''].filter(Boolean).map(escapeHTML);
+        if (nova) {
+            const col = nova === 4 ? ['rgba(239,68,68,0.18)', '#f87171'] : (nova === 3 ? ['rgba(239,159,39,0.18)', '#EF9F27'] : ['rgba(52,211,153,0.18)', '#34d399']);
+            sub.push('<span class="cmp-nova" style="background:' + col[0] + ';color:' + col[1] + '">NOVA ' + nova + ' · ' +
+                     NOVA_LABELS[nova].toLowerCase() + (f.novaSource && String(f.novaSource).indexOf('derived') === 0 ? ' (stimato)' : '') + '</span>');
+        }
         return '<div class="cmp-prod"><span class="cmp-num">' + n + '</span><div style="min-width:0;flex:1">' +
                '<div class="cmp-prod-n">' + escapeHTML(f.name || 'Prodotto ' + n) + '</div>' +
-               (sub ? '<div class="cmp-prod-b">' + escapeHTML(sub) + '</div>' : '') + '</div>' +
+               (sub.length ? '<div class="cmp-prod-b">' + sub.join(' · ') + '</div>' : '') + '</div>' +
                (ns ? '<span class="cmp-ns" style="background:' + NUT_NS_COL[ns] + '" title="Nutri-Score ' + ns + '">' + ns + '</span>' : '') + '</div>';
     };
     let h = '<div class="cmp-prods">' + prod(A, 1) + prod(B, 2) + '</div>';
-    // "A porzione" ha senso solo se almeno una confezione indica la porzione.
+
+    const goal = _cmpGoal();
+    const ver = _cmpVerdettoHtml(A, B), sal = _cmpSaluteHtml(A, B);
+    h += '<div class="cmp-duo">' + ver.html + sal.html + '</div>';
+    if (ver.chi && sal.chi && ver.chi !== sal.chi) {
+        h += '<div class="cmp-split">⚖️ I due verdetti indicano prodotti diversi: ' + (ver.chi === 1 ? 'il primo' : 'il secondo') +
+             ' è il migliore per ' + CMP_OBI[goal] + ', ' + (sal.chi === 1 ? 'il primo' : 'il secondo') + ' il più sano. La scelta è tua.</div>';
+    }
+
+    const righe = _cmpRighe(A, B);
+    if (righe.length) h += '<div class="cmp-verdict"><div class="cmp-verdict-h">In breve</div><ul>' +
+                           righe.map(function(l) { return '<li>' + l + '</li>'; }).join('') + '</ul></div>';
+
+    // Tabella: i pallini vengono dagli stessi conteggi dei due verdetti, sui
+    // valori per 100 g anche nella vista a porzione (cosi' i totali tornano).
     const haPor = A.servingG > 0 || B.servingG > 0;
     const tog = !haPor ? '' :
         '<div class="cmp-tog" role="group" aria-label="Base del confronto" style="margin:8px 0 0">' +
         '<button type="button" class="' + (por ? '' : 'on') + '" aria-pressed="' + (!por) + '" onclick="nutCmpBase(\'100\')">Per 100 g</button>' +
         '<button type="button" class="' + (por ? 'on' : '') + '" aria-pressed="' + por + '" onclick="nutCmpBase(\'por\')">A porzione</button></div>';
-
-    const righe = _cmpRighe(A, B), ob = _cmpObiettivo(A, B);
-    h += '<div class="cmp-verdict"><div class="cmp-verdict-h">In breve</div>' +
-         (righe.length ? '<ul>' + righe.map(function(l) { return '<li>' + l + '</li>'; }).join('') + '</ul>' : '') +
-         (ob ? '<div class="cmp-goal">' + ob + '</div>' : '') + '</div>';
-
-    // Tabella: il pallino sta accanto al valore piu' alto della riga (nessun
-    // pallino se i due valori, come mostrati, sono uguali o ne manca uno).
-    const ROWS = [['kcal100', 'Energia', 'kcal', 0], ['p100', 'Proteine', 'g', 1], ['c100', 'Carboidrati', 'g', 1],
-                  ['sugars100', '\u00b7 zuccheri', 'g', 1], ['f100', 'Grassi', 'g', 1], ['saturated100', '\u00b7 saturi', 'g', 1],
-                  ['fiber100', 'Fibre', 'g', 1], ['salt100', 'Sale', 'g', 2]];
-    const goal = _cmpGoal();
-    const cella = function(a, b, dec, u, k) {
-        const sa = _cmpFmt(a, dec), sb = _cmpFmt(b, dec);
-        const piu = (a !== null && b !== null && sa !== sb) ? (a > b ? 1 : 2) : 0;
-        const tono = (CMP_TONO[k] && CMP_TONO[k][goal]) || 'n';
-        const dot = function(c) { return '<i class="cmp-dot ' + c + '" title="' + CMP_TONO_TXT[c] + '"></i>'; };
-        // Pallino di ciascuna colonna: chi vince la riga verde, chi perde rosso.
-        let da = '', db = '';
-        if (piu) {
-            if (tono === 'n') {
-                if (piu === 1) da = dot('n'); else db = dot('n');
-            } else {
-                const vinceA = (tono === 'v') === (piu === 1);
-                da = dot(vinceA ? 'v' : 'r');
-                db = dot(vinceA ? 'r' : 'v');
-            }
-        }
-        return '<td>' + sa + (a !== null ? ' ' + u : '') + da + '</td>' +
-               '<td>' + sb + (b !== null ? ' ' + u : '') + db + '</td>';
+    const ob = _cmpConta(A, B, goal).rows, sr = sal.rows;
+    const pall = function(k, i) {
+        const y = ob[k] === i ? '<i class="cmp-dot y" title="Meglio per ' + CMP_OBI[goal] + '"></i>' : '';
+        const g = sr[k] === i ? '<i class="cmp-dot g" title="Meglio per la salute"></i>' : '';
+        return '<span class="cmp-dots">' + y + g + '</span>';
     };
+    const riga = function(lab, k, sa, sb) {
+        return '<tr><td>' + lab + '</td><td>' + sa + pall(k, 1) + '</td><td>' + sb + pall(k, 2) + '</td></tr>';
+    };
+    const ROWS = [['kcal100', 'Energia', 'kcal', 0], ['p100', 'Proteine', 'g', 1], ['c100', 'Carboidrati', 'g', 1],
+                  ['sugars100', '· zuccheri', 'g', 1], ['f100', 'Grassi', 'g', 1], ['saturated100', '· saturi', 'g', 1],
+                  ['fiber100', 'Fibre', 'g', 1], ['salt100', 'Sale', 'g', 2]];
     let tab = '';
     ROWS.forEach(function(r) {
         let a = _cmpNum(A, r[0]), b = _cmpNum(B, r[0]);
         if (por) { if (a !== null) a = a * _cmpPor(A) / 100; if (b !== null) b = b * _cmpPor(B) / 100; }
-        tab += '<tr><td>' + r[1] + '</td>' + cella(a, b, r[3], r[2], r[0]) + '</tr>';
+        tab += riga(r[1], r[0], _cmpFmt(a, r[3]) + (a !== null ? ' ' + r[2] : ''), _cmpFmt(b, r[3]) + (b !== null ? ' ' + r[2] : ''));
     });
-    tab += '<tr><td>Proteine ogni 100 kcal</td>' + cella(_cmpProtDens(A), _cmpProtDens(B), 1, 'g', 'pdens') + '</tr>';
+    const dA = _cmpProtDens(A), dB = _cmpProtDens(B);
+    tab += riga('Proteine ogni 100 kcal', 'pdens', _cmpFmt(dA, 1) + (dA !== null ? ' g' : ''), _cmpFmt(dB, 1) + (dB !== null ? ' g' : ''));
+    tab += riga('Nutri-Score', 'ns', _cmpNs(A) || '—', _cmpNs(B) || '—');
+    tab += riga('Lavorazione (NOVA)', 'nova', _cmpNova(A) || '—', _cmpNova(B) || '—');
+    tab += riga('Additivi', 'add', A.additivesN != null ? A.additivesN : '—', B.additivesN != null ? B.additivesN : '—');
+    const oc = _cmpConta(A, B, goal);
+    tab += '<tr class="cmp-tot"><td>Vantaggi</td><td><span class="cmp-cnt y">' + oc.a + '</span><span class="cmp-cnt g">' + sal.a + '</span></td>' +
+           '<td><span class="cmp-cnt y">' + oc.b + '</span><span class="cmp-cnt g">' + sal.b + '</span></td></tr>';
     h += '<details class="cmp-more"' + (c.open ? ' open' : '') + '><summary>Tutti i valori</summary>' + tog +
-         '<table class="cmp-tab"><thead><tr><th></th><th>1' + (por ? ' \u00b7 ' + _cmpPor(A) + ' g' : '') + '</th><th>2' +
-         (por ? ' \u00b7 ' + _cmpPor(B) + ' g' : '') + '</th></tr></thead><tbody>' + tab + '</tbody></table>' +
-         '<div class="cmp-legend">Per ' + ({ cut: 'il dimagrimento', bulk: 'la massa', maintain: 'il mantenimento' })[goal] + ':' +
-         '<span><i class="cmp-dot v"></i>conviene</span><span><i class="cmp-dot r"></i>conviene meno</span>' +
-         '<span><i class="cmp-dot n"></i>pi\u00f9 alto, n\u00e9 meglio n\u00e9 peggio</span></div>' +
-         (_cmpGoalSet() ? '' : '<div class="cmp-foot" style="margin-top:4px">Obiettivo non impostato: colori per il mantenimento. Lo scegli nel calcolo del fabbisogno.</div>') +
+         '<table class="cmp-tab"><thead><tr><th></th><th>1' + (por ? ' · ' + _cmpPor(A) + ' g' : '') + '</th><th>2' +
+         (por ? ' · ' + _cmpPor(B) + ' g' : '') + '</th></tr></thead><tbody>' + tab + '</tbody></table>' +
+         '<div class="cmp-legend"><span><i class="cmp-dot y"></i>meglio per ' + CMP_OBI[goal] + '</span><span><i class="cmp-dot g"></i>meglio per la salute</span></div>' +
+         '<div class="cmp-foot" style="margin-top:4px">Il pallino va al migliore dei due nella riga, sui valori per 100 g' + (por ? ' anche in questa vista' : '') +
+         '. Senza pallino: nessuna differenza, dato mancante o voce che non conta (gli additivi sono solo un’informazione).</div>' +
+         (_cmpGoalSet() ? '' : '<div class="cmp-foot" style="margin-top:4px">Obiettivo non impostato: pallini gialli per il mantenimento. Lo scegli nel calcolo del fabbisogno.</div>') +
          (por && (!(A.servingG > 0) || !(B.servingG > 0)) ? '<div class="cmp-foot" style="margin-top:4px">Dove la confezione non indica la porzione si usano 100 g.</div>' : '') + '</details>';
 
-    // Verdetto in fondo, subito prima dei pulsanti: quello del prodotto
-    // scelto diventa il pulsante principale.
-    const ver = _cmpVerdettoHtml(A, B);
-    h += ver.html;
+    // Pulsanti: il principale resta sul vincitore per l'obiettivo; il piu'
+    // sano porta l'etichetta.
     const c2 = ver.chi === 2;
-    h += '<button type="button" class="cmp-btn ' + (c2 ? 'sec' : 'pri') + '" onclick="nutCmpAggiungi(1)">Aggiungi il primo a ' + escapeHTML(mealLab) + '</button>' +
-         '<button type="button" class="cmp-btn ' + (c2 ? 'pri' : 'sec') + '" onclick="nutCmpAggiungi(2)">Aggiungi il secondo' + (c2 ? ' a ' + escapeHTML(mealLab) : '') + '</button>' +
-         '<div class="cmp-foot">Basso / medio / alto: soglie per 100 g (bevande per 100 ml) del Department of Health britannico (2016). ' +
-         'Proteine: Helms et al. 2014, Morton et al. 2018. Zuccheri, saturi e sale da limitare: OMS. Fibre: Reynolds et al. 2019. ' +
-         'Massa: Iraki et al. 2019. Nutri-Score (Sant\u00e9 publique France; Deschasaux et al. 2018) e NOVA da Open Food Facts o calcolati dai valori.</div>';
+    const sano = function(i) { return sal.chi === i ? '<span class="cmp-sano">🌿 più sano</span>' : ''; };
+    h += '<button type="button" class="cmp-btn ' + (c2 ? 'sec' : 'pri') + '" onclick="nutCmpAggiungi(1)">Aggiungi il primo a ' + escapeHTML(mealLab) + sano(1) + '</button>' +
+         '<button type="button" class="cmp-btn ' + (c2 ? 'pri' : 'sec') + '" onclick="nutCmpAggiungi(2)">Aggiungi il secondo' + (c2 ? ' a ' + escapeHTML(mealLab) : '') + sano(2) + '</button>';
+    const chiave = ({ cut: 'le proteine per caloria', bulk: 'calorie e proteine insieme', maintain: 'il Nutri-Score' })[goal];
+    h += '<div class="cmp-foot">Per ' + CMP_OBI[goal] + ' decide prima ' + chiave + ', poi il numero di vantaggi' + (goal !== 'maintain' ? ', poi il Nutri-Score' : '') +
+         '. Per la salute decide prima la lavorazione (ultra-processato o no), poi il numero di vantaggi. ' +
+         'Fonti: proteine Helms et al. 2014 e Morton et al. 2018; massa Iraki et al. 2019; zuccheri, saturi e sale OMS; fibre Reynolds et al. 2019; ' +
+         'NOVA Monteiro et al. 2019; ultra-processati Hall et al. 2019 e Lane et al. 2024; Nutri-Score Santé publique France e Deschasaux et al. 2018. ' +
+         'Alto / basso: soglie per 100 g del Department of Health britannico (2016).</div>';
     body.innerHTML = h;
 }
 
