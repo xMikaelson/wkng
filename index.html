@@ -4263,17 +4263,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
   <div class="settings-list">
     <div class="settings-group-title" style="margin-bottom:8px">Impostazioni</div>
-    <div class="settings-row" role="button" tabindex="0" aria-label="Come ti chiami" onclick="awCambiaNome()" id="settings-row-nome">
-      <div class="settings-row-left"><span class="settings-row-icon">✍️</span><span class="settings-row-label">Come ti chiami<small class="aw-prov" id="settings-nome-val">non ancora scritto</small></span></div>
-      <span class="settings-row-arrow">›</span>
-    </div>
-    <div class="settings-row" id="settings-row-sex" style="cursor:default">
-      <div class="settings-row-left"><span class="settings-row-icon">👤</span><span class="settings-row-label">Uomo o donna</span></div>
-      <div class="aw-sex-pick" role="group" aria-label="Uomo o donna">
-        <button type="button" class="aw-sex-chip" data-sex="m" aria-pressed="false" onclick="awCambiaSesso('m')">Uomo</button>
-        <button type="button" class="aw-sex-chip" data-sex="f" aria-pressed="false" onclick="awCambiaSesso('f')">Donna</button>
-      </div>
-    </div>
     <div class="settings-row" onclick="activatePushNotifications()" id="settings-row-push">
       <div class="settings-row-left"><span class="settings-row-icon">🔔</span><span class="settings-row-label" id="settings-push-label">Attiva Notifiche</span></div>
       <span class="settings-row-arrow" id="settings-push-arrow">›</span>
@@ -4328,6 +4317,35 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       </div>
     </div>
     <div class="settings-group-title" style="margin-top:18px">Informazioni</div>
+    <!-- Chi sei (nome, uomo o donna, eta', mail) stava sotto "Impostazioni",
+         insieme a notifiche e dimensione del testo: non sono preferenze
+         dell'app, sono dati della persona. Qui stanno nel gruppo giusto e
+         sotto una voce sola, perche' si aprono tutte insieme le poche volte
+         che si va a correggerli. -->
+    <div class="settings-row" role="button" tabindex="0" aria-label="Informazioni generali" onclick="toggleInfoGenerali()">
+      <div class="settings-row-left"><span class="settings-row-icon">🪪</span><span class="settings-row-label">Informazioni generali<small class="aw-prov" id="info-gen-sub">nome, uomo o donna, età, mail</small></span></div>
+      <span class="settings-row-arrow" id="info-gen-arrow">›</span>
+    </div>
+    <div id="info-gen-panel" style="display:none; background:rgba(255,255,255,0.03); border-radius:10px; padding:10px 14px 6px; margin-bottom:4px;">
+      <div class="settings-row" role="button" tabindex="0" aria-label="Come ti chiami" onclick="awCambiaNome()" id="settings-row-nome">
+        <div class="settings-row-left"><span class="settings-row-icon">✍️</span><span class="settings-row-label">Come ti chiami<small class="aw-prov" id="settings-nome-val">non ancora scritto</small></span></div>
+        <span class="settings-row-arrow">›</span>
+      </div>
+      <div class="settings-row" id="settings-row-sex" style="cursor:default">
+        <div class="settings-row-left"><span class="settings-row-icon">👤</span><span class="settings-row-label">Uomo o donna</span></div>
+        <div class="aw-sex-pick" role="group" aria-label="Uomo o donna">
+          <button type="button" class="aw-sex-chip" data-sex="m" aria-pressed="false" onclick="awCambiaSesso('m')">Uomo</button>
+          <button type="button" class="aw-sex-chip" data-sex="f" aria-pressed="false" onclick="awCambiaSesso('f')">Donna</button>
+        </div>
+      </div>
+      <div class="settings-row" role="button" tabindex="0" aria-label="Età" onclick="awCambiaEta()" id="settings-row-eta">
+        <div class="settings-row-left"><span class="settings-row-icon">🎂</span><span class="settings-row-label">Età<small class="aw-prov" id="settings-eta-val">non ancora scritta</small></span></div>
+        <span class="settings-row-arrow">›</span>
+      </div>
+      <div class="settings-row" id="settings-row-mail" style="cursor:default">
+        <div class="settings-row-left"><span class="settings-row-icon">✉️</span><span class="settings-row-label">Mail utilizzata<small class="aw-prov" id="settings-mail-val">—</small></span></div>
+      </div>
+    </div>
     <div class="settings-row" role="button" tabindex="0" aria-label="Salute e sicurezza" onclick="openLegal('salute')">
       <div class="settings-row-left"><span class="settings-row-icon">⚕️</span><span class="settings-row-label">Salute e sicurezza</span></div>
       <span class="settings-row-arrow">›</span>
@@ -4798,7 +4816,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '314';
+const APP_VERSION = '315';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -5074,7 +5092,7 @@ function awSetSex(x) {
     APP.sex = x;
     try { localStorage.setItem('aw_sex', x); } catch (e) {}
     try { tdeeAggiornaPerSesso(x); } catch (e) {}
-    try { awSexRowUpdate(); } catch (e) {}
+    try { awSexRowUpdate(); awInfoGenRowUpdate(); } catch (e) {}
     if (prima !== x) { try { saveState(); } catch (e) {} }
 }
 // v.312 — Cambio dal Profilo: prima avveniva senza dire niente, mentre
@@ -5140,7 +5158,7 @@ function awSetNome(v) {
     var d = document.getElementById('dash-username');
     if (d) d.innerText = n;
     try { if (document.getElementById('page-profile')?.classList.contains('active')) buildProfiloPage(); } catch (e) {}
-    try { awNomeRowUpdate(); } catch (e) {}
+    try { awNomeRowUpdate(); awInfoGenRowUpdate(); } catch (e) {}
     if (prima !== n) { try { saveState(); } catch (e) {} }
     return true;
 }
@@ -5175,6 +5193,104 @@ function awProfiloAskMaybe() {
         }
         dopo();
     }, { title: 'Come ti chiami?', okLabel: 'Salva', cancelLabel: 'Più tardi', autocap: 'words', maxlength: 24 });
+}
+
+// ── ETA' (v.315) ──────────────────────────────────────────
+// L'eta' era chiesta solo dentro il calcolo del fabbisogno e non si poteva
+// piu' rivedere senza rifare tutta la procedura. Vive dove stava gia':
+// dentro 'nut_tdee_input', l'unico posto che la usa (entra nella formula di
+// Mifflin-St Jeor per il metabolismo basale, la stessa gia' nell'app). Da
+// qui non nasce nessun dato nuovo e non cambia nulla dell'allenamento:
+// carichi, serie, ripetizioni, recuperi e progressione non la leggono.
+function awTdeeInput() {
+    try { return JSON.parse(localStorage.getItem('nut_tdee_input') || 'null'); } catch (e) { return null; }
+}
+function awEta() {
+    var inp = awTdeeInput();
+    var n = inp ? parseInt(inp.age, 10) : NaN;
+    return (n > 0) ? n : null;
+}
+// Cambiare eta' cambia il metabolismo basale, quindi il fabbisogno gia'
+// calcolato va rifatto subito: altrimenti il Profilo direbbe un'eta' e la
+// Nutrizione mostrerebbe le calorie dell'eta' di prima. Stessa logica di
+// tdeeAggiornaPerSesso, che fa la stessa cosa quando cambia uomo/donna.
+function awSetEta(n) {
+    n = parseInt(n, 10);
+    if (!(n >= 18 && n <= 100)) return false;
+    var inp = awTdeeInput();
+    if (!inp) {
+        // Nessun fabbisogno calcolato: si tiene solo l'eta', il resto lo
+        // chiedera' il calcolo quando l'utente lo aprira'.
+        try { localStorage.setItem('nut_tdee_input', JSON.stringify({ age: n, sex: awSex() || null })); } catch (e) {}
+        awEtaRowUpdate(); awInfoGenRowUpdate();
+        return true;
+    }
+    if (parseInt(inp.age, 10) === n) { awEtaRowUpdate(); awInfoGenRowUpdate(); return true; }
+    inp.age = n;
+    try { localStorage.setItem('nut_tdee_input', JSON.stringify(inp)); } catch (e) {}
+    // Il target si ricalcola solo se c'era: chi non ha mai chiuso il calcolo
+    // non deve ritrovarsi un fabbisogno comparso dal nulla.
+    var avevaTarget = false;
+    try { avevaTarget = !!localStorage.getItem('nut_tdee_target'); } catch (e) {}
+    if (avevaTarget && typeof tdeeCalcola === 'function') {
+        var r = tdeeCalcola(inp);
+        try { localStorage.setItem('nut_tdee_target', JSON.stringify({ kcal: r.kcal, p: r.p, c: r.c, f: r.f })); } catch (e) {}
+        try { tdeeInitEntryBtn(); nutUpdateUI(); nutTlUpdateUI(); } catch (e) {}
+    }
+    awEtaRowUpdate();
+    awInfoGenRowUpdate();
+    return true;
+}
+function awEtaRowUpdate() {
+    var el = document.getElementById('settings-eta-val');
+    if (!el) return;
+    var n = awEta();
+    el.textContent = n ? (n + ' anni') : 'non ancora scritta';
+}
+function awCambiaEta() {
+    var n = awEta();
+    awPrompt('Entra nel calcolo del fabbisogno giornaliero. Non cambia niente dell\'allenamento.', function(v) {
+        if (v == null) return;
+        if (!awSetEta(v)) { showToast('Scrivi un\'età fra 18 e 100', 'error'); return; }
+        showToast('Età salvata: ' + awEta() + ' anni', 'success');
+    }, { title: 'Quanti anni hai?', value: n ? String(n) : '', okLabel: 'Salva', maxlength: 3 });
+}
+
+// ── MAIL DELL'ACCOUNT (v.315) ─────────────────────────────
+// Si legge dalla sessione, non si salva una seconda copia sul telefono: e'
+// un dato che l'account gia' conosce. Senza login la riga lo dice.
+function awMailRowUpdate() {
+    var el = document.getElementById('settings-mail-val');
+    if (!el) return;
+    el.textContent = 'controllo…';
+    var fine = function(t) { var e2 = document.getElementById('settings-mail-val'); if (e2) e2.textContent = t; };
+    try {
+        sbClient.auth.getUser().then(function(res) {
+            var mail = res && res.data && res.data.user && res.data.user.email;
+            fine(mail || 'nessun account collegato');
+        }).catch(function() { fine('nessun account collegato'); });
+    } catch (e) { fine('nessun account collegato'); }
+}
+
+// Riepilogo sulla riga chiusa: quello che c'e', nell'ordine delle voci.
+function awInfoGenRowUpdate() {
+    var el = document.getElementById('info-gen-sub');
+    if (!el) return;
+    var parti = [];
+    if (awNome()) parti.push(awNome());
+    if (awSex()) parti.push(awSex() === 'f' ? 'donna' : 'uomo');
+    if (awEta()) parti.push(awEta() + ' anni');
+    el.textContent = parti.length ? parti.join(' · ') : 'nome, uomo o donna, età, mail';
+}
+
+function toggleInfoGenerali() {
+    var panel = document.getElementById('info-gen-panel');
+    var arrow = document.getElementById('info-gen-arrow');
+    if (!panel) return;
+    var open = panel.style.display === 'block';
+    panel.style.display = open ? 'none' : 'block';
+    if (arrow) arrow.textContent = open ? '\u203a' : '\u2039';
+    if (!open) { awNomeRowUpdate(); awSexRowUpdate(); awEtaRowUpdate(); awMailRowUpdate(); }
 }
 
 function awSexRowUpdate() {
@@ -5294,7 +5410,7 @@ function awAwake() {
     }, { title: '☀️ AWAKE', okLabel: 'Ripristina' });
 }
 document.addEventListener('DOMContentLoaded', function() {
-    try { awSexRowUpdate(); awSleepRowUpdate(); awNomeRowUpdate(); } catch (e) {}
+    try { awSexRowUpdate(); awSleepRowUpdate(); awNomeRowUpdate(); awEtaRowUpdate(); awInfoGenRowUpdate(); } catch (e) {}
 });
 
 function saveState() {
@@ -8085,7 +8201,7 @@ async function onLoginSuccess(user, usernameOverride = null) {
     setTimeout(() => { nutUpdateUI(); nutTlUpdateUI(); }, 50);
 
     showToast(awG('Bentornato', 'Bentornata') + ', ' + awNomeAgente(username) + '!', 'success');
-    try { awSexRowUpdate(); awSleepRowUpdate(); awNomeRowUpdate(); } catch (e) {}
+    try { awSexRowUpdate(); awSleepRowUpdate(); awNomeRowUpdate(); awEtaRowUpdate(); awInfoGenRowUpdate(); } catch (e) {}
     setTimeout(function() { try { awProfiloAskMaybe(); } catch (e) {} }, 1800);
     // La subscription push viene registrata dall'utente tramite il pulsante in Impostazioni
     refreshNotifPermission();
@@ -20281,6 +20397,9 @@ function tdeeSave() {
 
     nutUpdateUI();
     nutTlUpdateUI();
+    // L'eta' si inserisce anche qui: la riga del Profilo deve dire la stessa
+    // cosa senza aspettare un ricaricamento.
+    try { awEtaRowUpdate(); awInfoGenRowUpdate(); } catch (e) {}
     tdeeClose();
     showToast('TDEE salvato: ' + kcal + ' kcal/giorno', 'success');
 }
@@ -23010,6 +23129,9 @@ function navSwitch(tab) {
     } else if (tab === 'profilo') {
         profileHeightInit();
         buildProfiloPage();
+        // Riepilogo di "Informazioni generali": il nome o l'eta' possono
+        // essere cambiati altrove (procedura iniziale, calcolo fabbisogno).
+        try { awEtaRowUpdate(); awInfoGenRowUpdate(); } catch (e) {}
         // La riga delle notifiche vive qui, ma veniva aggiornata solo aprendo
         // i Progressi: nel profilo restava sull'etichetta scritta nell'HTML e
         // diceva "Attiva Notifiche" anche con le notifiche gia' attive.
