@@ -3,7 +3,29 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 const DAYS = ["Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato","Domenica"];
-const CHAPTERS = ["Activation (Sett. 1)","Momentum (Sett. 2)","Breakthrough (Sett. 3)","Mastery (Sett. 4)"];
+// Capitoli del programma e percentuale del carico di riferimento in ognuno.
+// Dal 1/11/2026 li manda l'app (schedule_context.programma, letti da
+// CHAPTER_NAMES e WEEK_LOADS in index.html): qui restano solo come ripiego
+// per le versioni dell'app che non li mandano. Prima erano scritti a mano e
+// fermi al programma vecchio (4 capitoli, 70/80/90/60%), e la quinta
+// settimana arrivava al Coach come "undefined". Il testo che li spiega al
+// Coach (system prompt, "IL PROGRAMMA DELL'APP") descrive cio' che l'app gia'
+// fa, con le fonti scritte accanto al codice dell'app: scala MTR_LADDER e
+// periodizzazione lineare (ACSM 2009), scarico con carico vicino al picco e
+// volume dimezzato (Bosquet et al. 2007; Mujika & Padilla 2003), aumento con
+// la regola 2-per-2 (Baechle & Earle, NSCA 2008). Nessun numero nuovo.
+const CAPITOLI_RIPIEGO = [
+  { nome: "Activation", carico: 85 }, { nome: "Momentum", carico: 89 }, { nome: "The Peak", carico: 93 },
+  { nome: "Overload", carico: 97 }, { nome: "Deload", carico: 90, deload: true },
+];
+type Capitolo = { nome: string; carico: number; deload?: boolean };
+function leggiCapitoli(sc: any): Capitolo[] {
+  const c = sc && sc.programma && sc.programma.capitoli;
+  if (!Array.isArray(c) || !c.length || c.length > 8) return CAPITOLI_RIPIEGO;
+  const ok = c.every((x: any) => x && typeof x.nome === "string" && x.nome.length <= 40 &&
+    typeof x.carico === "number" && x.carico > 0 && x.carico <= 150);
+  return ok ? c.map((x: any) => ({ nome: x.nome, carico: Math.round(x.carico), deload: !!x.deload })) : CAPITOLI_RIPIEGO;
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -167,7 +189,7 @@ serve(async (req) => {
           userProtocols = protocols;
           const summary = protocols.map((p: any) => {
             const exs = Array.isArray(p.exercises_json)
-              ? p.exercises_json.map((e: any) => `    • ${e.name}: ${e.sr} serie, ${e.baseWeight}kg`).join("\n")
+              ? p.exercises_json.map((e: any) => `    • ${e.name}: ${e.sr}, ` + (Number(e.baseWeight) > 0 ? `riferimento ${e.baseWeight} kg` : "a corpo libero")).join("\n")
               : "    nessun esercizio";
             return `📋 "${p.name}" [${p.goal}]\n${exs}`;
           }).join("\n\n");
@@ -179,6 +201,7 @@ serve(async (req) => {
     }
 
     // ── Build schedule context ─────────────────────────────────
+    const capitoli = leggiCapitoli(schedule_context);
     let scheduleContext = "";
     if (schedule_context) {
       const { dayAssignments, chipStates, completedWeeks, personalRecords, totalWorkouts, startDate } = schedule_context;
@@ -204,7 +227,8 @@ serve(async (req) => {
             return `    ${DAYS[d]}: ${proto} [${status}]${todayMark}`;
           });
           const restDays = week.filter((a: any) => !a).length;
-          lines.push(`📅 ${CHAPTERS[w]}${chapterDone} — ${7 - restDays} allenamenti, ${restDays} rest day\n${dayLines.join("\n")}`);
+          const nomeCap = capitoli[w] ? capitoli[w].nome : `Capitolo ${w + 1}`;
+          lines.push(`📅 ${nomeCap} (Sett. ${w + 1})${chapterDone} — ${7 - restDays} allenamenti, ${restDays} rest day\n${dayLines.join("\n")}`);
         });
         scheduleContext += `\n\n━━ PROGRAMMAZIONE SETTIMANALE ━━\n${lines.join("\n\n")}`;
       }
@@ -256,7 +280,7 @@ Oppure, per scambiare due giorni della settimana nel chapter corrente:
 }
 </ai_modifications>
 
-I giorni sono 0=Lunedì, 1=Martedì, 2=Mercoledì, 3=Giovedì, 4=Venerdì, 5=Sabato, 6=Domenica. Il chapter è 0-indexed (0=Activation, 1=Momentum, 2=Breakthrough, 3=Mastery). Usa il chapter attivo indicato nel contesto. Includi SOLO gli esercizi che modifichi per exercise_edit.
+I giorni sono 0=Lunedì, 1=Martedì, 2=Mercoledì, 3=Giovedì, 4=Venerdì, 5=Sabato, 6=Domenica. Il chapter è 0-indexed (${capitoli.map((c, i) => i + "=" + c.nome).join(", ")}). Usa il chapter attivo indicato nel contesto. Includi SOLO gli esercizi che modifichi per exercise_edit.
 
 Oppure, per replicare la schedulazione di un chapter in un altro (stessi protocolli, stessi giorni, senza creare duplicati):
 
@@ -265,15 +289,18 @@ Oppure, per replicare la schedulazione di un chapter in un altro (stessi protoco
   "type": "assign_chapter",
   "from_chapter": 1,
   "to_chapter": 2,
-  "description": "Replica schedulazione Momentum in Breakthrough"
+  "description": "Replica schedulazione Momentum in The Peak"
 }
 </ai_modifications>
 
 Usa assign_chapter quando l'utente vuole replicare/copiare la schedulazione da un chapter a un altro. NON crea protocolli nuovi — assegna gli stessi protocolli esistenti agli stessi giorni nel chapter di destinazione.
 
-PROGRESSIONE CARICHI: L'app calcola automaticamente i carichi per chapter usando moltiplicatori sul baseWeight:
-- Chapter 1 (Activation): 70% — Chapter 2 (Momentum): 80% — Chapter 3 (Breakthrough): 90% — Chapter 4 (Integration): 60% (deload)
-Gli stessi protocolli mostrano carichi diversi in chapter diversi — la progressione è automatica.${protocolsContext}${scheduleContext}`;
+IL PROGRAMMA DELL'APP: un ciclo di ${capitoli.length} capitoli, uno per settimana.
+${capitoli.map((c, i) => `- Capitolo ${i + 1} · ${c.nome}: ${c.carico}% del carico di riferimento` + (c.deload ? ", con metà delle serie (scarico)" : "")).join("\n")}
+Il carico di riferimento di ogni esercizio (baseWeight nei protocolli) è il suo MTR, il massimo tecnico: il peso più alto che l'atleta solleva con tecnica pulita per le ripetizioni previste. In ogni capitolo l'app usa la percentuale qui sopra di quel riferimento, quindi il peso della seduta non è il baseWeight: lo mostra l'app nella pagina Allenamento.
+Con i pesi le ripetizioni scendono da un capitolo all'altro mentre il carico sale; nello scarico il carico resta vicino al picco e le serie si dimezzano. A corpo libero salgono le ripetizioni e poi si passa alla variante più difficile.
+Il carico sale da solo con la regola 2-per-2: quando l'atleta chiude almeno due ripetizioni in più nell'ultima serie per due sedute di fila, l'app propone di alzarlo.
+Non inventare percentuali, scale di carico o capitoli diversi da questi. In exercise_edit, baseWeight è il carico di riferimento, non quello del capitolo.${protocolsContext}${scheduleContext}`;
 
     const tetto = regole.maxTokens;
     const corpo: Record<string, unknown> = {
