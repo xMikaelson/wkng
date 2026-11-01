@@ -237,9 +237,29 @@ function payloadFor(slot: Slot, now: Date): string {
   });
 }
 
+// ── Chi puo' chiamare ─────────────────────────────────────────────────────
+
+// v.324: solo il server. La funzione verifica il JWT (verify_jwt), ma la
+// chiave anon e' un JWT valido e sta nel JavaScript dell'app: con quella
+// chiunque poteva usare l'override manuale qui sotto e mandare una notifica
+// a tutti. I job pianificati e posta-sera usano la service role, il cui
+// token dichiara role = service_role; la firma l'ha gia' controllata il
+// gateway.
+function ruolo(req: Request): string | null {
+  try {
+    const t = (req.headers.get("authorization") ?? "").split(" ")[1] ?? "";
+    let p = t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    p += "=".repeat((4 - (p.length % 4)) % 4);
+    return JSON.parse(atob(p)).role ?? null;
+  } catch (_) { return null; }
+}
+
 // ── Handler ────────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
+  if (ruolo(req) !== "service_role") {
+    return new Response(JSON.stringify({ error: "vietato" }), { status: 403 });
+  }
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -282,6 +302,30 @@ Deno.serve(async (req) => {
       }
     }
     return new Response(JSON.stringify({ rest: restSent, due: (due ?? []).length }), { status: 200 });
+  }
+
+  // v.324 — Una notifica a un solo utente (user_id = username, come in
+  // push_subscriptions). La usa posta-sera quando arriva il messaggio del
+  // Coach delle 22.
+  if (body?.mode === "utente") {
+    if (typeof body.user_id !== "string" || typeof body.title !== "string" || typeof body.body !== "string") {
+      return new Response(JSON.stringify({ error: "richiesta" }), { status: 400 });
+    }
+    const { data: sub } = await supabase
+      .from("push_subscriptions").select("subscription").eq("user_id", body.user_id).maybeSingle();
+    if (!sub?.subscription?.endpoint) return new Response(JSON.stringify({ sent: 0, motivo: "nessuna iscrizione" }), { status: 200 });
+    try {
+      const payload = JSON.stringify({ title: body.title, body: body.body, tag: typeof body.tag === "string" ? body.tag : `awakening-utente-${Date.now()}` });
+      const { status, body: resBody } = await sendPush(sub.subscription, payload, vapidPub, vapidPriv, vapidSubject);
+      console.log(`[Utente] ${body.user_id} → ${status}: ${resBody}`);
+      if (status === 404 || status === 410) {
+        await supabase.from("push_subscriptions").update({ subscription: null }).eq("user_id", body.user_id);
+      }
+      return new Response(JSON.stringify({ sent: status >= 200 && status < 300 ? 1 : 0, status }), { status: 200 });
+    } catch (e) {
+      console.error(`[Utente] ERROR ${body.user_id}:`, String(e));
+      return new Response(JSON.stringify({ sent: 0, error: String(e) }), { status: 200 });
+    }
   }
 
   // Override manuale: una notifica uguale per tutti, fuori dagli orari.

@@ -118,7 +118,7 @@ Massimo 350 parole.`;
 function promptSettimana(capitoli: Capitolo[]): string {
   return `Sei il personal coach di chi usa l'app Awakening. A fine settimana scrivi un messaggio privato nella sua Posta: il resoconto degli ultimi 7 giorni e come migliorare la settimana prossima, su allenamento, alimentazione e idratazione, sempre legato al suo percorso dall'inizio.
 
-Ricevi i suoi dati reali in JSON. Usa SOLO quelli: non inventare pasti, allenamenti, pesi o numeri che non ci sono. Le medie sono gia' calcolate in "medie": usa quelle, non ricalcolarle. La domenica questo messaggio arriva al posto del resoconto della sera: l'ultimo giorno dei dati e' oggi, e in una o due frasi di' anche com'e' andata oggi. Se in alcuni giorni pasti o acqua non sono registrati, dillo una volta come invito a registrarli, senza rimproverare. I giorni di riposo fanno parte del programma: non trattarli come assenze.
+Ricevi i suoi dati reali in JSON. Usa SOLO quelli: non inventare pasti, allenamenti, pesi o numeri che non ci sono. Le medie sono gia' calcolate in "medie": usa quelle, non ricalcolarle. La domenica questo messaggio arriva al posto del resoconto della sera: se l'ultimo giorno dei dati e' oggi, in una o due frasi di' anche com'e' andata oggi; se "dati_aggiornati_al" e' prima di "oggi", dopo quel giorno l'app non ha ricevuto niente: dillo senza inventare. Se in alcuni giorni pasti o acqua non sono registrati, dillo una volta come invito a registrarli, senza rimproverare. I giorni di riposo fanno parte del programma: non trattarli come assenze.
 
 Struttura del messaggio, con questi titoli esatti, ognuno su una riga sua:
 👋 Una o due frasi: saluto con il nome e il senso della settimana.
@@ -148,7 +148,7 @@ Massimo 450 parole.`;
 function promptMese(capitoli: Capitolo[]): string {
   return `Sei il personal coach di chi usa l'app Awakening. Ogni quattro settimane scrivi un messaggio privato nella sua Posta: il resoconto del mese appena chiuso e gli obiettivi del prossimo, su allenamento, alimentazione e idratazione, sempre legato al suo percorso dall'inizio. Questo messaggio arriva la domenica sera al posto del resoconto della settimana.
 
-Ricevi i suoi dati reali in JSON. Usa SOLO quelli: non inventare pasti, allenamenti, pesi o numeri che non ci sono. Le medie sono gia' calcolate ("settimane" e "medie_del_mese"): usa quelle, non ricalcolarle. Se in alcune settimane pasti o acqua non sono registrati, dillo una volta come invito, senza rimproverare. I giorni di riposo fanno parte del programma.
+Ricevi i suoi dati reali in JSON. Usa SOLO quelli: non inventare pasti, allenamenti, pesi o numeri che non ci sono. Le medie sono gia' calcolate ("settimane" e "medie_del_mese"): usa quelle, non ricalcolarle. Se "dati_aggiornati_al" e' prima di "oggi", dopo quel giorno l'app non ha ricevuto niente: dillo senza inventare. Se in alcune settimane pasti o acqua non sono registrati, dillo una volta come invito, senza rimproverare. I giorni di riposo fanno parte del programma.
 
 Struttura del messaggio, con questi titoli esatti, ognuno su una riga sua:
 👋 Una o due frasi: saluto con il nome e il senso del mese.
@@ -248,7 +248,13 @@ serve(async (req) => {
     const bearer = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : "";
     const jwt = (typeof user_jwt === "string" && user_jwt) ? user_jwt : bearer;
     let user: any = null;
-    if (jwt) {
+    // v.324: la chiamata del server per la Posta delle 22 (funzione
+    // posta-sera): la chiave service role, che ha solo il server, e l'id
+    // dell'utente nel corpo. Limiti e restituzione dell'uso restano quelli
+    // del suo piano.
+    if (supabaseKey && bearer === supabaseKey && typeof body.user_id === "string" && /^[0-9a-f-]{36}$/i.test(body.user_id)) {
+      user = { id: body.user_id };
+    } else if (jwt) {
       try { const { data } = await sb.auth.getUser(jwt); user = data?.user ?? null; } catch (_) { user = null; }
     }
     if (!user) {

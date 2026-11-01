@@ -4317,7 +4317,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
   <div class="settings-list">
     <div class="settings-row" role="button" tabindex="0" aria-label="Posta" onclick="postaApri()" id="settings-row-posta" style="display:none;margin-bottom:14px">
-      <div class="settings-row-left"><span class="settings-row-icon">📬</span><span class="settings-row-label">Posta<small class="aw-prov">i messaggi del tuo Coach AI · anteprima</small></span></div>
+      <div class="settings-row-left"><span class="settings-row-icon">📬</span><span class="settings-row-label">Posta</span></div>
       <span style="display:flex;align-items:center;gap:8px"><span class="posta-badge" id="posta-badge" style="display:none">0</span><span class="settings-row-arrow">›</span></span>
     </div>
     <div class="settings-group-title" style="margin-bottom:8px">Impostazioni</div>
@@ -4874,7 +4874,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '323';
+const APP_VERSION = '324';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -5536,6 +5536,8 @@ function saveState() {
         updateStreakWidget();
         updateBadges();
         syncExtraToSupabase();
+        // v.324: i dati del Coach per la Posta delle 22 (coachSnapshotInvia)
+        try { coachSnapshotPianifica(); } catch (_) {}
     } catch(e) {
         // Il catch vuoto nascondeva i fallimenti di salvataggio: se qualcosa
         // qui dentro lancia, lo stato non viene scritto e senza segnale
@@ -28511,6 +28513,44 @@ function homeRefreshData() {
   function postaSave(a) { try { localStorage.setItem(POSTA_KEY, JSON.stringify(a.slice(0, 60))); } catch (e) {} }
   function postaNonLetti() { return postaGet().filter(m => m && !m.letto).length; }
 
+  // v.324: i messaggi arrivano dal server (tabella posta, scritti alle 22
+  // dalla funzione posta-sera). La lista resta in 'aw_posta': qui si uniscono
+  // i messaggi del server (srv: true) con quelli dell'anteprima, che restano
+  // solo su questo telefono. Un "letto" segnato senza rete si rimanda qui.
+  let _postaScaricando = null;
+  function postaScarica() {
+    if (_postaScaricando) return _postaScaricando;
+    _postaScaricando = (async function() {
+      try {
+        if (typeof sbClient === 'undefined' || !sbClient) return false;
+        const { data: { session } } = await sbClient.auth.getSession();
+        if (!session) return false;
+        const r = await sbClient.from('posta').select('id, giorno, tipo, da, titolo, testo, extra, letto, creato')
+          .order('creato', { ascending: false }).limit(60);
+        if (r.error || !Array.isArray(r.data)) return false;
+        const prima = {};
+        postaGet().forEach(function(m) { if (m && m.srv) prima[m.id] = m; });
+        const server = r.data.map(function(x) {
+          const e = x.extra || {};
+          const lettoQui = !!(prima[x.id] && prima[x.id].letto);
+          if (lettoQui && !x.letto) postaSegnaLettoServer(x.id);
+          const m = { id: x.id, srv: true, da: x.da || 'Coach AI', tipo: x.tipo, giorno: x.giorno, at: new Date(x.creato).getTime(),
+            letto: !!x.letto || lettoQui, titolo: x.titolo, testo: x.testo };
+          if (Array.isArray(e.peso)) { m.peso = e.peso; m.pesoEtichetta = e.pesoEtichetta || ''; if (typeof e.pesoObiettivo === 'number') m.pesoObiettivo = e.pesoObiettivo; }
+          return m;
+        });
+        const locali = postaGet().filter(function(m) { return m && !m.srv; });
+        postaSave(server.concat(locali).sort(function(a, b) { return (b.at || 0) - (a.at || 0); }));
+        return true;
+      } catch (e) { return false; }
+    })();
+    _postaScaricando.finally(function() { _postaScaricando = null; });
+    return _postaScaricando;
+  }
+  function postaSegnaLettoServer(id) {
+    try { sbClient.rpc('posta_segna_letto', { p_id: id }).then(function() {}, function() {}); } catch (e) {}
+  }
+
   let _aiPiano = null;
   async function aiPianoCorrente() {
     try {
@@ -28523,14 +28563,18 @@ function homeRefreshData() {
       return _aiPiano;
     } catch (e) { return _aiPiano; }
   }
-  async function postaRigaAggiorna() {
+  async function postaRigaAggiorna(scarica) {
     const row = document.getElementById('settings-row-posta');
     if (!row) return;
     const piano = await aiPianoCorrente();
     row.style.display = piano === 'dev' ? '' : 'none';
-    const b = document.getElementById('posta-badge');
-    const n = postaNonLetti();
-    if (b) { b.textContent = n; b.style.display = n ? '' : 'none'; }
+    const badge = function() {
+      const b = document.getElementById('posta-badge');
+      const n = postaNonLetti();
+      if (b) { b.textContent = n; b.style.display = n ? '' : 'none'; }
+    };
+    badge();
+    if (scarica !== false && piano === 'dev' && await postaScarica()) badge();
   }
 
   let _postaAperto = null;
@@ -28539,27 +28583,36 @@ function homeRefreshData() {
     postaRender();
     const ov = document.getElementById('posta-ov');
     if (ov) { ov.classList.add('active'); ov.scrollTop = 0; }
+    postaScarica().then(function(ok) {
+      const aperta = ov && ov.classList.contains('active');
+      if (ok && aperta && !_postaAperto) postaRender();
+    });
   }
   function postaChiudi() {
     const ov = document.getElementById('posta-ov');
     if (ov) ov.classList.remove('active');
-    try { postaRigaAggiorna(); } catch (e) {}
+    try { postaRigaAggiorna(false); } catch (e) {}
   }
   function postaApriMessaggio(id) {
     _postaAperto = id;
     if (id) {
       const posta = postaGet();
       const m = posta.find(x => x && x.id === id);
-      if (m && !m.letto) { m.letto = true; postaSave(posta); }
+      if (m && !m.letto) {
+        m.letto = true; postaSave(posta);
+        if (m.srv) postaSegnaLettoServer(m.id);
+      }
     }
     postaRender();
     const ov = document.getElementById('posta-ov');
     if (ov) ov.scrollTop = 0;
   }
   function postaElimina(id) {
-    awConfirm('Il messaggio sparisce da questo telefono.', function(ok) {
+    const m = postaGet().find(x => x && x.id === id);
+    awConfirm('Il messaggio sparisce dalla tua Posta.', function(ok) {
       if (!ok) return;
-      postaSave(postaGet().filter(m => m && m.id !== id));
+      postaSave(postaGet().filter(x => x && x.id !== id));
+      if (m && m.srv) { try { sbClient.from('posta').delete().eq('id', id).then(function() {}, function() {}); } catch (e) {} }
       postaApriMessaggio(null);
     }, { title: 'Eliminare il messaggio?', okLabel: 'Elimina', danger: true });
   }
@@ -28660,7 +28713,7 @@ function homeRefreshData() {
     // v.322: i pulsanti per chiedere i resoconti (anteprima v.319-321) non ci
     // sono piu': resta la descrizione, cosi' chi entra sa cosa arrivera'.
     // postaGenera resta per l'invio automatico.
-    let h = postaBannerHtml() + '<div class="posta-intro">Qui ti scrive il tuo Coach AI. Ogni sera il resoconto della giornata: allenamento, pasti, acqua e cosa migliorare domani. ' +
+    let h = postaBannerHtml() + '<div class="posta-intro">Qui ti scrive il tuo Coach AI. Ogni sera alle 22 il resoconto della giornata: allenamento, pasti, acqua e cosa migliorare domani. ' +
       'La domenica, al posto della giornata, arriva il resoconto della settimana; ogni quattro settimane quello del mese.<br><br>' +
       'Oltre ai resoconti, qui troverai anche gli aggiornamenti e le revisioni di WKNG.</div>';
     if (!posta.length) h += '<div class="posta-vuota">Nessun messaggio, per ora.</div>';
@@ -28818,7 +28871,14 @@ function homeRefreshData() {
     const giorni = [], alimenti = {};
     const somma = { kcal: 0, p: 0, c: 0, f: 0, zuccheri: 0, grassi_saturi: 0 };
     let dal = null, giorniPasti = 0, acquaTot = 0, giorniAcqua = 0, giorniAcquaOk = 0;
-    for (let i = 6; i >= 0; i--) {
+    // v.324: dal lunedi' di questa settimana a oggi (la domenica: lunedi'-
+    // domenica, come prima). Il resoconto delle 22 lo scrive il server con
+    // i dati dell'ultimo salvataggio: se la domenica l'app non si apre, la
+    // settimana arriva fino all'ultimo giorno registrato, senza ripescare la
+    // domenica della settimana prima.
+    const lunS = postaLunedi(ora);
+    const quanti = Math.round((new Date(ora.getFullYear(), ora.getMonth(), ora.getDate(), 12) - lunS) / 86400000);
+    for (let i = quanti; i >= 0; i--) {
       const d = new Date(ora); d.setDate(ora.getDate() - i);
       const iso = awIsoDay(d);
       if (!dal) dal = iso;
@@ -28984,13 +29044,16 @@ function homeRefreshData() {
     const mese = { giorni: 0, kcal: 0, p: 0, c: 0, f: 0, z: 0, s: 0, acqua: 0, giorniAcqua: 0, acquaOk: 0, sedute: 0 };
     const settimane = [];
     let dal = null;
+    // v.324: quattro settimane da lunedi' a domenica, l'ultima fino a oggi.
+    const lunM = postaLunedi(ora);
     for (let k = 3; k >= 0; k--) {
       const t = { giorni: 0, kcal: 0, p: 0, c: 0, f: 0, z: 0, s: 0, acqua: 0, giorniAcqua: 0, acquaOk: 0, sedute: 0 };
       const sens = {};
       let da = null, a = null;
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date(ora); d.setDate(ora.getDate() - k * 7 - i);
+      for (let i = 0; i <= 6; i++) {
+        const d = new Date(lunM); d.setDate(lunM.getDate() - k * 7 + i);
         const iso = awIsoDay(d);
+        if (iso > oggi) break;
         if (!da) da = iso; a = iso; if (!dal) dal = iso;
         t.sedute += coachSeduteDel(iso).length;
         const g = st[iso];
@@ -29090,6 +29153,51 @@ function homeRefreshData() {
     if (mancano === 0 && d.getDay() === 0) return 'stasera';
     return 'domenica ' + dom.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
   }
+
+  // ── I dati del Coach sul server (v.324) ───────────────────
+  // Alle 22 il server (posta-sera) scrive il messaggio della sera con i dati
+  // che l'app gli lascia in coach_dati: gli stessi che prima mandava il
+  // pulsante (giornata, settimana da lunedi', mese nella quarta settimana,
+  // pesate per i grafici). Si caricano qualche secondo dopo l'ultimo
+  // salvataggio, all'apertura e quando l'app va in secondo piano, e solo se
+  // sono cambiati. Per ora solo per chi vede la Posta (piano 'dev').
+  let _coachSnapTimer = null, _coachSnapUltimo = '';
+  function coachSnapshotPianifica(ritardo) {
+    if (_coachSnapTimer) clearTimeout(_coachSnapTimer);
+    _coachSnapTimer = setTimeout(function() { _coachSnapTimer = null; coachSnapshotInvia(); }, typeof ritardo === 'number' ? ritardo : 6000);
+  }
+  async function coachSnapshotInvia() {
+    try {
+      if (typeof sbClient === 'undefined' || !sbClient) return;
+      const { data: { session } } = await sbClient.auth.getSession();
+      if (!session) return;
+      if ((await aiPianoCorrente()) !== 'dev') return;
+      const ora = new Date();
+      let primo = null; try { const f = awFirstTrainingDate(); primo = f ? awIsoDay(f) : null; } catch (e) {}
+      const dati = {
+        app: APP_VERSION,
+        giorno_iso: awIsoDay(ora),
+        primo_allenamento: primo,
+        capitoli: CHAPTER_NAMES.map(function(n, i) { return { nome: n, carico: Math.round(WEEK_LOADS[i] * 100), deload: i === DELOAD_WEEK }; }),
+        giorno: coachDatiGiornata(),
+        settimana: coachDatiSettimana(),
+        mese: postaSettimanaN(ora) % 4 === 0 ? coachDatiMese() : null,
+        peso: { resoconto: postaSeriePeso('resoconto'), settimana: postaSeriePeso('settimana'), mese: postaSeriePeso('mese') },
+        peso_obiettivo: (typeof weightGetGoal === 'function') ? weightGetGoal() : null
+      };
+      const testo = JSON.stringify(dati);
+      if (testo === _coachSnapUltimo) return;
+      const r = await sbClient.from('coach_dati').upsert({ user_id: session.user.id, dati: dati, aggiornato: new Date().toISOString() }, { onConflict: 'user_id' });
+      if (r && r.error) { awLog.warn('[coach_dati]', r.error.message); return; }
+      _coachSnapUltimo = testo;
+    } catch (e) { try { awLog.warn('[coach_dati]', e && e.message); } catch (x) {} }
+  }
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'hidden') {
+      if (_coachSnapTimer) { clearTimeout(_coachSnapTimer); _coachSnapTimer = null; coachSnapshotInvia(); }
+    } else coachSnapshotPianifica(3000);
+  });
+  setTimeout(function() { coachSnapshotPianifica(0); }, 15000);
   async function postaGenera(tipo) {
     if (_postaInCorso) return;
     _postaInCorso = tipo;
