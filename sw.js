@@ -1,4 +1,4 @@
-const CACHE_NAME = 'awakening-v321';
+const CACHE_NAME = 'awakening-v322';
 
 const STATIC_ASSETS = [
     './',
