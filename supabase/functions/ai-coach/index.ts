@@ -80,6 +80,7 @@ const TIPI: Record<string, { maxTokens: number; maxChars: number; immagini: numb
   scheda:    { maxTokens: 1500, maxChars: 60000, immagini: 0, pensiero: false, sistema: false, effort: "low" },     // analisi della scheda (porta il catalogo esercizi)
   foto:      { maxTokens: 3000, maxChars: 6000,  immagini: 1, pensiero: true,  sistema: false, effort: "low" },     // foto del pasto
   resoconto: { maxTokens: 8000, maxChars: 24000, immagini: 0, pensiero: true,  sistema: true,  effort: "medium" },  // resoconto della giornata (dati in JSON)
+  settimana: { maxTokens: 10000, maxChars: 30000, immagini: 0, pensiero: true, sistema: true,  effort: "medium" },  // resoconto della settimana (v.320)
 };
 
 // Istruzioni del resoconto serale. I dati arrivano dall'app in JSON e sono
@@ -103,11 +104,45 @@ Una o due tendenze dagli ultimi 7 giorni e dall'inizio: costanza, peso, record.
 🎯 PER DOMANI
 Da due a quattro azioni concrete, una per riga, che cominciano con "•": l'allenamento previsto domani (nome della scheda) o il riposo, e cosa fare con pasti e acqua.
 
-Il programma dell'app, per capire i dati: un ciclo di ${capitoli.length} capitoli, uno per settimana (${capitoli.map((c) => `${c.nome} ${c.carico}%` + (c.deload ? " con meta' delle serie" : "")).join(", ")} del carico di riferimento). Carichi, serie e ripetizioni li decide il programma: non proporre di cambiarli, al massimo ricorda la regola 2-per-2 (due sedute di fila con almeno due ripetizioni in piu' nell'ultima serie fanno salire il carico).
+${regoleCoach(capitoli)}
+Massimo 350 parole.`;
+}
+
+// v.320 — Il resoconto della settimana: gli ultimi 7 giorni (la domenica,
+// lunedi'-domenica), con le medie gia' calcolate dall'app e gli alimenti
+// della settimana sommati. Stesse regole del resoconto della sera. Prova del
+// 1/11/2026 su una settimana con 3 sedute, 5 giorni di pasti e 6 di acqua:
+// ~3.800 token in entrata e ~5.100 in uscita (~3.800 di ragionamento),
+// circa 0,3 centesimi, 22 secondi; tetto 10000.
+function promptSettimana(capitoli: Capitolo[]): string {
+  return `Sei il personal coach di chi usa l'app Awakening. A fine settimana scrivi un messaggio privato nella sua Posta: il resoconto degli ultimi 7 giorni e come migliorare la settimana prossima, su allenamento, alimentazione e idratazione, sempre legato al suo percorso dall'inizio.
+
+Ricevi i suoi dati reali in JSON. Usa SOLO quelli: non inventare pasti, allenamenti, pesi o numeri che non ci sono. Le medie sono gia' calcolate in "medie": usa quelle, non ricalcolarle. Se in alcuni giorni pasti o acqua non sono registrati, dillo una volta come invito a registrarli, senza rimproverare. I giorni di riposo fanno parte del programma: non trattarli come assenze.
+
+Struttura del messaggio, con questi titoli esatti, ognuno su una riga sua:
+👋 Una o due frasi: saluto con il nome e il senso della settimana.
+🏋️ ALLENAMENTO
+Sedute fatte rispetto a quelle del capitolo, come sono andati carichi e ripetizioni negli esercizi principali (non elencarli tutti), record della settimana, sensazioni dal diario. Carichi e ripetizioni si registrano durante la seduta nella pagina Allenamento; il diario e' la sensazione a fine seduta.
+🍽️ ALIMENTAZIONE
+Medie di calorie e proteine (poi carboidrati e grassi) rispetto all'obiettivo, e in quanti giorni ha registrato i pasti. Da "alimenti_della_settimana" di' cosa mangiare di piu' e cosa di meno nominando gli alimenti che ha registrato davvero, soprattutto quelli che tornano piu' spesso o pesano di piu': quali hanno portato zuccheri o grassi saturi, quali proteine, quali hanno Nutri-Score D o E o sono ultra-processati (NOVA 4).
+💧 IDRATAZIONE
+Media dei bicchieri rispetto all'obiettivo e in quanti giorni l'ha raggiunto.
+📈 IL TUO PERCORSO
+Una o due tendenze dall'inizio: costanza, peso (nella settimana e dal primo peso), record.
+🎯 LA PROSSIMA SETTIMANA
+Da tre a cinque azioni concrete, una per riga, che cominciano con "•": il capitolo e le sedute in programma (da "prossima_settimana"), e un obiettivo preciso per pasti e acqua.
+
+${regoleCoach(capitoli)}
+Massimo 450 parole.`;
+}
+
+// Parti comuni ai messaggi della Posta: il programma (descrive cio' che
+// l'app gia' fa, fonti accanto a CAPITOLI_RIPIEGO), il tono e i limiti.
+function regoleCoach(capitoli: Capitolo[]): string {
+  return `Il programma dell'app, per capire i dati: un ciclo di ${capitoli.length} capitoli, uno per settimana (${capitoli.map((c) => `${c.nome} ${c.carico}%` + (c.deload ? " con meta' delle serie" : "")).join(", ")} del carico di riferimento). Carichi, serie e ripetizioni li decide il programma: non proporre di cambiarli, al massimo ricorda la regola 2-per-2 (due sedute di fila con almeno due ripetizioni in piu' nell'ultima serie fanno salire il carico).
 
 Tono: un personal coach che lo segue da vicino. Dagli del tu, frasi brevi e concrete, caldo ma diretto; usa il maschile o il femminile come indicato nei dati. Grassetto solo con **due asterischi** e con misura; niente tabelle.
-Limiti: non fare diagnosi, non consigliare farmaci o integratori, non proporre diete estreme o digiuni. Se le calorie sono molto sotto l'obiettivo, invita a non scendere troppo. Non citare studi o percentuali che non sono nei dati.
-Massimo 350 parole.`;
+Limiti: non fare diagnosi, non consigliare farmaci o integratori, non proporre diete estreme o digiuni. Se le calorie sono molto sotto l'obiettivo, invita a non scendere troppo. Non citare studi o percentuali che non sono nei dati.`;
 }
 const MAX_MESSAGGI = 12;
 const MAX_IMG_B64 = 7_000_000;   // circa 5 MB di immagine: il limite dell'API
@@ -199,7 +234,8 @@ serve(async (req) => {
     if (!q.ok) {
       if (q.motivo === "limite") {
         const cosa = tipo === "chat" ? `i ${q.limite} messaggi` : tipo === "scheda" ? `le ${q.limite} analisi delle schede`
-          : tipo === "resoconto" ? (q.limite === 1 ? "il resoconto" : `i ${q.limite} resoconti`) : `le ${q.limite} foto dei pasti`;
+          : tipo === "resoconto" ? (q.limite === 1 ? "il resoconto" : `i ${q.limite} resoconti`)
+          : tipo === "settimana" ? (q.limite === 1 ? "il resoconto della settimana" : `i ${q.limite} resoconti della settimana`) : `le ${q.limite} foto dei pasti`;
         return errore("quota", `Hai usato ${cosa} di oggi. ${q.limite === 1 ? "Si ricarica" : "Si ricaricano"} a mezzanotte.`, 429, { _quota: quota });
       }
       if (q.motivo === "pausa") {
@@ -347,7 +383,7 @@ Non inventare percentuali, scale di carico o capitoli diversi da questi. In exer
       messages,
       output_config: { effort: regole.effort },
     };
-    if (regole.sistema) corpo.system = tipo === "resoconto" ? promptResoconto(capitoli) : systemPrompt;
+    if (regole.sistema) corpo.system = tipo === "resoconto" ? promptResoconto(capitoli) : tipo === "settimana" ? promptSettimana(capitoli) : systemPrompt;
     if (!regole.pensiero) corpo.thinking = { type: "disabled" };
     let response: Response;
     let data: any;
