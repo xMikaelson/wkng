@@ -380,6 +380,8 @@
         .quick-prompts { padding: 0 14px 8px; display: flex; gap: 6px; flex-wrap: wrap; flex-shrink: 0; }
         .qp { padding: 5px 10px; background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2); border-radius: 20px; font-size: 0.56rem; font-weight: 600; color: #818cf8; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
         .qp:active { background: rgba(99,102,241,0.18); }
+        /* v.316 — messaggi del Coach rimasti oggi */
+        .ai-quota { padding: 6px 14px 0; font-size: 0.56rem; font-weight: 700; color: #94a3b8; text-align: center; flex-shrink: 0; }
         .ai-input-row { padding: 8px 12px 12px; display: flex; gap: 8px; align-items: center; border-top: 1px solid rgba(255,255,255,0.04); flex-shrink: 0; }
         .ai-input { flex: 1; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 10px 14px; font-family: inherit; font-size: 0.7rem; color: #e2e8f0; font-weight: 500; outline: none; transition: border-color 0.2s; resize: none; max-height: 80px; line-height: 1.4; }
         .ai-input::placeholder { color: #64748b; }
@@ -4816,7 +4818,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '315';
+const APP_VERSION = '316';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -10363,28 +10365,22 @@ function protoEditorStartSave(proto, draft, weekIdx, saveBtn, box) {
         'Se non sei certo di qualcosa, non dirlo.\n\n' +
         'Max 300 parole totali.';
 
-    var AI_COACH_URL = 'https://trojbppshlfhrsimyxjl.supabase.co/functions/v1/ai-coach';
-    var ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyb2picHBzaGxmaHJzaW15eGpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0MzgzNTgsImV4cCI6MjA4NzAxNDM1OH0.rKKyXa7N5XoBnN2kmVZGS4Lr2kax1NuodbyHD_wGjK8';
-
-    fetch(AI_COACH_URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + ANON_KEY,
-            'apikey': ANON_KEY
-        },
-        body: JSON.stringify({
+    // v.316: passa da aiCoachCall come la chat e la foto del pasto, con il
+    // token dell'account; conta come "analisi della scheda" nei limiti.
+    aiCoachCall('scheda', {
             messages: [{ role: 'user', content: prompt }],
             // La lista definitiva sta in fondo alla risposta: con un tetto
             // stretto una risposta prolissa la troncava a meta', e gli
             // esercizi rimasti fuori sparivano dalla scheda.
             max_tokens: 1500
-        })
     })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
+    .then(function(r) {
+        var data = r.data;
         var text = '';
-        if (data && data.content && Array.isArray(data.content)) {
+        var msgUtente = aiErroreUtente(data);
+        if (msgUtente) {
+            text = '⚠️ ' + msgUtente + ' Puoi comunque salvare la tua lista.';
+        } else if (data && data.content && Array.isArray(data.content)) {
             data.content.forEach(function(block) { if (block.type === 'text') text += block.text; });
         } else if (data && data.error) {
             text = 'Errore dal Coach: ' + (data.error.message || JSON.stringify(data.error));
@@ -10561,7 +10557,12 @@ function protoEditorShowCoachResult(proto, draft, weekIdx, saveBtn, coachBox, co
             applyBtn.style.cursor = 'not-allowed';
             applyBtn.title = 'Il Coach non ha prodotto una lista nel formato atteso. Riprova l\'analisi.';
         }
-        actionsDiv.appendChild(applyBtn);
+        // v.316: se il Coach non ha risposto (limite del giorno, niente
+        // account, rete) il testo e' un avviso che comincia con ⚠️ e non c'e'
+        // nessuna lista da cercare: "Lista non rilevata — riprova" diceva di
+        // riprovare anche quando l'analisi di oggi era finita. Resta solo
+        // "Tieni la mia lista".
+        if (suggestedExercises.length > 0 || coachText.indexOf('⚠️') !== 0) actionsDiv.appendChild(applyBtn);
 
         var keepBtn = document.createElement('button');
         keepBtn.className = 'proto-coach-keep';
@@ -19058,19 +19059,17 @@ async function aiFoodAnalyze() {
             : '';
         const prompt = 'Analizza questa immagine di cibo. Identifica OGNI componente separato nel piatto. Rispondi SOLO con JSON valido:\n{"components":[{"name":"nome componente in italiano","keywords":["parola1","parola2"],"grams":grammi stimati,"kcal":kcal stimate,"protein":proteine g,"carbs":carboidrati g,"fat":grassi g}]}\nEsempio per piatto con pesce e riso: components con due oggetti separati. Ogni name deve essere 1-2 parole.' + hintBlock;
 
-        const res = await fetch(SUPABASE_FUNCTION_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'apikey': SUPABASE_ANON_KEY },
-            body: JSON.stringify({
+        // v.316: account e limiti in aiCoachCall; conta come "foto del pasto".
+        const { data } = await aiCoachCall('foto', {
                 messages: [{ role: 'user', content: [
                     { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
                     { type: 'text', text: prompt }
                 ]}],
                 max_tokens: 600
-            })
         });
-        const data = await res.json();
-        const text = (data.content || []).map(b => b.text || '').join('').trim();
+        const msgUtente = aiErroreUtente(data);
+        if (msgUtente) { const err = new Error(msgUtente); err.perUtente = true; throw err; }
+        const text = ((data && data.content) || []).map(b => b.text || '').join('').trim();
         // Pulizia robusta: rimuove markdown, asterischi, trova il blocco JSON
         let clean = text
             .replace(/```json/gi, '').replace(/```/g, '')  // backtick blocks
@@ -19113,7 +19112,8 @@ async function aiFoodAnalyze() {
             e.message.toLowerCase().includes('nessun componente')
         );
         const hintFilled = (document.getElementById('ai-food-hint')?.value || '').trim().length > 0;
-        const msg = isFoodNotFound
+        const msg = e.perUtente ? '🤖 ' + e.message
+            : isFoodNotFound
             ? (hintFilled
                 ? '🍽️ Nessun alimento riconosciuto — prova con una foto più nitida'
                 : '🍽️ Nessun alimento riconosciuto — descrivi il piatto nel campo qui sotto e riprova')
@@ -28273,6 +28273,78 @@ function homeRefreshData() {
   let aiLpActive = false; let aiLpFired = false;
   const AI_HISTORY_KEY = 'awakening_ai_history';
 
+  // v.316 — Ogni richiesta all'AI (chat, analisi della scheda, foto del
+  // pasto) porta il token dell'account: la funzione ai-coach risponde solo
+  // agli account e conta gli usi del giorno per tipo, con i limiti del piano
+  // (supabase/migrations/20261101_limiti_coach_ai.sql). Prima rispondeva a
+  // chiunque, e la chiave pubblica scritta qui bastava a usarla senza limiti.
+  // Torna sempre { res, data }; gli errori di accesso, di limite e di
+  // richiesta hanno in data.error.message un testo gia' pronto per l'utente.
+  const AI_ERR_UTENTE = ['login', 'quota', 'pausa', 'richiesta', 'server'];
+  function aiErroreUtente(data) {
+    return (data && data.error && AI_ERR_UTENTE.indexOf(data.error.type) !== -1) ? data.error.message : '';
+  }
+  async function aiCoachCall(tipo, body) {
+    let user_jwt = null;
+    try {
+      if (typeof sbClient !== 'undefined' && sbClient) {
+        const { data: { session } } = await sbClient.auth.getSession();
+        if (session) user_jwt = session.access_token;
+      }
+    } catch(e) {}
+    if (!user_jwt) {
+      aiQuotaShow(null);
+      return { res: null, data: { error: { type: 'login', message: 'Per usare il Coach serve un account: accedi dal Profilo e riprova.' } } };
+    }
+    const res = await fetch(SUPABASE_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'apikey': SUPABASE_ANON_KEY },
+      body: JSON.stringify(Object.assign({}, body, { tipo: tipo, user_jwt: user_jwt }))
+    });
+    let data = null;
+    try { data = await res.json(); } catch(e) { data = { error: { type: 'server', message: 'Risposta non valida dal Coach (' + res.status + '): riprova tra poco.' } }; }
+    if (data && data._quota && data._quota.tipo === 'chat') aiQuotaShow(data._quota);
+    return { res: res, data: data };
+  }
+  // Riga sopra il campo della chat: quanti messaggi restano oggi.
+  function aiQuotaShow(q) {
+    const el = document.getElementById('ai-quota');
+    if (!el) return;
+    let t = '';
+    if (!q) t = 'Il Coach si usa con un account: accedi dal Profilo.';
+    else if (q.piano === 'dev') t = 'Account sviluppatore · nessun limite';
+    else if (q.limite == null) t = '';
+    else {
+      const resto = Math.max(0, q.limite - (q.usati || 0));
+      t = resto === 0
+        ? 'Messaggi di oggi finiti · si ricaricano a mezzanotte'
+        : 'Oggi ' + (resto === 1 ? 'ti resta 1 messaggio' : 'ti restano ' + resto + ' messaggi') + ' su ' + q.limite;
+    }
+    el.textContent = t;
+    el.style.display = t ? '' : 'none';
+  }
+  // All'apertura della chat: piano e messaggi usati oggi, letti dalle
+  // tabelle (ognuno vede solo i propri). Il giorno e' quello italiano, come
+  // sul server.
+  async function aiQuotaRefresh() {
+    try {
+      if (typeof sbClient === 'undefined' || !sbClient) return;
+      const { data: { session } } = await sbClient.auth.getSession();
+      if (!session) { aiQuotaShow(null); return; }
+      const uid = session.user.id;
+      const oggi = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' });
+      const [pi, us] = await Promise.all([
+        sbClient.from('ai_piani').select('piano').eq('user_id', uid).maybeSingle(),
+        sbClient.from('ai_uso').select('usati').eq('user_id', uid).eq('giorno', oggi).eq('tipo', 'chat').maybeSingle()
+      ]);
+      if (pi.error || us.error) return;
+      const piano = (pi.data && pi.data.piano) || 'free';
+      const li = await sbClient.from('ai_limiti').select('al_giorno').eq('piano', piano).eq('tipo', 'chat').maybeSingle();
+      if (li.error) return;
+      aiQuotaShow({ tipo: 'chat', piano: piano, limite: li.data ? li.data.al_giorno : null, usati: (us.data && us.data.usati) || 0 });
+    } catch(e) {}
+  }
+
   function aiLongPressStart(e) {
     // NO e.preventDefault() — would block click on iOS
     if (aiPillState !== 'locked') { navSwitch('workout'); return; }
@@ -28333,6 +28405,7 @@ function homeRefreshData() {
     backdrop.classList.add('open');
     aiPillState = 'open';
     aiRenderHistory();
+    aiQuotaRefresh();
     setTimeout(() => document.getElementById('ai-input').focus(), 400);
   }
 
@@ -28383,24 +28456,10 @@ function homeRefreshData() {
     aiAppendMsg('user', text);
     const typingId = aiAddTyping();
     try {
-      // Get current user JWT to send protocols context
-      let user_jwt = null;
-      try {
-        const { data: { session } } = await sbClient.auth.getSession();
-        if (session) user_jwt = session.access_token;
-      } catch(e) {}
-
-      const res = await fetch(SUPABASE_FUNCTION_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-          'apikey': SUPABASE_ANON_KEY
-        },
-        body: JSON.stringify({
+      // v.316: account, conteggio e limiti in aiCoachCall
+      const { res, data } = await aiCoachCall('chat', {
           messages: [{ role: 'user', content: text }],
           max_tokens: 2000,
-          user_jwt,
           schedule_context: {
             dayAssignments: APP.dayAssignments,
             chipStates: APP.chipStates,
@@ -28425,12 +28484,13 @@ function homeRefreshData() {
               };
             })()
           }
-        })
       });
 
-      let data;
-      try { data = await res.json(); } catch(e) { aiAppendMsg('ai', 'Risposta non valida (status ' + res.status + ')'); document.getElementById('ai-send').disabled = false; return; }
-      if (!res.ok) { aiAppendMsg('ai', 'Errore ' + res.status + ': ' + JSON.stringify(data)); document.getElementById('ai-send').disabled = false; return; }
+      // Senza account, limite del giorno raggiunto, richiesta respinta: il
+      // messaggio e' gia' scritto per l'utente.
+      const msgUtente = aiErroreUtente(data);
+      if (msgUtente) { aiRemoveTyping(typingId); aiAppendMsg('ai', msgUtente); document.getElementById('ai-send').disabled = false; return; }
+      if (!res || !res.ok) { aiRemoveTyping(typingId); aiAppendMsg('ai', 'Errore ' + (res ? res.status : '') + ': ' + JSON.stringify(data)); document.getElementById('ai-send').disabled = false; return; }
 
       let reply = data.content?.[0]?.text || 'Risposta vuota: ' + JSON.stringify(data);
 
@@ -28452,6 +28512,8 @@ function homeRefreshData() {
         reply += '\n\n⚠️ Risposta troncata per lunghezza — riprova la richiesta.';
       }
 
+      // I puntini "sta scrivendo" restavano sotto la risposta: si tolgono qui.
+      aiRemoveTyping(typingId);
       aiAppendMsg('ai', reply, modifications);
 
     } catch(e) {
@@ -28785,6 +28847,7 @@ function homeRefreshData() {
         <div class="qp" onclick="aiSendQuick(this)">Creatina: quando assumerla?</div>
         <div class="qp" onclick="aiSendQuick(this)">Migliora la mia progressione</div>
     </div>
+    <div class="ai-quota" id="ai-quota" style="display:none"></div>
     <div class="ai-input-row">
         <textarea class="ai-input" id="ai-input" placeholder="Chiedi al tuo coach..." rows="1"
             onkeydown="aiHandleKey(event)" oninput="aiAutoResize(this)"></textarea>
