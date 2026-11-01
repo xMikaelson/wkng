@@ -1061,15 +1061,25 @@
         #page-profile { padding-top: 0; }
 
         /* ─── Profilo (identico preview) ─── */
-        .profile-hero { padding: max(env(safe-area-inset-top), 44px) 16px 16px; text-align:center; }
-        .profile-avatar { width:72px; height:72px; border-radius:22px; background:linear-gradient(135deg,rgba(var(--pr,52,211,153),0.3),rgba(var(--ac,99,102,241),0.3)); border:2px solid rgba(var(--pr,52,211,153),0.3); display:flex; align-items:center; justify-content:center; font-size:2rem; margin:0 auto 12px; font-weight:800; }
-        .profile-name { font-size:1.2rem; font-weight:800; margin-bottom:3px; }
-        .profile-sub { font-size:0.65rem; color:#94a3b8; }
-        .profile-chapter { display:inline-block; margin-top:8px; padding:4px 12px; border-radius:20px; background:rgba(var(--pr,52,211,153),0.12); border:1px solid rgba(var(--pr,52,211,153),0.25); color:var(--primary); font-size:0.58rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; }
+        /* v.326: tessera colorata (aurora del capitolo, bannerPaint) e riquadri
+           nello stile di Progressi (.pmenu-card). */
+        .profile-hero { padding: max(env(safe-area-inset-top), 44px) 16px 12px; }
+        .profile-card { position:relative; overflow:hidden; isolation:isolate; border-radius:18px; padding:16px; display:flex; gap:14px; align-items:center; background:#050d1a; }
+        .profile-avatar { position:relative; z-index:3; flex-shrink:0; width:58px; height:58px; border-radius:18px; background:rgba(255,255,255,0.14); border:1px solid rgba(255,255,255,0.25); display:flex; align-items:center; justify-content:center; font-size:1.7rem; font-weight:900; color:#fff; }
+        .profile-card-txt { position:relative; z-index:3; min-width:0; }
+        .profile-name { font-size:1.2rem; font-weight:900; color:#fff; text-shadow:0 0 10px rgba(255,255,255,0.35); overflow-wrap:anywhere; }
+        .profile-sub { font-size:0.58rem; color:rgba(255,255,255,0.82); margin-top:2px; }
+        .profile-card.ink-dark .profile-avatar { background:rgba(28,25,23,0.12); border-color:rgba(28,25,23,0.25); color:#1c1917; }
+        .profile-card.ink-dark .profile-name { color:#1c1917; text-shadow:0 1px 0 rgba(255,255,255,0.35); }
+        .profile-card.ink-dark .profile-sub { color:rgba(28,25,23,0.75); }
         .profile-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:0 16px 16px; }
-        .profile-stat { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:12px; text-align:center; }
-        .profile-stat-val { font-size:1.4rem; font-weight:800; color:var(--primary); display:block; }
-        .profile-stat-lbl { font-size:0.5rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.08em; display:block; margin-top:2px; }
+        .profile-stats .pmenu-card { min-height:0; padding:12px 6px 10px; cursor:default; }
+        .profile-stats .pmenu-icon { width:34px; height:34px; font-size:16px; border-radius:10px; }
+        .profile-stats .pmenu-val { font-size:1.35rem; margin-bottom:4px; }
+        .profile-stat-lbl { position:relative; z-index:1; font-size:0.5rem; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#cbd5e1; }
+        .profile-stat-sub { position:relative; z-index:1; font-size:0.48rem; color:#64748b; margin-top:3px; line-height:1.3; }
+        #page-profile .settings-row { padding:9px 14px 9px 10px; border:1px solid rgba(255,255,255,0.05); }
+        #page-profile .settings-row-icon { width:32px; height:32px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; background:rgba(var(--pr,52,211,153),0.1); border:1px solid rgba(var(--pr,52,211,153),0.2); font-size:0.95rem; }
         .settings-list { padding:0 16px; }
         .settings-group-title { font-size:0.52rem; color:#64748b; text-transform:uppercase; letter-spacing:0.12em; margin-bottom:6px; font-weight:700; }
         .settings-row { display:flex; justify-content:space-between; align-items:center; padding:12px 14px; background:rgba(255,255,255,0.03); border-radius:10px; margin-bottom:4px; cursor:pointer; transition:background 0.15s; }
@@ -4303,16 +4313,23 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 <!-- ══════════ PAGE: PROFILO ══════════ -->
 <div id="page-profile" class="page">
+  <!-- v.326: tessera nei colori del capitolo (come il banner della Home) e
+       tre riquadri sul percorso dall'inizio. Capitolo, settimana e streak
+       sono gia' in Home e in Progressi: qui non si ripetono. -->
   <div class="profile-hero">
-    <div class="profile-avatar" id="profile-avatar">💪</div>
-    <div class="profile-name" id="profile-name">Agent</div>
-    <div class="profile-sub" id="profile-sub">In allenamento dal —</div>
-    <div class="profile-chapter" id="profile-chapter">Chapter 1 · Activation</div>
+    <div class="profile-card" id="profile-card">
+      <div class="aurora-fx" aria-hidden="true"><i class="au1"></i><i class="au2"></i><i class="au3"></i><i class="au4"></i></div><div class="aurora-scrim"></div>
+      <div class="profile-avatar" id="profile-avatar">💪</div>
+      <div class="profile-card-txt">
+        <div class="profile-name" id="profile-name">Agent</div>
+        <div class="profile-sub" id="profile-sub">Non ancora iniziato</div>
+      </div>
+    </div>
   </div>
   <div class="profile-stats">
-    <div class="profile-stat"><span class="profile-stat-val" id="profile-days">0</span><span class="profile-stat-lbl">Giorni</span></div>
-    <div class="profile-stat"><span class="profile-stat-val" id="profile-workouts">0</span><span class="profile-stat-lbl">Sedute</span></div>
-    <div class="profile-stat"><span class="profile-stat-val" id="profile-streak">0🔥</span><span class="profile-stat-lbl">Streak</span></div>
+    <div class="pmenu-card profile-stat"><div class="pmenu-icon-wrap"><div class="pmenu-icon">🏋️</div></div><div class="pmenu-val" id="profile-workouts">0</div><div class="profile-stat-lbl">Sedute</div><div class="profile-stat-sub" id="profile-workouts-sub">&nbsp;</div></div>
+    <div class="pmenu-card profile-stat"><div class="pmenu-icon-wrap"><div class="pmenu-icon">🏆</div></div><div class="pmenu-val" id="profile-records">0</div><div class="profile-stat-lbl">Record</div><div class="profile-stat-sub" id="profile-records-sub">esercizi con record</div></div>
+    <div class="pmenu-card profile-stat"><div class="pmenu-icon-wrap"><div class="pmenu-icon">⚖️</div></div><div class="pmenu-val" id="profile-weight">—</div><div class="profile-stat-lbl">Kg</div><div class="profile-stat-sub" id="profile-weight-sub">nessuna pesata</div></div>
   </div>
   <div class="settings-list">
     <div class="settings-row" role="button" tabindex="0" aria-label="Posta" onclick="postaApri()" id="settings-row-posta" style="display:none;margin-bottom:14px">
@@ -4873,7 +4890,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '325';
+const APP_VERSION = '326';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -23328,8 +23345,6 @@ function buildProfiloPage() {
     // del profilo si leggeva "Agente Agente".
     // v.313: "Agent" e il nome scritto dall'utente (awNome), se c'e'.
     const username = awNomeAgente((document.getElementById('dash-username')?.textContent || '').trim());
-    const chapterNames = CHAPTER_NAMES;
-    const currentChapter = chapterNames[APP.selectedViewWeek || 0] || 'Activation';
     // I tre riquadri e la riga "Dal" leggono il diario delle sedute, non piu'
     // APP.startDate: quel campo veniva scritto solo marcando a mano una chip,
     // quindi chi si allenava dalla pagina Allenamento restava per sempre a
@@ -23341,23 +23356,42 @@ function buildProfiloPage() {
 
     const el = id => document.getElementById(id);
     if (el('profile-avatar'))   el('profile-avatar').textContent   = username ? username[0].toUpperCase() : '💪';
+    // v.326: la tessera prende i colori del capitolo, come il banner della Home
+    try { bannerPaint(el('profile-card'), (APP.selectedViewWeek !== undefined && APP.selectedViewWeek !== null) ? APP.selectedViewWeek : 0); } catch (e) {}
     if (el('profile-name'))     el('profile-name').textContent     = username ? 'Agent ' + username : 'Agent';
-    const startDateDisplay = firstTraining
-        ? firstTraining.toLocaleDateString('it-IT', {day:'2-digit',month:'short',year:'numeric'})
-        : '';
     // "Non ancora iniziato" solo se non risulta nessuna seduta. Se le sedute
     // ci sono ma la data no (stato importato senza storico) si dice quello,
     // invece di dichiarare fermo un atleta che si sta allenando.
+    // v.326: "In allenamento dal 5 ottobre · 31 giorni": i giorni, che prima
+    // avevano un riquadro, stanno qui.
+    const dalLungo = firstTraining ? firstTraining.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }) : '';
     if (el('profile-sub'))      el('profile-sub').textContent      = firstTraining
-        ? 'Dal ' + startDateDisplay
+        ? 'In allenamento dal ' + dalLungo + ' · ' + days + (days === 1 ? ' giorno' : ' giorni')
         : (sessions > 0 ? 'Prima data non registrata' : 'Non ancora iniziato');
-    if (el('profile-chapter'))  el('profile-chapter').textContent  = 'Chapter ' + (APP.selectedViewWeek+1) + ' · ' + currentChapter;
-    if (el('profile-days'))     el('profile-days').textContent     = days;
+    // Riquadri sul percorso dall'inizio. Capitolo, settimana e streak sono
+    // gia' in Home e in Progressi (v.326: non si ripetono qui).
     if (el('profile-workouts')) el('profile-workouts').textContent = sessions;
-    // Striscia di SEDUTE consecutive previste dal protocollo. Il riquadro
-    // copiava il widget Home, che conta settimane complete: due metriche
-    // diverse con la stessa etichetta.
-    if (el('profile-streak'))   el('profile-streak').textContent   = awSessionStreak() + '🔥';
+    if (el('profile-workouts-sub')) {
+        let sett = 0;
+        try { const lun = awIsoDay(postaLunedi(new Date())); sett = (APP.sessionLog || []).filter(function(x) { return x && x.d >= lun; }).length; } catch (e) {}
+        el('profile-workouts-sub').textContent = sett ? '+' + sett + ' questa settimana' : 'nessuna questa settimana';
+    }
+    // Record: come la box di Progressi, un esercizio conta una volta (prNames).
+    let nRecord = 0; try { nRecord = prNames().length; } catch (e) {}
+    if (el('profile-records')) el('profile-records').textContent = nRecord;
+    if (el('profile-records-sub')) el('profile-records-sub').textContent = nRecord === 1 ? 'esercizio con record' : 'esercizi con record';
+    // Peso: differenza fra l'ultima pesata e la prima.
+    const pesate = (typeof weightGetLog === 'function' ? weightGetLog() : []) || [];
+    if (el('profile-weight')) {
+        if (pesate.length >= 2) {
+            const diff = Math.round((parseFloat(pesate[pesate.length - 1].kg) - parseFloat(pesate[0].kg)) * 10) / 10;
+            el('profile-weight').textContent = (diff > 0 ? '+' : '') + String(diff).replace('.', ',');
+            if (el('profile-weight-sub')) el('profile-weight-sub').textContent = 'dal primo peso';
+        } else {
+            el('profile-weight').textContent = pesate.length ? String(pesate[0].kg).replace('.', ',') : '—';
+            if (el('profile-weight-sub')) el('profile-weight-sub').textContent = pesate.length ? 'una sola pesata' : 'nessuna pesata';
+        }
+    }
     // Aggancia il listener dello slider dimensione testo (idempotente)
     if (typeof awFontScaleInitSlider === 'function') awFontScaleInitSlider();
     // Footer versione: anno dinamico + numero versione dalla costante APP_VERSION
