@@ -269,9 +269,12 @@
 
         /* ── AI Pill ── */
         .nav-ai-slot { flex: 0 0 52px; position: relative; display: flex; align-items: center; justify-content: center; }
+        /* v.321: bottom 0, non 2px: il tondo della chat ha la stessa misura
+           del pulsante centrale (42px) e ora gli sta sopra preciso. Con 2px
+           in piu' restava fuori il bordo basso del pulsante, verde. */
         .ai-pill {
             position: absolute;
-            bottom: 2px; left: 50%;
+            bottom: 0; left: 50%;
             transform: translateX(-50%) scale(0);
             opacity: 0;
             pointer-events: none;
@@ -325,16 +328,26 @@
         }
         .ai-pill.open::after { content: ''; position: absolute; inset: -2px; border-radius: 50%; background: transparent; border: 1px solid rgba(99,102,241,0.3); }
         #nav-center-btn.pressing { box-shadow: 0 0 0 8px rgba(99,102,241,0.2), 0 4px 14px rgba(99,102,241,0.5); }
+        /* Chat aperta: il pulsante centrale sparisce sotto il tondo della chat,
+           anche il suo alone verde che sporgeva intorno. */
+        #nav-center-btn.sotto-chat { opacity: 0; box-shadow: none; transition: opacity 0.2s ease; }
 
         /* ── AI Chat Panel ── */
         .ai-backdrop { position: fixed; top: 0; bottom: 0; left: 0; right: 0; margin-left: auto; margin-right: auto; max-width: 480px; background: rgba(0,0,0,0.5); z-index: 1080; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
         .ai-backdrop.open { opacity: 1; pointer-events: all; }
+        /* v.321: la barra sta a 10px + l'area sicura in basso (iPhone senza
+           tasto: 34px), il pannello stava a 80px senza l'area sicura. Sul
+           telefono la barra copriva i 18px piu' bassi del pannello, cioe'
+           il campo dove si scrive, e il pannello le stava sotto (z-index
+           1090 contro 1100). Ora parte 16px sopra la barra su ogni telefono
+           e non sale oltre la barra di stato. */
         .ai-panel {
             position: fixed;
             left: 50%; transform: translateX(-50%) translateY(110%);
-            bottom: calc(var(--nav-h) + 8px);
+            bottom: calc(var(--nav-h) + 8px + var(--sab));
             width: calc(100% - 24px); max-width: 420px;
             height: 68vh;
+            max-height: calc(100vh - var(--nav-h) - 16px - var(--sab) - max(env(safe-area-inset-top), 44px));
             background: #0d1424;
             border: 1px solid rgba(99,102,241,0.25);
             border-radius: 24px;
@@ -385,7 +398,11 @@
         .posta-intro { font-size:0.68rem; color:#cbd5e1; line-height:1.5; margin-bottom:12px; }
         .posta-genera { width:100%; padding:13px; border-radius:12px; border:1px solid rgba(var(--pr,52,211,153),0.45); background:rgba(var(--pr,52,211,153),0.14); color:var(--primary); font-family:inherit; font-size:0.72rem; font-weight:800; cursor:pointer; }
         .posta-genera:disabled { opacity:0.6; cursor:default; }
-        .posta-genera.sett { margin-top:8px; border-color:rgba(255,255,255,0.16); background:rgba(255,255,255,0.05); color:#e2e8f0; }
+        .posta-prova { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:6px; margin-top:10px; font-size:0.55rem; color:#64748b; }
+        .posta-chip { width:auto; flex:0 0 auto; padding:6px 14px; border-radius:999px; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.04); color:#cbd5e1; font-family:inherit; font-size:0.58rem; font-weight:700; cursor:pointer; }
+        .posta-chip:disabled { opacity:0.5; cursor:default; }
+        .posta-peso { margin:8px 0 10px; padding:10px 10px 6px; border-radius:12px; background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.18); }
+        .posta-peso-tit { font-size:0.56rem; font-weight:800; color:#a5b4fc; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:6px; }
         .posta-nota { font-size:0.55rem; color:#64748b; line-height:1.5; margin:8px 0 16px; text-align:center; }
         .posta-item { display:flex; gap:10px; align-items:flex-start; padding:12px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); margin-bottom:8px; cursor:pointer; }
         .posta-item.nuovo { border-color:rgba(var(--pr,52,211,153),0.35); background:rgba(var(--pr,52,211,153),0.06); }
@@ -4846,7 +4863,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '320';
+const APP_VERSION = '321';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -5408,6 +5425,7 @@ function awAwake() {
         try { st = JSON.parse(sv.state); } catch (e) { showToast('Salvataggio illeggibile', 'error'); return; }
         try { st.nutritionLogs = nutGetAllLogs(); } catch (e) {}
         try { st.waterLogs = waterGetAllLogs(); } catch (e) {}
+        try { st.coachGiorni = coachStoricoGet(); } catch (e) {}
         if (awSex()) st.sex = awSex();
         if (awNome()) st.nome = awNome();
         // Prima il server: se non risponde non si tocca niente, altrimenti al
@@ -5488,6 +5506,7 @@ function saveState() {
             nutFavorites: APP.nutFavorites || [],
             nutritionLogs: nutGetAllLogs(),
             waterLogs: waterGetAllLogs(),
+            coachGiorni: (function() { try { return coachStoricoAggiorna(); } catch (e) { try { return coachStoricoGet(); } catch (x) { return undefined; } } })(),
             loadHistory: APP.loadHistory || [],
             sessionLog: APP.sessionLog || [],
             diary: APP.diary || [],
@@ -7981,6 +8000,8 @@ async function onLoginSuccess(user, usernameOverride = null) {
     // v.320: l'acqua degli ultimi 7 giorni salvata sull'account, qualunque
     // dei due stati vinca qui sotto (per ogni giorno il numero piu' alto).
     if (supaState && supaState.waterLogs) { try { waterRestoreLogs(supaState.waterLogs); waterUpdateUI(); } catch (e) {} }
+    // v.321: lo storico dei giorni del Coach (pasti e acqua, 35 giorni).
+    if (supaState && supaState.coachGiorni) { try { coachStoricoRipristina(supaState.coachGiorni); } catch (e) {} }
     if (stateSource) {
         const s = stateSource;
         APP.isUnlocked = s.isUnlocked || false;
@@ -17454,9 +17475,9 @@ function waterGetAllLogs(tutti) {
     if (tutti) {
         for (let i = 0; i < localStorage.length; i++) {
             const k = localStorage.key(i);
-            if (!k || k.indexOf(WATER_KEY) !== 0) continue;
+            if (!k || k.indexOf('aw_water_') !== 0) continue;
             const n = parseInt(localStorage.getItem(k) || '0', 10);
-            if (n > 0) out[k.slice(WATER_KEY.length)] = n;
+            if (n > 0) out[k.slice('aw_water_'.length)] = n;
         }
         return out;
     }
@@ -17464,7 +17485,7 @@ function waterGetAllLogs(tutti) {
     for (let i = 0; i <= 6; i++) {
         const d = new Date(oggi); d.setDate(oggi.getDate() - i);
         const iso = awIsoDay(d);
-        const n = parseInt(localStorage.getItem(WATER_KEY + iso) || '0', 10);
+        const n = parseInt(localStorage.getItem('aw_water_' + iso) || '0', 10);
         if (n > 0) out[iso] = Math.min(n, 20);
     }
     return out;
@@ -17482,8 +17503,8 @@ function waterRestoreLogs(logs) {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(iso) || iso < limIso) return;
         const n = parseInt(logs[iso], 10);
         if (!(n > 0)) return;
-        const loc = parseInt(localStorage.getItem(WATER_KEY + iso) || '0', 10) || 0;
-        if (n > loc) localStorage.setItem(WATER_KEY + iso, String(Math.min(n, 20)));
+        const loc = parseInt(localStorage.getItem('aw_water_' + iso) || '0', 10) || 0;
+        if (n > loc) localStorage.setItem('aw_water_' + iso, String(Math.min(n, 20)));
     });
 }
 
@@ -25858,7 +25879,8 @@ function finishOnboarding() {
         // v.320: anche pasti e acqua, altrimenti questa scrittura li toglieva
         // dall'account fino al salvataggio successivo.
         nutritionLogs: nutGetAllLogs(),
-        waterLogs: waterGetAllLogs()
+        waterLogs: waterGetAllLogs(),
+        coachGiorni: coachStoricoGet()
     });
     // Vai alla homepage prima, poi avvia la sequenza
     const _results = document.getElementById('results');
@@ -26371,6 +26393,11 @@ function weightRenderChart(log, goal) {
     if (weightChart) { weightChart.destroy(); weightChart = null; }
 
     const ctx  = canvas.getContext('2d');
+    weightChart = new Chart(ctx, weightChartConfig(ctx, labels, data, goal, minVal, maxVal));
+}
+// v.321: la stessa configurazione serve al grafico del peso nei messaggi
+// del Coach (postaDisegnaPeso), cosi' i due grafici restano uguali.
+function weightChartConfig(ctx, labels, data, goal, minVal, maxVal) {
     const grad = ctx.createLinearGradient(0, 0, 0, 140);
     grad.addColorStop(0, 'rgba(99,102,241,0.25)');
     grad.addColorStop(1, 'rgba(99,102,241,0)');
@@ -26402,7 +26429,7 @@ function weightRenderChart(log, goal) {
         });
     }
 
-    weightChart = new Chart(ctx, {
+    return {
         type: 'line',
         data: { labels, datasets },
         options: {
@@ -26424,7 +26451,7 @@ function weightRenderChart(log, goal) {
                 y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#475569', font: { size: 9 }, callback: v => v + ' kg' }, min: minVal, max: maxVal }
             }
         }
-    });
+    };
 }
 
 // ══════════ EXERCISE LOAD CHART ══════════
@@ -28536,13 +28563,57 @@ function homeRefreshData() {
   }
   // Testo del Coach: grassetto con **, titoli di sezione (emoji + parole in
   // maiuscolo) evidenziati, a capo mantenuti. Tutto passa da escapeHTML.
-  function postaFormatta(t) {
-    return String(t || '').split('\n').map(function(riga) {
+  // v.321: grafico = HTML del grafico del peso, messo subito sotto il titolo
+  // "📈 IL TUO PERCORSO" (o in fondo, se il titolo manca).
+  function postaFormatta(t, grafico) {
+    let messo = !grafico;
+    const html = String(t || '').split('\n').map(function(riga) {
       const r = riga.trim();
       let h = escapeHTML(r).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-      if (/^\S{1,3}\s+[A-ZÀ-Ý' ]{4,}$/.test(r)) return '<div class="posta-h">' + h + '</div>';
+      if (/^\S{1,3}\s+[A-ZÀ-Ý' ]{4,}$/.test(r)) {
+        let out = '<div class="posta-h">' + h + '</div>';
+        if (!messo && /PERCORSO/.test(r)) { out += grafico; messo = true; }
+        return out;
+      }
       return r ? '<div>' + h + '</div>' : '<div style="height:6px"></div>';
     }).join('');
+    return messo ? html : html + grafico;
+  }
+
+  // ── Grafico del peso nei messaggi (v.321) ─────────────────
+  // Le pesate si salvano nel messaggio quando arriva: il grafico resta
+  // quello di quella sera anche se dopo si aggiungono o tolgono pesate.
+  const POSTA_GIORNI_PESO = { resoconto: 30, settimana: 30, mese: 90 };
+  function postaSeriePeso(tipo) {
+    const log = ((typeof weightGetLog === 'function' ? weightGetLog() : []) || [])
+      .filter(function(e) { return e && typeof e.date === 'string' && !isNaN(parseFloat(e.kg)); })
+      .map(function(e) { return { d: e.date, kg: parseFloat(e.kg) }; })
+      .sort(function(a, b) { return a.d < b.d ? -1 : a.d > b.d ? 1 : 0; });
+    const giorni = POSTA_GIORNI_PESO[tipo] || 30;
+    const lim = new Date(); lim.setDate(lim.getDate() - giorni);
+    let serie = log.filter(function(e) { return e.d >= awIsoDay(lim); });
+    let etichetta = giorni >= 90 ? 'ultimi 3 mesi' : 'ultimi ' + giorni + ' giorni';
+    if (serie.length < 2) { serie = log.slice(-5); etichetta = 'ultime pesate'; }
+    return serie.length >= 2 ? { serie: serie, etichetta: etichetta } : null;
+  }
+  function postaGraficoHtml(m) {
+    if (!m || !Array.isArray(m.peso) || m.peso.length < 2 || typeof Chart === 'undefined') return '';
+    return '<div class="posta-peso"><div class="posta-peso-tit">⚖️ Il tuo peso · ' + escapeHTML(m.pesoEtichetta || '') + '</div>' +
+      '<canvas id="posta-peso-chart"></canvas></div>';
+  }
+  let _postaGrafico = null;
+  function postaDisegnaPeso(m) {
+    if (_postaGrafico) { try { _postaGrafico.destroy(); } catch (e) {} _postaGrafico = null; }
+    const canvas = document.getElementById('posta-peso-chart');
+    if (!canvas || typeof Chart === 'undefined' || !m || !Array.isArray(m.peso)) return;
+    const kg = m.peso.map(function(e) { return e.kg; });
+    const goal = typeof m.pesoObiettivo === 'number' ? m.pesoObiettivo : null;
+    const tutti = goal !== null ? kg.concat([goal]) : kg;
+    const ctx = canvas.getContext('2d');
+    try {
+      _postaGrafico = new Chart(ctx, weightChartConfig(ctx, m.peso.map(function(e) { return weightFormatDate(e.d); }), kg, goal,
+        Math.min.apply(null, tutti) - 1, Math.max.apply(null, tutti) + 1));
+    } catch (e) {}
   }
   function postaRender() {
     const body = document.getElementById('posta-body');
@@ -28553,17 +28624,26 @@ function homeRefreshData() {
       body.innerHTML = '<button type="button" class="posta-indietro" onclick="postaApriMessaggio(null)">‹ Tutti i messaggi</button>' +
         '<div class="posta-msg"><div class="posta-msg-head">✨ ' + escapeHTML(aperto.da || 'Coach AI') + ' · ' + postaQuando(aperto.at) + '</div>' +
         '<div class="posta-msg-ogg">' + escapeHTML(aperto.titolo || '') + '</div>' +
-        '<div class="posta-msg-testo">' + postaFormatta(aperto.testo) + '</div></div>' +
+        '<div class="posta-msg-testo">' + postaFormatta(aperto.testo, postaGraficoHtml(aperto)) + '</div></div>' +
         '<button type="button" class="posta-elimina" onclick="postaElimina(\'' + aperto.id + '\')">Elimina messaggio</button>';
+      postaDisegnaPeso(aperto);
       return;
     }
+    if (_postaGrafico) { try { _postaGrafico.destroy(); } catch (e) {} _postaGrafico = null; }
     const dis = _postaInCorso ? ' disabled' : '';
-    let h = '<div class="posta-intro">Ogni sera il tuo Coach ti scrive com\'è andata la giornata (allenamento, pasti, acqua) e cosa migliorare domani. A fine settimana, il resoconto degli ultimi 7 giorni.</div>' +
-      '<button type="button" class="posta-genera" id="posta-genera" onclick="postaGeneraResoconto()"' + dis + '>' +
-      (_postaInCorso === 'resoconto' ? '✨ Il Coach sta scrivendo…' : '✨ Scrivimi il resoconto di oggi') + '</button>' +
-      '<button type="button" class="posta-genera sett" id="posta-genera-sett" onclick="postaGeneraSettimana()"' + dis + '>' +
-      (_postaInCorso === 'settimana' ? '📅 Il Coach sta scrivendo…' : '📅 Scrivimi il resoconto della settimana') + '</button>' +
-      '<div class="posta-nota">Anteprima: per ora i messaggi si chiedono da qui. Nella versione finale arriveranno da soli: quello del giorno ogni sera, quello della settimana la domenica.</div>';
+    const oggiD = new Date();
+    const stasera = postaTipoDiStasera(oggiD);
+    const nSett = postaSettimanaN(oggiD);
+    const NOMI = { resoconto: '✨ Scrivimi il resoconto di oggi', settimana: '📅 Scrivimi il resoconto della settimana', mese: '🗓️ Scrivimi il resoconto del mese' };
+    const BREVI = { resoconto: 'Giorno', settimana: 'Settimana', mese: 'Mese' };
+    const scrive = function(t) { return _postaInCorso === t ? (t === 'resoconto' ? '✨' : t === 'settimana' ? '📅' : '🗓️') + ' Il Coach sta scrivendo…' : NOMI[t]; };
+    let h = '<div class="posta-intro">Ogni sera il tuo Coach ti scrive com\'è andata la giornata e cosa migliorare domani. La domenica, al posto della giornata, il resoconto della settimana; ogni quattro settimane quello del mese.</div>' +
+      '<button type="button" class="posta-genera" id="posta-genera" onclick="postaGenera(\'' + stasera + '\')"' + dis + '>' + scrive(stasera) + '</button>' +
+      '<div class="posta-prova">Anteprima, prova anche: ' + ['resoconto', 'settimana', 'mese'].filter(function(t) { return t !== stasera; }).map(function(t) {
+        return '<button type="button" class="posta-chip" id="posta-prova-' + t + '" onclick="postaGenera(\'' + t + '\')"' + dis + '>' + (_postaInCorso === t ? 'scrive…' : BREVI[t]) + '</button>';
+      }).join('') + '</div>' +
+      '<div class="posta-nota">Sei alla settimana ' + nSett + ' dal primo allenamento: ' + (stasera === 'mese' ? 'stasera arriva il resoconto del mese.' : 'il resoconto del mese arriva ' + postaProssimoMese(oggiD) + '.') +
+      ' Per ora i messaggi si chiedono da qui; nella versione finale arriveranno da soli.</div>';
     if (!posta.length) h += '<div class="posta-vuota">Nessun messaggio, per ora.</div>';
     posta.forEach(function(m) {
       if (!m) return;
@@ -28817,21 +28897,191 @@ function homeRefreshData() {
     };
   }
 
+  // ── Storico dei giorni per il Coach (v.321) ───────────────
+  // I pasti l'app li tiene 7 giorni (nutPurgeOldLogs): per il resoconto del
+  // mese ogni giorno lascia un riassunto piccolo (totali, acqua e alimenti
+  // in forma compatta) che resta 35 giorni e viaggia con l'account.
+  //   { 'AAAA-MM-GG': { kcal, p, c, f, z (zuccheri), s (saturi), n (alimenti),
+  //                     w (bicchieri), a: [[nome, kcal, p, z, s, nutri, nova]] } }
+  // Si riscrive solo per i giorni di cui il telefono ha ancora i pasti o
+  // l'acqua; quelli arrivati da un altro dispositivo restano come sono.
+  // Chiave e durata scritte dentro le funzioni, non in costanti: saveState
+  // le chiama e non deve dipendere da dove si trova questa parte del file.
+  function coachStoricoGet() {
+    try { const o = JSON.parse(localStorage.getItem('aw_coach_giorni') || '{}'); return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {}; } catch (e) { return {}; }
+  }
+  function coachStoricoAggiorna() {
+    const st = coachStoricoGet();
+    const ora = new Date();
+    for (let i = 0; i <= 6; i++) {
+      const d = new Date(ora); d.setDate(ora.getDate() - i);
+      const iso = awIsoDay(d);
+      const haPasti = localStorage.getItem('nut_meals_' + d.toDateString()) !== null;
+      const acqua = coachAcqua(iso);
+      if (!haPasti && !acqua) continue;
+      const p = coachPastiGiorno(d);
+      const r1 = function(v) { return Math.round((v || 0) * 10) / 10; };
+      const prima = st[iso] || {};
+      const w = Math.max(acqua, prima.w || 0);
+      if (!p.voci.length && !w) { delete st[iso]; continue; }
+      st[iso] = { kcal: Math.round(p.tot.kcal), p: r1(p.tot.p), c: r1(p.tot.c), f: r1(p.tot.f), z: r1(p.tot.zuccheri), s: r1(p.tot.grassi_saturi),
+        n: p.voci.length, w: w,
+        a: p.voci.slice(0, 15).map(function(v) { return [String(v.alimento || '').slice(0, 40), v.kcal || 0, r1(v.proteine), r1(v.zuccheri), r1(v.grassi_saturi), v.nutri_score || null, v.nova || null]; }) };
+    }
+    const lim = new Date(ora); lim.setDate(ora.getDate() - 35);
+    const limIso = awIsoDay(lim);
+    Object.keys(st).forEach(function(k) { if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || k < limIso) delete st[k]; });
+    try { localStorage.setItem('aw_coach_giorni', JSON.stringify(st)); } catch (e) {}
+    return st;
+  }
+  // Al login: i giorni che il telefono non ha arrivano dall'account.
+  function coachStoricoRipristina(remoto) {
+    if (!remoto || typeof remoto !== 'object' || Array.isArray(remoto)) return;
+    const st = coachStoricoGet();
+    const lim = new Date(); lim.setDate(lim.getDate() - 35);
+    const limIso = awIsoDay(lim);
+    Object.keys(remoto).forEach(function(k) {
+      const v = remoto[k];
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || k < limIso || st[k] || !v || typeof v !== 'object') return;
+      st[k] = v;
+    });
+    try { localStorage.setItem('aw_coach_giorni', JSON.stringify(st)); } catch (e) {}
+  }
+
+  // ── Resoconto del mese (v.321) ────────────────────────────
+  // Le ultime 4 settimane, oggi compreso (la quarta domenica: quattro
+  // settimane da lunedi' a domenica). Pasti e acqua dallo storico dei
+  // giorni; sedute, carichi, diario e peso dall'app, che li tiene sempre.
+  function coachDatiMese() {
+    const st = coachStoricoAggiorna();
+    const base = coachDatiGiornata();
+    const sett = coachDatiSettimana();
+    const ora = new Date();
+    const oggi = awIsoDay(ora);
+    const wGoal = waterGoalGlasses();
+    const r1 = function(v) { return Math.round(v * 10) / 10; };
+    const pesi = ((typeof weightGetLog === 'function' ? weightGetLog() : []) || []).filter(function(e) { return e && e.date; });
+    const alimenti = {};
+    const mese = { giorni: 0, kcal: 0, p: 0, c: 0, f: 0, z: 0, s: 0, acqua: 0, giorniAcqua: 0, acquaOk: 0, sedute: 0 };
+    const settimane = [];
+    let dal = null;
+    for (let k = 3; k >= 0; k--) {
+      const t = { giorni: 0, kcal: 0, p: 0, c: 0, f: 0, z: 0, s: 0, acqua: 0, giorniAcqua: 0, acquaOk: 0, sedute: 0 };
+      const sens = {};
+      let da = null, a = null;
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(ora); d.setDate(ora.getDate() - k * 7 - i);
+        const iso = awIsoDay(d);
+        if (!da) da = iso; a = iso; if (!dal) dal = iso;
+        t.sedute += coachSeduteDel(iso).length;
+        const g = st[iso];
+        if (g && g.n) {
+          t.giorni++; t.kcal += g.kcal || 0; t.p += g.p || 0; t.c += g.c || 0; t.f += g.f || 0; t.z += g.z || 0; t.s += g.s || 0;
+          (g.a || []).forEach(function(v) {
+            const nome = String(v[0] || ''); const key = nome.toLowerCase();
+            if (!key) return;
+            const x = alimenti[key] || (alimenti[key] = { alimento: nome, volte: 0, kcal: 0, proteine: 0, zuccheri: 0, grassi_saturi: 0 });
+            x.volte++; x.kcal += v[1] || 0; x.proteine += v[2] || 0; x.zuccheri += v[3] || 0; x.grassi_saturi += v[4] || 0;
+            if (v[5]) x.nutri_score = v[5];
+            if (v[6]) x.nova = v[6];
+          });
+        }
+        const acqua = Math.max(coachAcqua(iso), (g && g.w) || 0);
+        if (acqua > 0) { t.giorniAcqua++; t.acqua += acqua; if (acqua >= wGoal) t.acquaOk++; }
+        (APP.diary || []).forEach(function(e) { if (e && e.d === iso && e.s) sens[e.s] = (sens[e.s] || 0) + 1; });
+      }
+      Object.keys(mese).forEach(function(x) { mese[x] += t[x]; });
+      const m = function(v) { return t.giorni ? Math.round(v / t.giorni) : null; };
+      const pw = pesi.filter(function(e) { return e.date >= da && e.date <= a; });
+      settimane.push({ dal: da, al: a, sedute: t.sedute, giorni_con_pasti: t.giorni,
+        kcal_media: m(t.kcal), proteine_media: m(t.p), carboidrati_media: m(t.c), grassi_media: m(t.f), zuccheri_media: m(t.z), grassi_saturi_media: m(t.s),
+        acqua_media: t.giorniAcqua ? r1(t.acqua / t.giorniAcqua) : null, giorni_acqua_obiettivo_raggiunto: t.acquaOk,
+        peso_inizio: pw.length ? pw[0].kg : null, peso_fine: pw.length ? pw[pw.length - 1].kg : null, sensazioni: sens });
+    }
+    const mm = function(v) { return mese.giorni ? Math.round(v / mese.giorni) : null; };
+    const listaAlimenti = Object.keys(alimenti).map(function(k) {
+      const x = alimenti[k];
+      const o = { alimento: x.alimento, volte: x.volte, kcal: Math.round(x.kcal), proteine: r1(x.proteine) };
+      if (x.zuccheri) o.zuccheri = r1(x.zuccheri);
+      if (x.grassi_saturi) o.grassi_saturi = r1(x.grassi_saturi);
+      if (x.nutri_score) o.nutri_score = x.nutri_score;
+      if (x.nova) o.nova = x.nova;
+      return o;
+    }).sort(function(x, y) { return y.kcal - x.kcal; }).slice(0, 25);
+    // esercizi: prima e ultima seduta del mese, il carico piu' alto
+    const perEs = {};
+    (APP.loadHistory || []).filter(function(r) { return r && r.ex && r.d >= dal && r.d <= oggi; })
+      .sort(function(x, y) { return x.d < y.d ? -1 : x.d > y.d ? 1 : 0; })
+      .forEach(function(r) {
+        const e = perEs[r.ex] || (perEs[r.ex] = { esercizio: r.ex, sedute: 0, primo: null, ultimo: null, kg_massimo: 0 });
+        const o = { data: r.d, kg: r.kg || 0 };
+        if (r.r) o.ripetizioni_fatte = r.r;
+        if (r.tr) o.ripetizioni_previste = r.tr;
+        e.sedute++; if (!e.primo) e.primo = o; e.ultimo = o; e.kg_massimo = Math.max(e.kg_massimo, r.kg || 0);
+      });
+    const esercizi = Object.keys(perEs).map(function(k) { return perEs[k]; }).sort(function(x, y) { return y.sedute - x.sedute; }).slice(0, 12);
+    const record = Object.keys(APP.prMeta || {}).map(function(k) {
+      const m = APP.prMeta[k] || {}; const pk = prParse(k);
+      return { esercizio: pk.name, kg: m.kg, ripetizioni: m.r, data: m.d };
+    }).filter(function(r) { return r.data && r.data >= dal; }).slice(0, 10);
+    const note = (APP.diary || []).filter(function(e) { return e && e.d >= dal && e.d <= oggi && e.n; }).slice(-6)
+      .map(function(e) { return { data: e.d, sensazione: e.s || null, nota: e.n }; });
+    const etichetta = function(iso) { const d = new Date(iso + 'T12:00:00'); return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }); };
+    return {
+      periodo: { dal: dal, al: oggi, etichetta: 'dal ' + etichetta(dal) + ' al ' + etichetta(oggi), settimana_numero: postaSettimanaN(ora) },
+      profilo: base.profilo,
+      programma: sett.programma,
+      settimane: settimane,
+      medie_del_mese: { giorni_con_pasti: mese.giorni, kcal: mm(mese.kcal), proteine: mm(mese.p), carboidrati: mm(mese.c), grassi: mm(mese.f),
+        zuccheri: mm(mese.z), grassi_saturi: mm(mese.s), giorni_con_acqua: mese.giorniAcqua,
+        acqua_bicchieri: mese.giorniAcqua ? r1(mese.acqua / mese.giorniAcqua) : null, giorni_acqua_obiettivo_raggiunto: mese.acquaOk },
+      alimenti_del_mese: listaAlimenti,
+      allenamento: { sedute_fatte: mese.sedute, esercizi: esercizi, record_del_mese: record, note_del_diario: note },
+      peso: { nel_mese: pesi.filter(function(e) { return e.date >= dal && e.date <= oggi; }).map(function(e) { return { data: e.date, kg: e.kg }; }) },
+      dall_inizio: base.dall_inizio,
+      prossima_settimana: sett.prossima_settimana
+    };
+  }
+
   // Quale messaggio il Coach sta scrivendo: 'resoconto', 'settimana' o false.
   let _postaInCorso = false;
   function postaGeneraResoconto() { return postaGenera('resoconto'); }
   function postaGeneraSettimana() { return postaGenera('settimana'); }
+
+  // ── Quale messaggio arriva stasera (v.321) ────────────────
+  // Dal lunedi' al sabato il resoconto del giorno; la domenica quello della
+  // settimana, che comprende anche la domenica, al posto del giorno; ogni
+  // quarta domenica quello del mese. Le settimane si contano dal lunedi'
+  // della settimana del primo allenamento (awFirstTrainingDate): la prima
+  // settimana e' la 1, la 4, 8, 12... chiudono un mese.
+  function postaLunedi(d) { const x = new Date(d); x.setHours(12, 0, 0, 0); x.setDate(x.getDate() - (x.getDay() + 6) % 7); return x; }
+  function postaSettimanaN(d) {
+    let inizio = null; try { inizio = awFirstTrainingDate(); } catch (e) {}
+    if (!inizio || inizio > d) inizio = d;
+    return Math.round((postaLunedi(d) - postaLunedi(inizio)) / (7 * 86400000)) + 1;
+  }
+  function postaTipoDiStasera(d) {
+    if (d.getDay() !== 0) return 'resoconto';
+    return postaSettimanaN(d) % 4 === 0 ? 'mese' : 'settimana';
+  }
+  function postaProssimoMese(d) {
+    const n = postaSettimanaN(d);
+    const mancano = (4 - n % 4) % 4;
+    const dom = postaLunedi(d); dom.setDate(dom.getDate() + 6 + 7 * mancano);
+    if (mancano === 0 && d.getDay() === 0) return 'stasera';
+    return 'domenica ' + dom.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
+  }
   async function postaGenera(tipo) {
     if (_postaInCorso) return;
     _postaInCorso = tipo;
     postaRender();
     try {
-      const sett = tipo === 'settimana';
-      const dati = sett ? coachDatiSettimana() : coachDatiGiornata();
-      const giorno = sett ? dati.periodo.al : dati.data;
+      const sett = tipo === 'settimana', mese = tipo === 'mese';
+      const dati = mese ? coachDatiMese() : sett ? coachDatiSettimana() : coachDatiGiornata();
+      const giorno = (sett || mese) ? dati.periodo.al : dati.data;
       const { data } = await aiCoachCall(tipo, {
-        messages: [{ role: 'user', content: (sett ? 'Scrivi il resoconto della mia settimana.' : 'Scrivi il resoconto di oggi.') + ' I miei dati in JSON:\n' + JSON.stringify(dati) }],
-        max_tokens: sett ? 10000 : 8000,
+        messages: [{ role: 'user', content: (mese ? 'Scrivi il resoconto del mio mese.' : sett ? 'Scrivi il resoconto della mia settimana.' : 'Scrivi il resoconto di oggi.') + ' I miei dati in JSON:\n' + JSON.stringify(dati) }],
+        max_tokens: mese ? 12000 : sett ? 10000 : 8000,
         schedule_context: { programma: { capitoli: CHAPTER_NAMES.map((n, i) => ({ nome: n, carico: Math.round(WEEK_LOADS[i] * 100), deload: i === DELOAD_WEEK })) } }
       });
       const msgUtente = aiErroreUtente(data);
@@ -28840,8 +29090,14 @@ function homeRefreshData() {
       if (!testo) { showToast('Il Coach non ha risposto: riprova tra poco', 'error'); return; }
       // uno per tipo e per giorno: rigenerarlo sostituisce quello di prima
       const posta = postaGet().filter(m => m && !(m.tipo === tipo && m.giorno === giorno));
-      const msg = { id: (sett ? 's' : 'r') + Date.now(), da: 'Coach AI', tipo: tipo, giorno: giorno, at: Date.now(), letto: false,
-        titolo: sett ? 'La tua settimana, ' + dati.periodo.etichetta : 'Il resoconto di ' + dati.giorno, testo: testo };
+      const msg = { id: (mese ? 'm' : sett ? 's' : 'r') + Date.now(), da: 'Coach AI', tipo: tipo, giorno: giorno, at: Date.now(), letto: false,
+        titolo: mese ? 'Il tuo mese, ' + dati.periodo.etichetta : sett ? 'La tua settimana, ' + dati.periodo.etichetta : 'Il resoconto di ' + dati.giorno, testo: testo };
+      const peso = postaSeriePeso(tipo);
+      if (peso) {
+        msg.peso = peso.serie; msg.pesoEtichetta = peso.etichetta;
+        const g = (typeof weightGetGoal === 'function') ? weightGetGoal() : null;
+        if (typeof g === 'number') msg.pesoObiettivo = g;
+      }
       posta.unshift(msg);
       postaSave(posta);
       _postaInCorso = false;
@@ -28934,6 +29190,7 @@ function homeRefreshData() {
     pill.classList.add('open');
     panel.classList.add('open');
     backdrop.classList.add('open');
+    document.getElementById('nav-center-btn').classList.add('sotto-chat');
     aiPillState = 'open';
     aiRenderHistory();
     aiQuotaRefresh();
@@ -28947,6 +29204,7 @@ function homeRefreshData() {
     panel.classList.remove('open');
     backdrop.classList.remove('open');
     pill.classList.remove('open', 'emerged');
+    document.getElementById('nav-center-btn').classList.remove('sotto-chat');
     aiPillState = 'locked';
   }
 
