@@ -50,17 +50,15 @@ alter table public.ai_piani  enable row level security;
 alter table public.ai_limiti enable row level security;
 alter table public.ai_uso    enable row level security;
 
-drop policy if exists "ai_piani: ognuno legge il proprio" on public.ai_piani;
 create policy "ai_piani: ognuno legge il proprio" on public.ai_piani
     for select to authenticated using (user_id = auth.uid());
-drop policy if exists "ai_limiti: leggibili dagli account" on public.ai_limiti;
 create policy "ai_limiti: leggibili dagli account" on public.ai_limiti
     for select to authenticated using (true);
-drop policy if exists "ai_uso: ognuno legge il proprio" on public.ai_uso;
 create policy "ai_uso: ognuno legge il proprio" on public.ai_uso
     for select to authenticated using (user_id = auth.uid());
 
-revoke insert, update, delete on public.ai_piani, public.ai_limiti, public.ai_uso from anon, authenticated;
+-- Nessuna policy di scrittura: con RLS attivo gli utenti non possono
+-- inserire, cambiare o cancellare righe in queste tabelle.
 
 -- Limiti di partenza (stime con Claude Haiku 4.5, 1 $ / 5 $ per milione di
 -- token in entrata / uscita): una domanda in chat costa circa mezzo
@@ -91,6 +89,11 @@ on conflict (user_id) do update set piano = 'dev', nota = excluded.nota, aggiorn
 --   { ok: false, motivo: 'tipo' }            tipo sconosciuto
 -- L'incremento e' una sola istruzione (insert ... on conflict ... where):
 -- due richieste insieme non possono superare il limite.
+-- Le due funzioni girano con i diritti del proprietario (security definer):
+-- per questo rifiutano chi arriva dall'API come anon o authenticated. Senza
+-- il controllo un utente potrebbe consumare gli usi di un altro account o
+-- restituirsi i propri all'infinito. Passano il service role (la funzione
+-- ai-coach) e la console SQL, che non ha un token.
 create or replace function public.ai_consuma(p_user uuid, p_tipo text)
 returns jsonb
 language plpgsql
@@ -105,6 +108,9 @@ declare
     v_tot   integer;
     v_usati integer;
 begin
+    if coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role', 'service_role') <> 'service_role' then
+        raise exception 'ai_consuma: riservata alla funzione ai-coach' using errcode = '42501';
+    end if;
     if p_tipo is null or p_tipo not in ('chat', 'scheda', 'foto') then
         return jsonb_build_object('ok', false, 'motivo', 'tipo');
     end if;
@@ -146,16 +152,16 @@ $$;
 -- contato viene restituito: chi non ha ricevuto niente non perde un messaggio.
 create or replace function public.ai_restituisci(p_user uuid, p_tipo text)
 returns void
-language sql
+language plpgsql
 security definer
 set search_path = public
 as $$
+begin
+    if coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role', 'service_role') <> 'service_role' then
+        raise exception 'ai_restituisci: riservata alla funzione ai-coach' using errcode = '42501';
+    end if;
     update ai_uso set usati = greatest(usati - 1, 0)
      where user_id = p_user and tipo = p_tipo
        and giorno = (now() at time zone 'Europe/Rome')::date;
+end;
 $$;
-
-revoke all on function public.ai_consuma(uuid, text)     from public, anon, authenticated;
-revoke all on function public.ai_restituisci(uuid, text) from public, anon, authenticated;
-grant execute on function public.ai_consuma(uuid, text)     to service_role;
-grant execute on function public.ai_restituisci(uuid, text) to service_role;
