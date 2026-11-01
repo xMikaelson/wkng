@@ -21,11 +21,34 @@ const corsHeaders = {
 //  - l'uso si conta su Supabase (ai_consuma, migrations/20261101) con i
 //    limiti al giorno per piano: free, pro, dev. Se l'AI non risponde l'uso
 //    viene restituito (ai_restituisci).
-// I tetti di max_tokens sono quelli che l'app chiedeva gia' per ogni tipo.
-const TIPI: Record<string, { maxTokens: number; maxChars: number; immagini: number }> = {
-  chat:   { maxTokens: 2000, maxChars: 6000,  immagini: 0 },  // una domanda in chat
-  scheda: { maxTokens: 1500, maxChars: 60000, immagini: 0 },  // analisi della scheda (porta il catalogo esercizi)
-  foto:   { maxTokens: 600,  maxChars: 6000,  immagini: 1 },  // foto del pasto
+//
+// ── Modello: Claude Haiku 5.5 (dal 1/11/2026) ──────────────
+// Confronto del 1/11/2026 sulle richieste vere dell'app (3 domande in chat,
+// analisi di una scheda FORGE, foto di una pizza margherita), Haiku 4.5
+// contro Haiku 5.5 con le stesse istruzioni:
+//  - costo per richiesta da 5 a 8 volte piu' basso (listino 0,10 $ / 0,50 $
+//    per milione di token in entrata / uscita, contro 1 $ / 5 $), e
+//    risposte piu' rapide in chat e nella scheda;
+//  - la foto del pasto con Haiku 4.5 veniva RIFIUTATA ("Non posso aiutarti,
+//    sono un coach di fitness"): le arrivava il system prompt della chat,
+//    che dice di rispondere solo su allenamento. Ora foto e scheda partono
+//    senza: il loro testo contiene gia' tutte le istruzioni;
+//  - Haiku 5.5 ragiona prima di rispondere e quel ragionamento conta nel
+//    tetto max_tokens: con i tetti di prima (600 la foto, 1500 la scheda)
+//    la risposta restava a meta' o vuota. Il tetto lo decide il server per
+//    tipo, non piu' l'app;
+//  - nella scheda, con il ragionamento acceso il modello aggiungeva uno
+//    squat a una seduta Upper (il prompt dell'app la dichiara "Full Body"):
+//    li' il ragionamento e' spento, come faceva Haiku 4.5, e le regole
+//    del prompt (niente minuti di recupero, serie invariate) sono rispettate
+//    meglio. Chat e foto lo tengono a sforzo "low": nella foto separa meglio
+//    i componenti del piatto (impasto, pomodoro, mozzarella) invece di
+//    contare due volte la mozzarella.
+const MODELLO = "claude-haiku-5-5";
+const TIPI: Record<string, { maxTokens: number; maxChars: number; immagini: number; pensiero: boolean; sistema: boolean }> = {
+  chat:   { maxTokens: 3000, maxChars: 6000,  immagini: 0, pensiero: true,  sistema: true  },  // una domanda in chat
+  scheda: { maxTokens: 1500, maxChars: 60000, immagini: 0, pensiero: false, sistema: false },  // analisi della scheda (porta il catalogo esercizi)
+  foto:   { maxTokens: 3000, maxChars: 6000,  immagini: 1, pensiero: true,  sistema: false },  // foto del pasto
 };
 const MAX_MESSAGGI = 12;
 const MAX_IMG_B64 = 7_000_000;   // circa 5 MB di immagine: il limite dell'API
@@ -68,7 +91,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { messages, max_tokens, user_jwt, schedule_context } = body;
+    const { messages, user_jwt, schedule_context } = body;
 
     // Chi non dichiara il tipo e' una versione dell'app di prima: allora
     // l'unica chiamata con l'account era la chat.
@@ -252,7 +275,15 @@ PROGRESSIONE CARICHI: L'app calcola automaticamente i carichi per chapter usando
 - Chapter 1 (Activation): 70% — Chapter 2 (Momentum): 80% — Chapter 3 (Breakthrough): 90% — Chapter 4 (Integration): 60% (deload)
 Gli stessi protocolli mostrano carichi diversi in chapter diversi — la progressione è automatica.${protocolsContext}${scheduleContext}`;
 
-    const tetto = Math.max(1, Math.min(Number(max_tokens) || regole.maxTokens, regole.maxTokens));
+    const tetto = regole.maxTokens;
+    const corpo: Record<string, unknown> = {
+      model: MODELLO,
+      max_tokens: tetto,
+      messages,
+      output_config: { effort: "low" },
+    };
+    if (regole.sistema) corpo.system = systemPrompt;
+    if (!regole.pensiero) corpo.thinking = { type: "disabled" };
     let response: Response;
     let data: any;
     try {
@@ -264,12 +295,7 @@ Gli stessi protocolli mostrano carichi diversi in chapter diversi — la progres
           "anthropic-api-key": apiKey,
           "anthropic-version": "2023-06-01",
         },
-        body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
-          max_tokens: tetto,
-          system: systemPrompt,
-          messages,
-        }),
+        body: JSON.stringify(corpo),
       });
       data = await response.json();
     } catch (e) {
@@ -279,6 +305,17 @@ Gli stessi protocolli mostrano carichi diversi in chapter diversi — la progres
     if (!response.ok) {
       await restituisci();
       return rispondi(data, response.status);
+    }
+    // L'app legge il primo blocco come testo: i blocchi di ragionamento
+    // (vuoti, Haiku 5.5 non ne restituisce il contenuto) si tolgono qui.
+    data.content = (data.content ?? []).filter((b: any) => b && b.type === "text");
+    if (data.stop_reason === "refusal") {
+      await restituisci();
+      return errore("richiesta", "Il Coach non può rispondere a questa richiesta: prova a riformularla.", 422);
+    }
+    if (!data.content.some((b: any) => b.text && b.text.trim())) {
+      await restituisci();
+      return errore("server", "Il Coach non ha completato la risposta: riprova.", 502);
     }
     if (data.content?.[0]?.text) {
       data._protocols = userProtocols.map((p: any) => ({ id: p.id, name: p.name }));
