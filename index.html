@@ -380,6 +380,29 @@
         .quick-prompts { padding: 0 14px 8px; display: flex; gap: 6px; flex-wrap: wrap; flex-shrink: 0; }
         .qp { padding: 5px 10px; background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2); border-radius: 20px; font-size: 0.56rem; font-weight: 600; color: #818cf8; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
         .qp:active { background: rgba(99,102,241,0.18); }
+        /* v.319 — Posta del Coach (anteprima) */
+        .posta-badge { min-width:18px; height:18px; padding:0 5px; border-radius:9px; background:var(--primary); color:#0f172a; font-size:0.55rem; font-weight:900; display:inline-flex; align-items:center; justify-content:center; }
+        .posta-intro { font-size:0.68rem; color:#cbd5e1; line-height:1.5; margin-bottom:12px; }
+        .posta-genera { width:100%; padding:13px; border-radius:12px; border:1px solid rgba(var(--pr,52,211,153),0.45); background:rgba(var(--pr,52,211,153),0.14); color:var(--primary); font-family:inherit; font-size:0.72rem; font-weight:800; cursor:pointer; }
+        .posta-genera:disabled { opacity:0.6; cursor:default; }
+        .posta-nota { font-size:0.55rem; color:#64748b; line-height:1.5; margin:8px 0 16px; text-align:center; }
+        .posta-item { display:flex; gap:10px; align-items:flex-start; padding:12px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); margin-bottom:8px; cursor:pointer; }
+        .posta-item.nuovo { border-color:rgba(var(--pr,52,211,153),0.35); background:rgba(var(--pr,52,211,153),0.06); }
+        .posta-av { width:32px; height:32px; border-radius:10px; background:rgba(var(--pr,52,211,153),0.15); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:0.9rem; }
+        .posta-main { flex:1; min-width:0; }
+        .posta-da { font-size:0.55rem; color:#94a3b8; font-weight:700; display:flex; justify-content:space-between; gap:6px; }
+        .posta-ogg { font-size:0.7rem; color:#e2e8f0; font-weight:800; margin-top:2px; }
+        .posta-item.nuovo .posta-ogg::before { content:''; display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--primary); margin-right:6px; vertical-align:middle; }
+        .posta-ant { font-size:0.6rem; color:#94a3b8; margin-top:3px; line-height:1.4; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+        .posta-vuota { font-size:0.62rem; color:#64748b; text-align:center; padding:24px 0; }
+        .posta-indietro { background:none; border:none; color:#94a3b8; font-family:inherit; font-size:0.62rem; font-weight:700; padding:0 0 12px; cursor:pointer; width:auto; }
+        .posta-msg { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:14px; padding:14px; }
+        .posta-msg-head { font-size:0.55rem; color:#94a3b8; font-weight:700; }
+        .posta-msg-ogg { font-size:0.82rem; color:#e2e8f0; font-weight:900; margin:4px 0 12px; }
+        .posta-msg-testo { font-size:0.68rem; color:#cbd5e1; line-height:1.6; overflow-wrap:anywhere; }
+        .posta-msg-testo strong { color:#e2e8f0; }
+        .posta-h { font-size:0.62rem; font-weight:900; color:var(--primary); letter-spacing:0.04em; margin:14px 0 4px; }
+        .posta-elimina { width:100%; margin-top:12px; padding:10px; border-radius:10px; background:none; border:1px solid rgba(248,113,113,0.3); color:#fca5a5; font-family:inherit; font-size:0.6rem; font-weight:700; cursor:pointer; }
         /* v.316 — messaggi del Coach rimasti oggi */
         .ai-quota { padding: 6px 14px 0; font-size: 0.56rem; font-weight: 700; color: #94a3b8; text-align: center; flex-shrink: 0; }
         .ai-input-row { padding: 8px 12px 12px; display: flex; gap: 8px; align-items: center; border-top: 1px solid rgba(255,255,255,0.04); flex-shrink: 0; }
@@ -4264,6 +4287,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div class="profile-stat"><span class="profile-stat-val" id="profile-streak">0🔥</span><span class="profile-stat-lbl">Streak</span></div>
   </div>
   <div class="settings-list">
+    <div class="settings-row" role="button" tabindex="0" aria-label="Posta" onclick="postaApri()" id="settings-row-posta" style="display:none;margin-bottom:14px">
+      <div class="settings-row-left"><span class="settings-row-icon">📬</span><span class="settings-row-label">Posta<small class="aw-prov">i messaggi del tuo Coach AI · anteprima</small></span></div>
+      <span style="display:flex;align-items:center;gap:8px"><span class="posta-badge" id="posta-badge" style="display:none">0</span><span class="settings-row-arrow">›</span></span>
+    </div>
     <div class="settings-group-title" style="margin-bottom:8px">Impostazioni</div>
     <div class="settings-row" onclick="activatePushNotifications()" id="settings-row-push">
       <div class="settings-row-left"><span class="settings-row-icon">🔔</span><span class="settings-row-label" id="settings-push-label">Attiva Notifiche</span></div>
@@ -4818,7 +4845,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '318';
+const APP_VERSION = '319';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -23251,6 +23278,8 @@ function buildProfiloPage() {
     if (yrEl) yrEl.textContent = new Date().getFullYear();
     var vnEl = document.getElementById('app-version-num');
     if (vnEl && typeof APP_VERSION !== 'undefined') vnEl.textContent = APP_VERSION;
+    // v.319: la Posta del Coach (anteprima, solo account sviluppatore)
+    try { postaRigaAggiorna(); } catch (e) {}
 }
 
 function closeDashboard() {
@@ -28371,6 +28400,277 @@ function homeRefreshData() {
     el.textContent = t;
     el.style.display = t ? '' : 'none';
   }
+  // ════════════════════════════════════════
+  // POSTA DEL COACH (v.319, anteprima)
+  // ════════════════════════════════════════
+  // Il personal coach: un messaggio nella Posta del Profilo con il resoconto
+  // della giornata (allenamento, pasti, acqua, peso, diario) e cosa
+  // migliorare domani. In questa anteprima il messaggio si chiede a mano e la
+  // voce compare solo all'account sviluppatore (ai_piani = 'dev'); i messaggi
+  // restano su questo telefono ('aw_posta'). Il testo lo scrive la funzione
+  // ai-coach con il tipo 'resoconto' (system prompt promptResoconto).
+  const POSTA_KEY = 'aw_posta';
+  function postaGet() { try { const a = JSON.parse(localStorage.getItem(POSTA_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  function postaSave(a) { try { localStorage.setItem(POSTA_KEY, JSON.stringify(a.slice(0, 60))); } catch (e) {} }
+  function postaNonLetti() { return postaGet().filter(m => m && !m.letto).length; }
+
+  let _aiPiano = null;
+  async function aiPianoCorrente() {
+    try {
+      if (typeof sbClient === 'undefined' || !sbClient) return _aiPiano;
+      const { data: { session } } = await sbClient.auth.getSession();
+      if (!session) { _aiPiano = null; return null; }
+      const r = await sbClient.from('ai_piani').select('piano').eq('user_id', session.user.id).maybeSingle();
+      if (r.error) return _aiPiano;
+      _aiPiano = (r.data && r.data.piano) || 'free';
+      return _aiPiano;
+    } catch (e) { return _aiPiano; }
+  }
+  async function postaRigaAggiorna() {
+    const row = document.getElementById('settings-row-posta');
+    if (!row) return;
+    const piano = await aiPianoCorrente();
+    row.style.display = piano === 'dev' ? '' : 'none';
+    const b = document.getElementById('posta-badge');
+    const n = postaNonLetti();
+    if (b) { b.textContent = n; b.style.display = n ? '' : 'none'; }
+  }
+
+  let _postaAperto = null;
+  function postaApri() {
+    _postaAperto = null;
+    postaRender();
+    const ov = document.getElementById('posta-ov');
+    if (ov) { ov.classList.add('active'); ov.scrollTop = 0; }
+  }
+  function postaChiudi() {
+    const ov = document.getElementById('posta-ov');
+    if (ov) ov.classList.remove('active');
+    try { postaRigaAggiorna(); } catch (e) {}
+  }
+  function postaApriMessaggio(id) {
+    _postaAperto = id;
+    if (id) {
+      const posta = postaGet();
+      const m = posta.find(x => x && x.id === id);
+      if (m && !m.letto) { m.letto = true; postaSave(posta); }
+    }
+    postaRender();
+    const ov = document.getElementById('posta-ov');
+    if (ov) ov.scrollTop = 0;
+  }
+  function postaElimina(id) {
+    awConfirm('Il messaggio sparisce da questo telefono.', function(ok) {
+      if (!ok) return;
+      postaSave(postaGet().filter(m => m && m.id !== id));
+      postaApriMessaggio(null);
+    }, { title: 'Eliminare il messaggio?', okLabel: 'Elimina', danger: true });
+  }
+  function postaGiornoLabel(iso) {
+    const d = new Date(iso + 'T12:00:00');
+    if (isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+  }
+  function postaQuando(ts) {
+    const d = new Date(ts);
+    return d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }) + ' · ' + d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  }
+  // Testo del Coach: grassetto con **, titoli di sezione (emoji + parole in
+  // maiuscolo) evidenziati, a capo mantenuti. Tutto passa da escapeHTML.
+  function postaFormatta(t) {
+    return String(t || '').split('\n').map(function(riga) {
+      const r = riga.trim();
+      let h = escapeHTML(r).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      if (/^\S{1,3}\s+[A-ZÀ-Ý' ]{4,}$/.test(r)) return '<div class="posta-h">' + h + '</div>';
+      return r ? '<div>' + h + '</div>' : '<div style="height:6px"></div>';
+    }).join('');
+  }
+  function postaRender() {
+    const body = document.getElementById('posta-body');
+    if (!body) return;
+    const posta = postaGet();
+    const aperto = _postaAperto && posta.find(m => m && m.id === _postaAperto);
+    if (aperto) {
+      body.innerHTML = '<button type="button" class="posta-indietro" onclick="postaApriMessaggio(null)">‹ Tutti i messaggi</button>' +
+        '<div class="posta-msg"><div class="posta-msg-head">✨ ' + escapeHTML(aperto.da || 'Coach AI') + ' · ' + postaQuando(aperto.at) + '</div>' +
+        '<div class="posta-msg-ogg">' + escapeHTML(aperto.titolo || '') + '</div>' +
+        '<div class="posta-msg-testo">' + postaFormatta(aperto.testo) + '</div></div>' +
+        '<button type="button" class="posta-elimina" onclick="postaElimina(\'' + aperto.id + '\')">Elimina messaggio</button>';
+      return;
+    }
+    let h = '<div class="posta-intro">Ogni sera il tuo Coach ti scrive com\'è andata la giornata (allenamento, pasti, acqua) e cosa migliorare domani.</div>' +
+      '<button type="button" class="posta-genera" id="posta-genera" onclick="postaGeneraResoconto()"' + (_postaInCorso ? ' disabled' : '') + '>' +
+      (_postaInCorso ? '✨ Il Coach sta scrivendo…' : '✨ Scrivimi il resoconto di oggi') + '</button>' +
+      '<div class="posta-nota">Anteprima: per ora il messaggio si chiede da qui. Nella versione finale arriverà da solo ogni sera.</div>';
+    if (!posta.length) h += '<div class="posta-vuota">Nessun messaggio, per ora.</div>';
+    posta.forEach(function(m) {
+      if (!m) return;
+      const ant = String(m.testo || '').replace(/\*\*/g, '').split('\n').map(x => x.trim()).filter(Boolean).slice(0, 2).join(' ');
+      h += '<div class="posta-item' + (m.letto ? '' : ' nuovo') + '" role="button" tabindex="0" onclick="postaApriMessaggio(\'' + m.id + '\')">' +
+        '<div class="posta-av">✨</div><div class="posta-main">' +
+        '<div class="posta-da"><span>' + escapeHTML(m.da || 'Coach AI') + '</span><span>' + postaQuando(m.at) + '</span></div>' +
+        '<div class="posta-ogg">' + escapeHTML(m.titolo || '') + '</div>' +
+        '<div class="posta-ant">' + escapeHTML(ant) + '</div></div></div>';
+    });
+    body.innerHTML = h;
+  }
+
+  // ── I dati che il Coach legge ─────────────────────────────
+  // Tutto viene da cio' che l'app gia' registra: sedute (sessionLog,
+  // loadHistory, diario), pasti (nut_meals_*, gli ultimi 7 giorni: piu'
+  // indietro l'app non li tiene), acqua (aw_water_*), peso e obiettivi.
+  function coachPastiGiorno(d) {
+    let meals = {};
+    try { meals = JSON.parse(localStorage.getItem('nut_meals_' + d.toDateString()) || '{}') || {}; } catch (e) {}
+    const voci = [];
+    const tot = { kcal: 0, p: 0, c: 0, f: 0, zuccheri: 0, grassi_saturi: 0, fibre: 0, sale: 0 };
+    MEALS.forEach(function(m) {
+      (meals[m] || []).forEach(function(f) {
+        if (!f) return;
+        let g = parseFloat(String(f.note || '').replace(',', '.'));
+        if (!(g > 0) && f.kcal100 > 0) g = Math.round((f.kcal || 0) / f.kcal100 * 100);
+        const per = function(v) { return (g > 0 && v != null && !isNaN(v)) ? v * g / 100 : 0; };
+        tot.kcal += f.kcal || 0; tot.p += f.p || 0; tot.c += f.c || 0; tot.f += f.f || 0;
+        tot.zuccheri += per(f.sugars100); tot.grassi_saturi += per(f.saturated100); tot.fibre += per(f.fiber100); tot.sale += per(f.salt100);
+        const v = { pasto: m, alimento: f.name + (f.brand ? ' (' + f.brand + ')' : ''), kcal: Math.round(f.kcal || 0), proteine: f.p, carboidrati: f.c, grassi: f.f };
+        if (g > 0) v.grammi = g;
+        if (typeof f.nutriScore === 'string') v.nutri_score = f.nutriScore;
+        if (f.novaGroup) v.nova = f.novaGroup;
+        voci.push(v);
+      });
+    });
+    Object.keys(tot).forEach(function(k) { tot[k] = Math.round(tot[k] * 10) / 10; });
+    return { voci: voci, tot: tot };
+  }
+  function coachAcqua(iso) { return parseInt(localStorage.getItem('aw_water_' + iso) || '0', 10) || 0; }
+  function coachSeduteDel(iso) {
+    return (APP.sessionLog || []).filter(function(s) { return s && s.d === iso; }).map(function(s) {
+      const a = APP.dayAssignments && APP.dayAssignments[s.w] && APP.dayAssignments[s.w][s.di];
+      return { scheda: a ? a.protoName : null, capitolo: CHAPTER_NAMES[s.w] || null };
+    });
+  }
+  function coachSchedaDel(w, di) {
+    const a = APP.dayAssignments && APP.dayAssignments[w] && APP.dayAssignments[w][di];
+    if (!a) return { riposo: true };
+    const proto = (APP.savedProtocols || []).find(function(p) { return p.id === a.protoId || p.name === a.protoName; });
+    const es = proto ? (proto.exercises || []).filter(function(e) { return e && e.name; }).map(function(e) {
+      let sr = e.sr; try { sr = srForChapter(e, w, proto); } catch (x) {}
+      return { esercizio: e.name, schema: sr };
+    }) : [];
+    return { scheda: a.protoName, capitolo: CHAPTER_NAMES[w] || null, esercizi: es };
+  }
+  function coachDatiGiornata() {
+    const ora = new Date();
+    const oggi = awIsoDay(ora);
+    const dow = ora.getDay(), di = dow === 0 ? 6 : dow - 1;
+    const primo = (APP.completedWeeks || []).findIndex(function(x) { return !x; });
+    const w = primo === -1 ? N_WEEKS - 1 : primo;
+    let inp = {}; try { inp = JSON.parse(localStorage.getItem('nut_tdee_input') || '{}') || {}; } catch (e) {}
+    const sx = awSex();
+    const nomiObiettivo = { cut_aggressive: 'dimagrimento rapido', cut: 'dimagrimento', maintain: 'mantenimento', bulk: 'aumento di massa' };
+    let targetCalcolato = false; try { targetCalcolato = !!localStorage.getItem('nut_tdee_target'); } catch (e) {}
+    const tgt = NUT.target || {};
+    const pasti = coachPastiGiorno(ora);
+    const pesi = (typeof weightGetLog === 'function' ? weightGetLog() : []) || [];
+    const pesoOggi = pesi.find(function(e) { return e && e.date === oggi; });
+    // ultimi 7 giorni, oggi compreso
+    const settimana = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(ora); d.setDate(ora.getDate() - i);
+      const iso = awIsoDay(d);
+      const p = coachPastiGiorno(d);
+      settimana.push({ data: iso, sedute: coachSeduteDel(iso).length,
+        kcal: p.voci.length ? Math.round(p.tot.kcal) : null, proteine: p.voci.length ? Math.round(p.tot.p) : null,
+        acqua_bicchieri: coachAcqua(iso) });
+    }
+    // record degli ultimi 30 giorni
+    const limite = new Date(ora); limite.setDate(ora.getDate() - 30);
+    const limIso = awIsoDay(limite);
+    const record = Object.keys(APP.prMeta || {}).map(function(k) {
+      const m = APP.prMeta[k] || {}; const pk = prParse(k);
+      return { esercizio: pk.name, kg: m.kg, ripetizioni: m.r, data: m.d };
+    }).filter(function(r) { return r.data && r.data >= limIso; }).sort(function(a, b) { return a.data < b.data ? 1 : -1; }).slice(0, 5);
+    // domani: stesso capitolo, o il successivo se oggi e' domenica
+    let wd = w, dd = di + 1;
+    if (dd > 6) { dd = 0; wd = Math.min(w + 1, N_WEEKS - 1); }
+    let primoAll = null; try { const f = awFirstTrainingDate(); primoAll = f ? awIsoDay(f) : null; } catch (e) {}
+    const dati = {
+      data: oggi,
+      giorno: postaGiornoLabel(oggi),
+      profilo: {
+        nome: awNome() || APP.userName || null,
+        sesso: sx === 'f' ? 'donna (usa il femminile)' : sx === 'm' ? 'uomo (usa il maschile)' : null,
+        eta: inp.age || null,
+        obiettivo_alimentare: nomiObiettivo[NUT.goal] || NUT.goal,
+        obiettivo_calcolato_nell_app: targetCalcolato,
+        obiettivo_giornaliero: { kcal: tgt.kcal, proteine: tgt.p, carboidrati: tgt.c, grassi: tgt.f },
+        acqua_obiettivo_bicchieri: waterGoalGlasses(), ml_per_bicchiere: WATER_ML,
+        peso_obiettivo: (typeof weightGetGoal === 'function' ? weightGetGoal() : null)
+      },
+      programma: { capitolo_attuale: CHAPTER_NAMES[w], carico_del_capitolo: Math.round(WEEK_LOADS[w] * 100) + '%' },
+      oggi: {
+        allenamento_previsto: coachSchedaDel(w, di),
+        sedute_fatte: coachSeduteDel(oggi),
+        esercizi_registrati: (APP.loadHistory || []).filter(function(r) { return r && r.d === oggi; }).map(function(r) {
+          const o = { esercizio: r.ex, kg: r.kg || 0 };
+          if (r.r) o.ripetizioni_fatte = r.r;
+          if (r.tr) o.ripetizioni_previste = r.tr;
+          return o;
+        }),
+        diario: (APP.diary || []).filter(function(e) { return e && e.d === oggi; }).map(function(e) {
+          return { sensazione: e.s || null, dettagli: e.t || [], nota: e.n || null };
+        }),
+        pasti: pasti.voci.slice(0, 40),
+        totali_pasti: pasti.voci.length ? { kcal: pasti.tot.kcal, proteine: pasti.tot.p, carboidrati: pasti.tot.c, grassi: pasti.tot.f,
+          zuccheri: pasti.tot.zuccheri, grassi_saturi: pasti.tot.grassi_saturi, fibre: pasti.tot.fibre, sale: pasti.tot.sale } : null,
+        acqua_bicchieri: coachAcqua(oggi),
+        peso_kg: pesoOggi ? pesoOggi.kg : null
+      },
+      ultimi_7_giorni: settimana,
+      dall_inizio: {
+        primo_allenamento: primoAll,
+        sedute_totali: (typeof awTotalSessions === 'function' ? awTotalSessions() : null),
+        peso_primo: pesi.length ? pesi[0] : null,
+        peso_ultimo: pesi.length ? pesi[pesi.length - 1] : null,
+        record_ultimi_30_giorni: record
+      },
+      domani: coachSchedaDel(wd, dd)
+    };
+    return dati;
+  }
+
+  let _postaInCorso = false;
+  async function postaGeneraResoconto() {
+    if (_postaInCorso) return;
+    _postaInCorso = true;
+    postaRender();
+    try {
+      const dati = coachDatiGiornata();
+      const { data } = await aiCoachCall('resoconto', {
+        messages: [{ role: 'user', content: 'Scrivi il resoconto di oggi. I miei dati in JSON:\n' + JSON.stringify(dati) }],
+        max_tokens: 8000,
+        schedule_context: { programma: { capitoli: CHAPTER_NAMES.map((n, i) => ({ nome: n, carico: Math.round(WEEK_LOADS[i] * 100), deload: i === DELOAD_WEEK })) } }
+      });
+      const msgUtente = aiErroreUtente(data);
+      if (msgUtente) { showToast(msgUtente, 'error'); return; }
+      const testo = ((data && data.content) || []).map(b => b.text || '').join('').trim();
+      if (!testo) { showToast('Il Coach non ha risposto: riprova tra poco', 'error'); return; }
+      // un resoconto per giorno: rigenerarlo sostituisce quello di prima
+      const posta = postaGet().filter(m => m && !(m.tipo === 'resoconto' && m.giorno === dati.data));
+      const msg = { id: 'r' + Date.now(), da: 'Coach AI', tipo: 'resoconto', giorno: dati.data, at: Date.now(), letto: false,
+        titolo: 'Il resoconto di ' + dati.giorno, testo: testo };
+      posta.unshift(msg);
+      postaSave(posta);
+      _postaInCorso = false;
+      postaApriMessaggio(msg.id);
+      try { postaRigaAggiorna(); } catch (e) {}
+    } catch (e) {
+      showToast('Coach non raggiungibile: riprova tra poco', 'error');
+    } finally {
+      if (_postaInCorso) { _postaInCorso = false; postaRender(); }
+    }
+  }
+
   // All'apertura della chat: piano e messaggi usati oggi, letti dalle
   // tabelle (ognuno vede solo i propri). Il giorno e' quello italiano, come
   // sul server.
@@ -28916,6 +29216,14 @@ function homeRefreshData() {
             onkeydown="aiHandleKey(event)" oninput="aiAutoResize(this)"></textarea>
         <button class="ai-send" id="ai-send" onclick="aiSendMessage()">➤</button>
     </div>
+</div>
+<!-- ══ POSTA DEL COACH (v.319, anteprima) ══ -->
+<div class="tdee-overlay posta-ov" id="posta-ov" role="dialog" aria-modal="true" aria-label="Posta">
+  <div class="tdee-header">
+    <button type="button" class="tdee-back-btn" onclick="postaChiudi()" aria-label="Chiudi">←</button>
+    <div class="tdee-header-title">Posta</div>
+  </div>
+  <div class="tdee-body" id="posta-body"></div>
 </div>
 <!-- ══ TDEE WIZARD OVERLAY ══ -->
 <div class="tdee-overlay" id="tdee-overlay">

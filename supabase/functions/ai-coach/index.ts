@@ -67,11 +67,48 @@ const corsHeaders = {
 //    i componenti del piatto (impasto, pomodoro, mozzarella) invece di
 //    contare due volte la mozzarella.
 const MODELLO = "claude-haiku-5-5";
-const TIPI: Record<string, { maxTokens: number; maxChars: number; immagini: number; pensiero: boolean; sistema: boolean }> = {
-  chat:   { maxTokens: 3000, maxChars: 6000,  immagini: 0, pensiero: true,  sistema: true  },  // una domanda in chat
-  scheda: { maxTokens: 1500, maxChars: 60000, immagini: 0, pensiero: false, sistema: false },  // analisi della scheda (porta il catalogo esercizi)
-  foto:   { maxTokens: 3000, maxChars: 6000,  immagini: 1, pensiero: true,  sistema: false },  // foto del pasto
+// v.319 — 'resoconto': il messaggio serale del personal coach nella Posta.
+// Ha un system prompt suo (promptResoconto) e sforzo "medium": deve
+// incrociare allenamento, pasti, acqua e peso in un testo solo, ed e' una
+// richiesta al giorno per persona, quindi il costo resta basso. Prova del
+// 1/11/2026 su una giornata piena (seduta, 6 alimenti, acqua, peso): ~2.900
+// token in entrata e ~3.700 in uscita, di cui ~2.700 di ragionamento, circa
+// 0,2 centesimi; 17 secondi. Il tetto e' 8000 perche' il ragionamento cresce
+// con i dati della giornata e un tetto stretto lascia il messaggio a meta'.
+const TIPI: Record<string, { maxTokens: number; maxChars: number; immagini: number; pensiero: boolean; sistema: boolean; effort: string }> = {
+  chat:      { maxTokens: 3000, maxChars: 6000,  immagini: 0, pensiero: true,  sistema: true,  effort: "low" },     // una domanda in chat
+  scheda:    { maxTokens: 1500, maxChars: 60000, immagini: 0, pensiero: false, sistema: false, effort: "low" },     // analisi della scheda (porta il catalogo esercizi)
+  foto:      { maxTokens: 3000, maxChars: 6000,  immagini: 1, pensiero: true,  sistema: false, effort: "low" },     // foto del pasto
+  resoconto: { maxTokens: 8000, maxChars: 24000, immagini: 0, pensiero: true,  sistema: true,  effort: "medium" },  // resoconto della giornata (dati in JSON)
 };
+
+// Istruzioni del resoconto serale. I dati arrivano dall'app in JSON e sono
+// gli unici che il Coach puo' usare: niente pasti, numeri o sedute inventati.
+// Carichi e serie restano del programma: il Coach non li cambia.
+function promptResoconto(capitoli: Capitolo[]): string {
+  return `Sei il personal coach di chi usa l'app Awakening. Ogni sera scrivi un messaggio privato nella sua Posta: il resoconto della giornata e come migliorare domani, su allenamento, alimentazione e idratazione, sempre legato al suo percorso dall'inizio.
+
+Ricevi i suoi dati reali in JSON. Usa SOLO quelli: non inventare pasti, allenamenti, pesi o numeri che non ci sono. Se un dato manca (pasti o acqua non registrati, peso non inserito), dillo in una frase come invito a registrarlo, senza rimproverare. Se oggi era giorno di riposo, il riposo fa parte del programma: non trattarlo come un'assenza.
+
+Struttura del messaggio, con questi titoli esatti, ognuno su una riga sua:
+👋 Una o due frasi: saluto con il nome e il senso della giornata.
+🏋️ ALLENAMENTO
+Cosa ha fatto oggi rispetto al programma (o il riposo), ripetizioni e carichi rispetto al previsto quando ci sono, come si e' sentito dal diario. Carichi e ripetizioni si registrano durante la seduta nella pagina Allenamento; il diario e' la sensazione a fine seduta. Collega a quanto fatto dall'inizio e nella settimana.
+🍽️ ALIMENTAZIONE
+Calorie e proteine (poi carboidrati e grassi) rispetto all'obiettivo. Di' cosa mangiare di piu' e cosa di meno nominando gli alimenti che ha registrato davvero: per esempio quale ha alzato zuccheri o grassi saturi, quale gli ha dato proteine. Guarda anche Nutri-Score e prodotti ultra-processati (NOVA 4) se ci sono.
+💧 IDRATAZIONE
+Bicchieri bevuti rispetto all'obiettivo, e la media della settimana se c'e'.
+📈 IL TUO PERCORSO
+Una o due tendenze dagli ultimi 7 giorni e dall'inizio: costanza, peso, record.
+🎯 PER DOMANI
+Da due a quattro azioni concrete, una per riga, che cominciano con "•": l'allenamento previsto domani (nome della scheda) o il riposo, e cosa fare con pasti e acqua.
+
+Il programma dell'app, per capire i dati: un ciclo di ${capitoli.length} capitoli, uno per settimana (${capitoli.map((c) => `${c.nome} ${c.carico}%` + (c.deload ? " con meta' delle serie" : "")).join(", ")} del carico di riferimento). Carichi, serie e ripetizioni li decide il programma: non proporre di cambiarli, al massimo ricorda la regola 2-per-2 (due sedute di fila con almeno due ripetizioni in piu' nell'ultima serie fanno salire il carico).
+
+Tono: un personal coach che lo segue da vicino. Dagli del tu, frasi brevi e concrete, caldo ma diretto; usa il maschile o il femminile come indicato nei dati. Grassetto solo con **due asterischi** e con misura; niente tabelle.
+Limiti: non fare diagnosi, non consigliare farmaci o integratori, non proporre diete estreme o digiuni. Se le calorie sono molto sotto l'obiettivo, invita a non scendere troppo. Non citare studi o percentuali che non sono nei dati.
+Massimo 350 parole.`;
+}
 const MAX_MESSAGGI = 12;
 const MAX_IMG_B64 = 7_000_000;   // circa 5 MB di immagine: il limite dell'API
 const MAX_CONTESTO = 60000;      // caratteri dello schedule_context della chat
@@ -161,8 +198,9 @@ serve(async (req) => {
     const quota = { tipo, piano: q.piano ?? null, limite: q.limite ?? null, usati: q.usati ?? null };
     if (!q.ok) {
       if (q.motivo === "limite") {
-        const cosa = tipo === "chat" ? `i ${q.limite} messaggi` : tipo === "scheda" ? `le ${q.limite} analisi delle schede` : `le ${q.limite} foto dei pasti`;
-        return errore("quota", `Hai usato ${cosa} di oggi. Si ricaricano a mezzanotte.`, 429, { _quota: quota });
+        const cosa = tipo === "chat" ? `i ${q.limite} messaggi` : tipo === "scheda" ? `le ${q.limite} analisi delle schede`
+          : tipo === "resoconto" ? (q.limite === 1 ? "il resoconto" : `i ${q.limite} resoconti`) : `le ${q.limite} foto dei pasti`;
+        return errore("quota", `Hai usato ${cosa} di oggi. ${q.limite === 1 ? "Si ricarica" : "Si ricaricano"} a mezzanotte.`, 429, { _quota: quota });
       }
       if (q.motivo === "pausa") {
         return errore("pausa", "Il Coach gratuito ha raggiunto il limite di oggi per tutti gli utenti. Riprova domani.", 503);
@@ -307,9 +345,9 @@ Non inventare percentuali, scale di carico o capitoli diversi da questi. In exer
       model: MODELLO,
       max_tokens: tetto,
       messages,
-      output_config: { effort: "low" },
+      output_config: { effort: regole.effort },
     };
-    if (regole.sistema) corpo.system = systemPrompt;
+    if (regole.sistema) corpo.system = tipo === "resoconto" ? promptResoconto(capitoli) : systemPrompt;
     if (!regole.pensiero) corpo.thinking = { type: "disabled" };
     let response: Response;
     let data: any;
