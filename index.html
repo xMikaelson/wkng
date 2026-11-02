@@ -2834,6 +2834,25 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
                   padding:13px 6px; font-family:inherit; text-transform:none; letter-spacing:0; cursor:pointer; }
         .pds-b2 { width:auto; margin:0; border:1px solid rgba(255,255,255,0.1); border-radius:12px; background:rgba(255,255,255,0.03); color:#94a3b8;
                   font-weight:800; font-size:0.72rem; padding:13px 6px; font-family:inherit; text-transform:none; letter-spacing:0; cursor:pointer; }
+        /* v.334 — piano come mezza card */
+        .plan-bnd-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:8px; }
+        .plan-bcard { border:1.5px solid rgba(255,255,255,0.1); border-radius:14px; padding:10px; background:#111827; cursor:pointer;
+            display:flex; flex-direction:column; gap:5px; min-height:80px; box-sizing:border-box; user-select:none; -webkit-tap-highlight-color:transparent; }
+        .plan-bcard.on { border-color:rgba(52,211,153,0.55); }
+        .plan-bcard.open { box-shadow:0 0 0 2px rgba(99,102,241,0.45); }
+        .plan-bcard .pbc-top { display:flex; align-items:center; gap:7px; min-width:0; }
+        .plan-bcard .pbc-radio { width:auto; margin:-4px; padding:4px; background:none; border:none; cursor:pointer; flex-shrink:0; display:flex; }
+        .plan-bcard .pbc-radio .plan-bnd-radio { width:17px; height:17px; margin:0; }
+        .plan-bcard .pbc-nm { font-weight:900; font-size:0.72rem; color:#e2e8f0; line-height:1.15; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .plan-bcard.on .pbc-nm { color:var(--primary); }
+        .plan-bcard .pbc-sub { font-size:0.54rem; color:#64748b; font-weight:600; }
+        .plan-bcard .pbc-foot { display:flex; align-items:center; justify-content:space-between; gap:6px; margin-top:auto; }
+        .plan-bcard .pbc-dots { display:inline-flex; gap:3px; }
+        .plan-bcard .pbc-dots i { width:6px; height:6px; border-radius:50%; background:#334155; }
+        .plan-bcard .pbc-dots i.a { background:var(--primary); }
+        .plan-bcard .pbc-tg { font-size:0.54rem; font-weight:800; color:#94a3b8; }
+        .plan-bcard.open .pbc-tg { color:#c7d2fe; }
+        .plan-bnd-kids { border-left:none !important; padding-left:0 !important; }
         .plan-bnd-inuse { font-size:0.5rem; font-weight:800; color:var(--primary); letter-spacing:0.06em; flex-shrink:0; margin-top:2px; }
         .plan-single { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
         .plan-single .plan-proto-grid.tiles { flex:1; margin:0; }
@@ -4958,7 +4977,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '333';
+const APP_VERSION = '334';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -9144,62 +9163,70 @@ function renderPlanPage(w) {
             return box;
         };
 
+        /* v.334 — I piani come mezze card su due colonne (proposta 5) con
+           "Mostra / Nascondi" (dalla proposta 2). Il pallino mette in uso il
+           piano; il resto della card apre e chiude le sue tessere, che
+           compaiono sotto la griglia. Prima ogni piano era un riquadro a
+           tutta larghezza. */
+        const bndGrid = document.createElement('div');
+        bndGrid.className = 'plan-bnd-grid';
+        let bndAperto = null;
         grouped.bundles.forEach(bundle => {
             const isOpen = !!planOpenBundles[bundle.id];
             const hasActive = bundle.protos.some(p => p.id === APP.activeProtocolId);
             const days = planBundleDays(bundle, w);
+            if (isOpen) bndAperto = bundle;
 
-            const isFocB = planFocus && planFocus.type === 'b' && planFocus.id === bundle.id;
-            const head = document.createElement('div');
-            head.className = 'plan-bnd' + (hasActive ? ' active-bnd' : '') + (isOpen ? ' open' : '') + (isFocB ? ' focused' : '');
-            head.innerHTML =
-                (_unSolo ? '' : '<div class="plan-bnd-radio' + (hasActive ? ' on' : '') + '"></div>') +
-                '<div style="flex:1; min-width:0;">' +
-                  '<div class="plan-bnd-nm">' + escapeHTML(bundle.name) + '</div>' +
-                  (bundle.showDate ? '<div class="plan-bnd-sub">creato il ' + escapeHTML(bundle.date) + '</div>' : '') +
-                  '<div class="plan-bnd-days">' +
-                    DAYS_SHORT.map((d, i) => '<i class="' + (days.indexOf(i) >= 0 ? 'a' : '') + '">' + d.charAt(0) + '</i>').join('') +
-                  '</div>' +
+            const nmFull = String(bundle.name || '');
+            const k = nmFull.indexOf(' \u00B7 ');
+            const nm = k >= 0 ? nmFull.slice(0, k) : nmFull;
+            const env = k >= 0 ? nmFull.slice(k + 3) : '';
+
+            const card = document.createElement('div');
+            card.className = 'plan-bcard' + (hasActive ? ' on' : '') + (isOpen ? ' open' : '');
+            card.setAttribute('role', 'button');
+            card.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            card.setAttribute('aria-label', nmFull + (hasActive ? ', in uso' : '') + (isOpen ? ', aperto' : ''));
+            card.innerHTML =
+                '<div class="pbc-top">' +
+                  (_unSolo ? '' : '<button type="button" class="pbc-radio" aria-label="Usa ' + escapeHTML(nmFull) + '"><span class="plan-bnd-radio' + (hasActive ? ' on' : '') + '"></span></button>') +
+                  '<span class="pbc-nm">' + escapeHTML(nm) + '</span>' +
+                  (_unSolo ? '<span class="plan-bnd-inuse">IN USO</span>' : '') +
                 '</div>' +
-                (_unSolo ? '<span class="plan-bnd-inuse">IN USO</span>' : '') +
-                '<span class="plan-bnd-ct">' + bundle.protos.length + '</span>' +
-                '<span class="plan-bnd-ar" title="Mostra i protocolli">›</span>';
+                '<div class="pbc-sub">' + (env ? escapeHTML(env) + ' \u00B7 ' : '') + bundle.protos.length + ' protocolli' +
+                  (bundle.showDate ? ' \u00B7 ' + escapeHTML(bundle.date) : '') + '</div>' +
+                '<div class="pbc-foot"><span class="pbc-dots">' +
+                  DAYS_SHORT.map((d, i) => '<i class="' + (days.indexOf(i) >= 0 ? 'a' : '') + '"></i>').join('') +
+                '</span><span class="pbc-tg">' + (isOpen ? 'Nascondi' : 'Mostra') + '</span></div>';
 
-            // Selezionare il bundle lo mette in uso senza aprirne l'elenco:
-            // sfogliare e attivare restano due gesti distinti.
-            head.addEventListener('click', () => {
-                /* Un tocco solo. Prima, su un piano gia' in uso, il primo
-                   tocco lo selezionava e basta e il secondo accendeva il
-                   filtro sui giorni: il primo sembrava non aver fatto
-                   niente. Ora selezionare e mostrare i giorni allenati sono
-                   la stessa cosa, e il filtro non si spegne piu' ritoccando:
-                   si sposta scegliendo un altro piano. */
-                if (hasActive) { planFocus = { type:'b', id:bundle.id }; renderPlanPage(w); return; }
-                planActivateBundle(bundle);
-            });
-            // L'elenco dei protocolli si apre e si chiude solo dalla freccia
-            head.querySelector('.plan-bnd-ar').addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                /* v.333: chiuso va scritto come false, non tolto: senza, il
-                   piano in uso si riapriva da solo al ridisegno (v.332) e la
-                   freccia sembrava non funzionare. */
-                if (isOpen) { planOpenBundles[bundle.id] = false; if (isFocB) planFocus = null; }
+            card.addEventListener('click', () => {
+                /* v.333: chiuso va scritto come false, non tolto, altrimenti il
+                   piano in uso si riapre da solo al ridisegno. */
+                if (isOpen) { planOpenBundles[bundle.id] = false; }
                 else {
-                    Object.keys(planOpenBundles).forEach(function(k){ planOpenBundles[k] = false; });
-                    grouped.bundles.forEach(function(b){ planOpenBundles[b.id] = false; });
-                    planOpenBundles[bundle.id] = true; planFocus = { type:'b', id:bundle.id };
+                    Object.keys(planOpenBundles).forEach(function(x){ planOpenBundles[x] = false; });
+                    grouped.bundles.forEach(function(x){ planOpenBundles[x.id] = false; });
+                    planOpenBundles[bundle.id] = true;
                 }
+                planFocus = { type:'b', id:bundle.id };
                 renderPlanPage(w);
             });
-            protoCol.appendChild(head);
-
-            if (isOpen) {
-                const kids = document.createElement('div');
-                kids.className = 'plan-bnd-kids';
-                kids.appendChild(makeProtoGrid(bundle.protos));
-                protoCol.appendChild(kids);
-            }
+            const rb = card.querySelector('.pbc-radio');
+            if (rb) rb.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                if (hasActive) return;
+                planOpenBundles[bundle.id] = true;
+                planActivateBundle(bundle);
+            });
+            bndGrid.appendChild(card);
         });
+        if (grouped.bundles.length) protoCol.appendChild(bndGrid);
+        if (bndAperto) {
+            const kids = document.createElement('div');
+            kids.className = 'plan-bnd-kids';
+            kids.appendChild(makeProtoGrid(bndAperto.protos));
+            protoCol.appendChild(kids);
+        }
 
         if (grouped.singles.length) {
             if (grouped.bundles.length) {
