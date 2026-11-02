@@ -2861,6 +2861,20 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .plan-bnd-kids.pbk-in .plan-proto-item:nth-child(n+6) { animation-delay:300ms; }
         @keyframes pbkIn { from { opacity:0; transform:translateY(10px) scale(0.97); } }
         @media (prefers-reduced-motion:reduce) { .plan-bnd-kids.pbk-in .plan-proto-item { animation:none; } }
+        /* v.336 — Variante C: card sopra, tessere (2 per riga) a sinistra e
+           pianificazione a destra. */
+        .plan-bnd-grid.top { border-top:1px solid #334155; padding-top:12px; margin-top:4px; margin-bottom:10px; }
+        .plan-bottom-cols.tiles.c2 { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+        .plan-bottom-cols.under { border-top:none; padding-top:0; margin-top:0; }
+        .plan-bottom-cols.c2 .plan-proto-grid.tiles { grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
+        .plan-bottom-cols.c2 .plan-single .plan-proto-grid.tiles { grid-template-columns:minmax(0,1fr); }
+        .plan-bottom-cols.c2 .plan-single { gap:4px; }
+        .plan-bottom-cols.c2 .plan-single-radio { padding:4px; }
+        .plan-bottom-cols.c2 .plan-proto-item.tile { min-height:62px; padding:10px 4px 7px; }
+        .plan-bottom-cols.c2 .plan-proto-item.tile .pt-dd { display:none; }
+        .plan-col-hint { font-size:0.6rem; color:#64748b; line-height:1.4; padding:4px 0; }
+        .plan-sched-row { transition:background 0.25s ease; }
+        .plan-sched-row.focus-hit { background:rgba(99,102,241,0.2) !important; }
         .plan-bnd-inuse { font-size:0.5rem; font-weight:800; color:var(--primary); letter-spacing:0.06em; flex-shrink:0; margin-top:2px; }
         .plan-single { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
         .plan-single .plan-proto-grid.tiles { flex:1; margin:0; }
@@ -4985,7 +4999,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '335';
+const APP_VERSION = '336';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -9092,8 +9106,13 @@ function renderPlanPage(w) {
     const protoCol = document.createElement('div');
     const protoLbl = document.createElement('div');
     protoLbl.className = 'plan-col-label';
-    protoLbl.textContent = '📋 I miei protocolli';
+    protoLbl.textContent = '📋 Protocolli';
     protoCol.appendChild(protoLbl);
+    /* v.336 — Variante C: le card dei piani stanno sopra le due colonne, a
+       tutta larghezza; sotto, a sinistra le tessere del piano aperto e a
+       destra la pianificazione della settimana. */
+    let bndTop = null;
+    let tileInfo = null;
 
     if (APP.savedProtocols && APP.savedProtocols.length > 0) {
         const grouped = planGroupProtocols(APP.savedProtocols);
@@ -9114,7 +9133,7 @@ function renderPlanPage(w) {
 
         // v.330: nome della tessera. Il prefisso del piano ("FORGE · ") e'
         // gia' nel titolo del gruppo; il tipo di seduta va sulla seconda riga.
-        const tileInfo = (proto) => {
+        tileInfo = (proto) => {
             let nm = String(proto.name || '');
             const k = nm.indexOf(' \u00B7 ');
             if (k >= 0 && !proto._external) nm = nm.slice(k + 3);
@@ -9239,13 +9258,18 @@ function renderPlanPage(w) {
             });
             bndGrid.appendChild(card);
         });
-        if (grouped.bundles.length) protoCol.appendChild(bndGrid);
+        if (grouped.bundles.length) bndTop = bndGrid;
         if (bndAperto) {
             const kids = document.createElement('div');
             kids.className = 'plan-bnd-kids';
             kids.appendChild(makeProtoGrid(bndAperto.protos));
             protoCol.appendChild(kids);
             if (planBndAnimOpen) { planBndAnimOpen = false; requestAnimationFrame(() => planBndExpand(kids)); }
+        } else if (grouped.bundles.length) {
+            const hint = document.createElement('div');
+            hint.className = 'plan-col-hint';
+            hint.textContent = 'Tocca un piano qui sopra per vedere i suoi protocolli';
+            protoCol.appendChild(hint);
         }
 
         if (grouped.singles.length) {
@@ -9286,10 +9310,14 @@ function renderPlanPage(w) {
             'style="color:var(--primary);font-weight:700;text-decoration:underline;cursor:pointer">Nuovo Protocollo</span>, in cima a questa pagina.</div>';
     }
     cols.appendChild(protoCol);
-    cols.classList.add('tiles');
+    cols.classList.add('tiles', 'c2');
+    if (bndTop) { bndTop.classList.add('top'); cols.classList.add('under'); }
 
-    // Right: schedule — v.330: non piu' mostrata, ogni tessera porta il suo giorno.
-    if (false) {
+    /* Right: schedule — v.336: torna, perche' la settimana si legge a colpo
+       d'occhio. Mostra lo stesso nome della tessera (senza il prefisso del
+       piano, che e' gia' sulla card) e illumina i giorni del protocollo
+       selezionato senza spegnere gli altri (come le chip dalla v.331). */
+    const _focusP = (planFocus && planFocus.type === 'p' && focusDays) ? focusDays : null;
     const schedCol = document.createElement('div');
     const schedLbl = document.createElement('div');
     schedLbl.className = 'plan-col-label';
@@ -9301,7 +9329,7 @@ function renderPlanPage(w) {
         row.dataset.day = di;
         const a = APP.dayAssignments[w][di];
         const isDone = APP.chipStates[w][di] === 'done';
-        if (focusDays) row.className += (focusDays.indexOf(di) >= 0 ? ' focus-hit' : ' dimmed');
+        if (_focusP && _focusP.indexOf(di) >= 0) row.className += ' focus-hit';
         /* Nome per esteso, non la sigla: qui la riga ha tutta la larghezza
            della colonna e non i 40 pixel del riquadro, quindi non c'e' niente
            da abbreviare. La sigla resta dov'e' obbligata, cioe' sul riquadro.
@@ -9312,14 +9340,20 @@ function renderPlanPage(w) {
            nome come si legge in "I miei protocolli". */
         const _proto = a ? (APP.savedProtocols || []).find(function(p){ return p.id === a.protoId; }) : null;
         const _nome = a ? ((_proto && _proto.name) || a.protoName || a.name || '') : '';
-        const _txt  = a ? (_nome || '—') : '—';
+        let _breve = _nome;
+        if (_proto && tileInfo) {
+            const _ti = tileInfo(_proto);
+            _breve = _proto._external ? _ti.n1 : (_ti.n1 + ' ' + _ti.n2);
+        }
+        const _txt  = a ? (_breve || '—') : '—';
+        row.dataset.txt = a ? _txt : '';
         if (a && _nome) row.setAttribute('aria-label', d + ': ' + _nome);
         row.innerHTML = `<span class="plan-sched-day">${d}</span>
             <span class="plan-sched-proto ${a ? '' : 'rest'}" style="${isDone ? 'text-decoration:line-through;opacity:0.5' : ''}">${escapeHTML(_txt)}</span>`;
         schedCol.appendChild(row);
     });
     cols.appendChild(schedCol);
-    }
+    if (bndTop) block.appendChild(bndTop);
     block.appendChild(cols);
 
     // Drag tip
@@ -9356,7 +9390,7 @@ function renderPlanPage(w) {
 
     // Fire pending swap animation if any
     if (window._pendingSwapAnim) {
-        const { a, b, preA, preB } = window._pendingSwapAnim;
+        const { a, b } = window._pendingSwapAnim;
         window._pendingSwapAnim = null;
 
         requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -9364,6 +9398,9 @@ function renderPlanPage(w) {
             const rowA = [...allRows].find(r => +r.dataset.day === a);
             const rowB = [...allRows].find(r => +r.dataset.day === b);
             if (!rowA || !rowB) return;
+            // v.336: il testo prima dello scambio e' quello che ora sta
+            // sull'altra riga, scritto nello stesso formato breve.
+            const preA = rowB.dataset.txt || null, preB = rowA.dataset.txt || null;
 
             // DOM shows POST-swap text (renderPlanPage already ran with new dayAssignments)
             // Restore PRE-swap text so animation starts from the original visual state
