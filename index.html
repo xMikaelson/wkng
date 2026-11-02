@@ -2875,6 +2875,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .plan-col-hint { font-size:0.6rem; color:#64748b; line-height:1.4; padding:4px 0; }
         .plan-sched-row { transition:background 0.25s ease; }
         .plan-sched-row.focus-hit { background:rgba(99,102,241,0.2) !important; }
+        .plan-altro { grid-column:1 / -1; width:100%; margin:0; padding:8px; border-radius:11px; border:1px dashed rgba(255,255,255,0.14);
+            background:rgba(255,255,255,0.02); color:#94a3b8; font-family:inherit; font-size:0.62rem; font-weight:800; text-align:center;
+            text-transform:none; letter-spacing:0.02em; cursor:pointer; }
+        .plan-altro:active { background:rgba(255,255,255,0.06); }
+        .plan-bcard.pbc-in { animation:pbkIn 0.45s cubic-bezier(0.22,1,0.36,1) both; }
+        .plan-bcard.pbc-out { animation:pbcOut 0.28s ease both; }
+        @keyframes pbcOut { to { opacity:0; transform:translateY(-6px) scale(0.97); } }
+        @media (prefers-reduced-motion:reduce) { .plan-bcard.pbc-in, .plan-bcard.pbc-out { animation:none; } }
+        .plan-bnd-inuse.ext { color:#94a3b8; }
         .plan-bnd-inuse { font-size:0.5rem; font-weight:800; color:var(--primary); letter-spacing:0.06em; flex-shrink:0; margin-top:2px; }
         .plan-single { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
         .plan-single .plan-proto-grid.tiles { flex:1; margin:0; }
@@ -4999,7 +5008,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '336';
+const APP_VERSION = '337';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -9125,11 +9134,6 @@ function renderPlanPage(w) {
         // piano non c'e' niente da scegliere, quindi niente pallino.
         const _piani = grouped.bundles.length + grouped.singles.filter(function(p){ return !p._external; }).length;
         const _unSolo = _piani <= 1;
-        grouped.bundles.forEach(function(b){
-            if (_unSolo || b.protos.some(function(p){ return p.id === APP.activeProtocolId; })) {
-                if (planOpenBundles[b.id] === undefined) planOpenBundles[b.id] = true;
-            }
-        });
 
         // v.330: nome della tessera. Il prefisso del piano ("FORGE · ") e'
         // gia' nel titolo del gruppo; il tipo di seduta va sulla seconda riga.
@@ -9195,33 +9199,69 @@ function renderPlanPage(w) {
            piano; il resto della card apre e chiude le sue tessere, che
            compaiono sotto la griglia. Prima ogni piano era un riquadro a
            tutta larghezza. */
+        /* v.334 — I piani come mezze card su due colonne (proposta 5) con
+           "Mostra / Nascondi" (dalla proposta 2). Il pallino mette in uso il
+           piano; il resto della card apre e chiude le sue tessere, che
+           compaiono nella colonna di sinistra.
+           v.337 — Anche i protocolli singoli (e i programmi esterni) sono
+           card fra le altre, non piu' una sezione "Singoli" a parte. Con piu'
+           di due card se ne vedono due (prima quella in uso) e il pulsante
+           "Altro" mostra le restanti. */
+        const voci = [];
+        grouped.bundles.forEach(function(b){
+            const nmFull = String(b.name || '');
+            const k = nmFull.indexOf(' · ');
+            voci.push({ id:b.id, bundle:b, protos:b.protos, full:nmFull,
+                nm: k >= 0 ? nmFull.slice(0, k) : nmFull,
+                sub: (k >= 0 ? nmFull.slice(k + 3) + ' · ' : '') + b.protos.length + ' protocolli' + (b.showDate ? ' · ' + b.date : '') });
+        });
+        grouped.singles.forEach(function(p){
+            const nmFull = String(p.name || '');
+            const k = p._external ? -1 : nmFull.indexOf(' · ');
+            voci.push({ id:'s:' + p.id, single:p, protos:[p], full:nmFull, ext:!!p._external,
+                nm: k >= 0 ? nmFull.slice(0, k) : nmFull,
+                sub: p._external ? 'Programma esterno' : ((k >= 0 ? nmFull.slice(k + 3) + ' · ' : '') + '1 protocollo') });
+        });
+        voci.forEach(function(v){
+            v.on = v.protos.some(function(p){ return p.id === APP.activeProtocolId; });
+            if ((_unSolo && !v.ext) || v.on) {
+                if (planOpenBundles[v.id] === undefined) planOpenBundles[v.id] = true;
+            }
+        });
+        // Prima quella in uso, poi le altre nell'ordine di sempre.
+        voci.sort(function(x, y){ return (y.on ? 1 : 0) - (x.on ? 1 : 0); });
+        const PIANI_VISIBILI = 2;
+        const _troppe = voci.length > PIANI_VISIBILI;
+        const _tutte = !_troppe || planShowAllPiani;
+
         const bndGrid = document.createElement('div');
         bndGrid.className = 'plan-bnd-grid';
         let bndAperto = null;
-        grouped.bundles.forEach(bundle => {
-            const isOpen = !!planOpenBundles[bundle.id];
-            const hasActive = bundle.protos.some(p => p.id === APP.activeProtocolId);
-            const days = planBundleDays(bundle, w);
-            if (isOpen) bndAperto = bundle;
-
-            const nmFull = String(bundle.name || '');
-            const k = nmFull.indexOf(' \u00B7 ');
-            const nm = k >= 0 ? nmFull.slice(0, k) : nmFull;
-            const env = k >= 0 ? nmFull.slice(k + 3) : '';
+        voci.forEach((v, idx) => {
+            // Una card nascosta sotto "Altro" non resta aperta: le sue tessere
+            // comparirebbero senza la card che le ha aperte.
+            if (!_tutte && idx >= PIANI_VISIBILI) { if (planOpenBundles[v.id]) planOpenBundles[v.id] = false; return; }
+            const isOpen = !!planOpenBundles[v.id];
+            if (isOpen && !bndAperto) bndAperto = v;
+            const hasActive = v.on;
+            const days = planBundleDays({ protos: v.protos }, w);
+            const conRadio = !_unSolo && !v.ext;
 
             const card = document.createElement('div');
-            card.className = 'plan-bcard' + (hasActive ? ' on' : '') + (isOpen ? ' open' : '');
+            card.className = 'plan-bcard' + (hasActive ? ' on' : '') + (isOpen ? ' open' : '') + (v.ext ? ' ext' : '') +
+                (idx >= PIANI_VISIBILI ? ' extra' : '') + (idx >= PIANI_VISIBILI && planAltroAnim ? ' pbc-in' : '');
+            if (idx >= PIANI_VISIBILI) card.style.animationDelay = ((idx - PIANI_VISIBILI) * 60) + 'ms';
             card.setAttribute('role', 'button');
             card.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-            card.setAttribute('aria-label', nmFull + (hasActive ? ', in uso' : '') + (isOpen ? ', aperto' : ''));
+            card.setAttribute('aria-label', v.full + (hasActive ? ', in uso' : '') + (isOpen ? ', aperto' : ''));
             card.innerHTML =
                 '<div class="pbc-top">' +
-                  (_unSolo ? '' : '<button type="button" class="pbc-radio" aria-label="Usa ' + escapeHTML(nmFull) + '"><span class="plan-bnd-radio' + (hasActive ? ' on' : '') + '"></span></button>') +
-                  '<span class="pbc-nm">' + escapeHTML(nm) + '</span>' +
-                  (_unSolo ? '<span class="plan-bnd-inuse">IN USO</span>' : '') +
+                  (conRadio ? '<button type="button" class="pbc-radio" aria-label="Usa ' + escapeHTML(v.full) + '"><span class="plan-bnd-radio' + (hasActive ? ' on' : '') + '"></span></button>' : '') +
+                  '<span class="pbc-nm">' + escapeHTML(v.nm) + '</span>' +
+                  (_unSolo && !v.ext ? '<span class="plan-bnd-inuse">IN USO</span>' : '') +
+                  (v.ext ? '<span class="plan-bnd-inuse ext">ESTERNO</span>' : '') +
                 '</div>' +
-                '<div class="pbc-sub">' + (env ? escapeHTML(env) + ' \u00B7 ' : '') + bundle.protos.length + ' protocolli' +
-                  (bundle.showDate ? ' \u00B7 ' + escapeHTML(bundle.date) : '') + '</div>' +
+                '<div class="pbc-sub">' + escapeHTML(v.sub) + '</div>' +
                 '<div class="pbc-foot"><span class="pbc-dots">' +
                   DAYS_SHORT.map((d, i) => '<i class="' + (days.indexOf(i) >= 0 ? 'a' : '') + '"></i>').join('') +
                 '</span><span class="pbc-tg">' + (isOpen ? 'Nascondi' : 'Mostra') + '</span></div>';
@@ -9232,9 +9272,9 @@ function renderPlanPage(w) {
                    piano in uso si riapre da solo al ridisegno. */
                 const apri = () => {
                     Object.keys(planOpenBundles).forEach(function(x){ planOpenBundles[x] = false; });
-                    grouped.bundles.forEach(function(x){ planOpenBundles[x.id] = false; });
-                    planOpenBundles[bundle.id] = true;
-                    planFocus = { type:'b', id:bundle.id };
+                    voci.forEach(function(x){ planOpenBundles[x.id] = false; });
+                    planOpenBundles[v.id] = true;
+                    planFocus = v.bundle ? { type:'b', id:v.id } : null;
                     planBndAnimOpen = true;
                     renderPlanPage(w);
                 };
@@ -9244,7 +9284,7 @@ function renderPlanPage(w) {
                 const aperto = document.querySelector('.plan-bnd-kids');
                 if (aperto) {
                     planBndCollapse(aperto, () => {
-                        if (isOpen) { planOpenBundles[bundle.id] = false; renderPlanPage(w); }
+                        if (isOpen) { planOpenBundles[v.id] = false; renderPlanPage(w); }
                         else apri();
                     });
                 } else if (!isOpen) apri();
@@ -9253,55 +9293,62 @@ function renderPlanPage(w) {
             if (rb) rb.addEventListener('click', (ev) => {
                 ev.stopPropagation();
                 if (hasActive) return;
-                planOpenBundles[bundle.id] = true;
-                planActivateBundle(bundle);
+                if (v.bundle) {
+                    planOpenBundles[v.id] = true;
+                    planActivateBundle(v.bundle);
+                    return;
+                }
+                // Un protocollo singolo e' un piano a se': il pallino lo mette in uso.
+                const p = v.single;
+                voci.forEach(function(x){ planOpenBundles[x.id] = false; });
+                planOpenBundles[v.id] = true;
+                planApplyProtoSchedule(p);
+                activateProtocol(p.id, true);
+                try { initDashboard(); restoreChipStates(); } catch (e) {}
+                renderPlanPage(w);
+                showToast('"' + p.name + '" in uso', 'success');
             });
             bndGrid.appendChild(card);
         });
-        if (grouped.bundles.length) bndTop = bndGrid;
+        planAltroAnim = false;
+        if (_troppe) {
+            const altro = document.createElement('button');
+            altro.type = 'button';
+            altro.className = 'plan-altro';
+            const nasc = voci.length - PIANI_VISIBILI;
+            altro.setAttribute('aria-expanded', planShowAllPiani ? 'true' : 'false');
+            altro.textContent = planShowAllPiani ? 'Meno ▴' : 'Altro (' + nasc + ') ▾';
+            altro.addEventListener('click', () => {
+                if (planBndBusy) return;
+                if (!planShowAllPiani) { planShowAllPiani = true; planAltroAnim = true; renderPlanPage(w); return; }
+                // Si richiudono: le card in piu' svaniscono; se una di loro era
+                // aperta, prima si chiudono anche le sue tessere.
+                const chiudi = () => {
+                    voci.forEach(function(x, i){ if (i >= PIANI_VISIBILI && planOpenBundles[x.id]) planOpenBundles[x.id] = false; });
+                    planShowAllPiani = false;
+                    renderPlanPage(w);
+                };
+                const extra = bndGrid.querySelectorAll('.plan-bcard.extra');
+                extra.forEach(function(c){ c.classList.remove('pbc-in'); c.classList.add('pbc-out'); });
+                const apertaFuori = voci.some(function(x, i){ return i >= PIANI_VISIBILI && planOpenBundles[x.id]; });
+                const kids = document.querySelector('.plan-bnd-kids');
+                if (apertaFuori && kids) planBndCollapse(kids, chiudi);
+                else { planBndBusy = true; setTimeout(function(){ planBndBusy = false; chiudi(); }, 300); }
+            });
+            bndGrid.appendChild(altro);
+        }
+        if (voci.length) bndTop = bndGrid;
         if (bndAperto) {
             const kids = document.createElement('div');
             kids.className = 'plan-bnd-kids';
             kids.appendChild(makeProtoGrid(bndAperto.protos));
             protoCol.appendChild(kids);
             if (planBndAnimOpen) { planBndAnimOpen = false; requestAnimationFrame(() => planBndExpand(kids)); }
-        } else if (grouped.bundles.length) {
+        } else {
             const hint = document.createElement('div');
             hint.className = 'plan-col-hint';
             hint.textContent = 'Tocca un piano qui sopra per vedere i suoi protocolli';
             protoCol.appendChild(hint);
-        }
-
-        if (grouped.singles.length) {
-            if (grouped.bundles.length) {
-                const sep = document.createElement('div');
-                sep.className = 'plan-bnd-sep';
-                sep.textContent = 'Singoli';
-                protoCol.appendChild(sep);
-            }
-            grouped.singles.forEach(function(p){
-                const row = document.createElement('div');
-                row.className = 'plan-single';
-                if (!_unSolo && !p._external) {
-                    // Un protocollo singolo e' un piano a se': il pallino lo mette in uso.
-                    const rb = document.createElement('button');
-                    rb.type = 'button';
-                    rb.className = 'plan-single-radio';
-                    rb.setAttribute('aria-label', 'Usa ' + p.name);
-                    rb.innerHTML = '<span class="plan-bnd-radio' + (p.id === APP.activeProtocolId ? ' on' : '') + '"></span>';
-                    rb.onclick = function(){
-                        if (p.id === APP.activeProtocolId) return;
-                        planApplyProtoSchedule(p);
-                        activateProtocol(p.id, true);
-                        try { initDashboard(); restoreChipStates(); } catch (e) {}
-                        renderPlanPage(w);
-                        showToast('"' + p.name + '" in uso', 'success');
-                    };
-                    row.appendChild(rb);
-                }
-                row.appendChild(makeProtoGrid([p]));
-                protoCol.appendChild(row);
-            });
         }
     } else {
         protoCol.innerHTML += '<div style="font-size:0.62rem;color:#64748b;padding:8px 0">Nessun protocollo. Creane uno con ' +
@@ -12826,7 +12873,7 @@ function mtrClose() {
 /* v.335 — Mostra / Nascondi delle tessere di un piano, animato (550 ms):
    l'altezza scorre e le tessere entrano una dopo l'altra. Rispetta
    "riduci movimento" del telefono. */
-var PLAN_BND_MS = 550, planBndBusy = false, planBndAnimOpen = false;
+var PLAN_BND_MS = 550, planBndBusy = false, planBndAnimOpen = false, planShowAllPiani = false, planAltroAnim = false;
 function planBndReduced(){ try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
 function planBndExpand(el){
     if (!el || planBndReduced()) return;
