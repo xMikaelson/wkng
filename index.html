@@ -2853,6 +2853,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .plan-bcard .pbc-tg { font-size:0.54rem; font-weight:800; color:#94a3b8; }
         .plan-bcard.open .pbc-tg { color:#c7d2fe; }
         .plan-bnd-kids { border-left:none !important; padding-left:0 !important; }
+        .plan-bnd-kids.pbk-in .plan-proto-item { animation:pbkIn 0.45s cubic-bezier(0.22,1,0.36,1) both; }
+        .plan-bnd-kids.pbk-in .plan-proto-item:nth-child(2) { animation-delay:60ms; }
+        .plan-bnd-kids.pbk-in .plan-proto-item:nth-child(3) { animation-delay:120ms; }
+        .plan-bnd-kids.pbk-in .plan-proto-item:nth-child(4) { animation-delay:180ms; }
+        .plan-bnd-kids.pbk-in .plan-proto-item:nth-child(5) { animation-delay:240ms; }
+        .plan-bnd-kids.pbk-in .plan-proto-item:nth-child(n+6) { animation-delay:300ms; }
+        @keyframes pbkIn { from { opacity:0; transform:translateY(10px) scale(0.97); } }
+        @media (prefers-reduced-motion:reduce) { .plan-bnd-kids.pbk-in .plan-proto-item { animation:none; } }
         .plan-bnd-inuse { font-size:0.5rem; font-weight:800; color:var(--primary); letter-spacing:0.06em; flex-shrink:0; margin-top:2px; }
         .plan-single { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
         .plan-single .plan-proto-grid.tiles { flex:1; margin:0; }
@@ -4977,7 +4985,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '334';
+const APP_VERSION = '335';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -9200,16 +9208,27 @@ function renderPlanPage(w) {
                 '</span><span class="pbc-tg">' + (isOpen ? 'Nascondi' : 'Mostra') + '</span></div>';
 
             card.addEventListener('click', () => {
+                if (planBndBusy) return;
                 /* v.333: chiuso va scritto come false, non tolto, altrimenti il
                    piano in uso si riapre da solo al ridisegno. */
-                if (isOpen) { planOpenBundles[bundle.id] = false; }
-                else {
+                const apri = () => {
                     Object.keys(planOpenBundles).forEach(function(x){ planOpenBundles[x] = false; });
                     grouped.bundles.forEach(function(x){ planOpenBundles[x.id] = false; });
                     planOpenBundles[bundle.id] = true;
-                }
-                planFocus = { type:'b', id:bundle.id };
-                renderPlanPage(w);
+                    planFocus = { type:'b', id:bundle.id };
+                    planBndAnimOpen = true;
+                    renderPlanPage(w);
+                };
+                // v.335: le tessere si chiudono e si aprono con un'animazione
+                // (550 ms), non di colpo. Passando da un piano all'altro prima
+                // si chiude quello aperto, poi si apre il nuovo.
+                const aperto = document.querySelector('.plan-bnd-kids');
+                if (aperto) {
+                    planBndCollapse(aperto, () => {
+                        if (isOpen) { planOpenBundles[bundle.id] = false; renderPlanPage(w); }
+                        else apri();
+                    });
+                } else if (!isOpen) apri();
             });
             const rb = card.querySelector('.pbc-radio');
             if (rb) rb.addEventListener('click', (ev) => {
@@ -9226,6 +9245,7 @@ function renderPlanPage(w) {
             kids.className = 'plan-bnd-kids';
             kids.appendChild(makeProtoGrid(bndAperto.protos));
             protoCol.appendChild(kids);
+            if (planBndAnimOpen) { planBndAnimOpen = false; requestAnimationFrame(() => planBndExpand(kids)); }
         }
 
         if (grouped.singles.length) {
@@ -12764,6 +12784,32 @@ function mtrClose() {
     var overlay = document.getElementById('mtr-overlay');
     if (overlay) overlay.classList.remove('active');
     _mtrCallback = null;
+}
+
+/* v.335 — Mostra / Nascondi delle tessere di un piano, animato (550 ms):
+   l'altezza scorre e le tessere entrano una dopo l'altra. Rispetta
+   "riduci movimento" del telefono. */
+var PLAN_BND_MS = 550, planBndBusy = false, planBndAnimOpen = false;
+function planBndReduced(){ try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
+function planBndExpand(el){
+    if (!el || planBndReduced()) return;
+    planBndBusy = true;
+    const h = el.scrollHeight;
+    el.style.overflow = 'hidden'; el.style.height = '0px'; el.style.opacity = '0';
+    el.classList.add('pbk-in');
+    void el.offsetHeight;
+    el.style.transition = 'height ' + PLAN_BND_MS + 'ms cubic-bezier(0.22,1,0.36,1), opacity ' + PLAN_BND_MS + 'ms ease';
+    el.style.height = h + 'px'; el.style.opacity = '1';
+    setTimeout(() => { el.style.height = ''; el.style.overflow = ''; el.style.transition = ''; planBndBusy = false; }, PLAN_BND_MS + 30);
+}
+function planBndCollapse(el, done){
+    if (!el || planBndReduced()) { done(); return; }
+    planBndBusy = true;
+    el.style.overflow = 'hidden'; el.style.height = el.scrollHeight + 'px'; el.style.opacity = '1';
+    void el.offsetHeight;
+    el.style.transition = 'height ' + PLAN_BND_MS + 'ms cubic-bezier(0.65,0,0.35,1), opacity ' + PLAN_BND_MS + 'ms ease';
+    el.style.height = '0px'; el.style.opacity = '0';
+    setTimeout(() => { planBndBusy = false; done(); }, PLAN_BND_MS + 20);
 }
 
 /* v.332 — "In quale giorno lo alleni?". Prende il posto del trascinamento:
@@ -25948,6 +25994,7 @@ function startOnboarding() {
     onboarding.nome = awNome();    // v.313: idem per il nome
     // v.327: nome e sesso gia' dati non si richiedono piu'.
     onboarding._chiSeiNoto = !!(onboarding.sex && onboarding.nome);
+    onboarding._daPiani = false;
     onboarding.ext = null; onboarding.extName = ''; onboarding.extDays = [];
     onboarding.kgCh1 = {};         // carichi del Chapter 1 cambiati nell'anteprima
     onboarding.goal = null;
@@ -27796,9 +27843,16 @@ function exitWizardToHome() {
     document.querySelectorAll('.onboarding-step').forEach(s => s.classList.remove('active'));
     document.getElementById('ob-step-1').classList.add('active');
     obSetVisible(false);
-    // Vai alla homepage (results) se ha protocolli, altrimenti hero
-    if (APP.exerciseData.length > 0) {
+    // Vai alla homepage (results) se ha protocolli, altrimenti hero.
+    // v.335: si guardano i protocolli salvati, non APP.exerciseData: quella
+    // e' vuota con un programma esterno o dopo certi passaggi di pagina, e
+    // chi aveva gia' un piano restava chiuso nel wizard. Aperto da Piani, si
+    // torna in Piani.
+    const _daPiani = !!onboarding._daPiani;
+    onboarding._daPiani = false;
+    if ((APP.savedProtocols || []).length > 0 || APP.exerciseData.length > 0) {
         showResultsFromHero();
+        if (_daPiani) { try { navSwitch('piani'); } catch (e) {} }
     } else {
         document.getElementById('hero-section').style.display = '';
         document.getElementById('results').style.display = 'none';
@@ -28052,6 +28106,7 @@ function openNewProtocol() {
     if (dashOvNewP) dashOvNewP.style.display = 'none';
     document.getElementById('results').style.display = 'none';
     startOnboarding();
+    onboarding._daPiani = true;   // v.335: "Torna alla home" riporta qui
 }
 function closeSettingsAndNewProtocol() { openNewProtocol(); }
 
