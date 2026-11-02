@@ -3409,6 +3409,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wp-step:disabled { opacity:0.45; cursor:default; }
         /* Salta, barra dei set e INIZIA servono solo all'ultimo passo */
         .wo-action-footer.wp-hide { display:none !important; }
+        .wp-chip:disabled { opacity:0.35; cursor:not-allowed; }
+        .wp-chip.sm { padding-top:5px; padding-bottom:5px; }
+        .wp-warn { color:#fbbf24 !important; }
+        .wp-rest-ex { font-size:0.62rem; font-weight:700; color:#cbd5e1; margin:6px 0 4px; }
+        .wx-big { font-size:3.4rem; font-weight:900; text-align:center; font-variant-numeric:tabular-nums; margin:14px 0 2px; color:#e2e8f0; }
+        .wx-big.run { color:var(--primary); }
+        .wx-cap { text-align:center; font-size:0.6rem; color:#64748b; margin-bottom:12px; }
+        .wx-fine { display:block; width:calc(100% - 32px); box-sizing:border-box; margin:12px 16px 16px; border-radius:12px; border:1px solid rgba(52,211,153,0.5); background:none;
+            color:var(--primary); font-family:inherit; font-weight:800; font-size:0.72rem; padding:12px; text-transform:none; letter-spacing:0; cursor:pointer; }
         .wp-done { text-align:center; padding:18px 16px; font-size:0.66rem; color:#94a3b8; }
         .wp-done b { display:block; font-size:0.8rem; color:var(--primary); margin-bottom:4px; }
         .wp-head { display:flex; align-items:center; gap:8px; }
@@ -5040,7 +5049,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '341';
+const APP_VERSION = '342';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -6517,20 +6526,37 @@ function wpLeft() { return Math.max(0, Math.ceil((woPrep.endsAt - Date.now() - 5
 
 // Stato della preparazione per la seduta di oggi. Sopravvive ai ridisegni
 // della card (conferma dell'MTR), si azzera cambiando seduta o giorno.
-function wpState(exercises, ramp, ext) {
-    var proto = null;
-    try { proto = woSessionProto(); } catch (e) {}
+function wpState(exercises, ramp, ext, protoX) {
+    var proto = protoX || null;
+    if (!proto) { try { proto = woSessionProto(); } catch (e) {} }
     var key = new Date().toDateString() + '|' + (proto && proto.id || '') + '|' + (exercises || []).length;
     if (!woPrep || woPrep.key !== key) {
         wpStop();
         var _z = wpZone(proto, exercises);
         // v.341: la scelta (passo 0) c'e' solo per i programmi esterni; i
         // protocolli dell'app partono dal generale come prima della v.340.
+        var _ex = exercises || [];
         woPrep = { key: key, step: ext ? 0 : 1, ext: !!ext, env: wpEnv(proto), elastici: wpHasElastici(proto),
-                   zone: ext ? wpExtZonePref() : _z, usaApp: ext ? wpUsaAppPref() : true, min: wpMinutes(), act: null,
+                   zone: ext ? (wpExtZonePref() || (_ex.length ? _z : null)) : _z, usaApp: ext ? wpUsaAppPref() : true, min: wpMinutes(), act: null,
                    left: wpMinutes() * 60, endsAt: 0, run: null, mob: {}, mobRun: -1, lastBeep: null, block: -1 };
+        if (ext) {
+            // v.342: con esercizi salvati il programma esterno si comporta come
+            // un protocollo dell'app: avvicinamento sui compound che ne hanno
+            // bisogno (identifyWarmupExercises, NSCA 2008) e schermata classica.
+            // Senza esercizi resta il solo cronometro.
+            woPrep.protoId = proto && proto.id;
+            woPrep.hasEx = _ex.length > 0;
+            woPrep.exNames = _ex.map(function(e) { return e.name; });
+            var _info = []; try { _info = identifyWarmupExercises(_ex); } catch (e) {}
+            woPrep.rampOk = _info.some(function(i) { return i.needsWarmup; });
+            woPrep.modo = woPrep.rampOk ? wpExtModoPref() : 'libero';
+            var _r = proto && proto._extRest;
+            woPrep.rest = { mode: _r && _r.mode || null, all: _r && _r.all || null, by: Object.assign({}, _r && _r.by || {}) };
+        }
     }
-    woPrep.ramp = ramp !== false && !ext;
+    woPrep.rampAvail = ramp !== false;
+    woPrep.ramp = woPrep.ext ? (woPrep.rampAvail && woPrep.hasEx && woPrep.modo === 'pesi') : woPrep.rampAvail;
+    wpSyncStart(woPrep);
     return woPrep;
 }
 
@@ -6547,8 +6573,47 @@ function wpUsaAppPref() {
     try { return localStorage.getItem('aw_warm_ext') !== 'no'; } catch (e) { return true; }
 }
 function wpExtZonePref() {
-    try { var z = localStorage.getItem('aw_warm_ext_zone'); if (z === 'alta' || z === 'bassa') return z; } catch (e) {}
+    try { var z = localStorage.getItem('aw_warm_ext_zone'); if (z === 'alta' || z === 'bassa' || z === 'mista') return z; } catch (e) {}
     return null;
+}
+function wpExtModoPref() {
+    try { var m = localStorage.getItem('aw_warm_ext_modo'); if (m === 'pesi' || m === 'libero') return m; } catch (e) {}
+    return null;
+}
+/* v.342 — Recupero dei programmi esterni: lo sceglie l'utente, uguale per
+   tutti gli esercizi o esercizio per esercizio. L'app non conosce gli
+   obiettivi di un programma scritto da altri, quindi non ne impone uno; le
+   scelte proposte (1-3 min) stanno nell'intervallo degli studi sui
+   recuperi (Schoenfeld et al. 2016; Grgic et al. 2018) e la scelta resta
+   salvata sul programma per la volta dopo. */
+var WP_REST_OPZ = [60, 90, 120, 180];
+function wpRestPronto(p) {
+    if (!p.hasEx) return true;
+    var r = p.rest || {};
+    if (r.mode === 'uguale') return r.all > 0;
+    if (r.mode === 'diverso') return (p.exNames || []).every(function(n) { return r.by && r.by[n] > 0; });
+    return false;
+}
+function wpSceltaPronta(p) {
+    return (!p.usaApp || !!WP_ZONE_LBL[p.zone]) && !!p.modo && wpRestPronto(p);
+}
+// Recupero scelto per un esercizio del programma esterno di oggi, o null.
+function wpExtRestFor(ex) {
+    try {
+        var sp = woSessionProto();
+        var r = sp && sp._external && sp._extRest;
+        if (!r) return null;
+        if (r.mode === 'uguale' && r.all > 0) return r.all;
+        if (r.mode === 'diverso' && ex && r.by && r.by[ex.name] > 0) return r.by[ex.name];
+    } catch (e) {}
+    return null;
+}
+// Senza avvicinamento il pulsante INIZIA non aspetta le serie con i pesi;
+// tornando ai pesi riprende lo stato che aveva.
+var _wpUpdateStart = null;   // updateStartBtn del blocco di riscaldamento in vista
+function wpSyncStart(p) {
+    if (!p || !p.ext || !p.hasEx) return;
+    if (typeof _wpUpdateStart === 'function') _wpUpdateStart();
 }
 var WP_ZONE_LBL = { alta: 'Upper body', bassa: 'Lower body', mista: 'Tutto il corpo' };
 function wpRender() {
@@ -6560,8 +6625,8 @@ function wpRender() {
     var secs = list.reduce(function(a, m) { return a + wpMobDur(m); }, 0);
     // ── Barra dei passi: uno alla volta, toccandoli si torna indietro ──
     var steps = [[1, 'Generale', p.min + ' min'], [2, 'Mobilità', wpFmt(secs)]];
-    if (p.ext) steps.unshift([0, 'Scelta', p.step === 0 ? 's\u00EC o no' : (p.usaApp ? WP_ZONE_LBL[p.zone] : 'nessuno')]);
-    if (p.ramp) steps.push([3, 'Avvicinamento', 'con i pesi']);
+    if (p.ext) steps.unshift([0, 'Scelta', p.step === 0 ? 'come ti prepari' : (p.usaApp ? WP_ZONE_LBL[p.zone] : 'nessuno')]);
+    if (p.ramp) steps.push(p.ext ? [3, 'Pesi', 'avvicinamento'] : [3, 'Avvicinamento', 'con i pesi']);
     var nn = function(n) { return p.ext ? n + 1 : n; };
     h += '<div class="wp-steps" style="grid-template-columns:repeat(' + steps.length + ',minmax(0,1fr));">';
     steps.forEach(function(st) {
@@ -6574,19 +6639,42 @@ function wpRender() {
     // ── 0 · Scelta (solo programmi esterni) ──
     if (p.step === 0) {
         h += '<div class="wp-sec cur"><div class="wp-head"><div class="wp-num">1</div>' +
-             '<div class="wp-title">Fai il riscaldamento dell\'app?</div></div>' +
-             '<div class="wp-sub">Generale (' + p.min + ' min) e mobilità guidata con il timer, prima del tuo programma.</div>' +
+             '<div class="wp-title">Come ti prepari?</div></div>' +
+             '<div class="wp-lbl">Riscaldamento dell\'app</div>' +
              '<div class="wp-chips"><button type="button" class="wp-chip' + (p.usaApp ? ' on' : '') + '" data-usa="1">Sì</button>' +
              '<button type="button" class="wp-chip' + (!p.usaApp ? ' on' : '') + '" data-usa="0">No, grazie</button></div>';
         if (p.usaApp) {
             h += '<div class="wp-lbl">Quale?</div><div class="wp-chips">';
-            ['alta', 'bassa'].forEach(function(z) {
+            ['alta', 'bassa', 'mista'].forEach(function(z) {
                 h += '<button type="button" class="wp-chip' + (p.zone === z ? ' on' : '') + '" data-zone="' + z + '">' + WP_ZONE_LBL[z] + '</button>';
             });
-            h += '</div><div class="wp-sub" style="margin-top:-4px;">Cambia la mobilità: spalle e busto, oppure anche e gambe.</div>';
+            h += '</div><div class="wp-sub" style="margin-top:-4px;">Generale ' + p.min + ' min e mobilità della parte che scegli.</div>';
         }
-        var pronto = !p.usaApp || p.zone === 'alta' || p.zone === 'bassa';
-        h += '<div class="wp-btns"><button type="button" class="wp-b1" id="wp-scelta-ok"' + (pronto ? '' : ' disabled') + '>' + (p.usaApp ? 'Continua \u2192' : 'Ok') + '</button></div>';
+        h += '<div class="wp-lbl">Pesi o corpo libero?</div><div class="wp-chips">' +
+             '<button type="button" class="wp-chip' + (p.modo === 'pesi' ? ' on' : '') + '" data-modo="pesi"' + (p.rampOk ? '' : ' disabled') + '>Pesi</button>' +
+             '<button type="button" class="wp-chip' + (p.modo === 'libero' ? ' on' : '') + '" data-modo="libero">Corpo libero</button></div>';
+        if (!p.hasEx) h += '<div class="wp-sub wp-warn">Nel programma non ci sono esercizi: l\'avvicinamento ai pesi si calcola sugli esercizi. Aggiungili da Piani \u2192 \u270F\uFE0F Esercizi per averlo. Oggi: solo cronometro.</div>';
+        else if (!p.rampOk) h += '<div class="wp-sub wp-warn">Nessun esercizio del programma ha un carico da preparare: niente avvicinamento.</div>';
+        else if (p.modo === 'pesi') h += '<div class="wp-sub">Dopo il riscaldamento: <b>serie di avvicinamento</b> sugli esercizi che ne hanno bisogno, poi l\'allenamento.</div>';
+        else if (p.modo === 'libero') h += '<div class="wp-sub">Niente avvicinamento: dopo il riscaldamento si passa all\'allenamento.</div>';
+        if (p.hasEx) {
+            var r = p.rest || {};
+            h += '<div class="wp-lbl">Recupero fra le serie</div><div class="wp-chips">' +
+                 '<button type="button" class="wp-chip' + (r.mode === 'uguale' ? ' on' : '') + '" data-rmode="uguale">Uguale per tutti</button>' +
+                 '<button type="button" class="wp-chip' + (r.mode === 'diverso' ? ' on' : '') + '" data-rmode="diverso">Esercizio per esercizio</button></div>';
+            if (r.mode === 'uguale') {
+                h += '<div class="wp-chips">' + WP_REST_OPZ.map(function(v) {
+                    return '<button type="button" class="wp-chip' + (r.all === v ? ' on' : '') + '" data-rall="' + v + '">' + wpFmt(v) + '</button>';
+                }).join('') + '</div>';
+            } else if (r.mode === 'diverso') {
+                (p.exNames || []).forEach(function(n, i) {
+                    h += '<div class="wp-rest-ex">' + escapeHTML(n) + '</div><div class="wp-chips">' + WP_REST_OPZ.map(function(v) {
+                        return '<button type="button" class="wp-chip sm' + (r.by && r.by[n] === v ? ' on' : '') + '" data-rex="' + i + '" data-rv="' + v + '">' + wpFmt(v) + '</button>';
+                    }).join('') + '</div>';
+                });
+            }
+        }
+        h += '<div class="wp-btns"><button type="button" class="wp-b1" id="wp-scelta-ok"' + (wpSceltaPronta(p) ? '' : ' disabled') + '>Continua \u2192</button></div>';
         h += '</div>';
     }
     // Il passo 3 (le serie con i pesi) vive fuori da qui: si mostra solo quando tocca a lui.
@@ -6597,8 +6685,14 @@ function wpRender() {
     var ftr = document.getElementById('wo-action-footer');
     if (ftr) ftr.classList.toggle('wp-hide', p.step < 3);
     if (p.step >= 3 && !p.ramp) {
-        h += p.usaApp ? '<div class="wp-done"><b>✓ Riscaldamento fatto</b>' + (p.ext ? 'Ora il tuo programma: quando hai finito, segnalo qui sotto.' : 'Puoi iniziare l\'allenamento.') + '</div>'
-                      : '<div class="wp-done"><b>Niente riscaldamento dell\'app</b>Se cambi idea, tocca \u201CScelta\u201D qui sopra.</div>';
+        if (p.ext && !p.hasEx) {
+            // Senza esercizi: il solo cronometro.
+            h += '<div class="wp-done"><b>' + (p.usaApp ? '✓ Riscaldamento fatto' : 'Pronto') + '</b>Ora il tuo allenamento, con il cronometro.</div>' +
+                 '<div class="wp-btns" style="padding:0 16px 16px;grid-template-columns:1fr;"><button type="button" class="wp-b1" id="wp-crono">\u25B6 Inizia l\'allenamento</button></div>';
+        } else {
+            h += p.usaApp ? '<div class="wp-done"><b>✓ Riscaldamento fatto</b>Puoi iniziare l\'allenamento.</div>'
+                          : '<div class="wp-done"><b>Niente riscaldamento dell\'app</b>Puoi iniziare l\'allenamento.</div>';
+        }
     }
     // ── 1 · Generale ──
     if (p.step === 1) {
@@ -6658,6 +6752,7 @@ function wpRender() {
         h += '</div>';
     }
     el.innerHTML = h;
+    wpSyncStart(p);
     wpWire();
 }
 
@@ -6680,13 +6775,40 @@ function wpWire() {
         try { localStorage.setItem('aw_warm_ext_zone', p.zone); } catch (e) {}
         wpRender();
     }; });
+    el.querySelectorAll('[data-modo]').forEach(function(b) { b.onclick = function() {
+        if (b.disabled) return;
+        p.modo = b.getAttribute('data-modo');
+        try { localStorage.setItem('aw_warm_ext_modo', p.modo); } catch (e) {}
+        p.ramp = p.rampAvail && p.hasEx && p.modo === 'pesi';
+        wpRender();
+    }; });
+    el.querySelectorAll('[data-rmode]').forEach(function(b) { b.onclick = function() { p.rest.mode = b.getAttribute('data-rmode'); wpRender(); }; });
+    el.querySelectorAll('[data-rall]').forEach(function(b) { b.onclick = function() { p.rest.all = parseInt(b.getAttribute('data-rall'), 10); wpRender(); }; });
+    el.querySelectorAll('[data-rex]').forEach(function(b) { b.onclick = function() {
+        var n = (p.exNames || [])[parseInt(b.getAttribute('data-rex'), 10)];
+        if (n) { p.rest.by[n] = parseInt(b.getAttribute('data-rv'), 10); wpRender(); }
+    }; });
     var so = document.getElementById('wp-scelta-ok');
     if (so) so.onclick = function() {
+        if (!wpSceltaPronta(p)) return;
         p.skipped = p.skipped || {};
-        if (p.usaApp) { if (p.zone !== 'alta' && p.zone !== 'bassa') return; p.step = 1; }
-        else { p.skipped[1] = true; p.skipped[2] = true; p.step = 3; }
+        p.ramp = p.rampAvail && p.hasEx && p.modo === 'pesi';
+        if (p.hasEx) {
+            // La scelta del recupero resta sul programma: la prossima volta e' gia' li'.
+            var pr = (APP.savedProtocols || []).find(function(x) { return x.id === p.protoId; });
+            if (pr) {
+                pr._extRest = { mode: p.rest.mode, all: p.rest.all, by: Object.assign({}, p.rest.by) };
+                try { saveState(); } catch (e) {}
+                try { saveProtocolToSupabase(pr); } catch (e) {}
+            }
+        }
+        if (p.usaApp) { p.step = 1; wpRender(); return; }
+        p.skipped[1] = true; p.skipped[2] = true; p.step = 3;
+        if (!p.hasEx) { wpCronoApri(p); return; }
         wpRender();
     };
+    var cr = document.getElementById('wp-crono');
+    if (cr) cr.onclick = function() { wpCronoApri(p); };
     el.querySelectorAll('[data-min]').forEach(function(b) { b.onclick = function() {
         p.min = parseInt(b.getAttribute('data-min'), 10); p.left = p.min * 60;
         try { localStorage.setItem('aw_warm_min', String(p.min)); } catch (e) {}
@@ -6780,6 +6902,59 @@ function wpTick() {
 // Beep del conto alla rovescia senza passare da woState, che qui non e' ancora attivo.
 function woCountdownBeepFree() { _woBeep(440, 0.12, 'square'); }
 
+/* v.342 — Programma esterno senza esercizi: dopo il riscaldamento (o
+   subito, se non lo si fa) una schermata con il solo cronometro. Il tempo
+   si calcola dall'orologio, non contando i tick, cosi' resta giusto anche
+   se il telefono si blocca; sta in localStorage per sopravvivere a un
+   ridisegno o a una chiusura dell'app nella stessa giornata. */
+var _wxTimer = null;
+function wpCronoKey(protoId) { return new Date().toDateString() + '|' + (protoId || ''); }
+function wpCronoLoad() { try { return JSON.parse(localStorage.getItem('aw_ext_crono') || 'null'); } catch (e) { return null; } }
+function wpCronoSave(c) { try { if (c) localStorage.setItem('aw_ext_crono', JSON.stringify(c)); else localStorage.removeItem('aw_ext_crono'); } catch (e) {} }
+function wpCronoMs(c) { return (c.acc || 0) + (c.since ? Date.now() - c.since : 0); }
+function wpCronoApri(p) {
+    wpStop();
+    wpCronoSave({ key: wpCronoKey(p && p.protoId), acc: 0, since: null });
+    if (typeof initWorkoutPage === 'function') initWorkoutPage();
+}
+function wpCronoFmt(ms) {
+    var s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
+    return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0');
+}
+function wpCronoCard(proto, w, di) {
+    var c = wpCronoLoad();
+    var card = document.createElement('div');
+    card.id = 'wo-ext-warm';
+    card.className = 'wo-warmup-card wx-crono';
+    card.style.margin = '16px 16px 14px';
+    var draw = function() {
+        c = wpCronoLoad() || c;
+        var run = !!c.since, ms = wpCronoMs(c);
+        card.innerHTML = '<div class="wc-ex-header"><div class="wc-ex-num"><span>\u23F1 Corpo libero</span></div>' +
+            '<div class="wc-ex-name">' + escapeHTML(proto.name) + '</div></div>' +
+            '<div class="wx-big' + (run ? ' run' : '') + '" id="wx-t">' + wpCronoFmt(ms) + '</div><div class="wx-cap">tempo di allenamento</div>' +
+            '<div class="wp-btns" style="padding:0 16px;grid-template-columns:1fr;"><button type="button" class="wp-b1" id="wx-go">' + (run ? '\u23F8 Pausa' : (ms > 0 ? '\u25B6 Riprendi' : '\u25B6 Avvia')) + '</button></div>' +
+            '<button type="button" class="wx-fine" id="wx-fine">\u2713 Fine allenamento \u00B7 segna come fatto</button>';
+        card.querySelector('#wx-go').onclick = function() {
+            if (c.since) { c.acc = wpCronoMs(c); c.since = null; } else { c.since = Date.now(); }
+            wpCronoSave(c); draw();
+        };
+        card.querySelector('#wx-fine').onclick = function() {
+            if (_wxTimer) { clearInterval(_wxTimer); _wxTimer = null; }
+            wpCronoSave(null);
+            woExternalDone(w, di);
+        };
+        if (_wxTimer) clearInterval(_wxTimer);
+        _wxTimer = setInterval(function() {
+            var t = document.getElementById('wx-t');
+            if (!t) { clearInterval(_wxTimer); _wxTimer = null; return; }
+            t.textContent = wpCronoFmt(wpCronoMs(c));
+        }, 250);
+    };
+    draw();
+    return card;
+}
+
 function renderWarmupBlock(exName, exercises, container) {
     // Usa sempre il contenitore stabile: evita che i re-render risalgano il DOM
     container = document.getElementById('wo-warmup-container') || container;
@@ -6818,18 +6993,19 @@ function renderWarmupBlock(exName, exercises, container) {
         // il pulsante e' libero da subito. Prima restava bloccato e l'unica
         // uscita era "Salta".
         var allDone = warmExercises.length === 0 ||
-                      (setsToComplete > 0 && completedSets >= setsToComplete);
+                      (setsToComplete > 0 && completedSets >= setsToComplete) ||
+                      // v.342: programma esterno a corpo libero, niente avvicinamento
+                      !!(woPrep && woPrep.ext && woPrep.hasEx && !woPrep.ramp);
         var pct = setsToComplete > 0 ? Math.round(completedSets / setsToComplete * 100) : 0;
         if (fill) { fill.style.width = pct + '%'; fill.className = 'wo-warmup-fill' + (allDone ? ' complete' : ''); }
         if (lbl)  { lbl.textContent = completedSets + ' / ' + setsToComplete + ' set'; lbl.style.color = allDone ? 'var(--primary)' : '#64748b'; }
         startBtn.style.display = 'block';
-        if (allDone) {
-            startBtn.className = (startBtn.className || '').replace(/warmup-locked/g,'').trim() + ' warmup-unlocked';
-        } else {
-            startBtn.className = (startBtn.className || '').replace(/warmup-unlocked/g,'').trim() + ' warmup-locked';
-        }
+        // classList: ora viene richiamata spesso (v.342) e la classe non deve ripetersi.
+        startBtn.classList.toggle('warmup-unlocked', allDone);
+        startBtn.classList.toggle('warmup-locked', !allDone);
     }
 
+    _wpUpdateStart = updateStartBtn;
     var block = document.createElement('div');
     block.className = 'wo-warmup-block';
 
@@ -6849,7 +7025,8 @@ function renderWarmupBlock(exName, exercises, container) {
     var prepEl = document.createElement('div');
     prepEl.id = 'wo-prep';
     card.appendChild(prepEl);
-    wpState(exercises);
+    var _sp = null; try { _sp = woSessionProto(); } catch (e) {}
+    wpState(exercises, undefined, !!(_sp && _sp._external), _sp);
 
     // ── Passo 3: avvicinamento (le serie al 40/60/80% dell'MTR) ──
     var s3 = document.createElement('div');
@@ -16927,10 +17104,16 @@ function initWorkoutPage() {
                         : 'Quando hai finito, segnalo qui.<br><button type="button" class="wo-ext-btn" onclick="woExternalDone(' + sessW + ',' + sessDi + ')">\u2713 Segna come fatto</button>');
         }
         // v.341 — Prima del programma esterno, a scelta, il riscaldamento
-        // dell'app: generale e mobilita', senza avvicinamento ai pesi.
-        // Sta sopra a "Segna come fatto": prima ci si scalda, poi il programma.
+        // dell'app. v.342: poi il cronometro (programma senza esercizi).
         var _xOld = document.getElementById('wo-ext-warm'); if (_xOld) _xOld.remove();
-        if (!_fatto && noProtoEl && noProtoEl.parentNode) {
+        var _xc = wpCronoLoad();
+        if (_xc && _xc.key !== wpCronoKey(_extProto.id)) { wpCronoSave(null); _xc = null; }
+        if (_fatto && _xc) { wpCronoSave(null); _xc = null; }
+        if (!_fatto && _xc && noProtoEl && noProtoEl.parentNode) {
+            noProtoEl.style.display = 'none';
+            noProtoEl.parentNode.insertBefore(wpCronoCard(_extProto, sessW, sessDi), noProtoEl);
+        } else if (!_fatto && noProtoEl && noProtoEl.parentNode) {
+            // Sta sopra a "Segna come fatto": prima ci si scalda, poi il programma.
             var _xCard = document.createElement('div');
             _xCard.id = 'wo-ext-warm';
             _xCard.className = 'wo-warmup-card';
@@ -16939,7 +17122,7 @@ function initWorkoutPage() {
                 '<button type="button" class="wc-info-btn" onclick="woWarmupInfo()" aria-label="Informazioni sul riscaldamento">i</button></div>' +
                 '<div class="wc-ex-name">Prima del tuo programma</div></div><div id="wo-prep"></div>';
             noProtoEl.parentNode.insertBefore(_xCard, noProtoEl);
-            wpState([], false, true);
+            wpState([], false, true, _extProto);
             wpRender();
         }
         return;
@@ -22146,6 +22329,9 @@ function woRenderExList() {
 }
 
 function _woGetRestTime(ex) {
+    // v.342: nei programmi esterni vale il recupero scelto dall'utente.
+    var _xr = wpExtRestFor(ex);
+    if (_xr) return _xr;
     // Il recupero e' un parametro del protocollo (Schoenfeld 2016, Grgic 2018):
     // se il protocollo lo dichiara si usa quello, senza dedurlo dalle ripetizioni.
     if (ex && ex._rest > 0) return ex._rest;
