@@ -2834,6 +2834,28 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
                   padding:13px 6px; font-family:inherit; text-transform:none; letter-spacing:0; cursor:pointer; }
         .pds-b2 { width:auto; margin:0; border:1px solid rgba(255,255,255,0.1); border-radius:12px; background:rgba(255,255,255,0.03); color:#94a3b8;
                   font-weight:800; font-size:0.72rem; padding:13px 6px; font-family:inherit; text-transform:none; letter-spacing:0; cursor:pointer; }
+        /* v.338 — foglio dei giorni: chip in cima, tessera al centro */
+        .pds-ov { transition:background 0.25s ease; }
+        .pds-ov.out { background:rgba(3,7,18,0); }
+        .pds-grab-zone { padding:2px 0 10px; margin:-10px -16px 0; cursor:grab; touch-action:none; }
+        .pds-grab-zone .pds-grab { margin:8px auto 0; width:44px; height:5px; }
+        .pds-chips { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:6px; margin:4px 0 12px; }
+        .pds-chip { width:auto; margin:0; aspect-ratio:1/1.05; border-radius:11px; border:1.5px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.04);
+            color:#94a3b8; font-family:inherit; font-size:0.62rem; font-weight:800; text-transform:none; letter-spacing:0; padding:0; cursor:pointer;
+            display:flex; align-items:center; justify-content:center; transition:background 0.2s, border-color 0.2s, color 0.2s, transform 0.15s; }
+        .pds-chip:active { transform:scale(0.93); }
+        .pds-chip.occ { border-color:rgba(99,102,241,0.4); background:rgba(99,102,241,0.1); color:#c7d2fe; }
+        .pds-chip.sel { border-color:var(--primary); background:rgba(52,211,153,0.2); color:#fff; box-shadow:0 0 0 3px rgba(52,211,153,0.15); }
+        .pds-chip.fatto { background:rgba(52,211,153,0.12); border-color:rgba(52,211,153,0.3); color:var(--primary); opacity:0.55; cursor:not-allowed; }
+        .pds-q b { color:#e2e8f0; }
+        .pds-sum { display:block; margin-top:4px; color:var(--primary); font-weight:800; }
+        .pds-warn { font-size:0.6rem; color:#fbbf24; margin:-4px 0 10px; line-height:1.4; }
+        .pds-tile-wrap { display:flex; flex-direction:column; align-items:center; gap:8px; margin:6px 0 4px; }
+        .pds-tile-wrap .pds-tile { width:150px; margin:0; font-family:inherit; text-transform:none; cursor:pointer; }
+        .pds-tile-hint { font-size:0.6rem; color:#64748b; font-weight:600; }
+        .pds-b1:disabled { opacity:0.4; cursor:default; }
+        /* v.338 — una sola card: al centro */
+        .plan-bnd-grid.solo { grid-template-columns:minmax(0,calc(50% - 4px)); justify-content:center; }
         /* v.334 — piano come mezza card */
         .plan-bnd-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:8px; }
         .plan-bcard { border:1.5px solid rgba(255,255,255,0.1); border-radius:14px; padding:10px; background:#111827; cursor:pointer;
@@ -5008,7 +5030,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '337';
+const APP_VERSION = '338';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -9337,6 +9359,7 @@ function renderPlanPage(w) {
             });
             bndGrid.appendChild(altro);
         }
+        if (voci.length === 1) bndGrid.classList.add('solo');
         if (voci.length) bndTop = bndGrid;
         if (bndAperto) {
             const kids = document.createElement('div');
@@ -12902,66 +12925,156 @@ function planBndCollapse(el, done){
    spuntato non si sovrascrive; ritoccando un giorno gia' scelto lo si
    toglie. Per liberare un giorno dalla fila in alto resta il cestino. */
 function planDaySheet(protoId, w){
+    /* v.338 — Il foglio non e' piu' un elenco di sette righe. In cima le chip
+       della settimana (si toccano per scegliere i giorni), sotto la
+       spiegazione, poi la tessera al centro (toccandola si aprono gli
+       esercizi) e in fondo "Chiudi" e "Salva". Le scelte restano in bozza
+       finche' non si preme Salva; Chiudi, il tocco fuori e il trascinamento
+       verso il basso le lasciano com'erano. La maniglia in alto ora
+       funziona: si trascina il foglio in giu' per chiuderlo. */
     const proto = (APP.savedProtocols || []).find(p => p.id === protoId);
     if (!proto) return;
     const NOMI = PLAN_DAYS_LONG;
+    const GG = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
     const old = document.getElementById('pds-ov'); if (old) old.remove();
     const ov = document.createElement('div');
     ov.id = 'pds-ov'; ov.className = 'pds-ov';
     const sh = document.createElement('div');
     sh.className = 'pds'; sh.setAttribute('role', 'dialog'); sh.setAttribute('aria-modal', 'true');
+    sh.setAttribute('aria-label', 'Giorni di ' + proto.name);
     ov.appendChild(sh);
     const tipo = proto._external ? 'E' : (/forza/i.test(proto.name) || proto.goal === 'forza') ? 'F' : 'I';
     const nomeVivo = (id) => { const p = (APP.savedProtocols || []).find(x => x.id === id); return p ? p.name : ''; };
+    // Nome della tessera: senza il prefisso del piano, il tipo sotto.
+    let n1 = String(proto.name || ''), n2 = tipo === 'E' ? 'Esterno' : tipo === 'F' ? 'Forza' : 'Ipertrofia';
+    const kk = n1.indexOf(' · ');
+    if (kk >= 0 && !proto._external) n1 = n1.slice(kk + 3);
+    n1 = n1.replace(/\s+(Forza|Ipertrofia)$/i, '');
+    const mio = (d) => { const a = APP.dayAssignments[w][d]; return !!(a && a.protoId === proto.id); };
+    const bozza = [];
+    for (let d = 0; d < 7; d++) bozza[d] = mio(d);
+    const cambiato = () => bozza.some((v, d) => v !== mio(d));
+
     const draw = () => {
-        let h = '<div class="pds-grab"></div>' +
-            '<div class="pds-tag t-' + tipo + '">' + (tipo === 'E' ? 'Programma esterno' : tipo === 'F' ? 'Forza' : 'Ipertrofia') +
-            ' \u00B7 Chapter ' + (w + 1) + '</div>' +
-            '<div class="pds-t">' + escapeHTML(proto.name) + '</div>' +
-            '<div class="pds-q">In quale giorno lo alleni?</div><div class="pds-days">';
+        let chips = '';
+        const sost = [];
         for (let d = 0; d < 7; d++) {
             const a = APP.dayAssignments[w][d];
-            const me = a && a.protoId === proto.id;
             const fatto = APP.chipStates[w][d] === 'done';
-            const altro = a && !me ? (nomeVivo(a.protoId) || a.protoName || '') : '';
-            const txt = me ? (fatto ? 'Qui \u00B7 fatto' : 'Qui')
-                      : fatto ? 'Gi\u00E0 fatto: ' + escapeHTML(altro)
-                      : altro ? 'Ora: <b>' + escapeHTML(altro) + '</b> \u00B7 lo sostituisci' : 'libero';
-            h += '<button type="button" class="pds-d' + (me ? ' me' : '') + '" data-d="' + d + '"' + (fatto ? ' disabled' : '') + '>' +
-                 '<span class="d">' + NOMI[d] + '</span><span class="w">' + txt + '</span><span class="ck">' + (me ? '\u2713' : '') + '</span></button>';
+            const altro = a && a.protoId !== proto.id;
+            const sel = bozza[d];
+            if (sel && altro && !fatto) sost.push(GG[d] + ': ' + String(nomeVivo(a.protoId) || a.protoName || '').replace(/^[^\u00B7]*\u00B7\s+/, ''));
+            const cls = 'pds-chip' + (sel ? ' sel' : '') + (fatto ? ' fatto' : '') + (!sel && altro && !fatto ? ' occ' : '');
+            const lbl = NOMI[d] + (fatto ? ', già fatto' : sel ? ', scelto' : altro ? ', occupato da ' + (nomeVivo(a.protoId) || '') : ', libero');
+            chips += '<button type="button" class="' + cls + '" data-d="' + d + '" aria-pressed="' + (sel ? 'true' : 'false') + '" aria-label="' + escapeHTML(lbl) + '"' + (fatto ? ' disabled' : '') + '>' +
+                     (fatto ? '✓' : GG[d]) + '</button>';
         }
-        h += '</div><div class="pds-act"><button type="button" class="pds-b2" id="pds-ex">\u270F\uFE0F Esercizi</button>' +
-             '<button type="button" class="pds-b1" id="pds-ok">Fatto</button></div>';
-        sh.innerHTML = h;
-        sh.querySelectorAll('.pds-d').forEach(b => b.onclick = () => {
+        const scelti = bozza.map((v, d) => v ? GG[d] : null).filter(Boolean);
+        sh.innerHTML =
+            '<div class="pds-grab-zone"><div class="pds-grab"></div></div>' +
+            '<div class="pds-chips">' + chips + '</div>' +
+            '<div class="pds-q">Tocca i giorni del <b>Chapter ' + (w + 1) + '</b> in cui alleni questo protocollo.' +
+              (scelti.length ? ' <span class="pds-sum">Scelti: ' + scelti.join(' · ') + '</span>' : '') + '</div>' +
+            (sost.length ? '<div class="pds-warn">Sostituisci ' + escapeHTML(sost.join(', ')) + '</div>' : '') +
+            '<div class="pds-tile-wrap"><button type="button" class="plan-proto-item tile t-' + tipo + ' pds-tile" aria-label="Esercizi di ' + escapeHTML(proto.name) + '">' +
+              '<span class="pt-bar"></span><span class="pt-n1">' + escapeHTML(n1) + '</span><span class="pt-n2">' + escapeHTML(n2) + '</span></button>' +
+              '<div class="pds-tile-hint">Tocca la tessera per vedere gli esercizi</div></div>' +
+            '<div class="pds-act"><button type="button" class="pds-b2" id="pds-x">Chiudi</button>' +
+              '<button type="button" class="pds-b1" id="pds-ok"' + (cambiato() ? '' : ' disabled') + '>Salva</button></div>';
+        sh.querySelectorAll('.pds-chip').forEach(b => b.onclick = () => {
             const d = parseInt(b.getAttribute('data-d'), 10);
-            const a = APP.dayAssignments[w][d];
             if (APP.chipStates[w][d] === 'done') return;
-            if (a && a.protoId === proto.id) {
-                APP.dayAssignments[w][d] = null;
-                APP.chipStates[w][d] = 'rest';
-                showToast('"' + proto.name + '" tolto da ' + NOMI[d], 'success');
-            } else {
-                APP.dayAssignments[w][d] = { protoId: proto.id, protoName: proto.name };
-                APP.chipStates[w][d] = 'assigned';
-                const _s2 = document.getElementById('nss-step-2');
-                if (_s2 && !_s2.classList.contains('done')) APP._pendingStep2Activation = true;
-                showToast('"' + proto.name + '" \u2192 ' + NOMI[d], 'success');
-            }
-            saveState();
-            renderPlanPage(w);
+            bozza[d] = !bozza[d];
             draw();
         });
-        sh.querySelector('#pds-ok').onclick = close;
-        sh.querySelector('#pds-ex').onclick = () => {
-            close();
+        sh.querySelector('#pds-ok').onclick = () => { salva(); chiudi(); };
+        sh.querySelector('#pds-x').onclick = () => chiudi();
+        sh.querySelector('.pds-tile').onclick = () => {
+            // Le scelte gia' fatte non si perdono andando agli esercizi.
+            if (cambiato()) salva();
+            chiudi(true);
             planExpandedProto = proto.id;
             renderPlanPage(w);
             setTimeout(() => { const e = document.getElementById('proto-editor-box'); if (e) e.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80);
         };
     };
-    const close = () => { ov.remove(); };
-    ov.addEventListener('click', e => { if (e.target === ov) close(); });
+    const salva = () => {
+        if (!cambiato()) return;
+        let aggiunto = false;
+        for (let d = 0; d < 7; d++) {
+            if (APP.chipStates[w][d] === 'done' || bozza[d] === mio(d)) continue;
+            if (bozza[d]) {
+                APP.dayAssignments[w][d] = { protoId: proto.id, protoName: proto.name };
+                APP.chipStates[w][d] = 'assigned';
+                aggiunto = true;
+            } else {
+                APP.dayAssignments[w][d] = null;
+                APP.chipStates[w][d] = 'rest';
+            }
+        }
+        if (aggiunto) {
+            const _s2 = document.getElementById('nss-step-2');
+            if (_s2 && !_s2.classList.contains('done')) APP._pendingStep2Activation = true;
+        }
+        saveState();
+        renderPlanPage(w);
+        const gg = bozza.map((v, d) => v ? GG[d] : null).filter(Boolean);
+        showToast('"' + proto.name + '" → ' + (gg.length ? gg.join(' · ') : 'nessun giorno'), 'success');
+    };
+    let chiuso = false;
+    const chiudi = (subito) => {
+        if (chiuso) return; chiuso = true;
+        document.removeEventListener('keydown', onKey);
+        if (subito || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { ov.remove(); return; }
+        sh.style.transition = 'transform 0.25s cubic-bezier(0.4,0,1,1)';
+        sh.style.transform = 'translateY(100%)';
+        ov.classList.add('out');
+        setTimeout(() => ov.remove(), 260);
+    };
+    const onKey = (e) => { if (e.key === 'Escape') chiudi(); };
+    document.addEventListener('keydown', onKey);
+    ov.addEventListener('click', e => { if (e.target === ov) chiudi(); });
+
+    // Trascinamento verso il basso: dalla maniglia (anche col mouse) o da
+    // qualsiasi punto del foglio con il dito, se il foglio non e' scorso.
+    let y0 = null, dy = 0, t0 = 0, trascina = false;
+    const inizio = (y) => { y0 = y; dy = 0; t0 = Date.now(); trascina = false; };
+    const muovi = (y, ev) => {
+        if (y0 === null) return;
+        dy = y - y0;
+        if (!trascina) {
+            if (dy > 8 && sh.scrollTop <= 0) { trascina = true; sh.style.transition = 'none'; }
+            else if (dy < -8) { y0 = null; return; }
+        }
+        if (trascina) {
+            if (ev && ev.cancelable) ev.preventDefault();
+            sh.style.transform = 'translateY(' + Math.max(0, dy) + 'px)';
+        }
+    };
+    const fine = () => {
+        if (y0 === null) return;
+        y0 = null;
+        if (!trascina) return;
+        const vel = dy / Math.max(1, Date.now() - t0);
+        if (dy > 110 || vel > 0.6) { chiudi(); return; }
+        sh.style.transition = 'transform 0.25s cubic-bezier(0.22,1,0.36,1)';
+        sh.style.transform = '';
+        trascina = false;
+    };
+    sh.addEventListener('touchstart', e => inizio(e.touches[0].clientY), { passive: true });
+    sh.addEventListener('touchmove', e => muovi(e.touches[0].clientY, e), { passive: false });
+    sh.addEventListener('touchend', fine);
+    sh.addEventListener('touchcancel', fine);
+    sh.addEventListener('mousedown', e => {
+        if (!e.target.closest('.pds-grab-zone')) return;
+        e.preventDefault();
+        inizio(e.clientY);
+        const mm = ev => muovi(ev.clientY, ev);
+        const mu = () => { document.removeEventListener('mousemove', mm); document.removeEventListener('mouseup', mu); fine(); };
+        document.addEventListener('mousemove', mm);
+        document.addEventListener('mouseup', mu);
+    });
+
     draw();
     document.body.appendChild(ov);
 }
