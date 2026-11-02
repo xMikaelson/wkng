@@ -2854,6 +2854,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .pds-tile-wrap .pds-tile { width:150px; margin:0; font-family:inherit; text-transform:none; cursor:pointer; }
         .pds-tile-hint { font-size:0.6rem; color:#64748b; font-weight:600; }
         .pds-b1:disabled { opacity:0.4; cursor:default; }
+        .pds-ex-list { margin:10px 0 2px; border-top:1px solid rgba(255,255,255,0.07); padding-top:8px; }
+        .pds-ex { display:flex; align-items:center; gap:10px; padding:8px 4px; border-bottom:1px solid rgba(255,255,255,0.05); }
+        .pds-ex-i { width:20px; height:20px; border-radius:50%; background:rgba(255,255,255,0.06); color:#94a3b8; font-size:0.55rem; font-weight:800;
+            display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+        .pds-ex-n { flex:1; min-width:0; font-size:0.7rem; font-weight:700; color:#e2e8f0; line-height:1.25; }
+        .pds-ex-n small, .pds-ex-s small { display:block; font-size:0.54rem; color:#64748b; font-weight:600; margin-top:1px; }
+        .pds-ex-s { text-align:right; font-size:0.68rem; font-weight:800; color:var(--primary); flex-shrink:0; }
+        .pds-ex-empty { font-size:0.62rem; color:#64748b; text-align:center; padding:10px 0; }
+        .pds-ex-edit { display:block; width:auto; margin:10px auto 2px; padding:8px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.1);
+            background:rgba(255,255,255,0.03); color:#94a3b8; font-family:inherit; font-size:0.62rem; font-weight:800; text-transform:none; letter-spacing:0; cursor:pointer; }
         /* v.338 — una sola card: al centro */
         .plan-bnd-grid.solo { grid-template-columns:minmax(0,calc(50% - 4px)); justify-content:center; }
         /* v.334 — piano come mezza card */
@@ -5030,7 +5040,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '338';
+const APP_VERSION = '339';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -12936,6 +12946,7 @@ function planDaySheet(protoId, w){
     if (!proto) return;
     const NOMI = PLAN_DAYS_LONG;
     const GG = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
+    const isUnlockedW = () => { try { return w === 0 || !!(APP.completedWeeks && APP.completedWeeks[w - 1]) || (APP.availableWeeks || []).indexOf(w) >= 0; } catch (e) { return true; } };
     const old = document.getElementById('pds-ov'); if (old) old.remove();
     const ov = document.createElement('div');
     ov.id = 'pds-ov'; ov.className = 'pds-ov';
@@ -12954,6 +12965,27 @@ function planDaySheet(protoId, w){
     const bozza = [];
     for (let d = 0; d < 7; d++) bozza[d] = mio(d);
     const cambiato = () => bozza.some((v, d) => v !== mio(d));
+    /* v.339 — Gli esercizi si vedono qui dentro: toccando la tessera si apre
+       l'elenco sotto di lei, nello stesso foglio, invece di chiudere la
+       scelta dei giorni e saltare al riquadro di modifica piu' in basso.
+       Schema e carico sono quelli del capitolo in vista, come nell'editor. */
+    let eserciziAperti = false, animaEsercizi = false;
+    const htmlEsercizi = () => {
+        const ex = proto.exercises || [];
+        if (!ex.length) return '<div class="pds-ex-empty">' + (proto._external ? 'Programma esterno: gli esercizi li segui fuori dall\'app.' : 'Nessun esercizio in questo protocollo.') + '</div>';
+        return ex.map((e, i) => {
+            let sr = '';
+            try { sr = (typeof srForChapter === 'function' ? srForChapter(e, w, proto) : null) || e.sr || ''; } catch (er) { sr = e.sr || ''; }
+            sr = String(sr).replace(/\s*[xX]\s*/, '\u00D7');
+            const kg = (e.loads && e.loads[w] != null) ? e.loads[w] : (e.baseWeight || '');
+            const tempo = (typeof srIsTime === 'function') && srIsTime(e.sr);
+            let mus = '';
+            try { mus = getMuscles(e.name) || ''; } catch (er) {}
+            return '<div class="pds-ex"><span class="pds-ex-i">' + (i + 1) + '</span><span class="pds-ex-n">' + escapeHTML(e.name || '') +
+                (mus ? '<small>' + escapeHTML(mus) + '</small>' : '') + '</span><span class="pds-ex-s">' + escapeHTML(sr) +
+                (!tempo && kg ? '<small>' + escapeHTML(String(kg)) + ' kg</small>' : '') + '</span></div>';
+        }).join('') + (isUnlockedW() ? '<button type="button" class="pds-ex-edit" id="pds-ex-edit">\u270F\uFE0F Modifica esercizi</button>' : '');
+    };
 
     const draw = () => {
         let chips = '';
@@ -12976,9 +13008,10 @@ function planDaySheet(protoId, w){
             '<div class="pds-q">Tocca i giorni del <b>Chapter ' + (w + 1) + '</b> in cui alleni questo protocollo.' +
               (scelti.length ? ' <span class="pds-sum">Scelti: ' + scelti.join(' · ') + '</span>' : '') + '</div>' +
             (sost.length ? '<div class="pds-warn">Sostituisci ' + escapeHTML(sost.join(', ')) + '</div>' : '') +
-            '<div class="pds-tile-wrap"><button type="button" class="plan-proto-item tile t-' + tipo + ' pds-tile" aria-label="Esercizi di ' + escapeHTML(proto.name) + '">' +
+            '<div class="pds-tile-wrap"><button type="button" class="plan-proto-item tile t-' + tipo + ' pds-tile' + (eserciziAperti ? ' focused' : '') + '" aria-expanded="' + (eserciziAperti ? 'true' : 'false') + '" aria-label="Esercizi di ' + escapeHTML(proto.name) + '">' +
               '<span class="pt-bar"></span><span class="pt-n1">' + escapeHTML(n1) + '</span><span class="pt-n2">' + escapeHTML(n2) + '</span></button>' +
-              '<div class="pds-tile-hint">Tocca la tessera per vedere gli esercizi</div></div>' +
+              '<div class="pds-tile-hint">' + (eserciziAperti ? 'Tocca la tessera per nascondere gli esercizi' : 'Tocca la tessera per vedere gli esercizi') + '</div></div>' +
+            (eserciziAperti ? '<div class="pds-ex-list" id="pds-ex-list">' + htmlEsercizi() + '</div>' : '') +
             '<div class="pds-act"><button type="button" class="pds-b2" id="pds-x">Chiudi</button>' +
               '<button type="button" class="pds-b1" id="pds-ok"' + (cambiato() ? '' : ' disabled') + '>Salva</button></div>';
         sh.querySelectorAll('.pds-chip').forEach(b => b.onclick = () => {
@@ -12990,7 +13023,32 @@ function planDaySheet(protoId, w){
         sh.querySelector('#pds-ok').onclick = () => { salva(); chiudi(); };
         sh.querySelector('#pds-x').onclick = () => chiudi();
         sh.querySelector('.pds-tile').onclick = () => {
-            // Le scelte gia' fatte non si perdono andando agli esercizi.
+            const lista = sh.querySelector('#pds-ex-list');
+            if (lista) {
+                // Si richiude con la stessa animazione con cui si e' aperto.
+                lista.style.height = lista.scrollHeight + 'px'; lista.style.overflow = 'hidden';
+                void lista.offsetHeight;
+                lista.style.transition = 'height 0.35s cubic-bezier(0.65,0,0.35,1), opacity 0.35s';
+                lista.style.height = '0px'; lista.style.opacity = '0';
+                setTimeout(() => { eserciziAperti = false; draw(); }, 360);
+                return;
+            }
+            eserciziAperti = true; animaEsercizi = true; draw();
+        };
+        const lista = sh.querySelector('#pds-ex-list');
+        if (lista && animaEsercizi) {
+            animaEsercizi = false;
+            const hh = lista.scrollHeight;
+            lista.style.height = '0px'; lista.style.opacity = '0'; lista.style.overflow = 'hidden';
+            void lista.offsetHeight;
+            lista.style.transition = 'height 0.4s cubic-bezier(0.22,1,0.36,1), opacity 0.4s';
+            lista.style.height = hh + 'px'; lista.style.opacity = '1';
+            setTimeout(() => { lista.style.height = ''; lista.style.overflow = ''; lista.style.transition = ''; }, 420);
+        }
+        const mod = sh.querySelector('#pds-ex-edit');
+        if (mod) mod.onclick = () => {
+            // Per cambiare gli esercizi serve l'editor completo, piu' in basso
+            // nella pagina: le scelte dei giorni fatte fin qui non si perdono.
             if (cambiato()) salva();
             chiudi(true);
             planExpandedProto = proto.id;
