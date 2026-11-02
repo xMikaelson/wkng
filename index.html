@@ -2785,6 +2785,27 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
            In 40 pixel ci sta una sigla, non un nome: sotto la griglia c'e'
            sempre la legenda, e il nome per esteso resta su title e aria-label. */
         .plan-proto-grid { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:5px; }
+        /* v.330 — Tessere: il nome leggibile al posto della sigla, una striscia
+           per il tipo di seduta (forza, ipertrofia, esterno) e il giorno
+           assegnato sotto. La legenda e la colonna "Pianificazione" non
+           servono piu': ogni tessera dice gia' nome e giorno. */
+        .plan-bottom-cols.tiles { grid-template-columns:1fr; }
+        .plan-proto-grid.tiles { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-bottom:8px; }
+        .plan-proto-item.tile { width:auto; height:auto; min-height:76px; position:relative; flex-direction:column; gap:3px;
+            padding:12px 6px 9px; border-radius:13px; border:1.5px solid rgba(255,255,255,0.1); background:#111827; text-align:center; }
+        .plan-proto-item.tile .pt-bar { position:absolute; left:10px; right:10px; top:0; height:3px; border-radius:0 0 3px 3px; background:#818cf8; }
+        .plan-proto-item.tile.t-F .pt-bar { background:#f59e0b; }
+        .plan-proto-item.tile.t-E .pt-bar { background:#94a3b8; }
+        .plan-proto-item.tile .pt-n1 { font-size:0.74rem; font-weight:900; color:#e2e8f0; line-height:1.1; letter-spacing:0; word-break:break-word; }
+        .plan-proto-item.tile .pt-n2 { font-size:0.54rem; font-weight:700; color:#94a3b8; letter-spacing:0; }
+        .plan-proto-item.tile .pt-dd { font-size:0.52rem; font-weight:800; color:var(--primary); letter-spacing:0; }
+        .plan-proto-item.tile .pt-dd.none { color:#fbbf24; }
+        .plan-proto-item.tile.active-item { border-color:var(--primary); background:rgba(52,211,153,0.1); }
+        .plan-proto-item.tile.focused, .plan-proto-item.tile.expanded { border-color:var(--accent); background:rgba(99,102,241,0.16); }
+        .plan-proto-item.tile.dragging { opacity:0.35; }
+        /* Quello che si solleva ha la forma della tessera */
+        .drag-ghost.as-tile { padding:0; background:none; box-shadow:none; white-space:normal; }
+        .drag-ghost.as-tile .plan-proto-item { box-shadow:0 10px 28px rgba(0,0,0,0.55); transform:scale(1.06); opacity:0.96; }
         .plan-proto-item { width:40px; height:40px; box-sizing:border-box; padding:0; margin:0;
             border-radius:8px; border:1px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.07);
             display:flex; align-items:center; justify-content:center;
@@ -4901,7 +4922,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '329';
+const APP_VERSION = '330';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -9018,6 +9039,22 @@ function renderPlanPage(w) {
         // resta riconoscibile dal pallino pieno.
         if (planOpenBundles === null) planOpenBundles = {};
 
+        // v.330: nome della tessera. Il prefisso del piano ("FORGE · ") e'
+        // gia' nel titolo del gruppo; il tipo di seduta va sulla seconda riga.
+        const tileInfo = (proto) => {
+            let nm = String(proto.name || '');
+            const k = nm.indexOf(' \u00B7 ');
+            if (k >= 0 && !proto._external) nm = nm.slice(k + 3);
+            let n1 = nm, n2 = '', t = 'I';
+            const m = nm.match(/^(.*?)\s+(Forza|Ipertrofia)$/i);
+            if (proto._external) { n2 = 'Esterno'; t = 'E'; }
+            else if (m) { n1 = m[1]; n2 = m[2].charAt(0).toUpperCase() + m[2].slice(1).toLowerCase(); t = /forza/i.test(m[2]) ? 'F' : 'I'; }
+            else { t = proto.goal === 'forza' ? 'F' : 'I'; n2 = t === 'F' ? 'Forza' : 'Ipertrofia'; }
+            const giorni = [];
+            const riga = (APP.dayAssignments && APP.dayAssignments[w]) || [];
+            for (let d = 0; d < 7; d++) if (riga[d] && riga[d].protoId === proto.id) giorni.push(DAYS_SHORT[d]);
+            return { n1: n1, n2: n2, t: t, dd: giorni.join(' \u00B7 ') };
+        };
         // Crea la riga di un singolo protocollo (trascinabile sui giorni)
         const makeProtoRow = (proto, sigla) => {
             const item = document.createElement('div');
@@ -9031,7 +9068,11 @@ function renderPlanPage(w) {
             item.title = proto.name + (isAtt ? ' \u00b7 in uso' : '');
             item.setAttribute('role', 'button');
             item.setAttribute('aria-label', proto.name + (isAtt ? ', in uso' : ''));
-            item.textContent = sigla;
+            const ti = tileInfo(proto);
+            item.className += ' tile t-' + ti.t;
+            item.innerHTML = '<span class="pt-bar"></span><span class="pt-n1">' + escapeHTML(ti.n1) + '</span>' +
+                '<span class="pt-n2">' + escapeHTML(ti.n2) + '</span>' +
+                '<span class="pt-dd' + (ti.dd ? '' : ' none') + '">' + (ti.dd || 'da assegnare') + '</span>';
             item.addEventListener('click', () => {
                 /* Il tocco apre l'editor e mostra subito i giorni allenati da
                    questo protocollo. Ritoccandolo si richiude l'editor, ma il
@@ -9052,20 +9093,9 @@ function renderPlanPage(w) {
         const makeProtoGrid = (protos) => {
             const box = document.createElement('div');
             const grid = document.createElement('div');
-            grid.className = 'plan-proto-grid';
-            const leg = document.createElement('ul');
-            leg.className = 'plan-proto-leg';
-            protos.forEach(function (p, i) {
-                grid.appendChild(makeProtoRow(p, siglaDi[p.id]));
-                const li = document.createElement('li');
-                if (p.id === APP.activeProtocolId) li.className = 'on';
-                // v.328: per un programma esterno (BLANK) solo il soprannome:
-                // la sigla e' gia' nel riquadro sopra e ripeterla non aggiunge nulla.
-                li.innerHTML = (p._external ? '' : '<b>' + escapeHTML(siglaDi[p.id]) + '</b>') + '<span>' + escapeHTML(p.name) + '</span>';
-                leg.appendChild(li);
-            });
+            grid.className = 'plan-proto-grid tiles';
+            protos.forEach(function (p) { grid.appendChild(makeProtoRow(p, siglaDi[p.id])); });
             box.appendChild(grid);
-            box.appendChild(leg);
             return box;
         };
 
@@ -9134,8 +9164,10 @@ function renderPlanPage(w) {
             'style="color:var(--primary);font-weight:700;text-decoration:underline;cursor:pointer">Nuovo Protocollo</span>, in cima a questa pagina.</div>';
     }
     cols.appendChild(protoCol);
+    cols.classList.add('tiles');
 
-    // Right: schedule
+    // Right: schedule — v.330: non piu' mostrata, ogni tessera porta il suo giorno.
+    if (false) {
     const schedCol = document.createElement('div');
     const schedLbl = document.createElement('div');
     schedLbl.className = 'plan-col-label';
@@ -9165,6 +9197,7 @@ function renderPlanPage(w) {
         schedCol.appendChild(row);
     });
     cols.appendChild(schedCol);
+    }
     block.appendChild(cols);
 
     // Drag tip
@@ -12676,10 +12709,20 @@ function planDragBegin(protoId, protoName, x, y, el, sigla) {
     if (navigator.vibrate) navigator.vibrate(40);
     // Create ghost immediately so user sees it
     const ghost = document.createElement('div');
+    if (el.classList.contains('tile')) {
+        // v.330: si solleva la tessera stessa, con la sua forma e il suo nome.
+        ghost.className = 'drag-ghost as-tile';
+        ghost.style.width = el.offsetWidth + 'px';   // senza, il contenitore prende tutta la larghezza
+        const copia = el.cloneNode(true);
+        copia.classList.remove('dragging');
+        copia.style.width = el.offsetWidth + 'px';
+        ghost.appendChild(copia);
+    } else {
     // Con la sigla il fantasma e' un riquadro identico alla chip; senza
     // (chiamate che non la passano) resta la targhetta col nome di prima.
     ghost.className = 'drag-ghost' + (sigla ? ' as-chip' : '');
     ghost.textContent = sigla || protoName;
+    }
     ghost.style.left = x + 'px';
     ghost.style.top  = y + 'px';
     ghost.style.transform = 'translate(-50%,-50%)';
