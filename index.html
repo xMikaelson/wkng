@@ -2689,6 +2689,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .plan-chip.done { width:35px; height:35px; background:var(--primary); border-color:var(--primary); color:#000; font-size:0.82rem; font-weight:900; box-shadow:0 0 0 3px rgba(var(--pr,0,255,136),0.2),0 0 14px rgba(var(--pr,0,255,136),0.5); cursor:pointer; }
         .plan-chip.locked { opacity:0.2; }
         .plan-chip.drag-over { border-color:var(--primary)!important; background:rgba(var(--pr,0,255,136),0.2)!important; transform:scale(1.14); }
+        /* v.331: il giorno sotto il dito si accende anche se era gia' assegnato */
+        .plan-chip.drag-over { color:#fff !important; background:rgba(52,211,153,0.38) !important; box-shadow:0 0 0 3px rgba(52,211,153,0.45), 0 0 20px rgba(52,211,153,0.55); z-index:2; position:relative; }
         /* ── Liberare un giorno: pressione lunga sulla chip e trascinamento
              nel cestino. Sostituisce "Reset giorni", che svuotava tutti e
              sette i giorni anche quando ne era sbagliato uno solo. ──
@@ -4922,7 +4924,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '330';
+const APP_VERSION = '331';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -8903,8 +8905,9 @@ function renderPlanPage(w) {
         const chip = document.createElement('div');
         const st = APP.chipStates[w][di];
         const hasA = !!APP.dayAssignments[w][di];
-        chip.className = 'plan-chip ' + (st==='done' ? 'done' : hasA ? 'assigned' : '')
-                       + (focusDays && focusDays.indexOf(di) < 0 ? ' dimmed' : '');
+        // v.331: selezionare un protocollo non spegne piu' gli altri giorni:
+        // la settimana resta leggibile per intero.
+        chip.className = 'plan-chip ' + (st==='done' ? 'done' : hasA ? 'assigned' : '');
         chip.textContent = st==='done' ? '✓' : d;
         chip.dataset.week = w; chip.dataset.day = di;
         if (isUnlocked) {
@@ -12713,6 +12716,7 @@ function planDragBegin(protoId, protoName, x, y, el, sigla) {
         // v.330: si solleva la tessera stessa, con la sua forma e il suo nome.
         ghost.className = 'drag-ghost as-tile';
         ghost.style.width = el.offsetWidth + 'px';   // senza, il contenitore prende tutta la larghezza
+        ghost._sopra = true;
         const copia = el.cloneNode(true);
         copia.classList.remove('dragging');
         copia.style.width = el.offsetWidth + 'px';
@@ -12725,7 +12729,9 @@ function planDragBegin(protoId, protoName, x, y, el, sigla) {
     }
     ghost.style.left = x + 'px';
     ghost.style.top  = y + 'px';
-    ghost.style.transform = 'translate(-50%,-50%)';
+    // v.331: la tessera sta sopra il dito, non sotto: centrata sul punto di
+    // contatto copriva proprio la chip del giorno su cui si stava per lasciarla.
+    ghost.style.transform = ghost._sopra ? 'translate(-50%, calc(-100% - 34px))' : 'translate(-50%,-50%)';
     ghost.style.pointerEvents = 'none';
     document.body.appendChild(ghost);
     planDragState.ghost = ghost;
@@ -12749,6 +12755,15 @@ function planDragMove(x, y) {
     // Update highlight
     document.querySelectorAll('.plan-chip.drag-over').forEach(c => c.classList.remove('drag-over'));
     if (target) target.classList.add('drag-over');
+    // v.331: la tessera sollevata dice su quale giorno sta per cadere
+    const g = planDragState.ghost;
+    const dd = g ? g.querySelector('.pt-dd') : null;
+    if (dd) {
+        if (dd._orig == null) { dd._orig = dd.textContent; dd._origCls = dd.className; }
+        const di = target ? parseInt(target.dataset.day, 10) : NaN;
+        if (!isNaN(di)) { dd.textContent = '\u2192 ' + PLAN_DAYS_LONG[di]; dd.className = 'pt-dd'; }
+        else { dd.textContent = dd._orig; dd.className = dd._origCls; }
+    }
 }
 
 function planFindChipAt(x, y) {
