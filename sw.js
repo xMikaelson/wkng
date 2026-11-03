@@ -1,4 +1,4 @@
-const CACHE_NAME = 'awakening-v345';
+const CACHE_NAME = 'awakening-v346';
 
 const STATIC_ASSETS = [
     './',
@@ -77,6 +77,15 @@ self.addEventListener('fetch', event => {
     const url = new URL(event.request.url);
     const alwaysLive = ['supabase.co', 'openfoodfacts.org', 'youtube.com', 'googleapis.com', 'anthropic.com'];
     if (alwaysLive.some(domain => url.hostname.includes(domain))) return;
+
+    // v.346 — Il sito del club vive in ./sito/, dentro l'ambito di questo
+    // service worker. Le sue pagine non sono l'app: senza questa uscita una
+    // navigazione a ./sito/ non trova copia in cache e riceve l'index.html
+    // dell'app (vedi il ramo "Documento" qui sotto), cosi' chi ha l'app
+    // installata nello stesso browser non vedrebbe mai il sito. Le sue
+    // richieste vanno alla rete come se il service worker non ci fosse.
+    if (url.origin === self.location.origin &&
+        url.pathname.startsWith(new URL('sito/', self.registration.scope).pathname)) return;
 
     // ---- Documento (navigazione / index.html): STALE-WHILE-REVALIDATE ----
     // Network-first faceva attendere ~950 KB di download prima del primo paint:
