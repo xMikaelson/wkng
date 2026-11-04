@@ -87,31 +87,3 @@ notifica di fine recupero. La manda il server:
    `{"mode":"rest"}` solo se c'e' una riga scaduta: a vuoto costa una query.
 3. La function spedisce il push con tag `wo-rest` (lo stesso della notifica
    locale) e cancella la riga.
-
-## Il club (sito, v.346)
-
-Il sito in `/sito/` usa gli stessi account dell'app e aggiunge quattro
-tabelle, tutte nuove (`migrations/20261103_club.sql`): nessuna tabella
-dell'app cambia, e il sito non scrive mai `profiles.state_json` (l'app la
-sovrascrive per intero a ogni salvataggio). Dello stato dell'app il sito
-legge soltanto: seduta di oggi, capitolo, pasti di oggi e obiettivo.
-
-| Tabella        | Cosa contiene                                  | Chi la vede                         |
-|----------------|------------------------------------------------|-------------------------------------|
-| `club_membri`  | tessera: numero, nome, prezzo (il Patto)       | i membri fra loro                   |
-| `club_offerte` | il Registro: le risposte all'Appello           | i membri; si scrive solo per oggi   |
-| `club_spinte`  | spinte (pubbliche) e chiamate (private)        | membri / solo chi chiama e chiamato |
-| `club_pasti`   | pasti aggiunti dal sito (foto o descrizione)   | solo il proprietario                |
-
-Le regole che una policy non sa dire stanno nei trigger: un'offerta vale
-solo per il giorno italiano corrente e al massimo 6 al giorno; la spinta va
-all'autore dell'offerta, una sola per membro; la chiamata solo a chi manca
-dall'appello da almeno due giorni, una al giorno. Numero di tessera, data
-d'ingresso e ultima risposta non si scrivono dal client (permessi per
-colonna). `club_oggi()` e' l'unica cosa visibile senza account: solo
-conteggi, per il sole della prima pagina.
-
-Foto del pasto e Coach del sito passano dalla stessa funzione `ai-coach`
-dell'app (tipi `foto` e `chat`), con gli stessi limiti del giorno.
-
-I pasti del sito, per ora, l'app non li vede: restano in `club_pasti`.
