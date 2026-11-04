@@ -100,7 +100,7 @@ button{font:inherit;color:inherit}
 @media (min-width:960px){.hero-phone .phone{--w:330px}}
 
 /* ── Scala dei capitoli ─────────────────────────────────────── */
-.band{background:var(--band);border-block:1px solid var(--line)}
+.band{background:var(--band);box-shadow:inset 0 1px 0 var(--line),inset 0 -1px 0 var(--line)}
 .ladder{display:grid;gap:40px;padding-block:72px}
 @media (min-width:960px){.ladder{grid-template-columns:minmax(0,.9fr) minmax(0,1.3fr);gap:72px;align-items:end;padding-block:96px}}
 .ladder h2{font-family:var(--display);font-weight:700;font-size:clamp(28px,3.6vw,40px);line-height:1.08;letter-spacing:-.025em;margin:14px 0 18px}
@@ -117,8 +117,6 @@ button{font:inherit;color:inherit}
 .bar span em{display:block;font-style:normal;color:var(--muted)}
 
 /* ── Le sezioni: un iPhone, piu' funzioni ───────────────────── */
-.intro{padding-block:88px 0}
-.intro h2{font-family:var(--display);font-weight:700;font-size:clamp(30px,4.4vw,52px);line-height:1.04;letter-spacing:-.03em;margin-top:14px;max-width:16em}
 .grp{padding-block:64px}
 .grp+.grp{border-top:1px solid var(--line)}
 /* telefono: titolo, iPhone, pallini, testo. Schermo largo: testo a sinistra,
@@ -139,7 +137,7 @@ button{font:inherit;color:inherit}
 .stage{grid-area:stage;display:grid;grid-template-columns:auto auto auto;align-items:center;justify-content:center;gap:14px;
   touch-action:pan-y;user-select:none;-webkit-user-select:none}
 .stage .phone{--w:min(62vw,300px)}
-@media (min-width:960px){.stage{gap:24px}.stage .phone{--w:min(310px,calc(78vh * 393 / 852))}}
+@media (min-width:960px){.stage{gap:24px}}
 .arr{width:48px;height:48px;border-radius:50%;border:1px solid var(--line);background:rgba(15,23,42,.6);display:inline-flex;align-items:center;justify-content:center;
   cursor:pointer;transition:border-color .2s,background .2s,transform .15s}
 .arr svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -171,18 +169,57 @@ button{font:inherit;color:inherit}
 @media (min-width:960px){.feats{padding:24px 0 0;border-top:1px solid var(--line)}}
 
 /* ── Chiusura ───────────────────────────────────────────────── */
-.close{padding-block:96px 72px}
+.fine{min-height:100svh;display:flex;flex-direction:column}
+.fine .close{flex:1;display:flex;flex-direction:column;justify-content:center}
+.close{padding-block:48px}
 .close h2{font-family:var(--display);font-weight:800;font-size:clamp(34px,6vw,72px);line-height:1;letter-spacing:-.035em;max-width:12em;margin-bottom:30px}
 .close h2 span{color:var(--green)}
 .soon{color:var(--soft);font-size:clamp(17px,1.8vw,19px);max-width:34em}
 .foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px 24px;padding-block:28px 40px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
 
+/* ── Una schermata per volta ───────────────────────────────────
+   Ogni scorrimento si ferma all'inizio del blocco successivo: apertura,
+   programma, ognuna delle cinque sezioni, chiusura. Ogni blocco e' alto
+   uno schermo e ci sta per intero: l'iPhone delle sezioni si calcola
+   sull'altezza dello schermo (100svh: con le barre del browser aperte),
+   togliendo lo spazio di titolo, pallini e testo (--np, misurato dallo
+   script). Su telefono l'apertura e' due schermate: il testo, poi la Home.
+   L'aggancio si accende (html.aggancio) solo se tutti i blocchi stanno nello
+   schermo: un blocco piu' alto intrappolerebbe lo scorrimento a passi brevi. */
+html.aggancio{scroll-snap-type:y mandatory}
+.apertura,.band,.grp,.fine,.hero-phone{scroll-snap-align:start;scroll-snap-stop:always}
+.ladder{min-height:100svh;align-content:center}
+.grp{min-height:100svh;display:grid;align-content:center;padding-block:40px}
+.stage .phone{--w:clamp(120px,calc((100svh - var(--np,520px)) * .4767),var(--wmax,310px))}
+@media (min-width:960px){
+  .apertura{min-height:100svh;display:flex;flex-direction:column}
+  .hero{flex:1;padding-block:8px 32px}
+  .hero h1{font-size:clamp(48px,min(7.4vw,9.5vh),84px)}
+  .facts{margin-top:28px}
+  .hero-phone{scroll-snap-align:none}
+  .hero-phone .phone{--w:min(330px,calc((100svh - 150px) * .4767))}
+}
+@media (max-width:959px){
+  .hero{display:block;padding-block:0;overflow:visible}
+  .hero>div:first-child{min-height:calc(100svh - 68px);display:flex;flex-direction:column;justify-content:center;padding-block:4px 20px}
+  .hero h1{margin:14px 0 18px}
+  .hero .lead{font-size:16.5px;margin-bottom:22px}
+  .facts{margin-top:24px;padding-top:18px}
+  .hero-phone{min-height:100svh;display:grid;place-items:center;padding-block:20px}
+  .hero-phone .phone{--w:min(74vw,calc((100svh - 40px) * .4767))}
+  .ladder{padding-block:24px;gap:22px}
+  .ladder h2{font-size:26px;margin:10px 0 12px}
+  .ladder p{font-size:16px;line-height:1.55;margin-bottom:12px}
+  .chart{height:190px}
+  .grp{padding-block:18px}
+  .stage{--wmax:min(46vw,230px)}
+  /* schermi bassi: via la frase sotto il titolo della sezione */
+  html.compatto .grp-head>p:not(.eyebrow){display:none}
+}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.dot{transition:none}}
 @media (max-width:959px){
-  .grp{padding-block:52px}
-  .grp-in{row-gap:16px}
+  .grp-in{row-gap:14px}
   .stage{gap:22px}
-  .stage .phone{--w:min(42vw,220px)}
   .feat{gap:8px}
   .feat h3{font-size:20px}
   .feat p{font-size:16px;line-height:1.55}
@@ -191,7 +228,7 @@ button{font:inherit;color:inherit}
 </head>
 <body>
 
-<div class="wrap">
+<div class="wrap apertura">
   <header class="top">
     <a class="mark" href="#">A<b>WAKE</b>NING</a>
   </header>
@@ -232,12 +269,7 @@ button{font:inherit;color:inherit}
   </div>
 </div>
 
-<div class="wrap intro" id="funzioni">
-  <p class="eyebrow">Le funzioni</p>
-  <h2>Dal primo giorno alla posta della sera</h2>
-</div>
-
-<section class="grp" style="--dot:var(--c1)" aria-labelledby="g1">
+<section class="grp" id="funzioni" style="--dot:var(--c1)" aria-labelledby="g1">
   <div class="wrap grp-in">
     <div class="grp-head">
       <p class="eyebrow">Prima di cominciare · 3 funzioni</p>
@@ -344,7 +376,7 @@ button{font:inherit;color:inherit}
   </div>
 </section>
 
-<div class="wrap">
+<div class="wrap fine">
   <section class="close" aria-labelledby="t-close">
     <h2 id="t-close">Il primo capitolo è <span>Activation.</span></h2>
     <p class="soon">Awakening arriva presto sullo store. Il link per scaricarla comparirà qui.</p>
@@ -485,6 +517,46 @@ button{font:inherit;color:inherit}
     document.addEventListener('visibilitychange', riparti);
     segna(0);
   });
+
+  // L'iPhone delle sezioni prende l'altezza che resta dopo titolo, pallini
+  // e testo (--np), cosi' ogni sezione sta in uno schermo e lo scorrimento
+  // la inquadra intera. Si misura la sezione che ne ha bisogno di piu', per
+  // avere lo stesso telefono ovunque. Se su telefono l'iPhone scende sotto
+  // 150 punti, si toglie la frase sotto il titolo delle sezioni.
+  var root = document.documentElement, largo = 0;
+  function misura() {
+    var np = 0;
+    Array.prototype.forEach.call(document.querySelectorAll('.grp'), function (g) {
+      var cs = getComputedStyle(g);
+      var h = g.querySelector('.grp-in').getBoundingClientRect().height -
+        g.querySelector('.stage .phone').getBoundingClientRect().height +
+        parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+      if (h > np) np = h;
+    });
+    root.style.setProperty('--np', Math.ceil(np + 6) + 'px');
+  }
+  function adatta() {
+    largo = window.innerWidth;
+    root.classList.remove('compatto');
+    misura();
+    var tel = document.querySelector('.grp .stage .phone');
+    if (largo < 960 && tel && tel.getBoundingClientRect().width < 150) { root.classList.add('compatto'); misura(); }
+    // Aggancio solo se ogni blocco sta in uno schermo (su telefono il testo
+    // d'apertura e la Home contano come due blocchi).
+    var alto = window.innerHeight + 1, sta = true;
+    Array.prototype.forEach.call(document.querySelectorAll('.apertura, .hero-phone, .band, .grp, .fine'), function (b) {
+      var h = b.getBoundingClientRect().height;
+      if (b.classList.contains('apertura') && largo < 960) h -= b.querySelector('.hero-phone').getBoundingClientRect().height;
+      if (b.classList.contains('hero-phone') && largo >= 960) return;
+      if (h > alto) sta = false;
+    });
+    root.classList.toggle('aggancio', sta);
+  }
+  adatta();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(adatta);
+  // Solo i cambi di larghezza (rotazione): su iPhone l'altezza cambia a
+  // ogni scorrimento quando le barre del browser si chiudono.
+  window.addEventListener('resize', function () { if (window.innerWidth !== largo) adatta(); });
 })();
 
 </script>
