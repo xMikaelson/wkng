@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Awakening — 35 giorni. 5 fasi. Il tuo ritorno.</title>
+<meta name="description" content="Awakening scrive il tuo programma di allenamento e lo fa crescere settimana dopo settimana: carichi calcolati sul tuo massimo, alimentazione, pasto da una foto e un Coach AI.">
+<meta name="theme-color" content="#0b1120">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Awakening — 35 giorni. 5 fasi. Il tuo ritorno.">
+<meta property="og:description" content="Il programma di allenamento che cresce con te: capitoli, carichi, alimentazione e un Coach AI.">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preload" href="font/unbounded.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="font/hanken-grotesk.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+/* Font nella cartella del sito (sottoinsieme latino, licenza SIL OFL): niente
+   richieste a Google a ogni visita, e il sito trasloca intero sul dominio. */
+@font-face{font-family:'Unbounded';font-style:normal;font-weight:200 900;font-display:swap;src:url(font/unbounded.woff2) format('woff2')}
+@font-face{font-family:'Hanken Grotesk';font-style:normal;font-weight:100 900;font-display:swap;src:url(font/hanken-grotesk.woff2) format('woff2')}
+@font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:100 800;font-display:swap;src:url(font/jetbrains-mono.woff2) format('woff2')}
+
+/* Layout: in alto il titolo dell'app accanto alla sua Home; poi la scala dei
+   cinque capitoli; poi cinque sezioni, una per momento della giornata: in
+   ognuna un solo iPhone che passa da una funzione all'altra (da solo, o con
+   le frecce ai lati), e accanto il testo della funzione che si vede.
+   Un solo aspetto, scuro come l'app. */
+:root{
+  /* colori dell'app (index.html): sfondo, card, primario */
+  --bg:#0b1120; --band:#0f172a; --card:#162033; --line:rgba(148,163,184,.17);
+  --ink:#e8edf5; --soft:#b4bfd0; --muted:#8391a7;
+  --green:#34d399;
+  /* i cinque capitoli, con i loro colori nell'app */
+  --c1:#34d399; --c2:#fbbf24; --c3:#f87171; --c4:#c084fc; --c5:#2dd4bf;
+  --display:'Unbounded','Arial Black',system-ui,sans-serif;
+  --body:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  --sf:-apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif;
+  --ease:cubic-bezier(.22,.61,.36,1);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.6;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit}
+img{max-width:100%;display:block}
+h1,h2,h3{margin:0;font-weight:700;text-wrap:balance}
+p{margin:0}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--green);outline-offset:3px;border-radius:4px}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+@media (min-width:760px){.wrap{padding-left:max(32px,env(safe-area-inset-left,0px));padding-right:max(32px,env(safe-area-inset-right,0px))}}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.src{display:block;font-family:var(--mono);font-size:11.5px;color:var(--muted);letter-spacing:.02em}
+
+/* Marchio come nell'app: A WAKE NING */
+.mark{font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:.32em;text-decoration:none;white-space:nowrap}
+.mark b{color:var(--green);font-weight:700}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:52px;padding:0 26px;border-radius:14px;
+  font-family:var(--body);font-weight:700;font-size:16px;text-decoration:none;letter-spacing:.01em;transition:transform .15s,background .2s}
+.btn:active{transform:scale(.98)}
+.btn.pri{background:var(--green);color:#052e1f}
+.btn.pri:hover{background:#4ee3ad}
+.btn.sec{border:1px solid var(--line);color:var(--ink)}
+.btn.sec:hover{border-color:var(--soft)}
+
+/* ── iPhone ─────────────────────────────────────────────────── */
+.phone{--w:300px;position:relative;width:var(--w);max-width:100%;margin:0;padding:calc(var(--w) * .03);border-radius:calc(var(--w) * .165);
+  background:linear-gradient(150deg,#3a4357 0%,#11161f 22%,#0a0d14 60%,#262e3d 100%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.09),inset 0 0 0 calc(var(--w) * .008) #05070b,0 34px 70px -30px rgba(0,0,0,.9);flex:none}
+.phone::before,.phone::after{content:"";position:absolute;width:3px;border-radius:2px;background:#2a3242}
+.phone::before{left:-2px;top:22%;height:7%;box-shadow:0 calc(var(--w) * .2) 0 #2a3242}
+.phone::after{right:-2px;top:28%;height:11%}
+.screen{position:relative;aspect-ratio:393/852;border-radius:calc(var(--w) * .135);overflow:hidden;background:#0f172a;container-type:inline-size}
+.screen img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.status{position:absolute;z-index:2;top:0;left:0;right:0;height:13.6cqw;display:flex;align-items:center;justify-content:space-between;
+  padding:1cqw 7.4cqw 0 10.5cqw;color:#fff;font:600 4.15cqw/1 var(--sf);letter-spacing:-.01em;pointer-events:none}
+.status svg{height:3.1cqw;width:auto;margin-left:1.4cqw;fill:#fff}
+.status .ic{display:flex;align-items:center}
+.island{position:absolute;z-index:3;top:2.7cqw;left:50%;width:31cqw;height:9.1cqw;margin-left:-15.5cqw;border-radius:9cqw;background:#000}
+.homebar{position:absolute;z-index:2;bottom:2.1cqw;left:50%;width:34cqw;height:1.3cqw;margin-left:-17cqw;border-radius:1cqw;background:rgba(255,255,255,.82)}
+
+/* ── Apertura ───────────────────────────────────────────────── */
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-block:22px}
+.top a.lnk{font-weight:600;font-size:15px;text-decoration:none;color:var(--soft)}
+.top a.lnk:hover{color:var(--ink)}
+.hero{display:grid;gap:48px;padding-block:28px 72px;align-items:center;overflow:clip;overflow-clip-margin:24px}
+@media (min-width:960px){.hero{grid-template-columns:minmax(0,1fr) auto;gap:72px;padding-block:48px 110px}}
+.hero h1{font-family:var(--display);font-weight:800;font-size:clamp(40px,7.4vw,84px);line-height:.98;letter-spacing:-.035em;margin:18px 0 26px}
+.hero h1 span{display:block;color:var(--green)}
+.hero .lead{font-size:clamp(18px,2vw,21px);color:var(--soft);max-width:34em;margin-bottom:32px}
+.cta{display:flex;flex-wrap:wrap;gap:12px}
+.facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 24px;margin-top:40px;padding-top:24px;border-top:1px solid var(--line);max-width:640px}
+.facts div{display:flex;flex-direction:column;gap:2px}
+.facts b{font-family:var(--display);font-weight:700;font-size:clamp(19px,2.4vw,26px);letter-spacing:-.02em;color:var(--ink);white-space:nowrap}
+.facts span{font-size:14px;line-height:1.4;color:var(--muted)}
+.hero-phone{position:relative;justify-self:center}
+.hero-phone::before{content:"";position:absolute;inset:6% -12% 0;background:radial-gradient(closest-side,rgba(251,191,36,.22),rgba(251,191,36,0));z-index:-1}
+.hero-phone .phone{--w:min(300px,74vw)}
+@media (min-width:960px){.hero-phone .phone{--w:330px}}
+
+/* ── Scala dei capitoli ─────────────────────────────────────── */
+.band{background:var(--band);border-block:1px solid var(--line)}
+.ladder{display:grid;gap:40px;padding-block:72px}
+@media (min-width:960px){.ladder{grid-template-columns:minmax(0,.9fr) minmax(0,1.3fr);gap:72px;align-items:end;padding-block:96px}}
+.ladder h2{font-family:var(--display);font-weight:700;font-size:clamp(28px,3.6vw,40px);line-height:1.08;letter-spacing:-.025em;margin:14px 0 18px}
+.ladder p{color:var(--soft);max-width:36em;margin-bottom:18px}
+.chart{position:relative;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;height:260px;align-items:end;padding-top:28px}
+.chart::before{content:"100% · il tuo MTR";position:absolute;left:0;right:0;top:28px;border-top:1px dashed rgba(148,163,184,.45);
+  font-family:var(--mono);font-size:11px;color:var(--muted);padding-top:4px;text-align:right}
+.bar{display:flex;flex-direction:column;justify-content:flex-end;height:100%;min-width:0}
+.bar i{display:block;height:calc(var(--v) * 1% * .84);border-radius:8px 8px 3px 3px;background:var(--c);position:relative}
+.bar i::after{content:attr(data-v);position:absolute;top:8px;left:0;right:0;text-align:center;font-family:var(--display);font-weight:700;
+  font-style:normal;font-size:clamp(13px,1.6vw,18px);color:#0b1120}
+.bar.dl i{background:repeating-linear-gradient(135deg,var(--c) 0 6px,color-mix(in srgb,var(--c) 70%,#0b1120) 6px 12px)}
+.bar span{margin-top:10px;font-family:var(--mono);font-size:11px;line-height:1.35;color:var(--soft);overflow-wrap:anywhere}
+.bar span em{display:block;font-style:normal;color:var(--muted)}
+
+/* ── Le sezioni: un iPhone, piu' funzioni ───────────────────── */
+.intro{padding-block:88px 0}
+.intro h2{font-family:var(--display);font-weight:700;font-size:clamp(30px,4.4vw,52px);line-height:1.04;letter-spacing:-.03em;margin-top:14px;max-width:16em}
+.grp{padding-block:64px}
+.grp+.grp{border-top:1px solid var(--line)}
+/* telefono: titolo, iPhone, pallini, testo. Schermo largo: testo a sinistra,
+   iPhone a destra (a sezioni alterne, a sinistra). */
+.grp-in{display:grid;gap:26px;grid-template-areas:"head" "stage" "dots" "feats"}
+@media (min-width:960px){
+  .grp-in{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:". stage" "head stage" "feats stage" "dots stage" ". stage";
+    grid-template-rows:1fr auto auto auto 1fr;column-gap:80px;row-gap:28px}
+  .grp.flip .grp-in{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"stage ." "stage head" "stage feats" "stage dots" "stage ."}
+}
+.grp-head{grid-area:head;max-width:34em}
+.grp-head .eyebrow{display:flex;align-items:center;gap:10px}
+.grp-head .eyebrow::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--dot)}
+.grp-head h2{font-family:var(--display);font-weight:700;font-size:clamp(26px,3.4vw,40px);line-height:1.08;letter-spacing:-.025em;margin:12px 0 10px}
+.grp-head>p{color:var(--soft)}
+
+/* L'iPhone con le frecce ai lati, centrate sull'altezza del telefono */
+.stage{grid-area:stage;display:grid;grid-template-columns:auto auto auto;align-items:center;justify-content:center;gap:14px;
+  touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.stage .phone{--w:min(62vw,300px)}
+@media (min-width:960px){.stage{gap:24px}.stage .phone{--w:min(310px,calc(78vh * 393 / 852))}}
+.arr{width:48px;height:48px;border-radius:50%;border:1px solid var(--line);background:rgba(15,23,42,.6);display:inline-flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:border-color .2s,background .2s,transform .15s}
+.arr svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.arr:hover{border-color:var(--dot);background:color-mix(in srgb,var(--dot) 14%,transparent)}
+.arr:active{transform:scale(.94)}
+@media (max-width:400px){.arr{width:40px;height:40px}.stage{gap:8px}}
+.stage .screen img{opacity:0}
+.stage .screen img.on{opacity:1}
+
+/* I pallini: uno per funzione, quello attivo si riempie mentre scorre il tempo */
+.dots{grid-area:dots;display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+@media (min-width:960px){.dots{justify-content:flex-start}}
+.dot{position:relative;width:10px;height:10px;padding:0;border:0;border-radius:6px;background:rgba(148,163,184,.3);cursor:pointer;overflow:hidden;
+  transition:width .5s var(--ease),background .3s}
+.dot.on{width:38px;background:rgba(148,163,184,.25)}
+.dot i{position:absolute;inset:0;width:0;background:var(--dot)}
+.dot.on i{width:100%}
+.dot.on.run i{width:0;animation:fill var(--t,4500ms) linear forwards}
+@keyframes fill{to{width:100%}}
+
+/* Il testo della funzione: tutte nella stessa cella, si vede la attiva */
+.feats{grid-area:feats;display:grid;list-style:none;margin:0;padding:0;max-width:34em}
+.feat{grid-area:1/1;display:flex;flex-direction:column;gap:10px;visibility:hidden;opacity:0}
+.feat.on{visibility:visible;opacity:1}
+.feat .n{font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.06em;font-variant-numeric:tabular-nums}
+.feat .n b{color:var(--dot);font-weight:500}
+.feat h3{font-family:var(--display);font-weight:700;font-size:clamp(22px,2.4vw,28px);line-height:1.15;letter-spacing:-.02em}
+.feat p{color:var(--soft)}
+@media (min-width:960px){.feats{padding:24px 0 0;border-top:1px solid var(--line)}}
+
+/* ── Installazione e chiusura ───────────────────────────────── */
+.install{display:grid;gap:36px;padding-block:80px}
+@media (min-width:860px){.install{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:72px}}
+.install h2{font-family:var(--display);font-weight:700;font-size:clamp(28px,3.6vw,40px);line-height:1.08;letter-spacing:-.025em;margin-top:14px}
+.install>div>p{color:var(--soft);margin-top:16px;max-width:30em}
+.how{display:grid;gap:16px}
+@media (min-width:620px){.how{grid-template-columns:1fr 1fr}}
+.how section{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px}
+.how h3{font-size:18px;margin-bottom:12px}
+.how ol{margin:0;padding-left:20px;color:var(--soft);display:grid;gap:6px}
+.how ol b{color:var(--ink);font-weight:600}
+.close{padding-block:96px 72px}
+.close h2{font-family:var(--display);font-weight:800;font-size:clamp(34px,6vw,72px);line-height:1;letter-spacing:-.035em;max-width:12em;margin-bottom:30px}
+.close h2 span{color:var(--green)}
+.foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px 24px;padding-block:28px 40px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.dot{transition:none}}
+@media (max-width:959px){
+  .grp{padding-block:52px}
+  .grp-in{row-gap:16px}
+  .stage{gap:22px}
+  .stage .phone{--w:min(42vw,220px)}
+  .feat{gap:8px}
+  .feat h3{font-size:20px}
+  .feat p{font-size:16px;line-height:1.55}
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <a class="mark" href="#">A<b>WAKE</b>NING</a>
+    <a class="lnk" href="https://xmikaelson.github.io/wkng/" target="_blank" rel="noopener">Apri l'app ↗</a>
+  </header>
+
+  <section class="hero" aria-labelledby="t-hero">
+    <div>
+      <p class="eyebrow">Allenamento · alimentazione · Coach AI</p>
+      <h1 id="t-hero">35 giorni. 5 fasi. <span>Il tuo ritorno.</span></h1>
+      <p class="lead">Awakening scrive il tuo programma di allenamento e lo fa crescere settimana dopo settimana. Calcola i carichi sul tuo massimo, ti guida in palestra, tiene il conto di quello che mangi e ti risponde quando hai un dubbio.</p>
+      <div class="cta">
+        <a class="btn pri" href="https://xmikaelson.github.io/wkng/" target="_blank" rel="noopener">Apri Awakening</a>
+        <a class="btn sec" href="#funzioni">Guarda le funzioni</a>
+      </div>
+      <div class="facts">
+        <div><b>85→97%</b><span>del tuo massimo tecnico</span></div>
+        <div><b>4+1</b><span>capitoli e una settimana di scarico</span></div>
+        <div><b>5</b><span>percorsi, dalla massa al corpo libero</span></div>
+      </div>
+    </div>
+    <div class="hero-phone"><figure class="phone"><div class="screen"><img src="img/home.webp" width="600" height="1301" decoding="async" fetchpriority="high" alt="La Home di Awakening: Chapter 2 Momentum, settimana 2 di 5, carico all&#x27;89%, calorie e macro del giorno."><div class="status" aria-hidden="true"><span>18:20</span><span class="ic"><svg viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg><svg viewBox="0 0 16 12"><path d="M8 2.6c2.3 0 4.4.9 6 2.4l1.3-1.4A10.6 10.6 0 0 0 8 .7 10.6 10.6 0 0 0 .7 3.6L2 5c1.6-1.5 3.7-2.4 6-2.4Zm0 3.8c1.3 0 2.5.5 3.4 1.3l1.3-1.4A6.9 6.9 0 0 0 8 4.5 6.9 6.9 0 0 0 3.3 6.3l1.3 1.4C5.5 6.9 6.7 6.4 8 6.4Zm0 3.7 2-2.1a3 3 0 0 0-4 0Z"/></svg><svg viewBox="0 0 27 12"><rect x=".5" y=".5" width="23" height="11" rx="3.2" fill="none" stroke="#fff" stroke-opacity=".45"/><rect x="2" y="2" width="16.5" height="8" rx="2"/><path d="M25 4v4c.8-.3 1.3-1.1 1.3-2S25.8 4.3 25 4Z" fill-opacity=".45"/></svg></span></div><div class="island" aria-hidden="true"></div><div class="homebar" aria-hidden="true"></div></div></figure></div>
+  </section>
+</div>
+
+<div class="band">
+  <div class="wrap ladder">
+    <div>
+      <p class="eyebrow">Il programma</p>
+      <h2>Una settimana per capitolo, il carico che sale</h2>
+      <p>Ogni esercizio parte dal tuo MTR, il massimo tecnico: il peso più alto che sollevi con tecnica pulita per le ripetizioni previste. Capitolo dopo capitolo il carico sale e le ripetizioni scendono. Nella quinta settimana il carico resta vicino al picco e le serie si dimezzano, per recuperare e consolidare.</p>
+      <span class="src">ACSM 2009 · Bosquet et al. 2007 · Mujika &amp; Padilla 2003</span>
+    </div>
+    <div class="chart" role="img" aria-label="Carico in percentuale del massimo tecnico: Activation 85, Momentum 89, The Peak 93, Overload 97, Deload 90 con serie dimezzate.">
+      <div class="bar" style="--c:var(--c1)"><i style="--v:85" data-v="85%"></i><span>Ch.1<em>Activation</em></span></div>
+      <div class="bar" style="--c:var(--c2)"><i style="--v:89" data-v="89%"></i><span>Ch.2<em>Momentum</em></span></div>
+      <div class="bar" style="--c:var(--c3)"><i style="--v:93" data-v="93%"></i><span>Ch.3<em>The Peak</em></span></div>
+      <div class="bar" style="--c:var(--c4)"><i style="--v:97" data-v="97%"></i><span>Ch.4<em>Overload</em></span></div>
+      <div class="bar dl" style="--c:var(--c5)"><i style="--v:90" data-v="90%"></i><span>Ch.5<em>Deload · ½ serie</em></span></div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap intro" id="funzioni">
+  <p class="eyebrow">Le funzioni</p>
+  <h2>Dal primo giorno alla posta della sera</h2>
+</div>
+
+<section class="grp" style="--dot:var(--c1)" aria-labelledby="g1">
+  <div class="wrap grp-in">
+    <div class="grp-head">
+      <p class="eyebrow">Prima di cominciare · 3 funzioni</p>
+      <h2 id="g1">Il programma, pronto in poche domande</h2>
+      <p>Dici il tuo obiettivo, da quanto ti alleni e con cosa. Awakening scrive le schede e le mette in calendario.</p>
+    </div>
+    <div class="stage"><figure class="phone"><div class="screen"><img src="img/percorso.webp" width="600" height="1301" decoding="async" loading="lazy" class="on" alt="La scelta del percorso: MONOLITH, SHIELD, TITAN, FORGE, GRAVITY."><img src="img/protocollo.webp" width="600" height="1301" decoding="async" loading="lazy" alt="Il protocollo generato: Upper/Lower, 4 giorni, 72 serie a settimana, esercizi con carichi."><img src="img/piani.webp" width="600" height="1301" decoding="async" loading="lazy" alt="I piani: i cinque capitoli, la settimana di Momentum e le schede assegnate ai giorni."><div class="status" aria-hidden="true"><span>18:20</span><span class="ic"><svg viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg><svg viewBox="0 0 16 12"><path d="M8 2.6c2.3 0 4.4.9 6 2.4l1.3-1.4A10.6 10.6 0 0 0 8 .7 10.6 10.6 0 0 0 .7 3.6L2 5c1.6-1.5 3.7-2.4 6-2.4Zm0 3.8c1.3 0 2.5.5 3.4 1.3l1.3-1.4A6.9 6.9 0 0 0 8 4.5 6.9 6.9 0 0 0 3.3 6.3l1.3 1.4C5.5 6.9 6.7 6.4 8 6.4Zm0 3.7 2-2.1a3 3 0 0 0-4 0Z"/></svg><svg viewBox="0 0 27 12"><rect x=".5" y=".5" width="23" height="11" rx="3.2" fill="none" stroke="#fff" stroke-opacity=".45"/><rect x="2" y="2" width="16.5" height="8" rx="2"/><path d="M25 4v4c.8-.3 1.3-1.1 1.3-2S25.8 4.3 25 4Z" fill-opacity=".45"/></svg></span></div><div class="island" aria-hidden="true"></div><div class="homebar" aria-hidden="true"></div></div></figure></div>
+    <ol class="feats">
+      <li class="feat on"><h3>Scegli il percorso</h3>
+        <p>MONOLITH per la massa, SHIELD per dimagrire senza perdere muscolo, TITAN per la forza, FORGE ibrido, GRAVITY a corpo libero. In palestra, a casa o senza attrezzi.</p></li>
+      <li class="feat"><h3>Il protocollo, già scritto</h3>
+        <p>Giorni, serie a settimana, esercizi con ripetizioni, recuperi e carichi di partenza. Ogni esercizio ha la sua zona di stimolo, con la fonte.</p>
+        <span class="src">ACSM 2009 · Schoenfeld 2016 · Grgic 2018</span></li>
+      <li class="feat"><h3>Cinque capitoli, il tuo calendario</h3>
+        <p>Assegni ogni scheda ai suoi giorni e il calendario del capitolo segna quello che hai fatto. Le schede si salvano e si riusano.</p></li>
+    </ol>
+    <div class="dots" role="group" aria-label="Funzioni di questa sezione"></div>
+  </div>
+</section>
+
+<section class="grp flip" style="--dot:var(--c2)" aria-labelledby="g2">
+  <div class="wrap grp-in">
+    <div class="grp-head">
+      <p class="eyebrow">In palestra · 6 funzioni</p>
+      <h2 id="g2">Dal riscaldamento all'ultima serie</h2>
+      <p>L'app sa cosa ti tocca oggi, con quale peso e quanto recuperare. E tiene il conto dei tuoi progressi.</p>
+    </div>
+    <div class="stage"><figure class="phone"><div class="screen"><img src="img/riscaldamento.webp" width="600" height="1301" decoding="async" loading="lazy" class="on" alt="Il riscaldamento guidato: generale, mobilità, avvicinamento, con il timer."><img src="img/allenamento.webp" width="600" height="1301" decoding="async" loading="lazy" alt="L&#x27;allenamento: Panca inclinata con manubri, 4×10 a 25 kg, record 26,4 kg."><img src="img/recupero.webp" width="600" height="1301" decoding="async" loading="lazy" alt="Il recupero: 3 minuti di conto alla rovescia dopo la prima serie."><img src="img/pesi.webp" width="600" height="1301" decoding="async" loading="lazy" alt="I progressi nei pesi: esercizi con record e percentuale oltre il programma."><img src="img/massa.webp" width="600" height="1301" decoding="async" loading="lazy" alt="Il peso corporeo: 80,9 kg, obiettivo 78 kg, BMI 24,2 e la curva delle ultime settimane."><img src="img/diario.webp" width="600" height="1301" decoding="async" loading="lazy" alt="Il diario delle sedute: faticosa, regolare, brillante, e le note."><div class="status" aria-hidden="true"><span>18:20</span><span class="ic"><svg viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg><svg viewBox="0 0 16 12"><path d="M8 2.6c2.3 0 4.4.9 6 2.4l1.3-1.4A10.6 10.6 0 0 0 8 .7 10.6 10.6 0 0 0 .7 3.6L2 5c1.6-1.5 3.7-2.4 6-2.4Zm0 3.8c1.3 0 2.5.5 3.4 1.3l1.3-1.4A6.9 6.9 0 0 0 8 4.5 6.9 6.9 0 0 0 3.3 6.3l1.3 1.4C5.5 6.9 6.7 6.4 8 6.4Zm0 3.7 2-2.1a3 3 0 0 0-4 0Z"/></svg><svg viewBox="0 0 27 12"><rect x=".5" y=".5" width="23" height="11" rx="3.2" fill="none" stroke="#fff" stroke-opacity=".45"/><rect x="2" y="2" width="16.5" height="8" rx="2"/><path d="M25 4v4c.8-.3 1.3-1.1 1.3-2S25.8 4.3 25 4Z" fill-opacity=".45"/></svg></span></div><div class="island" aria-hidden="true"></div><div class="homebar" aria-hidden="true"></div></div></figure></div>
+    <ol class="feats">
+      <li class="feat on"><h3>Il riscaldamento, guidato</h3>
+        <p>Generale, mobilità e serie di avvicinamento con i pesi, ognuna con il suo timer. L'avvicinamento compare solo dove serve.</p>
+        <span class="src">NSCA 2008</span></li>
+      <li class="feat"><h3>Il peso giusto, serie dopo serie</h3>
+        <p>Serie, ripetizioni e il carico di oggi, calcolato sulla percentuale del capitolo. Lo correggi con un tocco; sotto c'è il tuo record.</p></li>
+      <li class="feat"><h3>Il recupero ti segue</h3>
+        <p>Segni la serie e parte il recupero giusto per quell'esercizio. Con le notifiche attive ti avvisa anche a schermo spento, e la tua musica continua.</p></li>
+      <li class="feat"><h3>Record e regola 2-per-2</h3>
+        <p>Storico e record per ogni esercizio. Due ripetizioni in più nell'ultima serie per due sedute di fila, e l'app ti propone di salire.</p>
+        <span class="src">Baechle &amp; Earle, NSCA 2008</span></li>
+      <li class="feat"><h3>Il peso, settimana per settimana</h3>
+        <p>Pesate, obiettivo, BMI e la curva delle ultime settimane. Al ritmo attuale vedi quanto ti manca.</p></li>
+      <li class="feat"><h3>Com'è andata?</h3>
+        <p>A fine seduta una domanda: faticosa, regolare o brillante, e perché. Il diario mostra cosa ricorre nelle sedute difficili.</p></li>
+    </ol>
+    <div class="dots" role="group" aria-label="Funzioni di questa sezione"></div>
+  </div>
+</section>
+
+<section class="grp" style="--dot:var(--c3)" aria-labelledby="g3">
+  <div class="wrap grp-in">
+    <div class="grp-head">
+      <p class="eyebrow">A tavola · 3 funzioni</p>
+      <h2 id="g3">Quello che mangi, senza fatica</h2>
+      <p>Un obiettivo calcolato su di te, i pasti della giornata e modi veloci per aggiungere quello che mangi.</p>
+    </div>
+    <div class="stage"><figure class="phone"><div class="screen"><img src="img/nutrizione.webp" width="600" height="1301" decoding="async" loading="lazy" class="on" alt="La giornata alimentare: 1220 kcal su 2450, macro, pasti e idratazione 7 bicchieri su 10."><img src="img/foto.webp" width="600" height="1301" decoding="async" loading="lazy" alt="L&#x27;analisi del pasto: spaghetti, sugo di pomodoro, parmigiano e basilico, 514 kcal in totale."><img src="img/prodotto.webp" width="600" height="1301" decoding="async" loading="lazy" alt="La scheda di un prodotto scansionato: Nutri-Score D, ultra-processato, 3 additivi."><div class="status" aria-hidden="true"><span>18:20</span><span class="ic"><svg viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg><svg viewBox="0 0 16 12"><path d="M8 2.6c2.3 0 4.4.9 6 2.4l1.3-1.4A10.6 10.6 0 0 0 8 .7 10.6 10.6 0 0 0 .7 3.6L2 5c1.6-1.5 3.7-2.4 6-2.4Zm0 3.8c1.3 0 2.5.5 3.4 1.3l1.3-1.4A6.9 6.9 0 0 0 8 4.5 6.9 6.9 0 0 0 3.3 6.3l1.3 1.4C5.5 6.9 6.7 6.4 8 6.4Zm0 3.7 2-2.1a3 3 0 0 0-4 0Z"/></svg><svg viewBox="0 0 27 12"><rect x=".5" y=".5" width="23" height="11" rx="3.2" fill="none" stroke="#fff" stroke-opacity=".45"/><rect x="2" y="2" width="16.5" height="8" rx="2"/><path d="M25 4v4c.8-.3 1.3-1.1 1.3-2S25.8 4.3 25 4Z" fill-opacity=".45"/></svg></span></div><div class="island" aria-hidden="true"></div><div class="homebar" aria-hidden="true"></div></div></figure></div>
+    <ol class="feats">
+      <li class="feat on"><h3>Calorie, macro e acqua</h3>
+        <p>Il fabbisogno parte dai tuoi dati e dal tuo obiettivo. Vedi calorie e macro pasto per pasto, e l'acqua bicchiere per bicchiere.</p>
+        <span class="src">Fabbisogno: Mifflin-St Jeor</span></li>
+      <li class="feat"><h3>Il pasto da una foto</h3>
+        <p>Fotografi il piatto: il Coach separa i componenti e stima grammi, calorie e macro di ciascuno. Se vuoi scegli il prodotto esatto, poi lo aggiungi.</p></li>
+      <li class="feat"><h3>Scanner e Nutri-Score</h3>
+        <p>Inquadri il codice a barre: valori per 100 g, Nutri-Score, grado di lavorazione e additivi, con un giudizio sul tuo obiettivo.</p>
+        <span class="src">Dati: Open Food Facts</span></li>
+    </ol>
+    <div class="dots" role="group" aria-label="Funzioni di questa sezione"></div>
+  </div>
+</section>
+
+<section class="grp flip" style="--dot:var(--c4)" aria-labelledby="g4">
+  <div class="wrap grp-in">
+    <div class="grp-head">
+      <p class="eyebrow">Il Coach · 2 funzioni</p>
+      <h2 id="g4">Un Coach che legge i tuoi dati</h2>
+      <p>Risponde in chat quando hai un dubbio, e la sera ti scrive com'è andata la giornata.</p>
+    </div>
+    <div class="stage"><figure class="phone"><div class="screen"><img src="img/coach.webp" width="600" height="1301" decoding="async" loading="lazy" class="on" alt="La chat con il Coach AI, con la proposta di spostare Lower B a sabato."><img src="img/postamsg.webp" width="600" height="1301" decoding="async" loading="lazy" alt="Il resoconto della sera: allenamento, alimentazione, idratazione, il grafico del peso e cosa fare domani."><div class="status" aria-hidden="true"><span>18:20</span><span class="ic"><svg viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg><svg viewBox="0 0 16 12"><path d="M8 2.6c2.3 0 4.4.9 6 2.4l1.3-1.4A10.6 10.6 0 0 0 8 .7 10.6 10.6 0 0 0 .7 3.6L2 5c1.6-1.5 3.7-2.4 6-2.4Zm0 3.8c1.3 0 2.5.5 3.4 1.3l1.3-1.4A6.9 6.9 0 0 0 8 4.5 6.9 6.9 0 0 0 3.3 6.3l1.3 1.4C5.5 6.9 6.7 6.4 8 6.4Zm0 3.7 2-2.1a3 3 0 0 0-4 0Z"/></svg><svg viewBox="0 0 27 12"><rect x=".5" y=".5" width="23" height="11" rx="3.2" fill="none" stroke="#fff" stroke-opacity=".45"/><rect x="2" y="2" width="16.5" height="8" rx="2"/><path d="M25 4v4c.8-.3 1.3-1.1 1.3-2S25.8 4.3 25 4Z" fill-opacity=".45"/></svg></span></div><div class="island" aria-hidden="true"></div><div class="homebar" aria-hidden="true"></div></div></figure></div>
+    <ol class="feats">
+      <li class="feat on"><h3>Chiedi, e cambia il programma</h3>
+        <p>Carichi, recupero, cosa mangiare prima. Vede schede, capitolo, record e settimana. Quando serve propone una modifica e la applichi con un tocco.</p></li>
+      <li class="feat"><h3>La posta della sera</h3>
+        <p>Alle 22 il resoconto della giornata: allenamento, pasti, acqua, peso e cosa fare domani. La domenica quello della settimana, ogni quattro settimane quello del mese.</p></li>
+    </ol>
+    <div class="dots" role="group" aria-label="Funzioni di questa sezione"></div>
+  </div>
+</section>
+
+<section class="grp" style="--dot:var(--c5)" aria-labelledby="g5">
+  <div class="wrap grp-in">
+    <div class="grp-head">
+      <p class="eyebrow">Ogni giorno · 2 funzioni</p>
+      <h2 id="g5">Costanti, senza pensarci</h2>
+      <p>Promemoria agli orari che scegli tu e traguardi che arrivano da soli.</p>
+    </div>
+    <div class="stage"><figure class="phone"><div class="screen"><img src="img/notifiche.webp" width="600" height="1301" decoding="async" loading="lazy" class="on" alt="Gli orari dei promemoria: peso 7:30, colazione 8:00, pranzo 12:00, cena 20:00."><img src="img/badge.webp" width="600" height="1301" decoding="async" loading="lazy" alt="I traguardi: 4 sbloccati su 13."><div class="status" aria-hidden="true"><span>18:20</span><span class="ic"><svg viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg><svg viewBox="0 0 16 12"><path d="M8 2.6c2.3 0 4.4.9 6 2.4l1.3-1.4A10.6 10.6 0 0 0 8 .7 10.6 10.6 0 0 0 .7 3.6L2 5c1.6-1.5 3.7-2.4 6-2.4Zm0 3.8c1.3 0 2.5.5 3.4 1.3l1.3-1.4A6.9 6.9 0 0 0 8 4.5 6.9 6.9 0 0 0 3.3 6.3l1.3 1.4C5.5 6.9 6.7 6.4 8 6.4Zm0 3.7 2-2.1a3 3 0 0 0-4 0Z"/></svg><svg viewBox="0 0 27 12"><rect x=".5" y=".5" width="23" height="11" rx="3.2" fill="none" stroke="#fff" stroke-opacity=".45"/><rect x="2" y="2" width="16.5" height="8" rx="2"/><path d="M25 4v4c.8-.3 1.3-1.1 1.3-2S25.8 4.3 25 4Z" fill-opacity=".45"/></svg></span></div><div class="island" aria-hidden="true"></div><div class="homebar" aria-hidden="true"></div></div></figure></div>
+    <ol class="feats">
+      <li class="feat on"><h3>Promemoria a orari tuoi</h3>
+        <p>Pesata, colazione, spuntini, pranzo e cena: scegli gli orari e quali tenere accesi. Arrivano anche con l'app chiusa.</p></li>
+      <li class="feat"><h3>Tredici traguardi</h3>
+        <p>Il primo allenamento, il primo chilo perso, il primo capitolo chiuso. Si sbloccano da soli quando li raggiungi.</p></li>
+    </ol>
+    <div class="dots" role="group" aria-label="Funzioni di questa sezione"></div>
+  </div>
+</section>
+
+<div class="band">
+  <div class="wrap install">
+    <div>
+      <p class="eyebrow">Come si installa</p>
+      <h2>Dal browser alla schermata Home</h2>
+      <p>Awakening si apre da un indirizzo web e si aggiunge alla schermata Home come un'app, senza passare dallo store.</p>
+    </div>
+    <div class="how">
+      <section>
+        <h3>iPhone</h3>
+        <ol>
+          <li>Apri l'app in <b>Safari</b></li>
+          <li>Tocca <b>Condividi</b></li>
+          <li>Scegli <b>Aggiungi alla schermata Home</b></li>
+        </ol>
+      </section>
+      <section>
+        <h3>Android</h3>
+        <ol>
+          <li>Apri l'app in <b>Chrome</b></li>
+          <li>Tocca il menu <b>⋮</b></li>
+          <li>Scegli <b>Installa app</b></li>
+        </ol>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <section class="close" aria-labelledby="t-close">
+    <h2 id="t-close">Il primo capitolo è <span>Activation.</span></h2>
+    <div class="cta">
+      <a class="btn pri" href="https://xmikaelson.github.io/wkng/" target="_blank" rel="noopener">Apri Awakening</a>
+      <a class="btn sec" href="#funzioni">Rivedi le funzioni</a>
+    </div>
+  </section>
+  <footer class="foot">
+    <a class="mark" href="#">A<b>WAKE</b>NING</a>
+    <span>Le schermate mostrano dati di esempio.</span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  // Un iPhone per sezione: le funzioni si alternano da sole ogni 4,5 secondi
+  // mentre la sezione e' sullo schermo, con un passaggio di mezzo secondo.
+  // Frecce ai lati, pallini, tastiera e dito portano avanti e indietro;
+  // il mouse sopra il telefono ferma il giro.
+  var DUR = 500, GIRO = 4500;
+  var ridotto = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var EASE = 'cubic-bezier(.22,.61,.36,1)';
+  function freccia(d) {
+    return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + (d < 0 ? 'M15 5l-7 7 7 7' : 'M9 5l7 7-7 7') + '"/></svg>';
+  }
+  function bottone(cls, label, html) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = cls; b.setAttribute('aria-label', label); b.innerHTML = html;
+    return b;
+  }
+  // Il passaggio fra due schermate: quella nuova entra dal lato della
+  // direzione, quella vecchia esce dall'altro.
+  function passa(vecchia, nuova, dir, durata) {
+    if (ridotto || !nuova.animate) return [];
+    var dx = dir > 0 ? 9 : -9;
+    return [
+      vecchia.animate([{ opacity: 1, transform: 'translateX(0) scale(1)' }, { opacity: 0, transform: 'translateX(' + (-dx) + '%) scale(.98)' }], { duration: durata, easing: EASE }),
+      nuova.animate([{ opacity: 0, transform: 'translateX(' + dx + '%) scale(.98)' }, { opacity: 1, transform: 'translateX(0) scale(1)' }], { duration: durata, easing: EASE })
+    ];
+  }
+  // Trascinamento di lato col dito = funzione accanto.
+  function gesti(el, onLato) {
+    var sx = null, sy = 0;
+    el.addEventListener('pointerdown', function (e) { if (e.button > 0) return; sx = e.clientX; sy = e.clientY; });
+    el.addEventListener('pointerup', function (e) {
+      if (sx === null) return;
+      var dx = e.clientX - sx, dy = e.clientY - sy;
+      sx = null;
+      if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) onLato(dx < 0 ? 1 : -1);
+    });
+    el.addEventListener('pointercancel', function () { sx = null; });
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('.grp'), function (g) {
+    var stage = g.querySelector('.stage');
+    var tel = stage.querySelector('.phone');
+    var imgs = Array.prototype.slice.call(stage.querySelectorAll('.screen img'));
+    var feats = Array.prototype.slice.call(g.querySelectorAll('.feat'));
+    var dotsBox = g.querySelector('.dots');
+    var n = feats.length, cur = 0, timer = 0, visibile = false, fermo = false, anim = [];
+    function titolo(i) { return feats[i].querySelector('h3').textContent; }
+
+    var prev = bottone('arr', 'Funzione precedente', freccia(-1));
+    var next = bottone('arr', 'Funzione successiva', freccia(1));
+    stage.insertBefore(prev, stage.firstChild);
+    stage.appendChild(next);
+
+    var dots = feats.map(function (f, i) {
+      var b = bottone('dot', 'Funzione ' + (i + 1) + ' di ' + n + ': ' + titolo(i), '<i></i>');
+      b.style.setProperty('--t', GIRO + 'ms');
+      b.addEventListener('click', function () { vai(i, i > cur ? 1 : -1, true); });
+      dotsBox.appendChild(b);
+      var num = document.createElement('p');
+      num.className = 'n';
+      num.innerHTML = '<b>' + String(i + 1).padStart(2, '0') + '</b> / ' + String(n).padStart(2, '0');
+      f.insertBefore(num, f.firstChild);
+      return b;
+    });
+
+    function segna(i) {
+      imgs.forEach(function (im, k) { im.classList.toggle('on', k === i); });
+      feats.forEach(function (f, k) { f.classList.toggle('on', k === i); f.setAttribute('aria-hidden', k === i ? 'false' : 'true'); });
+      dots.forEach(function (d, k) {
+        d.classList.toggle('on', k === i);
+        d.setAttribute('aria-current', k === i ? 'true' : 'false');
+        d.classList.remove('run');
+      });
+    }
+
+    function vai(i, dir, manuale) {
+      i = (i + n) % n;
+      if (i === cur) { if (manuale) riparti(); return; }
+      var da = cur;
+      cur = i;
+      anim.forEach(function (a) { try { a.finish(); } catch (e) {} });
+      segna(i);
+      anim = passa(imgs[da], imgs[i], dir, DUR);
+      if (!ridotto && feats[i].animate) {
+        anim.push(feats[da].animate([{ opacity: 1, transform: 'none', visibility: 'visible' }, { opacity: 0, transform: 'translateY(-8px)', visibility: 'visible' }], { duration: DUR * .6, easing: EASE }));
+        anim.push(feats[i].animate([{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: DUR, easing: EASE }));
+      }
+      riparti();
+    }
+
+    // Il giro automatico: parte solo con la sezione in vista, si ferma col
+    // mouse sopra o col fuoco dentro, e non c'e' con il movimento ridotto.
+    function riparti() {
+      clearTimeout(timer);
+      dots.forEach(function (d) { d.classList.remove('run'); });
+      if (ridotto || !visibile || fermo || document.hidden) return;
+      var d = dots[cur];
+      void d.offsetWidth;
+      d.classList.add('run');
+      timer = setTimeout(function () { vai(cur + 1, 1, false); }, GIRO);
+    }
+
+    prev.addEventListener('click', function () { vai(cur - 1, -1, true); });
+    next.addEventListener('click', function () { vai(cur + 1, 1, true); });
+    stage.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowLeft') { e.preventDefault(); vai(cur - 1, -1, true); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); vai(cur + 1, 1, true); }
+    });
+    // Si ferma col mouse sopra il telefono (non su tutta la sezione, dove il
+    // mouse sta quasi sempre mentre si legge) e col fuoco da tastiera dentro
+    // la sezione; un tocco o un clic sulle frecce non lo ferma.
+    stage.addEventListener('mouseenter', function () { fermo = true; riparti(); });
+    stage.addEventListener('mouseleave', function () { fermo = false; riparti(); });
+    g.addEventListener('focusin', function (e) {
+      var tastiera = false;
+      try { tastiera = e.target.matches(':focus-visible'); } catch (x) {}
+      if (tastiera) { fermo = true; riparti(); }
+    });
+    g.addEventListener('focusout', function (e) { if (!g.contains(e.relatedTarget)) { fermo = false; riparti(); } });
+    gesti(tel, function (d) { vai(cur + d, d, true); });
+
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(function (es) {
+        es.forEach(function (e) { visibile = e.isIntersecting; riparti(); });
+      }, { threshold: 0.45 }).observe(stage);
+    }
+    document.addEventListener('visibilitychange', riparti);
+    segna(0);
+  });
+})();
+
+</script>
+</body>
+</html>

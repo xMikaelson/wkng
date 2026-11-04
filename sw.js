@@ -1,4 +1,4 @@
-const CACHE_NAME = 'awakening-v348';
+const CACHE_NAME = 'awakening-v349';
 
 const STATIC_ASSETS = [
     './',
@@ -77,6 +77,16 @@ self.addEventListener('fetch', event => {
     const url = new URL(event.request.url);
     const alwaysLive = ['supabase.co', 'openfoodfacts.org', 'youtube.com', 'googleapis.com', 'anthropic.com'];
     if (alwaysLive.some(domain => url.hostname.includes(domain))) return;
+
+    // v.349 — Il sito di presentazione vive in ./sito/, dentro l'ambito di
+    // questo service worker. Le sue pagine non sono l'app: senza questa
+    // uscita una navigazione a ./sito/ non trova copia in cache e riceve
+    // l'index.html dell'app (ramo "Documento" qui sotto), quindi chi ha l'app
+    // installata nello stesso browser vedrebbe l'app al posto del sito. Le
+    // richieste del sito vanno alla rete come se il service worker non ci
+    // fosse. (Stessa uscita della v.346, tolta con il sito nella v.347.)
+    if (url.origin === self.location.origin &&
+        url.pathname.startsWith(new URL('sito/', self.registration.scope).pathname)) return;
 
     // ---- Documento (navigazione / index.html): STALE-WHILE-REVALIDATE ----
     // Network-first faceva attendere ~950 KB di download prima del primo paint:
