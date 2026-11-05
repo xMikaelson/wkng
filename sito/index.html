@@ -426,13 +426,17 @@ button{font:inherit;color:inherit}
   // una sezione la pagina scende alla sezione dopo, che riparte dalla sua
   // prima funzione; dopo l'ultima sezione si torna alla prima.
   var giro = [];
-  function prossimaSezione(i) {
-    var j = (i + 1) % giro.length;
+  // dir +1: sezione dopo, dalla prima funzione; dir -1 (indietro a mano
+  // dalla prima funzione): sezione prima, sull'ultima funzione. Da un capo
+  // della pagina si passa all'altro. A mano, il giro riparte dopo 2 s.
+  function cambiaSezione(i, dir, manuale) {
+    var j = (i + dir + giro.length) % giro.length;
     var sc = document.getElementById('scroller');
-    giro[j].daCapo();
+    giro[j].mostra(dir > 0 ? 0 : -1, manuale);
     var t = giro[j].g.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop;
     sc.scrollTo({ top: t, behavior: ridotto ? 'auto' : 'smooth' });
   }
+  function prossimaSezione(i) { cambiaSezione(i, 1, false); }
 
   Array.prototype.forEach.call(document.querySelectorAll('.grp'), function (g, gi) {
     var stage = g.querySelector('.stage');
@@ -499,8 +503,14 @@ button{font:inherit;color:inherit}
     // Avanti: sull'ultima funzione porta alla sezione dopo (dall'ultima
     // sezione alla prima), come il giro automatico.
     function avanti() {
-      if (cur === n - 1 && giro.length > 1) { clearTimeout(tPausa); pausa = false; prossimaSezione(gi); }
+      if (cur === n - 1 && giro.length > 1) { clearTimeout(tPausa); pausa = false; cambiaSezione(gi, 1, true); }
       else vai(cur + 1, 1, true);
+    }
+    // Indietro: sulla prima funzione porta alla sezione prima, sulla sua
+    // ultima funzione (dalla prima sezione all'ultima).
+    function indietro() {
+      if (cur === 0 && giro.length > 1) { clearTimeout(tPausa); pausa = false; cambiaSezione(gi, -1, true); }
+      else vai(cur - 1, -1, true);
     }
 
     // Il giro automatico: parte solo con la sezione in vista, si ferma col
@@ -518,10 +528,10 @@ button{font:inherit;color:inherit}
       }, GIRO);
     }
 
-    prev.addEventListener('click', function () { vai(cur - 1, -1, true); });
+    prev.addEventListener('click', indietro);
     next.addEventListener('click', avanti);
     stage.addEventListener('keydown', function (e) {
-      if (e.key === 'ArrowLeft') { e.preventDefault(); vai(cur - 1, -1, true); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); indietro(); }
       if (e.key === 'ArrowRight') { e.preventDefault(); avanti(); }
     });
     // Si ferma col mouse sopra il telefono (non su tutta la sezione, dove il
@@ -537,7 +547,7 @@ button{font:inherit;color:inherit}
       if (tastiera) { fermo = true; riparti(); }
     });
     g.addEventListener('focusout', function (e) { if (!g.contains(e.relatedTarget)) { fermo = false; riparti(); } });
-    gesti(tel, function (d) { if (d > 0) avanti(); else vai(cur - 1, -1, true); });
+    gesti(tel, function (d) { if (d > 0) avanti(); else indietro(); });
 
     if ('IntersectionObserver' in window) {
       new IntersectionObserver(function (es) {
@@ -550,12 +560,15 @@ button{font:inherit;color:inherit}
       g: g,
       // si riparte dalla prima funzione, senza animazione: la sezione sta
       // ancora arrivando sullo schermo
-      daCapo: function () {
+      // mostra la funzione i (-1 = l'ultima) senza animazione: la sezione
+      // sta ancora arrivando sullo schermo
+      mostra: function (i, manuale) {
         clearTimeout(timer);
         anim.forEach(function (a) { try { a.finish(); } catch (e) {} });
         anim = [];
-        cur = 0;
-        segna(0);
+        cur = i < 0 ? n - 1 : i;
+        segna(cur);
+        if (manuale) pausaManuale();
       }
     });
   });
