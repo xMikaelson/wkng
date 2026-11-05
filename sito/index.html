@@ -384,7 +384,8 @@ button{font:inherit;color:inherit}
 <script>
 (function () {
   // Un iPhone per sezione: le funzioni si alternano da sole ogni 4,5 secondi
-  // mentre la sezione e' sullo schermo, con un passaggio di mezzo secondo.
+  // mentre la sezione e' sullo schermo, con un passaggio di mezzo secondo;
+  // finita l'ultima si passa alla sezione dopo (e dall'ultima alla prima).
   // Frecce ai lati, pallini, tastiera e dito portano avanti e indietro;
   // il mouse sopra il telefono ferma il giro.
   var DUR = 500, GIRO = 4500;
@@ -421,7 +422,19 @@ button{font:inherit;color:inherit}
     el.addEventListener('pointercancel', function () { sx = null; });
   }
 
-  Array.prototype.forEach.call(document.querySelectorAll('.grp'), function (g) {
+  // Il giro continua da una sezione all'altra: finita l'ultima funzione di
+  // una sezione la pagina scende alla sezione dopo, che riparte dalla sua
+  // prima funzione; dopo l'ultima sezione si torna alla prima.
+  var giro = [];
+  function prossimaSezione(i) {
+    var j = (i + 1) % giro.length;
+    var sc = document.getElementById('scroller');
+    giro[j].daCapo();
+    var t = giro[j].g.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop;
+    sc.scrollTo({ top: t, behavior: ridotto ? 'auto' : 'smooth' });
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('.grp'), function (g, gi) {
     var stage = g.querySelector('.stage');
     var tel = stage.querySelector('.phone');
     var imgs = Array.prototype.slice.call(stage.querySelectorAll('.screen img'));
@@ -481,7 +494,10 @@ button{font:inherit;color:inherit}
       var d = dots[cur];
       void d.offsetWidth;
       d.classList.add('run');
-      timer = setTimeout(function () { vai(cur + 1, 1, false); }, GIRO);
+      timer = setTimeout(function () {
+        if (cur === n - 1 && giro.length > 1) prossimaSezione(gi);
+        else vai(cur + 1, 1, false);
+      }, GIRO);
     }
 
     prev.addEventListener('click', function () { vai(cur - 1, -1, true); });
@@ -510,6 +526,18 @@ button{font:inherit;color:inherit}
     }
     document.addEventListener('visibilitychange', riparti);
     segna(0);
+    giro.push({
+      g: g,
+      // si riparte dalla prima funzione, senza animazione: la sezione sta
+      // ancora arrivando sullo schermo
+      daCapo: function () {
+        clearTimeout(timer);
+        anim.forEach(function (a) { try { a.finish(); } catch (e) {} });
+        anim = [];
+        cur = 0;
+        segna(0);
+      }
+    });
   });
 
   // La pagina scorre dentro .scroller, alto quanto lo spazio visibile: le
