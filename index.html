@@ -2116,8 +2116,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         .wo-ex-tip-text { font-size: 0.62rem; color: #cbd5e1; line-height: 1.5; }
         .wo-ex-tip-text strong { color: #a5b4fc; font-weight: 700; }
 
-        .wo-ex-row { cursor: pointer; transition: background 0.15s, border-color 0.15s; }
-        .wo-ex-row:active { background: rgba(99,102,241,0.1) !important; }
+        /* v.358: la riga non si tocca piu' (niente video): niente manina. */
+        .wo-ex-row { transition: background 0.15s, border-color 0.15s; }
 
         .ex-video-overlay {
             display: none; position: fixed;
@@ -4234,9 +4234,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <button class="wo-btn-done" onclick="woCompleteSet()">✓ Serie completata</button>
       <button class="wo-btn-skip" id="wo-btn-pause" onclick="woPause()">⏸ Pausa</button>
     </div>
-    <!-- v.357: tolto l'invito "Tocca un esercizio per vedere il video": le
-         schede con immagini e descrizione arriveranno piu' avanti. Il tocco
-         sulla riga apre ancora il link al video. -->
+    <!-- v.357: tolto l'invito "Tocca un esercizio per vedere il video"; v.358:
+         tolto anche il tocco sulla riga. Le schede con immagini e
+         descrizione arriveranno piu' avanti (exVideoOpen resta pronta). -->
     <div class="wo-ex-list">
       <div class="wo-ex-list-title">Programma sessione</div>
       <div id="wo-ex-list-body"></div>
@@ -5066,7 +5066,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 // Va bumpato insieme a CACHE_NAME in sw.js: sono lo stesso numero. Se si muove
 // solo CACHE_NAME il profilo resta indietro e dichiara una versione che non e'
 // quella installata.
-const APP_VERSION = '357';
+const APP_VERSION = '358';
 
 // ============= CENTRALIZED STATE =============
 const APP = {
@@ -22485,7 +22485,7 @@ function woRenderExList() {
         // nulla. I record restano salvati e avranno una sezione dedicata.
         const kgCol = `<span class="wo-ex-rkg">${plannedKg} kg</span>`;
         return `
-        <div class="wo-ex-row ${i < woState.exIndex ? 'completed' : i===woState.exIndex ? 'active' : ''}" onclick="exVideoOpen('${escapeHTML(e.name).replace(/'/g,'\\&apos;')}')">
+        <div class="wo-ex-row ${i < woState.exIndex ? 'completed' : i===woState.exIndex ? 'active' : ''}">
             <div class="wo-dot"></div>
             <span class="wo-ex-rname">${escapeHTML(exDisplay(e.name))}</span>
             <span class="wo-ex-rsr">${escapeHTML(rowSr)}${srPerLato(e, rowSr) ? ' per lato' : ''}</span>
