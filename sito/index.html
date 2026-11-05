@@ -40,9 +40,13 @@
   color-scheme:dark;
 }
 *{box-sizing:border-box}
-html{scroll-behavior:smooth}
+html,body{height:100%;overflow:hidden}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.6;
-  -webkit-font-smoothing:antialiased;overflow-x:hidden}
+  -webkit-font-smoothing:antialiased}
+/* Tutta la pagina scorre qui dentro, non nel documento: cosi' Safari su
+   iPhone non apre e chiude le sue barre scorrendo, lo spazio visibile resta
+   sempre lo stesso e ogni sezione e' alta esattamente quanto lui. */
+.scroller{position:fixed;inset:0;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;scroll-behavior:smooth;outline:none}
 a{color:inherit}
 img{max-width:100%;display:block}
 h1,h2,h3{margin:0;font-weight:700;text-wrap:balance}
@@ -105,26 +109,18 @@ button{font:inherit;color:inherit}
 @media (min-width:960px){.ladder{grid-template-columns:minmax(0,.9fr) minmax(0,1.3fr);gap:72px;align-items:end;padding-block:96px}}
 .ladder h2{font-family:var(--display);font-weight:700;font-size:clamp(28px,3.6vw,40px);line-height:1.08;letter-spacing:-.025em;margin:14px 0 18px}
 .ladder p{color:var(--soft);max-width:36em;margin-bottom:18px}
-.chart{min-width:0}
-/* Gradini: l'altezza di ogni gradino e' la percentuale del MTR su un asse
-   che parte dall'80% (scritto sull'asse): dallo zero, 85 e 97 sembravano
-   uguali. Posizione, non lunghezza: niente barre che partono da una base. */
-.plot{position:relative;height:220px;margin:34px 0 0 46px}
-.gl{position:absolute;left:0;right:0;bottom:calc(var(--y) * 100%);border-top:1px solid rgba(148,163,184,.16)}
-.gl span{position:absolute;right:100%;top:0;margin-right:10px;transform:translateY(-50%);font-family:var(--mono);font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
-.gl.top{border-top-color:rgba(148,163,184,.34)}
-.steps{position:absolute;inset:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
-.st{position:relative;min-width:0}
-.st i{position:absolute;left:0;right:0;bottom:calc((var(--v) - 80) / 20 * 100%);height:5px;margin-bottom:-2.5px;border-radius:4px;background:var(--green)}
-.st b{position:absolute;left:0;right:0;bottom:calc((var(--v) - 80) / 20 * 100% + 10px);text-align:center;font-family:var(--display);font-weight:700;
-  font-size:clamp(14px,1.7vw,19px);letter-spacing:-.02em;color:var(--ink)}
-.st.dl i{background:transparent;border:2px solid var(--green);height:9px;margin-bottom:-4.5px}
-.xax{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:12px 0 0 46px}
-.xax span{font-family:var(--mono);font-size:11px;line-height:1.35;color:var(--soft);text-align:center;overflow-wrap:anywhere}
-.xax em{display:block;font-style:normal;color:var(--muted)}
-.chart-note{margin:14px 0 0 46px;font-size:13px;color:var(--muted)}
-@media (max-width:959px){.plot{height:180px;margin-left:40px}.xax,.chart-note{margin-left:40px}
-  .xax span{font-size:10px;overflow-wrap:normal}.xax em{font-family:var(--body);font-size:11px;letter-spacing:-.01em}}
+.chart{position:relative;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;height:260px;align-items:end;padding-top:28px}
+.chart::before{content:"100% · il tuo MTR · le barre partono dall'80%";position:absolute;left:0;right:0;top:28px;border-top:1px dashed rgba(148,163,184,.45);
+  font-family:var(--mono);font-size:11px;color:var(--muted);padding-top:4px;text-align:right}
+.bar{display:flex;flex-direction:column;justify-content:flex-end;height:100%;min-width:0}
+/* Altezza dall'80% (base) al 100% (la riga tratteggiata): dallo zero 85 e 97
+   venivano quasi uguali. Sotto ogni barra 56 px per il nome del capitolo. */
+.bar i{display:block;height:calc((var(--v) - 80) / 20 * (100% - 56px));border-radius:8px 8px 3px 3px;background:var(--c);position:relative}
+.bar i::after{content:attr(data-v);position:absolute;top:8px;left:0;right:0;text-align:center;font-family:var(--display);font-weight:700;
+  font-style:normal;font-size:clamp(13px,1.6vw,18px);color:#0b1120}
+.bar.dl i{background:repeating-linear-gradient(135deg,var(--c) 0 6px,color-mix(in srgb,var(--c) 70%,#0b1120) 6px 12px)}
+.bar span{height:46px;margin-top:10px;font-family:var(--mono);font-size:11px;line-height:1.35;color:var(--soft);overflow-wrap:normal}
+.bar span em{display:block;font-style:normal;color:var(--muted)}
 
 /* ── Le sezioni: un iPhone, piu' funzioni ───────────────────── */
 .grp{padding-block:64px}
@@ -179,7 +175,7 @@ button{font:inherit;color:inherit}
 @media (min-width:960px){.feats{padding:24px 0 0;border-top:1px solid var(--line)}}
 
 /* ── Chiusura ───────────────────────────────────────────────── */
-.fine{min-height:100svh;display:flex;flex-direction:column}
+.fine{display:flex;flex-direction:column}
 .fine .close{flex:1;display:flex;flex-direction:column;justify-content:center}
 .close{padding-block:48px}
 .close h2{font-family:var(--display);font-weight:800;font-size:clamp(34px,6vw,72px);line-height:1;letter-spacing:-.035em;max-width:12em;margin-bottom:30px}
@@ -189,28 +185,29 @@ button{font:inherit;color:inherit}
 
 /* ── Una sezione per volta ─────────────────────────────────────
    Dalle funzioni in poi ogni scorrimento si ferma su una sezione intera
-   (apertura e programma scorrono liberi). Ogni sezione e' alta quanto lo
-   spazio visibile in quel momento (100dvh: segue la barra di Safari che si
-   apre e si chiude) e il contenuto ci sta centrato anche con la barra aperta:
-   l'iPhone si calcola su 100svh togliendo titolo, pallini e testo (--np,
-   misurato dallo script). L'aggancio (html.aggancio) lo accende lo script
-   solo dentro le funzioni e solo se ogni sezione sta nello schermo. */
-html.aggancio{scroll-snap-type:y mandatory}
-.grp,.fine{scroll-snap-align:center;scroll-snap-stop:always}
+   (apertura e programma scorrono liberi). Ogni sezione e' alta quanto il
+   contenitore che scorre (--vh, la sua altezza: lo spazio fra la barra di
+   sopra e quella di sotto) e si aggancia con il bordo in alto, cosi' le
+   righe di divisione cadono sui bordi dello spazio visibile in entrambi i
+   versi. L'iPhone si calcola su --vh togliendo titolo, pallini e testo (--np,
+   misurato dallo script). L'aggancio (.scroller.aggancio) lo accende lo
+   script solo dentro le funzioni e solo se ogni sezione ci sta. */
+.scroller.aggancio{scroll-snap-type:y mandatory}
+.grp,.fine{scroll-snap-align:start;scroll-snap-stop:always}
 /* Un punto di aggancio subito sopra la prima sezione: risalendo dalla prima
    sezione la pagina ha dove andare (senza, con la rotella restava ferma), e
    da li' lo script spegne l'aggancio e si torna liberi. */
 .snap-su{height:1px;margin-top:-1px;scroll-snap-align:end}
-.grp{min-height:100svh;min-height:100dvh;display:grid;align-content:center;padding-block:40px}
-.fine{min-height:100svh;min-height:100dvh}
-.stage .phone{--w:clamp(120px,calc((100svh - var(--np,520px)) * .4767),var(--wmax,310px))}
+.grp{min-height:var(--vh,100svh);display:grid;align-content:center;padding-block:40px}
+.fine{min-height:var(--vh,100svh)}
+.stage .phone{--w:clamp(120px,calc((var(--vh,100svh) - var(--np,520px)) * .4767),var(--wmax,310px))}
 @media (max-width:959px){
   .grp{padding-block:18px}
   .stage{--wmax:min(46vw,230px)}
   /* schermi bassi: via la frase sotto il titolo della sezione */
   html.compatto .grp-head>p:not(.eyebrow){display:none}
 }
-@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.dot{transition:none}}
+@media (prefers-reduced-motion:reduce){.scroller{scroll-behavior:auto}.dot{transition:none}}
 @media (max-width:959px){
   .grp-in{row-gap:14px}
   .stage{gap:22px}
@@ -222,6 +219,7 @@ html.aggancio{scroll-snap-type:y mandatory}
 </head>
 <body>
 
+<main class="scroller" id="scroller" tabindex="-1">
 <div class="wrap apertura">
   <header class="top">
     <a class="mark" href="#">A<b>WAKE</b>NING</a>
@@ -253,25 +251,12 @@ html.aggancio{scroll-snap-type:y mandatory}
       <p>Ogni esercizio parte dal tuo MTR, il massimo tecnico: il peso più alto che sollevi con tecnica pulita per le ripetizioni previste. Capitolo dopo capitolo il carico sale e le ripetizioni scendono. Nella quinta settimana il carico resta vicino al picco e le serie si dimezzano, per recuperare e consolidare.</p>
       <span class="src">ACSM 2009 · Bosquet et al. 2007 · Mujika &amp; Padilla 2003</span>
     </div>
-    <div class="chart" role="img" aria-label="Carico in percentuale del massimo tecnico, settimana per settimana: Activation 85, Momentum 89, The Peak 93, Overload 97, Deload 90 con le serie dimezzate.">
-      <div class="plot" aria-hidden="true">
-        <div class="gl" style="--y:0"><span>80%</span></div>
-        <div class="gl" style="--y:.25"><span>85%</span></div>
-        <div class="gl" style="--y:.5"><span>90%</span></div>
-        <div class="gl" style="--y:.75"><span>95%</span></div>
-        <div class="gl top" style="--y:1"><span>100%</span></div>
-        <div class="steps">
-          <div class="st" style="--v:85"><i></i><b>85%</b></div>
-          <div class="st" style="--v:89"><i></i><b>89%</b></div>
-          <div class="st" style="--v:93"><i></i><b>93%</b></div>
-          <div class="st" style="--v:97"><i></i><b>97%</b></div>
-          <div class="st dl" style="--v:90"><i></i><b>90%</b></div>
-        </div>
-      </div>
-      <div class="xax" aria-hidden="true">
-        <span>Ch.1<em>Activation</em></span><span>Ch.2<em>Momentum</em></span><span>Ch.3<em>The Peak</em></span><span>Ch.4<em>Overload</em></span><span>Ch.5<em>Deload</em></span>
-      </div>
-      <p class="chart-note">Percentuale del tuo MTR; l'asse parte dall'80%. Nel Deload (gradino vuoto) le serie si dimezzano.</p>
+    <div class="chart" role="img" aria-label="Carico in percentuale del massimo tecnico: Activation 85, Momentum 89, The Peak 93, Overload 97, Deload 90 con serie dimezzate. Le barre partono dall'80%.">
+      <div class="bar" style="--c:var(--c1)"><i style="--v:85" data-v="85%"></i><span>Ch.1<em>Activation</em></span></div>
+      <div class="bar" style="--c:var(--c2)"><i style="--v:89" data-v="89%"></i><span>Ch.2<em>Momentum</em></span></div>
+      <div class="bar" style="--c:var(--c3)"><i style="--v:93" data-v="93%"></i><span>Ch.3<em>The Peak</em></span></div>
+      <div class="bar" style="--c:var(--c4)"><i style="--v:97" data-v="97%"></i><span>Ch.4<em>Overload</em></span></div>
+      <div class="bar dl" style="--c:var(--c5)"><i style="--v:90" data-v="90%"></i><span>Ch.5<em>Deload · ½ serie</em></span></div>
     </div>
   </div>
 </div>
@@ -394,6 +379,7 @@ html.aggancio{scroll-snap-type:y mandatory}
     <span>Le schermate mostrano dati di esempio.</span>
   </footer>
 </div>
+</main>
 
 <script>
 (function () {
@@ -526,12 +512,15 @@ html.aggancio{scroll-snap-type:y mandatory}
     segna(0);
   });
 
-  // L'iPhone delle sezioni prende l'altezza che resta dopo titolo, pallini
-  // e testo (--np), cosi' ogni sezione sta in uno schermo e lo scorrimento
-  // la inquadra intera. Si misura la sezione che ne ha bisogno di piu', per
-  // avere lo stesso telefono ovunque. Se su telefono l'iPhone scende sotto
-  // 150 punti, si toglie la frase sotto il titolo delle sezioni.
-  var root = document.documentElement, largo = 0, puo = false;
+  // La pagina scorre dentro .scroller, alto quanto lo spazio visibile: le
+  // sezioni prendono la sua altezza (--vh). L'iPhone delle sezioni prende
+  // l'altezza che resta dopo titolo, pallini e testo (--np), cosi' ogni
+  // sezione sta in uno schermo e lo scorrimento la inquadra intera. Si misura
+  // la sezione che ne ha bisogno di piu', per avere lo stesso telefono
+  // ovunque. Se su telefono l'iPhone scende sotto 150 punti, si toglie la
+  // frase sotto il titolo delle sezioni.
+  var root = document.documentElement, sc = document.getElementById('scroller');
+  var largo = 0, altoSc = 0, puo = false;
   var sezioni = Array.prototype.slice.call(document.querySelectorAll('.grp'));
   function contenuto(g) {
     var cs = getComputedStyle(g);
@@ -547,14 +536,15 @@ html.aggancio{scroll-snap-type:y mandatory}
   }
   function adatta() {
     largo = window.innerWidth;
+    altoSc = sc.clientHeight;
+    root.style.setProperty('--vh', altoSc + 'px');
     root.classList.remove('compatto');
     misura();
     var tel = sezioni[0].querySelector('.stage .phone');
     if (largo < 960 && tel.getBoundingClientRect().width < 150) { root.classList.add('compatto'); misura(); }
-    // Si aggancia solo se ogni sezione sta in uno schermo: una sezione piu'
-    // alta intrappolerebbe lo scorrimento a passi brevi.
-    var alto = window.innerHeight + 1;
-    puo = sezioni.every(function (g) { return contenuto(g) <= alto; });
+    // Si aggancia solo se ogni sezione sta nello spazio visibile: una sezione
+    // piu' alta intrappolerebbe lo scorrimento a passi brevi.
+    puo = sezioni.every(function (g) { return contenuto(g) <= altoSc + 1; });
     controlla();
   }
 
@@ -562,23 +552,30 @@ html.aggancio{scroll-snap-type:y mandatory}
   // prima sezione occupa piu' di meta' schermo, si spegne salendo appena la
   // prima sezione scende sotto il bordo alto, cosi' apertura e programma
   // scorrono liberi in entrambi i versi.
-  var ultimaY = window.scrollY, attivo = false;
-  function accendi(v) { if (v !== attivo) { attivo = v; root.classList.toggle('aggancio', v); } }
+  var ultimaY = sc.scrollTop, attivo = false;
+  function accendi(v) { if (v !== attivo) { attivo = v; sc.classList.toggle('aggancio', v); } }
   function controlla() {
-    var y = window.scrollY, dir = y - ultimaY;
+    var y = sc.scrollTop, dir = y - ultimaY;
     ultimaY = y;
     if (!puo) { accendi(false); return; }
-    var top = sezioni[0].getBoundingClientRect().top, vh = window.innerHeight;
+    var top = sezioni[0].getBoundingClientRect().top - sc.getBoundingClientRect().top;
     if (attivo) { if (dir < 0 && top > 2) accendi(false); }
-    else if (top <= 2 || (dir > 0 && top < vh * 0.5)) accendi(true);
+    else if (Math.abs(top) <= 2 || top < 0 || (dir > 0 && top < altoSc * 0.5)) accendi(true);
   }
-  window.addEventListener('scroll', controlla, { passive: true });
+  sc.addEventListener('scroll', controlla, { passive: true });
 
   adatta();
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(adatta);
-  // Solo i cambi di larghezza (rotazione): su iPhone l'altezza cambia a
-  // ogni scorrimento quando le barre del browser si chiudono.
-  window.addEventListener('resize', function () { if (window.innerWidth !== largo) adatta(); });
+  // Tasti (Pag giu', frecce, spazio) subito attivi sul contenitore.
+  try { sc.focus({ preventScroll: true }); } catch (e) {}
+  // Il contenitore cambia altezza solo se cambia davvero lo schermo
+  // (rotazione, finestra ridimensionata): Safari non apre e chiude piu' le
+  // barre scorrendo, perche' il documento non scorre.
+  var attesa = 0;
+  window.addEventListener('resize', function () {
+    clearTimeout(attesa);
+    attesa = setTimeout(function () { if (window.innerWidth !== largo || sc.clientHeight !== altoSc) adatta(); }, 120);
+  });
 })();
 
 </script>
