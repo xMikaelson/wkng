@@ -1,0 +1,60 @@
+name: Pubblica il sito su SiteGround
+
+# Copia sito/ nella public_html del dominio su SiteGround (via SSH, porta
+# 18765) a ogni push su main che tocca il sito, oppure a mano da
+# Actions > "Pubblica il sito su SiteGround" > Run workflow.
+# Il deploy dell'app su GitHub Pages (deploy.yml) resta separato e non cambia.
+#
+# Secret da impostare in Settings > Secrets and variables > Actions:
+#   SG_HOST        hostname   (Site Tools > Devs > SSH Keys Manager > SSH Credentials)
+#   SG_USER        username   (stessa schermata)
+#   SG_KEY         chiave privata (stessa riga > Private Key), testo completo
+#   SG_PASSPHRASE  passphrase scelta quando si e' creata la chiave
+# Finche' mancano, il job si chiude senza fare nulla.
+#
+# Sicurezza: parte solo da push su main o a mano (mai da pull request, e i
+# fork non ricevono comunque i secret); nessuna action di terzi tocca la chiave,
+# lo script usa solo ssh/rsync del runner; il server e' riconosciuto dalla sua
+# chiave pubblica fissata in .github/siteground_known_hosts.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'sito/**'
+      - '.github/workflows/siteground.yml'
+      - '.github/scripts/pubblica-siteground.sh'
+      - '.github/siteground_known_hosts'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: siteground
+  cancel-in-progress: false
+
+jobs:
+  pubblica:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Copia sito/ su SiteGround
+        env:
+          SG_HOST: ${{ secrets.SG_HOST }}
+          SG_USER: ${{ secrets.SG_USER }}
+          SG_KEY: ${{ secrets.SG_KEY }}
+          SG_PASSPHRASE: ${{ secrets.SG_PASSPHRASE }}
+          SG_PORT: '18765'
+          # Vuoto = l'unico sito presente nell'hosting; con piu' siti va
+          # scritto il nome della cartella in ~/www (il dominio).
+          SG_DOMINIO: ''
+          SG_KNOWN_HOSTS: .github/siteground_known_hosts
+        run: bash .github/scripts/pubblica-siteground.sh
