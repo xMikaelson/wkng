@@ -105,13 +105,22 @@ fi
 # copiata. Non blocca (il dominio puo' non puntare ancora a SiteGround).
 if [ "${SG_CONTROLLO_WEB:-1}" = 1 ]; then
   ATTESO=$(sha256sum "$SORGENTE/index.html" | cut -d' ' -f1)
-  for url in "https://$DOMINIO/" "http://$DOMINIO/"; do
-    CODICE=$(curl -sS -L -o "$LAVORO/pagina" -w '%{http_code}' --max-time 20 "$url" 2>"$LAVORO/curl.err" || true)
-    if [ "$CODICE" = 200 ] && [ "$(sha256sum "$LAVORO/pagina" | cut -d' ' -f1)" = "$ATTESO" ]; then
-      echo "Controllo web: $url risponde con la pagina appena pubblicata."
-      exit 0
+  OK=0
+  # Con e senza www, seguendo eventuali reindirizzamenti.
+  for url in "https://$DOMINIO/" "https://www.$DOMINIO/"; do
+    CODICE=$(curl -sS -L -o "$LAVORO/pagina" -w '%{http_code} %{url_effective}' --max-time 20 "$url" 2>"$LAVORO/curl.err" || true)
+    if [ "${CODICE%% *}" = 200 ] && [ "$(sha256sum "$LAVORO/pagina" | cut -d' ' -f1)" = "$ATTESO" ]; then
+      echo "Controllo web: $url risponde con la pagina appena pubblicata (arrivo: ${CODICE#* })."
+      OK=1
+    else
+      echo "Controllo web: $url -> ${CODICE:-nessuna risposta} $(head -c 200 "$LAVORO/curl.err" 2>/dev/null)"
     fi
-    echo "Controllo web: $url -> codice ${CODICE:-nessuno} $(head -c 200 "$LAVORO/curl.err" 2>/dev/null)"
   done
-  echo "::warning::File copiati, ma il dominio non mostra ancora la pagina nuova (DNS o certificato non ancora pronti, oppure cache)."
+  # Senza https: dice solo se il server rimanda alla versione sicura.
+  RISPOSTA=$(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' --max-time 20 "http://$DOMINIO/" 2>/dev/null || true)
+  case "$RISPOSTA" in
+    30[1278]\ https://*) echo "Controllo web: http://$DOMINIO/ rimanda a ${RISPOSTA#* } (HTTPS forzato)." ;;
+    *) echo "Controllo web: http://$DOMINIO/ -> ${RISPOSTA:-nessuna risposta} (HTTPS non forzato)." ;;
+  esac
+  [ "$OK" = 1 ] || echo "::warning::File copiati, ma il dominio non mostra ancora la pagina nuova (DNS o certificato non ancora pronti, oppure cache)."
 fi
